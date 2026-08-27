@@ -14,6 +14,7 @@ from PySide6.QtGui import QAccessible, QTextCursor, QTextFormat
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QLabel,
     QListWidget,
@@ -30,6 +31,13 @@ from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.models import Voice
 from vieneu_reader.domain.segmenter import prepare_pasted_text
 from vieneu_reader.importers.service import LibraryService
+from vieneu_reader.integrations.selection_shortcut import (
+    CMD_KEY,
+    CONTROL_KEY,
+    OPTION_KEY,
+    ReadOnCopyPreferenceStore,
+    Shortcut,
+)
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
 from vieneu_reader.storage.repository import LibraryRepository
 from vieneu_reader.ui.controller import ExternalReadingState, ReaderController
@@ -104,11 +112,18 @@ class ReaderWindowTests(unittest.TestCase):
         model_setup: FakeModelSetup,
         *,
         language_store: LanguagePreferenceStore | None = None,
+        selection_shortcut: Shortcut | None = None,
+        read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
     ) -> ReaderWindow:
         window = ReaderWindow(
             self.controller,
             model_setup,
             language_store=language_store,
+            selection_shortcut=selection_shortcut,
+            read_on_copy=(
+                read_on_copy_store.load() if read_on_copy_store is not None else False
+            ),
+            read_on_copy_store=read_on_copy_store,
         )
         self.windows.append(window)
         window.show()
@@ -276,6 +291,156 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertEqual(shortcut.text(), "Control + Option + Command + R")
         self.assertTrue(window.feature_navigation.isTabEnabled(2))
         self.assertFalse(window.paste_text_view.read_button.isEnabled())
+
+    def test_shortcut_label_follows_the_setting_and_can_be_rerecorded(self) -> None:
+        saved = Shortcut(key_code=38, modifiers=CONTROL_KEY | CMD_KEY)
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            selection_shortcut=saved,
+        )
+        label = window.findChild(QLabel, "externalReadingShortcut")
+
+        self.assertIsNotNone(label)
+        self.assertEqual(label.text(), "Control + Command + J")
+        self.assertEqual(
+            label.accessibleName(),
+            "Phím tắt đọc phần đã chọn: Control + Command + J",
+        )
+
+        recorder = window.findChild(QPushButton, "externalReadingShortcutRecorder")
+        self.assertIsNotNone(recorder)
+        self.assertEqual(recorder.text(), "Đổi phím tắt")
+
+        chosen: list[Shortcut] = []
+        window.selectionShortcutChanged.connect(chosen.append)
+        recorder.click()
+        self.application.processEvents()
+
+        self.assertEqual(recorder.text(), "Nhấn tổ hợp phím mới…")
+        QTest.keyClick(
+            recorder,
+            Qt.Key.Key_K,
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier,
+        )
+        self.application.processEvents()
+
+        self.assertEqual(
+            chosen,
+            [Shortcut(key_code=40, modifiers=CMD_KEY | OPTION_KEY)],
+        )
+        # The label only moves once the helper reports the choice registered.
+        self.assertEqual(label.text(), "Control + Command + J")
+        self.assertEqual(recorder.text(), "Đổi phím tắt")
+
+        window.set_selection_shortcut(chosen[0])
+        self.application.processEvents()
+
+        self.assertEqual(label.text(), "Option + Command + K")
+        self.assertEqual(
+            label.accessibleName(),
+            "Phím tắt đọc phần đã chọn: Option + Command + K",
+        )
+
+    def test_shortcut_controls_are_translated_without_losing_the_combination(
+        self,
+    ) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        label = window.findChild(QLabel, "externalReadingShortcut")
+        recorder = window.findChild(QPushButton, "externalReadingShortcutRecorder")
+
+        language_combo.setCurrentIndex(
+            language_combo.findData(Language.ENGLISH.value)
+        )
+        self.application.processEvents()
+
+        self.assertEqual(label.text(), "Control + Option + Command + R")
+        self.assertEqual(
+            label.accessibleName(),
+            "Read-selection shortcut: Control + Option + Command + R",
+        )
+        self.assertEqual(recorder.text(), "Change shortcut")
+
+    def test_a_shortcut_macos_refuses_explains_itself(self) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        window.feature_navigation.setCurrentIndex(2)
+
+        self.controller.external_selection_failed("shortcut_unavailable")
+        self.application.processEvents()
+
+        detail = window.external_reading_view.detail_label
+        self.assertTrue(detail.isVisible())
+        self.assertIn("tổ hợp khác", detail.text())
+        self.assertFalse(window.open_accessibility_settings_button.isVisible())
+
+    def test_read_on_copy_is_off_by_default_and_labelled_in_both_languages(
+        self,
+    ) -> None:
+        store = ReadOnCopyPreferenceStore(self.paths.root / "settings.json")
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            read_on_copy_store=store,
+        )
+        toggle = window.findChild(QCheckBox, "externalReadingReadOnCopy")
+
+        self.assertIsNotNone(toggle)
+        self.assertFalse(toggle.isChecked())
+        self.assertFalse(store.load())
+        self.assertEqual(toggle.text(), "Đọc ngay khi sao chép trong Apple Books")
+
+        changes: list[bool] = []
+        window.readOnCopyChanged.connect(changes.append)
+        toggle.click()
+        self.application.processEvents()
+
+        self.assertEqual(changes, [True])
+        self.assertTrue(toggle.isChecked())
+        # The choice has to survive a restart, not just this window.
+        self.assertTrue(store.load())
+
+        toggle.click()
+        self.application.processEvents()
+
+        # Switching it back off has to be remembered just as faithfully.
+        self.assertEqual(changes, [True, False])
+        self.assertFalse(store.load())
+
+        toggle.click()
+        self.application.processEvents()
+        self.assertEqual(changes, [True, False, True])
+
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        language_combo.setCurrentIndex(
+            language_combo.findData(Language.ENGLISH.value)
+        )
+        self.application.processEvents()
+
+        self.assertEqual(toggle.text(), "Read as soon as you copy in Apple Books")
+        # Switching language must not switch the feature on or off.
+        self.assertEqual(changes, [True, False, True])
+        self.assertTrue(toggle.isChecked())
+        self.assertTrue(store.load())
+
+    def test_privacy_note_describes_read_on_copy_in_both_languages(self) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        note = window.external_reading_view.privacy_note
+
+        vietnamese = note.text()
+        self.assertIn("tắt", vietnamese)
+        self.assertIn("clipboard", vietnamese.lower())
+
+        window.external_reading_view.set_read_on_copy(True)
+        self.assertNotEqual(note.text(), vietnamese)
+        self.assertIn("clipboard", note.text().lower())
+
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        language_combo.setCurrentIndex(
+            language_combo.findData(Language.ENGLISH.value)
+        )
+        self.application.processEvents()
+
+        self.assertIn("clipboard", note.text().lower())
+        self.assertNotIn("does not monitor your screen or clipboard", note.text())
 
     def test_session_history_control_starts_disabled_and_accessible(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))

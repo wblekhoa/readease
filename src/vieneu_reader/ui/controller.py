@@ -192,6 +192,7 @@ class ReaderController:
         ] = {}
         self._speech_text_by_segment: dict[str, str] = {}
         self._session_history_entries: list[_StoredSessionReading] = []
+        self._status_before_external_failure: str | None = None
         self._next_session_reading_id = 1
         self._settings = SynthesisSettings()
         self._state = ReaderViewState()
@@ -564,10 +565,14 @@ class ReaderController:
             ),
             "no_selection": (
                 "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple "
-                "Books rồi nhấn Control-Option-Command-R."
+                "Books rồi nhấn phím tắt đọc."
             ),
             "unsupported_source": (
                 "Phím tắt đọc nhanh hiện chỉ hỗ trợ Apple Books."
+            ),
+            "shortcut_unavailable": (
+                "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác "
+                "đang dùng nó. Hãy chọn tổ hợp khác."
             ),
             "clipboard_restore_failed": (
                 "ReadEase không thể xác nhận đã khôi phục clipboard nên đã "
@@ -578,16 +583,26 @@ class ReaderController:
             ),
         }
         if reason == "ready":
-            self._set_state(
-                external_reading_state=ExternalReadingState.READY,
-                can_open_accessibility_settings=False,
-            )
+            changes = {
+                "external_reading_state": ExternalReadingState.READY,
+                "can_open_accessibility_settings": False,
+            }
+            # The helper is registered again, so an earlier "this shortcut is
+            # taken" banner would now be a lie. Anything the failure did not
+            # write is left exactly as it was.
+            if self._status_before_external_failure is not None:
+                changes["error"] = None
+                changes["status"] = self._status_before_external_failure
+                self._status_before_external_failure = None
+            self._set_state(**changes)
             return
         external_state = (
             ExternalReadingState.PERMISSION_REQUIRED
             if reason == "permission_required"
             else ExternalReadingState.FAILED
         )
+        if self._status_before_external_failure is None:
+            self._status_before_external_failure = self._state.status
         self._set_state(
             error=messages.get(reason, messages["unavailable"]),
             status="Không thể đọc phần đã chọn.",

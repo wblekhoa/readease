@@ -34,6 +34,41 @@ reads the selected text, and restores every captured clipboard item. If restore
 cannot be confirmed, ReadEase does not read the selection. Clipboard managers
 or Universal Clipboard may still observe this brief copy transaction.
 
+The shortcut itself can be changed in the Read books view. The chosen key and
+modifiers are stored in `settings.json` beside the language preference; nothing
+about your keyboard is recorded anywhere else.
+
+### Read on copy
+
+"Read as soon as you copy in Apple Books" is off until you switch it on in the
+Read books view, and it is the only setting that makes ReadEase look at the
+clipboard on its own. While it is on, ReadEase checks the clipboard's change
+counter a few times a second; when that counter moves and Apple Books is the
+frontmost app, ReadEase reads the newly copied text aloud. In this mode it only
+reads the clipboard, never writes to it, and it needs no Accessibility
+permission.
+
+macOS does not record which app wrote to the clipboard, so ReadEase cannot know
+who copied. What it can check is which app is in front, and it applies that
+check twice: the copy is only read if Apple Books was frontmost both at the
+check that noticed the new text and at the check before it, roughly a quarter of
+a second earlier. Text that appears while another app is in front is marked as
+already seen, so returning to Apple Books afterwards does not read it late.
+ReadEase also skips any clipboard item marked with the concealed type, which is
+how password managers ask clipboard tools to leave their entries alone.
+
+Those checks narrow the gap; they do not close it. If you copy in another app
+and switch to Apple Books within that quarter-second window, and the item is not
+marked concealed, ReadEase can still read it. Universal Clipboard content that
+arrives from another device while Apple Books is in front is likewise treated as
+copied from Apple Books. If that residual risk matters to you, leave read-on-copy
+off and use the shortcut, which reads only what you have selected in Apple Books
+at the moment you press it.
+
+Switching it off stops the checking. Text read this way is transient like the
+rest: it is not added to the library or the persistent audio cache, and it
+never leaves this Mac.
+
 Deleting ReadEase does not automatically delete its Application Support data.
 Users can remove that folder separately after closing the app if they no longer
 need their library, models, progress, or cache.

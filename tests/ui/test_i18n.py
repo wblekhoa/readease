@@ -149,6 +149,42 @@ class LocalizerTests(unittest.TestCase):
             english.runtime("Không thể khóa thư viện cục bộ để nhập sách."),
             "Could not lock the local library for import.",
         )
+        # These two are built character-for-character in the controller and
+        # translated by exact match, so drift silently ships Vietnamese.
+        self.assertEqual(
+            english.runtime(
+                "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple "
+                "Books rồi nhấn phím tắt đọc."
+            ),
+            "No selected text was found. Select text in Apple Books, then "
+            "press the read shortcut.",
+        )
+        self.assertEqual(
+            english.runtime(
+                "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác "
+                "đang dùng nó. Hãy chọn tổ hợp khác."
+            ),
+            "This shortcut could not be registered; macOS or another app is "
+            "already using it. Choose a different combination.",
+        )
+
+    def test_read_on_copy_note_claims_no_more_than_the_code_can_do(self) -> None:
+        # The Apple Books check is "which app is in front", sampled a few times
+        # a second, so a copy made elsewhere and followed by a fast switch can
+        # still be read. The note must not promise otherwise in either
+        # language.
+        for language, forbidden in (
+            (Language.VIETNAMESE, ("không bao giờ",)),
+            (Language.ENGLISH, ("never", "always", "cannot be read")),
+        ):
+            note = Localizer(language).text("external.privacy_note_on")
+            for claim in forbidden:
+                self.assertNotIn(claim, note.lower(), f"{language}: {claim}")
+            self.assertIn(
+                "macos",
+                note.lower(),
+                "the note has to say why the check is imperfect",
+            )
 
     def test_language_store_defaults_safely_and_persists_supported_language(self) -> None:
         with TemporaryDirectory() as directory:
@@ -166,6 +202,24 @@ class LocalizerTests(unittest.TestCase):
 
             path.write_text('{"language":"unsupported"}', encoding="utf-8")
             self.assertEqual(store.load(), Language.VIETNAMESE)
+
+    def test_saving_a_language_keeps_the_other_saved_settings(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(
+                '{"selection_shortcut": {"key_code": 38, "modifiers": 4352}}',
+                encoding="utf-8",
+            )
+
+            self.assertTrue(LanguagePreferenceStore(path).save(Language.ENGLISH))
+
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {
+                    "language": "en",
+                    "selection_shortcut": {"key_code": 38, "modifiers": 4352},
+                },
+            )
 
 
 class TranslationCoverageTests(unittest.TestCase):

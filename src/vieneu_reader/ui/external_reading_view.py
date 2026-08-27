@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSignalBlocker, Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -15,8 +16,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from vieneu_reader.integrations.selection_shortcut import (
+    DEFAULT_SHORTCUT,
+    Shortcut,
+)
+
 from .controller import ExternalReadingState, SessionReadingItem
 from .i18n import Localizer
+from .shortcut_recorder import ShortcutRecorderButton
 
 
 class ExternalReadingView(QWidget):
@@ -24,15 +31,21 @@ class ExternalReadingView(QWidget):
 
     openAccessibilitySettingsRequested = Signal()
     replayRequested = Signal(str)
+    shortcutRecorded = Signal(object)
+    readOnCopyChanged = Signal(bool)
 
     def __init__(
         self,
         parent: QWidget | None = None,
         *,
         localizer: Localizer | None = None,
+        shortcut: Shortcut | None = None,
+        read_on_copy: bool = False,
     ):
         super().__init__(parent)
         self._localizer = localizer or Localizer()
+        self._shortcut = shortcut or DEFAULT_SHORTCUT
+        self._read_on_copy = bool(read_on_copy)
         self._rendered_state = ExternalReadingState.STARTING
         self._rendered_history: tuple[SessionReadingItem, ...] = ()
         self._rendered_error: str | None = None
@@ -83,7 +96,9 @@ class ExternalReadingView(QWidget):
         self.shortcut_caption.setFont(caption_font)
         guide.addWidget(self.shortcut_caption)
 
-        shortcut = QLabel("Control + Option + Command + R")
+        shortcut_row = QHBoxLayout()
+        shortcut_row.setSpacing(12)
+        shortcut = QLabel(self._shortcut.label)
         shortcut.setObjectName("externalReadingShortcut")
         self.shortcut_label = shortcut
         shortcut_font = QFont(shortcut.font())
@@ -91,7 +106,18 @@ class ExternalReadingView(QWidget):
         shortcut_font.setBold(True)
         shortcut.setFont(shortcut_font)
         shortcut.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        guide.addWidget(shortcut)
+        shortcut_row.addWidget(shortcut)
+        self.shortcut_recorder = ShortcutRecorderButton()
+        self.shortcut_recorder.setObjectName("externalReadingShortcutRecorder")
+        shortcut_row.addWidget(self.shortcut_recorder)
+        shortcut_row.addStretch(1)
+        guide.addLayout(shortcut_row)
+
+        self.shortcut_hint = QLabel()
+        self.shortcut_hint.setObjectName("externalReadingShortcutHint")
+        self.shortcut_hint.setWordWrap(True)
+        self.shortcut_hint.hide()
+        guide.addWidget(self.shortcut_hint)
 
         self.permission_note = QLabel()
         self.permission_note.setWordWrap(True)
@@ -105,6 +131,11 @@ class ExternalReadingView(QWidget):
         permission_row.addWidget(self.permission_button)
         permission_row.addStretch(1)
         guide.addLayout(permission_row)
+
+        self.read_on_copy_toggle = QCheckBox()
+        self.read_on_copy_toggle.setObjectName("externalReadingReadOnCopy")
+        self.read_on_copy_toggle.setChecked(self._read_on_copy)
+        guide.addWidget(self.read_on_copy_toggle)
 
         self.privacy_note = QLabel()
         self.privacy_note.setWordWrap(True)
@@ -169,7 +200,53 @@ class ExternalReadingView(QWidget):
             )
         )
         self.replay_button.clicked.connect(self._replay_current)
+        self.shortcut_recorder.recordingChanged.connect(self._recording_changed)
+        self.shortcut_recorder.shortcutRecorded.connect(
+            self.shortcutRecorded.emit
+        )
+        self.read_on_copy_toggle.toggled.connect(self._read_on_copy_toggled)
         self.retranslate()
+
+    def set_read_on_copy(self, enabled: bool) -> None:
+        """Show the switch, and the promise that matches it, as they are."""
+
+        self._read_on_copy = bool(enabled)
+        blocker = QSignalBlocker(self.read_on_copy_toggle)
+        self.read_on_copy_toggle.setChecked(self._read_on_copy)
+        del blocker
+        self.privacy_note.setText(
+            self._localizer.text(
+                "external.privacy_note_on"
+                if self._read_on_copy
+                else "external.privacy_note"
+            )
+        )
+
+    def _read_on_copy_toggled(self, enabled: bool) -> None:
+        self.set_read_on_copy(enabled)
+        self.readOnCopyChanged.emit(self._read_on_copy)
+
+    def set_shortcut(self, shortcut: Shortcut) -> None:
+        """Show the combination the helper has actually registered."""
+
+        self._shortcut = shortcut
+        self.shortcut_label.setText(shortcut.label)
+        self.shortcut_label.setAccessibleName(
+            self._localizer.text(
+                "external.shortcut_accessible",
+                shortcut=shortcut.label,
+            )
+        )
+
+    def _recording_changed(self, recording: bool) -> None:
+        self.shortcut_recorder.setText(
+            self._localizer.text(
+                "external.shortcut_recording"
+                if recording
+                else "external.shortcut_change"
+            )
+        )
+        self.shortcut_hint.setVisible(recording)
 
     def retranslate(self) -> None:
         self.title_label.setText(self._localizer.text("external.title"))
@@ -185,9 +262,14 @@ class ExternalReadingView(QWidget):
             self._localizer.text("external.steps_accessible")
         )
         self.shortcut_caption.setText(self._localizer.text("external.shortcut"))
-        self.shortcut_label.setAccessibleName(
-            self._localizer.text("external.shortcut_accessible")
+        self.set_shortcut(self._shortcut)
+        self.shortcut_recorder.setAccessibleName(
+            self._localizer.text("external.shortcut_change_accessible")
         )
+        self.shortcut_hint.setText(
+            self._localizer.text("external.shortcut_hint")
+        )
+        self._recording_changed(self.shortcut_recorder.is_recording)
         self.permission_note.setText(
             self._localizer.text("external.permission_note")
         )
@@ -197,7 +279,13 @@ class ExternalReadingView(QWidget):
         self.permission_button.setAccessibleName(
             self._localizer.text("external.open_settings_accessible")
         )
-        self.privacy_note.setText(self._localizer.text("external.privacy_note"))
+        self.read_on_copy_toggle.setText(
+            self._localizer.text("external.read_on_copy")
+        )
+        self.read_on_copy_toggle.setAccessibleName(
+            self._localizer.text("external.read_on_copy_accessible")
+        )
+        self.set_read_on_copy(self._read_on_copy)
         self.recent_title.setText(self._localizer.text("external.recent_title"))
         self.history_empty.setText(self._localizer.text("external.history_empty"))
         self.history_list.setAccessibleName(

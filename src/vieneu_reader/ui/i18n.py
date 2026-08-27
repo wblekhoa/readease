@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from enum import Enum
-import json
-import os
 from pathlib import Path
 import re
-import tempfile
+
+from vieneu_reader.settings import load_settings, update_settings
 
 
 class Language(str, Enum):
@@ -140,8 +139,21 @@ _TEXT: dict[str, tuple[str, str]] = {
     ),
     "external.shortcut": ("Phím tắt", "Keyboard shortcut"),
     "external.shortcut_accessible": (
-        "Phím tắt đọc phần đã chọn: Control Option Command R",
-        "Read-selection shortcut: Control Option Command R",
+        "Phím tắt đọc phần đã chọn: {shortcut}",
+        "Read-selection shortcut: {shortcut}",
+    ),
+    "external.shortcut_change": ("Đổi phím tắt", "Change shortcut"),
+    "external.shortcut_change_accessible": (
+        "Đổi phím tắt đọc phần đã chọn từ Apple Books",
+        "Change the shortcut that reads the Apple Books selection",
+    ),
+    "external.shortcut_recording": (
+        "Nhấn tổ hợp phím mới…",
+        "Press the new combination…",
+    ),
+    "external.shortcut_hint": (
+        "Giữ ít nhất một trong Control, Option hoặc Command rồi nhấn một phím. Nhấn Esc để giữ nguyên phím tắt cũ.",
+        "Hold at least one of Control, Option or Command, then press a key. Press Esc to keep the current shortcut.",
     ),
     "external.permission_note": (
         "Lần đầu sử dụng, macOS cần cho phép ReadEase điều khiển thao tác sao chép trong Apple Books. Bạn có thể mở đúng mục Trợ năng tại đây.",
@@ -152,9 +164,21 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Mở cài đặt quyền Trợ năng của macOS cho ReadEase",
         "Open macOS Accessibility settings for ReadEase",
     ),
+    "external.read_on_copy": (
+        "Đọc ngay khi sao chép trong Apple Books",
+        "Read as soon as you copy in Apple Books",
+    ),
+    "external.read_on_copy_accessible": (
+        "Bật hoặc tắt việc đọc ngay khi bạn sao chép trong Apple Books",
+        "Turn reading on copy in Apple Books on or off",
+    ),
     "external.privacy_note": (
-        "ReadEase chỉ xử lý khi bạn bấm phím tắt trong Apple Books; không theo dõi màn hình hoặc clipboard ở chế độ nền.",
-        "ReadEase acts only when you press the shortcut in Apple Books; it does not monitor your screen or clipboard in the background.",
+        "ReadEase chỉ xử lý khi bạn bấm phím tắt trong Apple Books. Mục đọc-khi-sao-chép đang tắt, nên ReadEase không xem clipboard và không theo dõi màn hình ở chế độ nền.",
+        "ReadEase acts only when you press the shortcut in Apple Books. Read-on-copy is off, so ReadEase does not look at your clipboard and does not monitor your screen in the background.",
+    ),
+    "external.privacy_note_on": (
+        "Mục đọc-khi-sao-chép đang bật: ReadEase xem bộ đếm thay đổi của clipboard vài lần mỗi giây, chỉ đọc khi Apple Books ở phía trước cả ở lần kiểm tra thấy nội dung mới lẫn lần kiểm tra ngay trước đó, và bỏ qua mục được đánh dấu là ẩn — cách trình quản lý mật khẩu yêu cầu công cụ clipboard đừng đụng tới. macOS không ghi lại ứng dụng nào đã sao chép, nên nếu bạn sao chép ở ứng dụng khác rồi chuyển sang Apple Books trong cùng một phần giây, nội dung đó vẫn có thể bị đọc. Tắt công tắc này để ReadEase ngừng xem clipboard.",
+        "Read-on-copy is on: ReadEase checks the clipboard's change counter a few times a second, reads only when Apple Books is in front both at the check that notices new text and at the check before it, and skips items marked concealed — how password managers ask clipboard tools to leave them alone. macOS does not record which app did the copying, so text you copy elsewhere and follow with a switch to Apple Books inside the same fraction of a second could still be read. Turn this switch off and ReadEase stops looking at the clipboard.",
     ),
     "external.recent_title": (
         "Đã đọc từ Apple Books trong phiên",
@@ -252,8 +276,9 @@ _RUNTIME_EN: dict[str, str] = {
     "Không thể đọc phần đã chọn.": "Could not read the selection.",
     "Không tìm thấy nội dung đang chọn trong Apple Books.": "No selected text was found in Apple Books.",
     "ReadEase cần quyền Trợ năng để gửi lệnh sao chép tới Apple Books. Hãy bật ReadEase trong Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng rồi thử lại.": "ReadEase needs Accessibility permission to send the copy command to Apple Books. Enable ReadEase in System Settings > Privacy & Security > Accessibility, then try again.",
-    "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple Books rồi nhấn Control-Option-Command-R.": "No selected text was found. Select text in Apple Books, then press Control-Option-Command-R.",
+    "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple Books rồi nhấn phím tắt đọc.": "No selected text was found. Select text in Apple Books, then press the read shortcut.",
     "Phím tắt đọc nhanh hiện chỉ hỗ trợ Apple Books.": "The read-selection shortcut currently supports Apple Books only.",
+    "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác đang dùng nó. Hãy chọn tổ hợp khác.": "This shortcut could not be registered; macOS or another app is already using it. Choose a different combination.",
     "ReadEase không thể xác nhận đã khôi phục clipboard nên đã dừng trước khi đọc.": "ReadEase could not confirm that the clipboard was restored, so it stopped before reading.",
     "Phím tắt đọc từ Apple Books chưa sẵn sàng. Hãy mở lại ReadEase.": "The Apple Books shortcut is not ready. Reopen ReadEase.",
     "Phần nội dung đã chọn vượt quá 100.000 ký tự.": "The selected text exceeds 100,000 characters.",
@@ -393,37 +418,8 @@ class LanguagePreferenceStore:
         self.path = Path(path)
 
     def load(self) -> Language:
-        try:
-            payload = json.loads(self.path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError):
-            return Language.VIETNAMESE
-        if not isinstance(payload, dict):
-            return Language.VIETNAMESE
-        return Language.parse(payload.get("language"))
+        return Language.parse(load_settings(self.path).get("language"))
 
     def save(self, language: Language | str) -> bool:
         selected = Language.parse(language)
-        temp_path: Path | None = None
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-            descriptor, raw_path = tempfile.mkstemp(
-                prefix=f".{self.path.name}.",
-                dir=self.path.parent,
-            )
-            temp_path = Path(raw_path)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as destination:
-                json.dump({"language": selected.value}, destination)
-                destination.write("\n")
-                destination.flush()
-                os.fsync(destination.fileno())
-            temp_path.chmod(0o600)
-            os.replace(temp_path, self.path)
-            self.path.chmod(0o600)
-            return True
-        except OSError:
-            if temp_path is not None:
-                try:
-                    temp_path.unlink(missing_ok=True)
-                except OSError:
-                    pass
-            return False
+        return update_settings(self.path, {"language": selected.value})

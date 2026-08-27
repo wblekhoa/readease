@@ -73,7 +73,7 @@ Muốn nhờ AI cài giúp, mở thư mục source trong công cụ AI và gửi
 - **Trình đọc trong app:** chọn chương, đọc liên tục theo đoạn, đọc riêng phần đang quét chọn và điều chỉnh giọng/tốc độ.
 - **Hình trong EPUB:** đặt hình có ý nghĩa theo thứ tự đọc, đánh số **Hình 1, Hình 2…** và nhắc “Mời bạn xem Hình …” ở đúng vị trí.
 - **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
-- **Đọc từ Apple Books:** quét chọn văn bản rồi nhấn **Control-Option-Command-R** để nghe mà không cần chuyển cửa sổ.
+- **Đọc từ Apple Books:** quét chọn văn bản rồi nhấn phím tắt đọc (mặc định **Control-Option-Command-R**, đổi được trong màn hình **Đọc sách**) để nghe mà không cần chuyển cửa sổ.
 - **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ sách, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
 - **Riêng tư và local-first:** sách, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
 - **Giao diện song ngữ:** chuyển tức thời giữa `🇻🇳 Tiếng Việt` và `🇬🇧 English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
@@ -102,10 +102,12 @@ Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo sách mớ
 
 1. Mở màn hình **Đọc sách** trong ReadEase để xem trạng thái phím tắt.
 2. Mở Apple Books và quét chọn đoạn muốn nghe.
-3. Nhấn **Control-Option-Command-R**.
+3. Nhấn phím tắt đọc hiển thị trong màn hình **Đọc sách** (mặc định **Control-Option-Command-R**).
 4. Ở lần đầu, cho phép ReadEase trong **Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Trợ năng**. Nếu chưa có quyền, bấm **Mở Cài đặt quyền** trong ReadEase để đi thẳng tới đúng mục.
 
-Trong mỗi lần dùng phím tắt, ReadEase giữ bản sao clipboard trong bộ nhớ, gửi lệnh sao chép tới Apple Books rồi khôi phục từng item/type/byte trước khi đọc. Nếu không xác nhận được việc khôi phục, app dừng trước khi đọc. App không theo dõi màn hình hoặc clipboard ở chế độ nền.
+Trong mỗi lần dùng phím tắt, ReadEase giữ bản sao clipboard trong bộ nhớ, gửi lệnh sao chép tới Apple Books rồi khôi phục từng item/type/byte trước khi đọc. Nếu không xác nhận được việc khôi phục, app dừng trước khi đọc. App không theo dõi màn hình ở chế độ nền.
+
+Mặc định ReadEase cũng **không** xem clipboard: chỉ khi bạn tự bật **Đọc ngay khi sao chép trong Apple Books** trong màn hình **Đọc sách**, app mới kiểm tra bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc nội dung vừa sao chép **khi Apple Books đang ở phía trước**. ReadEase chỉ đọc khi Apple Books ở phía trước ở cả hai lần kiểm tra liên tiếp, và bỏ qua mục được đánh dấu ẩn (trình quản lý mật khẩu dùng dấu này). macOS không ghi lại ứng dụng nào đã sao chép, nên vẫn còn khe hở: sao chép ở app khác rồi chuyển sang Apple Books trong cùng một phần giây thì nội dung đó có thể bị đọc. Tắt công tắc là app ngừng xem clipboard. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ### 4. Nghe lại nội dung gần đây
 
@@ -187,7 +189,7 @@ This is a local source build, not a notarized `.dmg` or public binary release.
 - Import and read text-based PDFs and reflowable EPUBs.
 - Preserve local library progress and show meaningful EPUB images in reading order.
 - Read pasted text and automatically segment long passages.
-- Read selected text from Apple Books with **Control-Option-Command-R** after granting Accessibility permission.
+- Read selected text from Apple Books with a configurable shortcut (**Control-Option-Command-R** by default) after granting Accessibility permission.
 - Replay up to 10 recent items during the current session.
 - Keep books, model data, progress and audio cache on the Mac; no API key, telemetry or background server.
 
