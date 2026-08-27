@@ -189,6 +189,14 @@ class ThreeChunkSpeechEngine(FakeSpeechEngine):
             yield AudioChunk(struct.pack("<2f", marker, -marker))
 
 
+class SilentSpeechEngine(FakeSpeechEngine):
+    """Finishes without raising and without producing a single sample."""
+
+    def stream(self, text, voice_id, settings):
+        self.calls.append((text, voice_id))
+        yield from ()
+
+
 class DiskFullCache(AudioCache):
     """Fails the write the way a full disk does, at any point in the stream."""
 
@@ -716,6 +724,31 @@ class PlaybackCoordinatorTests(unittest.TestCase):
                 output.complete()
 
                 self.assertEqual(progress.saved[-1].segment_id, self.second.id)
+
+    def test_synthesis_that_produces_no_audio_is_reported_as_a_failure(self):
+        engine = SilentSpeechEngine()
+        coordinator = PlaybackCoordinator(
+            engine=engine,
+            cache=self.cache,
+            progress_repository=self.progress,
+            output=self.output,
+            scheduler=self.scheduler,
+        )
+        coordinator.play(self.book, self.first.id, "Adam")
+
+        self.scheduler.run_next()
+
+        self.assertEqual(engine.calls, [(self.first.text, "Adam")])
+        self.assertEqual(
+            sum(event[0] == "append" for event in self.output.events),
+            0,
+        )
+        self.assertEqual(coordinator.snapshot.state, PlaybackState.ERROR)
+        self.assertEqual(
+            coordinator.snapshot.error,
+            "Không thể tạo giọng đọc cho đoạn này.",
+        )
+        self.assertEqual(self.progress.saved, [])
 
     def test_progress_failure_enters_error_after_audio_drains(self):
         self.progress.failure = RuntimeError("database unavailable")

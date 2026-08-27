@@ -406,24 +406,24 @@ class PlaybackCoordinator:
                     generation=token,
                 )
             else:
-                first_chunk = True
+                produced_chunks = 0
                 synthesis_failed = False
 
                 def generating_chunks():
-                    nonlocal first_chunk, synthesis_failed
+                    nonlocal produced_chunks, synthesis_failed
                     try:
                         for chunk in self._engine.stream(text, voice_id, settings):
                             self._call_output(
                                 token,
                                 lambda: self._output.append(token, chunk),
                             )
-                            if first_chunk:
+                            produced_chunks += 1
+                            if produced_chunks == 1:
                                 self._publish(
                                     PlaybackState.PLAYING,
                                     is_selection=is_selection,
                                     generation=token,
                                 )
-                                first_chunk = False
                             yield chunk
                     except _CancelledPlayback:
                         raise
@@ -455,6 +455,12 @@ class PlaybackCoordinator:
                         # the cache, exactly as _prefetch does.
                         for _chunk in chunks:
                             pass
+                        if not produced_chunks:
+                            # The engine finished without a single sample, so
+                            # the person is sitting in silence. That is the
+                            # voice failing, not the cache, and staying quiet
+                            # about it would leave them with no way to tell.
+                            raise
             self._guard(token)
             self._call_output(token, lambda: self._output.end(token))
             if not is_selection and index is not None and index + 1 < len(self._segments):
