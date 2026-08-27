@@ -19,7 +19,9 @@ def _write_executable(path: Path, content: str) -> None:
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
 
 
-class FriendInstallerTests(unittest.TestCase):
+class _InstallerHarness:
+    """Runs the real installer against faked system tools."""
+
     def _run_harness(
         self,
         *arguments: str,
@@ -29,6 +31,10 @@ class FriendInstallerTests(unittest.TestCase):
         xcode_ready: bool = True,
         include_uv: bool = True,
         curl_succeeds: bool = False,
+        existing_version: str | None = None,
+        legacy_app: bool = False,
+        stale_workspaces: int = 0,
+        quarantined: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], str]:
         with TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -47,6 +53,36 @@ class FriendInstallerTests(unittest.TestCase):
                 "raise SystemExit(0)\n",
                 encoding="utf-8",
             )
+
+            # Hermetic install root: never read the developer's real ~/Applications.
+            install_root = temp / "Applications"
+            install_root.mkdir()
+            if existing_version is not None:
+                contents = install_root / "ReadEase.app" / "Contents"
+                contents.mkdir(parents=True)
+                (contents / "Info.plist").write_text(
+                    '<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+                    '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+                    '<plist version="1.0"><dict>'
+                    "<key>CFBundleShortVersionString</key>"
+                    f"<string>{existing_version}</string>"
+                    "</dict></plist>\n",
+                    encoding="utf-8",
+                )
+            if legacy_app:
+                (install_root / "VieNeu Reader.app" / "Contents").mkdir(parents=True)
+            for index in range(stale_workspaces):
+                stale = temp / f"readease-source-install.stale{index}"
+                stale.mkdir()
+                (stale / "filler").write_text("x" * 4096, encoding="utf-8")
+
+            if quarantined:
+                # What a browser-downloaded ZIP looks like once expanded.
+                subprocess.run(
+                    ["xattr", "-w", "com.apple.quarantine", "0083;0;Safari;", str(project)],
+                    check=True,
+                )
 
             action_log = temp / "actions.log"
             _write_executable(
@@ -140,6 +176,7 @@ exit 2
                 "READEASE_FAKE_XCODE": "1" if xcode_ready else "0",
                 "READEASE_FAKE_CURL": "1" if curl_succeeds else "0",
                 "READEASE_TEST_LOG": str(action_log),
+                "READEASE_INSTALL_ROOT": str(install_root),
                 "TMPDIR": str(temp),
             }
             completed = subprocess.run(
@@ -153,6 +190,8 @@ exit 2
             actions = action_log.read_text(encoding="utf-8") if action_log.exists() else ""
             return completed, actions
 
+
+class FriendInstallerTests(_InstallerHarness, unittest.TestCase):
     def test_double_click_installer_is_executable_and_delegates(self) -> None:
         self.assertTrue(DOUBLE_CLICK_INSTALLER.is_file())
         self.assertTrue(DOUBLE_CLICK_INSTALLER.stat().st_mode & stat.S_IXUSR)
@@ -231,6 +270,75 @@ exit 2
         self.assertIn("uv sync --locked", source)
         self.assertIn("--managed-python", source)
         self.assertIn("--python 3.13", source)
+
+
+class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
+    """Progress, existing-install detection, and residue guidance."""
+
+    def test_check_reports_when_no_previous_install_exists(self) -> None:
+        completed, actions = self._run_harness("--check")
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_EXISTING none", completed.stdout)
+        self.assertEqual(actions, "")
+
+    def test_check_reports_an_existing_install_and_that_it_is_replaced(self) -> None:
+        completed, _ = self._run_harness("--check", existing_version="0.1.0")
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_EXISTING installed version=0.1.0", completed.stdout)
+        # The user must be told the outcome, not left guessing.
+        self.assertIn("thay thế", completed.stdout)
+
+    def test_check_reports_a_legacy_bundle_that_will_be_removed(self) -> None:
+        completed, _ = self._run_harness("--check", legacy_app=True)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_LEGACY present", completed.stdout)
+
+    def test_check_reports_stale_failed_build_workspaces_without_deleting(self) -> None:
+        completed, _ = self._run_harness("--check", stale_workspaces=2)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_STALE_BUILD count=2", completed.stdout)
+        # Report-only: it prints a command, it must never remove anything itself.
+        self.assertIn("rm -R", completed.stdout)
+        source = INSTALLER.read_text(encoding="utf-8")
+        self.assertNotIn("rm -R -- \"$stale", source)
+
+    def test_check_detects_gatekeeper_quarantine_and_gives_the_exact_fix(self) -> None:
+        completed, _ = self._run_harness("--check", quarantined=True)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_QUARANTINE present", completed.stdout)
+        self.assertIn("xattr -d com.apple.quarantine", completed.stdout)
+        self.assertIn("git clone", completed.stdout)
+
+    def test_check_reports_no_quarantine_for_a_git_clone(self) -> None:
+        completed, _ = self._run_harness("--check")
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_QUARANTINE none", completed.stdout)
+
+    def test_install_emits_ordered_progress_steps(self) -> None:
+        completed, actions = self._run_harness()
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(actions, "build\ninstall\n")
+        steps = [
+            line.split()[1]
+            for line in completed.stdout.splitlines()
+            if line.startswith("READEASE_STEP ")
+        ]
+        self.assertEqual(steps, ["1/5", "2/5", "3/5", "4/5", "5/5"])
+
+    def test_failed_install_explains_how_to_reclaim_the_preserved_workspace(self) -> None:
+        completed, _ = self._run_harness(include_uv=False)
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("READEASE_BUILD_PRESERVED", completed.stderr)
+        # A preserved workspace is multi-gigabyte; never leave it unexplained.
+        self.assertIn("rm -R", completed.stderr)
 
 
 if __name__ == "__main__":

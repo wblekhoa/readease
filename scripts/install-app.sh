@@ -3,7 +3,7 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 bundle="$project_root/dist/ReadEase.app"
-install_root="$HOME/Applications"
+install_root="${READEASE_INSTALL_ROOT:-$HOME/Applications}"
 target="$install_root/ReadEase.app"
 legacy_target="$install_root/VieNeu Reader.app"
 

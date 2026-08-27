@@ -18,6 +18,21 @@ fail() {
   exit 1
 }
 
+TOTAL_STEPS=5
+
+step() {
+  printf 'READEASE_STEP %s/%s %s\n' "$1" "$TOTAL_STEPS" "$2"
+}
+
+human_kib() {
+  local kib="$1"
+  if [[ "$kib" -ge 1048576 ]]; then
+    printf '%s GB' "$((kib / 1048576))"
+  else
+    printf '%s MB' "$((kib / 1024))"
+  fi
+}
+
 if [[ "$#" -gt 1 ]]; then
   fail "invalid_arguments" "Chỉ hỗ trợ --check hoặc không truyền tham số."
 fi
@@ -25,6 +40,8 @@ case "$mode" in
   install|--check) ;;
   *) fail "invalid_arguments" "Dùng: ./Install ReadEase.command [--check]" ;;
 esac
+
+step 1 "Kiểm tra máy và nguồn cài"
 
 for required_file in \
   "$project_root/pyproject.toml" \
@@ -35,6 +52,9 @@ for required_file in \
 do
   [[ -f "$required_file" ]] || fail "incomplete_source" "Thiếu file: $required_file"
 done
+
+temp_root_probe="${TMPDIR:-/tmp}"
+temp_root_probe="${temp_root_probe%/}"
 
 system_name="$(uname -s)"
 [[ "$system_name" == "Darwin" ]] || fail "unsupported_system" "ReadEase chỉ hỗ trợ macOS."
@@ -72,11 +92,66 @@ esac
   "insufficient_disk" \
   "Cần tối thiểu 6 GB trống trong lúc build; hiện còn khoảng $((available_kib / 1024 / 1024)) GB."
 
-install_root="$HOME/Applications"
+install_root="${READEASE_INSTALL_ROOT:-$HOME/Applications}"
 if [[ -d "$install_root" ]]; then
   [[ -w "$install_root" ]] || fail "install_not_writable" "Không thể ghi vào $install_root."
 else
   [[ -w "$HOME" ]] || fail "install_not_writable" "Không thể tạo $install_root."
+fi
+
+# What is already on this machine, so nobody has to guess what will change.
+installed_app="$install_root/ReadEase.app"
+legacy_app="$install_root/VieNeu Reader.app"
+if [[ -d "$installed_app" ]]; then
+  installed_version="$(/usr/libexec/PlistBuddy \
+    -c 'Print :CFBundleShortVersionString' \
+    "$installed_app/Contents/Info.plist" 2>/dev/null || true)"
+  [[ -n "$installed_version" ]] || installed_version="không đọc được"
+  printf 'READEASE_EXISTING installed version=%s\n' "$installed_version"
+  printf '  Đã có ReadEase %s. Bản mới sẽ thay thế nó; bản cũ được giữ nguyên cho tới khi cài xong.\n' \
+    "$installed_version"
+else
+  printf 'READEASE_EXISTING none\n'
+  printf '  Chưa có ReadEase trên máy — đây là lần cài đầu tiên.\n'
+fi
+
+if [[ -d "$legacy_app" ]]; then
+  printf 'READEASE_LEGACY present\n'
+  printf '  Tìm thấy bản cũ tên "VieNeu Reader" — sẽ được gỡ sau khi cài xong. Sách và tiến độ đọc giữ nguyên.\n'
+fi
+
+# Gatekeeper quarantine: set when the source arrived as a browser download.
+# It does not block this script (Terminal execution is unaffected), but it is
+# exactly what blocks double-clicking "Install ReadEase.command" in Finder.
+if xattr -p com.apple.quarantine "$project_root" >/dev/null 2>&1 \
+  || xattr -p com.apple.quarantine "$project_root/Install ReadEase.command" >/dev/null 2>&1
+then
+  printf 'READEASE_QUARANTINE present\n'
+  printf '  Nguồn cài này được tải qua trình duyệt nên macOS gắn cờ kiểm dịch (Gatekeeper).\n'
+  printf '  Chạy từ Terminal như hiện tại thì KHÔNG sao. Chỉ double-click trong Finder mới bị chặn.\n'
+  printf '  Muốn double-click được, gỡ cờ bằng:\n'
+  printf '    xattr -d com.apple.quarantine %s\n' "$(printf '%q' "$project_root")"
+  printf '  Hoặc lần sau lấy nguồn bằng git clone — cách này không bao giờ bị gắn cờ:\n'
+  printf '    git clone https://github.com/wblekhoa/readease.git\n'
+else
+  printf 'READEASE_QUARANTINE none\n'
+fi
+
+# Failed builds deliberately keep their workspace. Report it; never delete it here.
+stale_total_kib=0
+stale_count=0
+for stale_dir in "$temp_root_probe"/readease-source-install.*; do
+  [[ -d "$stale_dir" ]] || continue
+  stale_count=$((stale_count + 1))
+  stale_kib="$(du -sk "$stale_dir" 2>/dev/null | awk '{ print $1 }')"
+  stale_total_kib=$((stale_total_kib + ${stale_kib:-0}))
+done
+if [[ "$stale_count" -gt 0 ]]; then
+  printf 'READEASE_STALE_BUILD count=%s size_kib=%s\n' "$stale_count" "$stale_total_kib"
+  printf '  Có %s thư mục build dở từ lần cài hỏng trước, chiếm khoảng %s.\n' \
+    "$stale_count" "$(human_kib "$stale_total_kib")"
+  printf '  Xoá bằng lệnh sau (chạy khi bạn muốn, bộ cài không tự xoá):\n'
+  printf '    rm -R %s/readease-source-install.*\n' "$temp_root_probe"
 fi
 
 existing_uv=""
@@ -105,8 +180,9 @@ if [[ "$mode" == "--check" ]]; then
   exit 0
 fi
 
-temp_root="${TMPDIR:-/tmp}"
-temp_root="${temp_root%/}"
+step 2 "Chuẩn bị công cụ build (uv $UV_VERSION)"
+
+temp_root="$temp_root_probe"
 work_root="$(mktemp -d "$temp_root/readease-source-install.XXXXXX")"
 completed=0
 
@@ -125,7 +201,13 @@ cleanup_work_root() {
         ;;
     esac
   else
-    printf 'READEASE_BUILD_PRESERVED path=%s reason=failed-install\n' "$work_root" >&2
+    local kept_kib
+    kept_kib="$(du -sk "$work_root" 2>/dev/null | awk '{ print $1 }')"
+    printf 'READEASE_BUILD_PRESERVED path=%s reason=failed-install size_kib=%s\n' \
+      "$work_root" "${kept_kib:-0}" >&2
+    printf 'Thư mục build dở được giữ lại để chẩn đoán (khoảng %s).\n' \
+      "$(human_kib "${kept_kib:-0}")" >&2
+    printf 'Khi không cần nữa, xoá bằng:\n    rm -R %s\n' "$work_root" >&2
   fi
   exit "$status"
 }
@@ -162,6 +244,8 @@ if [[ -z "$uv_bin" ]]; then
     "Binary uv không đúng phiên bản $UV_VERSION."
 fi
 
+step 3 "Tạo bản nguồn sạch để build"
+
 export_root="$work_root/ReadEase-source"
 "$uv_bin" run \
   --isolated \
@@ -173,9 +257,14 @@ export_root="$work_root/ReadEase-source"
   --output "$export_root"
 
 export PATH="$(dirname "$uv_bin"):$PATH"
+step 4 "Biên dịch ứng dụng — bước lâu nhất, thường 10–20 phút"
 (
   cd "$export_root"
   ./scripts/build-app.sh
+)
+step 5 "Cài vào $install_root"
+(
+  cd "$export_root"
   ./scripts/install-app.sh
 )
 
