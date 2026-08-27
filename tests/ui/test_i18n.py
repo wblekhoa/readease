@@ -79,6 +79,24 @@ class LocalizerTests(unittest.TestCase):
             "already using it. Choose a different combination.",
         )
 
+    def test_read_on_copy_note_claims_no_more_than_the_code_can_do(self) -> None:
+        # The Apple Books check is "which app is in front", sampled a few times
+        # a second, so a copy made elsewhere and followed by a fast switch can
+        # still be read. The note must not promise otherwise in either
+        # language.
+        for language, forbidden in (
+            (Language.VIETNAMESE, ("không bao giờ",)),
+            (Language.ENGLISH, ("never", "always", "cannot be read")),
+        ):
+            note = Localizer(language).text("external.privacy_note_on")
+            for claim in forbidden:
+                self.assertNotIn(claim, note.lower(), f"{language}: {claim}")
+            self.assertIn(
+                "macos",
+                note.lower(),
+                "the note has to say why the check is imperfect",
+            )
+
     def test_language_store_defaults_safely_and_persists_supported_language(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "settings.json"

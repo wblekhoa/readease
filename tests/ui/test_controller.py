@@ -328,6 +328,21 @@ class ReaderControllerTests(unittest.TestCase):
         self.assertNotIn("permission_required", controller.state.error)
         self.assertTrue(controller.state.can_open_accessibility_settings)
 
+    def test_a_working_shortcut_clears_the_earlier_rejection_message(self):
+        controller = self.make_controller()
+        controller.external_selection_failed("shortcut_unavailable")
+        self.assertIsNotNone(controller.state.error)
+
+        controller.external_selection_failed("ready")
+
+        # The helper came back on a shortcut that registered, so the banner
+        # must not keep telling the person the feature is broken.
+        self.assertIsNone(controller.state.error)
+        self.assertEqual(
+            controller.state.external_reading_state,
+            ExternalReadingState.READY,
+        )
+
     def test_non_permission_external_selection_failure_hides_settings_action(self):
         controller = self.make_controller()
 

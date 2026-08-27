@@ -18,14 +18,18 @@ from PySide6.QtWidgets import QApplication
 class FakeClipboardSource:
     """Stand in for the native pasteboard without touching the real one."""
 
-    def __init__(self, *, count: int, text: str | None):
+    def __init__(self, *, count: int, text: str | None, books_frontmost: bool = True):
         self.count = count
         self.text = text
+        self.books_frontmost = books_frontmost
         self.result_kind = None
         self.text_reads = 0
 
     def change_count(self) -> int:
         return self.count
+
+    def books_is_frontmost(self) -> bool:
+        return self.books_frontmost
 
     def copied_text(self):
         from vieneu_reader.integrations.macos_selection import (
@@ -429,6 +433,156 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         self.assertFalse(watcher.is_enabled)
         self.assertFalse(watcher.is_active)
         watcher.close()
+
+    def test_changing_the_shortcut_does_not_look_like_a_broken_helper(self) -> None:
+        module = self._module()
+        from vieneu_reader.integrations.selection_shortcut import (
+            CMD_KEY,
+            CONTROL_KEY,
+            OPTION_KEY,
+            Shortcut,
+        )
+
+        # A helper that stays alive, so changing the shortcut really has to
+        # terminate it the way the running app would.
+        script = (
+            "import os,struct,time;"
+            "os.write(1,b'R'+struct.pack('>I',0));"
+            "time.sleep(30)"
+        )
+        first = Shortcut(key_code=15, modifiers=CONTROL_KEY | OPTION_KEY | CMD_KEY)
+        second = Shortcut(key_code=38, modifiers=CONTROL_KEY | CMD_KEY)
+        bridge = module.SelectionShortcutBridge(
+            command=(sys.executable, "-c", script),
+            shortcut=first,
+        )
+        statuses = []
+        accepted = []
+        bridge.statusReceived.connect(statuses.append)
+        bridge.shortcutAccepted.connect(accepted.append)
+
+        bridge.start()
+        try:
+            self.assertTrue(self._pump_until(lambda: bool(statuses)))
+            self.assertEqual(statuses, ["ready"])
+
+            bridge.apply_shortcut(second)
+            self.assertTrue(
+                self._pump_until(lambda: len(statuses) >= 2, timeout=5.0)
+            )
+            # Terminating emits both errorOccurred and finished; neither is a
+            # failure the person should be told about.
+            self._pump_until(lambda: False, timeout=0.5)
+
+            self.assertEqual(statuses, ["ready", "ready"])
+            self.assertEqual(accepted, [first, second])
+            self.assertEqual(bridge.shortcut, second)
+        finally:
+            bridge.close()
+
+    def test_copy_made_while_another_app_was_in_front_is_not_read(self) -> None:
+        module = self._module()
+        source = FakeClipboardSource(count=1, text="mật khẩu bí mật")
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        watcher.selectionReceived.connect(selections.append)
+        watcher.set_enabled(True)
+
+        # Settle into reading a book: two consecutive samples with Books up.
+        watcher.poll()
+        watcher.poll()
+
+        # The person switches away, copies a password, and switches back
+        # before the next tick. Apple Books is in front by the time ReadEase
+        # looks, but it was not in front at the check before, so the copy is
+        # not attributed to Apple Books and must not be read.
+        source.books_frontmost = False
+        watcher.poll()
+        source.count = 2
+        source.books_frontmost = True
+        watcher.poll()
+
+        self.assertEqual(selections, [])
+        self.assertEqual(source.text_reads, 0)
+
+        # A copy that really is made in Apple Books still reads.
+        source.count = 3
+        watcher.poll()
+
+        self.assertEqual(selections, ["mật khẩu bí mật"])
+        watcher.close()
+
+    def test_a_copy_seen_while_away_is_not_read_when_books_returns(self) -> None:
+        module = self._module()
+        source = FakeClipboardSource(count=1, text="nội dung của app khác")
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        watcher.selectionReceived.connect(selections.append)
+        watcher.set_enabled(True)
+        watcher.poll()
+        watcher.poll()
+
+        # Clipboard moves while another app is clearly in front.
+        source.books_frontmost = False
+        source.count = 2
+        watcher.poll()
+        self.assertEqual(selections, [])
+
+        # Coming back to Apple Books must not read that earlier copy.
+        source.books_frontmost = True
+        watcher.poll()
+        watcher.poll()
+
+        self.assertEqual(selections, [])
+        self.assertEqual(source.text_reads, 0)
+        watcher.close()
+
+    def test_two_refused_shortcuts_stop_instead_of_relaunching_forever(self) -> None:
+        module = self._module()
+        from vieneu_reader.integrations.selection_shortcut import (
+            CMD_KEY,
+            CONTROL_KEY,
+            Shortcut,
+        )
+
+        with TemporaryDirectory() as directory:
+            launches = Path(directory) / "launches"
+            # The first helper registers; every later one refuses, which is
+            # what a machine looks like when both the chosen combination and
+            # the fallback are taken.
+            script = (
+                "import os,struct,time;"
+                f"path={str(launches)!r};"
+                "first=not os.path.exists(path);"
+                "open(path,'a').write('x');"
+                "os.write(1,(b'R' if first else b'K')+struct.pack('>I',0));"
+                "time.sleep(30 if first else 0)"
+            )
+            first = Shortcut(key_code=38, modifiers=CONTROL_KEY | CMD_KEY)
+            second = Shortcut(key_code=40, modifiers=CONTROL_KEY | CMD_KEY)
+            bridge = module.SelectionShortcutBridge(
+                command=(sys.executable, "-c", script),
+                shortcut=first,
+            )
+            statuses = []
+            bridge.statusReceived.connect(statuses.append)
+
+            bridge.start()
+            try:
+                self.assertTrue(self._pump_until(lambda: bool(statuses)))
+                bridge.apply_shortcut(second)
+                self._pump_until(lambda: False, timeout=3.0)
+
+                launch_count = len(launches.read_text(encoding="utf-8"))
+                self.assertLess(
+                    launch_count,
+                    8,
+                    f"helper relaunched {launch_count} times",
+                )
+                # One honest report, not one per doomed attempt.
+                self.assertEqual(statuses.count("shortcut_unavailable"), 1)
+            finally:
+                bridge.close()
 
     def test_permission_frame_is_safe_status_not_selected_text(self) -> None:
         module = self._module()

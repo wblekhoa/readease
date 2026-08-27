@@ -12,6 +12,7 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
+from vieneu_reader.settings import update_settings
 from vieneu_reader.integrations.selection_shortcut import (
     CMD_KEY,
     CONTROL_KEY,
@@ -135,6 +136,41 @@ class ReadOnCopyPreferenceStoreTests(unittest.TestCase):
 
             self.assertTrue(store.save(False))
             self.assertFalse(store.load())
+
+
+class SettingsDocumentTests(unittest.TestCase):
+    def test_a_damaged_file_is_kept_instead_of_being_written_over(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text('{"language": "en", oops', encoding="utf-8")
+
+            self.assertTrue(update_settings(path, {"language": "vi"}))
+
+            # The unreadable file may hold settings this build cannot parse;
+            # saving one preference must not be what destroys them.
+            salvaged = path.with_name(path.name + ".damaged")
+            self.assertTrue(salvaged.is_file())
+            self.assertEqual(
+                salvaged.read_text(encoding="utf-8"),
+                '{"language": "en", oops',
+            )
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"language": "vi"},
+            )
+
+    def test_an_ordinary_save_leaves_no_salvage_copy(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text('{"language": "en"}', encoding="utf-8")
+
+            self.assertTrue(update_settings(path, {"read_on_copy": True}))
+
+            self.assertFalse(path.with_name(path.name + ".damaged").exists())
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"language": "en", "read_on_copy": True},
+            )
 
 
 class ShortcutRecorderTests(unittest.TestCase):

@@ -6,6 +6,8 @@
 #import <unistd.h>
 
 static NSString *const RDXBooksBundleIdentifier = @"com.apple.iBooksX";
+// Password managers mark their items with this so clipboard tools skip them.
+static NSString *const RDXConcealedType = @"org.nspasteboard.ConcealedType";
 static NSString *const RDXSnapshotTypeKey = @"type";
 static NSString *const RDXSnapshotDataKey = @"data";
 
@@ -20,6 +22,17 @@ enum {
 
 BOOL RDXIsSupportedBundleIdentifier(NSString *bundleIdentifier) {
     return [bundleIdentifier isEqualToString:RDXBooksBundleIdentifier];
+}
+
+BOOL RDXPasteboardIsConcealed(NSPasteboard *pasteboard) {
+    for (NSPasteboardItem *item in pasteboard.pasteboardItems ?: @[]) {
+        for (NSPasteboardType type in item.types) {
+            if ([type isEqualToString:RDXConcealedType]) {
+                return YES;
+            }
+        }
+    }
+    return NO;
 }
 
 NSArray *RDXCapturePasteboard(NSPasteboard *pasteboard) {
@@ -193,6 +206,14 @@ int RDXSelectionAcquire(char **outputBytes, size_t *outputLength) {
 }
 
 __attribute__((visibility("default")))
+int RDXClipboardBooksIsFrontmost(void) {
+    @autoreleasepool {
+        NSRunningApplication *front = NSWorkspace.sharedWorkspace.frontmostApplication;
+        return RDXIsSupportedBundleIdentifier(front.bundleIdentifier) ? 1 : 0;
+    }
+}
+
+__attribute__((visibility("default")))
 long long RDXClipboardChangeCount(void) {
     @autoreleasepool {
         return (long long)NSPasteboard.generalPasteboard.changeCount;
@@ -212,6 +233,11 @@ int RDXClipboardCopyBooksText(char **outputBytes, size_t *outputLength) {
         // all, so the gate lives here rather than in the caller.
         NSRunningApplication *source = NSWorkspace.sharedWorkspace.frontmostApplication;
         if (!RDXIsSupportedBundleIdentifier(source.bundleIdentifier)) {
+            return RDXSelectionUnsupportedSource;
+        }
+        // A password manager asks every clipboard tool to ignore its items;
+        // honour that regardless of which app happens to be in front.
+        if (RDXPasteboardIsConcealed(NSPasteboard.generalPasteboard)) {
             return RDXSelectionUnsupportedSource;
         }
         NSString *copiedText = [NSPasteboard.generalPasteboard

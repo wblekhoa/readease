@@ -48,12 +48,22 @@ frontmost app, ReadEase reads the newly copied text aloud. In this mode it only
 reads the clipboard, never writes to it, and it needs no Accessibility
 permission.
 
-The Apple Books check happens before any text is taken out of the clipboard, so
-text you copy in another app - a password manager, a bank page, a chat window -
-is never handed to ReadEase. That check is "which app is frontmost at that
-moment", which is as much as macOS records about who wrote to the clipboard:
-anything arriving while Apple Books is in front, including Universal Clipboard
-content from another device, is treated as copied from Apple Books.
+macOS does not record which app wrote to the clipboard, so ReadEase cannot know
+who copied. What it can check is which app is in front, and it applies that
+check twice: the copy is only read if Apple Books was frontmost both at the
+check that noticed the new text and at the check before it, roughly a quarter of
+a second earlier. Text that appears while another app is in front is marked as
+already seen, so returning to Apple Books afterwards does not read it late.
+ReadEase also skips any clipboard item marked with the concealed type, which is
+how password managers ask clipboard tools to leave their entries alone.
+
+Those checks narrow the gap; they do not close it. If you copy in another app
+and switch to Apple Books within that quarter-second window, and the item is not
+marked concealed, ReadEase can still read it. Universal Clipboard content that
+arrives from another device while Apple Books is in front is likewise treated as
+copied from Apple Books. If that residual risk matters to you, leave read-on-copy
+off and use the shortcut, which reads only what you have selected in Apple Books
+at the moment you press it.
 
 Switching it off stops the checking. Text read this way is transient like the
 rest: it is not added to the library or the persistent audio cache, and it

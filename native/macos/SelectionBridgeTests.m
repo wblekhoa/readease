@@ -106,6 +106,15 @@ int main(void) {
         NSArray *restored = RDXCapturePasteboard(pasteboard);
         RDXAssert(RDXSnapshotsEqual(snapshot, restored), @"type-and-byte equality");
 
+        RDXAssert(!RDXPasteboardIsConcealed(pasteboard), @"an ordinary clipboard is not concealed");
+        NSPasteboard *concealedPasteboard = [NSPasteboard pasteboardWithUniqueName];
+        NSPasteboardItem *secret = [[NSPasteboardItem alloc] init];
+        [secret setString:@"mật khẩu" forType:NSPasteboardTypeString];
+        [secret setData:[NSData data] forType:@"org.nspasteboard.ConcealedType"];
+        [concealedPasteboard clearContents];
+        RDXAssert([concealedPasteboard writeObjects:@[secret]], @"seed concealed pasteboard");
+        RDXAssert(RDXPasteboardIsConcealed(concealedPasteboard), @"a password manager item is skipped");
+
         RDXRetryPasteboard *retryPasteboard = [[RDXRetryPasteboard alloc] init];
         retryPasteboard.pasteboardItems = @[];
         RDXAssert(
@@ -115,6 +124,6 @@ int main(void) {
         RDXAssert(retryPasteboard.writeAttempts == 2, @"restore retried exactly once");
         RDXAssert(retryPasteboard.sawFreshRetryItem, @"retry used a fresh pasteboard item");
     }
-    puts("NATIVE_SELECTION_BRIDGE_TEST PASS supported_source=1 frame=1 restore=1 retry_fresh_items=1 hotkey_arguments=1");
+    puts("NATIVE_SELECTION_BRIDGE_TEST PASS supported_source=1 frame=1 restore=1 retry_fresh_items=1 hotkey_arguments=1 concealed=1");
     return 0;
 }

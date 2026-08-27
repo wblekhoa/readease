@@ -107,7 +107,7 @@ Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo sách mớ
 
 Trong mỗi lần dùng phím tắt, ReadEase giữ bản sao clipboard trong bộ nhớ, gửi lệnh sao chép tới Apple Books rồi khôi phục từng item/type/byte trước khi đọc. Nếu không xác nhận được việc khôi phục, app dừng trước khi đọc. App không theo dõi màn hình ở chế độ nền.
 
-Mặc định ReadEase cũng **không** xem clipboard: chỉ khi bạn tự bật **Đọc ngay khi sao chép trong Apple Books** trong màn hình **Đọc sách**, app mới kiểm tra bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc nội dung vừa sao chép **khi Apple Books đang ở phía trước**. Nội dung bạn sao chép ở ứng dụng khác không bao giờ được lấy ra. Tắt công tắc là app ngừng xem clipboard. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+Mặc định ReadEase cũng **không** xem clipboard: chỉ khi bạn tự bật **Đọc ngay khi sao chép trong Apple Books** trong màn hình **Đọc sách**, app mới kiểm tra bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc nội dung vừa sao chép **khi Apple Books đang ở phía trước**. ReadEase chỉ đọc khi Apple Books ở phía trước ở cả hai lần kiểm tra liên tiếp, và bỏ qua mục được đánh dấu ẩn (trình quản lý mật khẩu dùng dấu này). macOS không ghi lại ứng dụng nào đã sao chép, nên vẫn còn khe hở: sao chép ở app khác rồi chuyển sang Apple Books trong cùng một phần giây thì nội dung đó có thể bị đọc. Tắt công tắc là app ngừng xem clipboard. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ### 4. Nghe lại nội dung gần đây
 
