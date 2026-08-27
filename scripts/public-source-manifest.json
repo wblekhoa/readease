@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "root_files": [
+    ".gitignore",
+    "CONTRIBUTING.md",
+    "Install ReadEase.command",
+    "LICENSE",
+    "NOTICE.md",
+    "PRIVACY.md",
+    "PUBLIC_RELEASE_CHECKLIST.md",
+    "README.md",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md",
+    "app_main.py",
+    "pyproject.toml",
+    "pysidedeploy.spec",
+    "uv.lock"
+  ],
+  "directories": [
+    "assets",
+    "legal",
+    "native",
+    "script",
+    "scripts",
+    "src",
+    "tests"
+  ],
+  "excluded_names": [
+    ".DS_Store",
+    ".codex",
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tools",
+    ".venv",
+    "__pycache__",
+    "ai-memory",
+    "build",
+    "deployment",
+    "dist",
+    "release"
+  ],
+  "excluded_suffixes": [
+    ".egg-info",
+    ".pyc",
+    ".pyo"
+  ]
+}

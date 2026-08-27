@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vieneu-reader"
+version = "0.1.0"
+description = "Ứng dụng macOS đọc PDF, EPUB và nội dung dán bằng VieNeu-TTS cục bộ."
+readme = "README.md"
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE", "NOTICE.md"]
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "vieneu==3.3.0",
+  "PySide6>=6.8,<7",
+]
+
+[project.scripts]
+vieneu-reader = "vieneu_reader.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vieneu_reader"]
+
+[dependency-groups]
+dev = [
+    "nuitka==4.1.1",
+]
