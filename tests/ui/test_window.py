@@ -14,6 +14,7 @@ from PySide6.QtGui import QAccessible, QTextCursor, QTextFormat
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QLabel,
     QListWidget,
@@ -28,14 +29,14 @@ from PySide6.QtWidgets import (
 
 from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.models import Voice
+from vieneu_reader.domain.segmenter import prepare_pasted_text
+from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.integrations.selection_shortcut import (
     CMD_KEY,
     CONTROL_KEY,
     OPTION_KEY,
     Shortcut,
 )
-from vieneu_reader.domain.segmenter import prepare_pasted_text
-from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
 from vieneu_reader.storage.repository import LibraryRepository
 from vieneu_reader.ui.controller import ExternalReadingState, ReaderController
@@ -365,6 +366,56 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertTrue(detail.isVisible())
         self.assertIn("tổ hợp khác", detail.text())
         self.assertFalse(window.open_accessibility_settings_button.isVisible())
+
+    def test_read_on_copy_is_off_by_default_and_labelled_in_both_languages(
+        self,
+    ) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        toggle = window.findChild(QCheckBox, "externalReadingReadOnCopy")
+
+        self.assertIsNotNone(toggle)
+        self.assertFalse(toggle.isChecked())
+        self.assertEqual(toggle.text(), "Đọc ngay khi sao chép trong Apple Books")
+
+        changes: list[bool] = []
+        window.readOnCopyChanged.connect(changes.append)
+        toggle.click()
+        self.application.processEvents()
+
+        self.assertEqual(changes, [True])
+        self.assertTrue(toggle.isChecked())
+
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        language_combo.setCurrentIndex(
+            language_combo.findData(Language.ENGLISH.value)
+        )
+        self.application.processEvents()
+
+        self.assertEqual(toggle.text(), "Read as soon as you copy in Apple Books")
+        # Switching language must not switch the feature on or off.
+        self.assertEqual(changes, [True])
+        self.assertTrue(toggle.isChecked())
+
+    def test_privacy_note_describes_read_on_copy_in_both_languages(self) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        note = window.external_reading_view.privacy_note
+
+        vietnamese = note.text()
+        self.assertIn("tắt", vietnamese)
+        self.assertIn("clipboard", vietnamese.lower())
+
+        window.external_reading_view.set_read_on_copy(True)
+        self.assertNotEqual(note.text(), vietnamese)
+        self.assertIn("clipboard", note.text().lower())
+
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        language_combo.setCurrentIndex(
+            language_combo.findData(Language.ENGLISH.value)
+        )
+        self.application.processEvents()
+
+        self.assertIn("clipboard", note.text().lower())
+        self.assertNotIn("does not monitor your screen or clipboard", note.text())
 
     def test_session_history_control_starts_disabled_and_accessible(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))

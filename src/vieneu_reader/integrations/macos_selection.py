@@ -11,7 +11,7 @@ import struct
 import sys
 from typing import Protocol
 
-from PySide6.QtCore import QObject, QProcess, Signal, Slot
+from PySide6.QtCore import QObject, QProcess, QTimer, Signal, Slot
 
 from vieneu_reader.integrations.selection_shortcut import (
     DEFAULT_SHORTCUT,
@@ -171,6 +171,155 @@ class MacOSSelectionAcquirer:
         return SelectionEvent(SelectionEventKind.TEXT, text)
 
 
+class ClipboardReadingSource(Protocol):
+    def change_count(self) -> int: ...
+    def copied_text(self) -> SelectionEvent: ...
+
+
+class MacOSClipboardReadingSource:
+    """Read copied Apple Books text without ever writing to the clipboard."""
+
+    _RESULT_KINDS = {
+        2: SelectionEventKind.NO_SELECTION,
+        3: SelectionEventKind.UNSUPPORTED_SOURCE,
+        5: SelectionEventKind.UNAVAILABLE,
+    }
+
+    def __init__(
+        self,
+        library_path: Path | None = None,
+        *,
+        library: object | None = None,
+    ):
+        path = library_path or default_native_library_path()
+        self._library = library if library is not None else ctypes.CDLL(str(path))
+        self._library.RDXClipboardChangeCount.argtypes = []
+        self._library.RDXClipboardChangeCount.restype = ctypes.c_longlong
+        self._library.RDXClipboardCopyBooksText.argtypes = [
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_size_t),
+        ]
+        self._library.RDXClipboardCopyBooksText.restype = ctypes.c_int
+        self._library.RDXSelectionFree.argtypes = [ctypes.c_void_p]
+        self._library.RDXSelectionFree.restype = None
+
+    def change_count(self) -> int:
+        return int(self._library.RDXClipboardChangeCount())
+
+    def copied_text(self) -> SelectionEvent:
+        output = ctypes.c_void_p()
+        length = ctypes.c_size_t()
+        result = int(
+            self._library.RDXClipboardCopyBooksText(
+                ctypes.byref(output),
+                ctypes.byref(length),
+            )
+        )
+        if result != 0:
+            return SelectionEvent(
+                self._RESULT_KINDS.get(result, SelectionEventKind.UNAVAILABLE)
+            )
+        if not output.value or length.value == 0 or length.value > 500_000:
+            if output.value:
+                self._library.RDXSelectionFree(output)
+            return SelectionEvent(SelectionEventKind.UNAVAILABLE)
+        try:
+            payload = ctypes.string_at(output, length.value)
+            text = payload.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            return SelectionEvent(SelectionEventKind.UNAVAILABLE)
+        finally:
+            self._library.RDXSelectionFree(output)
+        if not text:
+            return SelectionEvent(SelectionEventKind.UNAVAILABLE)
+        return SelectionEvent(SelectionEventKind.TEXT, text)
+
+
+class ClipboardReadingWatcher(QObject):
+    """Read newly copied Apple Books text, but only while switched on."""
+
+    selectionReceived = Signal(str)
+    statusReceived = Signal(str)
+
+    def __init__(
+        self,
+        *,
+        source: ClipboardReadingSource | None = None,
+        interval_ms: int = 400,
+        parent: QObject | None = None,
+    ):
+        super().__init__(parent)
+        self._source = source
+        self._enabled = False
+        self._change_count: int | None = None
+        self._timer = QTimer(self)
+        self._timer.setInterval(interval_ms)
+        self._timer.timeout.connect(self.poll)
+
+    @property
+    def is_enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def is_active(self) -> bool:
+        """Whether the clipboard is actually being looked at right now."""
+
+        return self._timer.isActive()
+
+    @Slot(bool)
+    def set_enabled(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if enabled == self._enabled:
+            return
+        self._enabled = enabled
+        if not enabled:
+            self._timer.stop()
+            self._change_count = None
+            return
+        # Adopt whatever is on the clipboard now, so switching on never reads
+        # something copied earlier.
+        self.resync()
+        if self._enabled:
+            self._timer.start()
+
+    @Slot()
+    def resync(self) -> None:
+        """Treat the current clipboard as already seen."""
+
+        source = self._resolve_source()
+        self._change_count = None if source is None else source.change_count()
+
+    @Slot()
+    def poll(self) -> None:
+        if not self._enabled:
+            return
+        source = self._resolve_source()
+        if source is None:
+            return
+        change_count = source.change_count()
+        if change_count == self._change_count:
+            return
+        self._change_count = change_count
+        event = source.copied_text()
+        # Copying in any other app is silence, not an error to dismiss: the
+        # person did not ask ReadEase to read their password manager.
+        if event.kind is SelectionEventKind.TEXT and event.text:
+            self.selectionReceived.emit(event.text)
+
+    def _resolve_source(self) -> ClipboardReadingSource | None:
+        if self._source is None:
+            try:
+                self._source = MacOSClipboardReadingSource()
+            except OSError:
+                self._enabled = False
+                self._timer.stop()
+                return None
+        return self._source
+
+    def close(self) -> None:
+        self._timer.stop()
+
+
 class SelectionShortcutBridge(QObject):
     """Own the native helper process and expose only safe Qt signals."""
 
@@ -178,6 +327,7 @@ class SelectionShortcutBridge(QObject):
     statusReceived = Signal(str)
     shortcutAccepted = Signal(object)
     shortcutRejected = Signal(object)
+    clipboardTouched = Signal()
 
     def __init__(
         self,
@@ -308,6 +458,9 @@ class SelectionShortcutBridge(QObject):
                 self.statusReceived.emit(SelectionEventKind.UNAVAILABLE.value)
                 return
         event = self._acquirer.acquire()
+        # Copying and restoring moved the clipboard, so anything watching it
+        # has to be told this was ReadEase, not a fresh copy by the person.
+        self.clipboardTouched.emit()
         if event.kind is SelectionEventKind.TEXT and event.text:
             self.selectionReceived.emit(event.text)
         else:

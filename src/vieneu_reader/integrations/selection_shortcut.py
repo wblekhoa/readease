@@ -10,6 +10,7 @@ from vieneu_reader.settings import load_settings, update_settings
 
 
 SETTINGS_KEY = "selection_shortcut"
+READ_ON_COPY_SETTINGS_KEY = "read_on_copy"
 
 # Carbon modifier bits; the native helper is handed exactly this mask.
 CMD_KEY = 0x0100
@@ -109,3 +110,21 @@ class ShortcutPreferenceStore:
 
     def save(self, shortcut: Shortcut) -> bool:
         return update_settings(self.path, {SETTINGS_KEY: shortcut.to_payload()})
+
+
+class ReadOnCopyPreferenceStore:
+    """Persist the opt-in read-on-copy switch, which stays off by default."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+
+    def load(self) -> bool:
+        # Only a stored true means on: a damaged or hand-edited settings file
+        # must never quietly start reading the clipboard.
+        return load_settings(self.path).get(READ_ON_COPY_SETTINGS_KEY) is True
+
+    def save(self, enabled: bool) -> bool:
+        return update_settings(
+            self.path,
+            {READ_ON_COPY_SETTINGS_KEY: bool(enabled)},
+        )

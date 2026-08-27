@@ -34,6 +34,31 @@ reads the selected text, and restores every captured clipboard item. If restore
 cannot be confirmed, ReadEase does not read the selection. Clipboard managers
 or Universal Clipboard may still observe this brief copy transaction.
 
+The shortcut itself can be changed in the Read books view. The chosen key and
+modifiers are stored in `settings.json` beside the language preference; nothing
+about your keyboard is recorded anywhere else.
+
+### Read on copy
+
+"Read as soon as you copy in Apple Books" is off until you switch it on in the
+Read books view, and it is the only setting that makes ReadEase look at the
+clipboard on its own. While it is on, ReadEase checks the clipboard's change
+counter a few times a second; when that counter moves and Apple Books is the
+frontmost app, ReadEase reads the newly copied text aloud. In this mode it only
+reads the clipboard, never writes to it, and it needs no Accessibility
+permission.
+
+The Apple Books check happens before any text is taken out of the clipboard, so
+text you copy in another app - a password manager, a bank page, a chat window -
+is never handed to ReadEase. That check is "which app is frontmost at that
+moment", which is as much as macOS records about who wrote to the clipboard:
+anything arriving while Apple Books is in front, including Universal Clipboard
+content from another device, is treated as copied from Apple Books.
+
+Switching it off stops the checking. Text read this way is transient like the
+rest: it is not added to the library or the persistent audio cache, and it
+never leaves this Mac.
+
 Deleting ReadEase does not automatically delete its Application Support data.
 Users can remove that folder separately after closing the app if they no longer
 need their library, models, progress, or cache.

@@ -15,6 +15,32 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 
+class FakeClipboardSource:
+    """Stand in for the native pasteboard without touching the real one."""
+
+    def __init__(self, *, count: int, text: str | None):
+        self.count = count
+        self.text = text
+        self.result_kind = None
+        self.text_reads = 0
+
+    def change_count(self) -> int:
+        return self.count
+
+    def copied_text(self):
+        from vieneu_reader.integrations.macos_selection import (
+            SelectionEvent,
+            SelectionEventKind,
+        )
+
+        self.text_reads += 1
+        if self.result_kind is not None:
+            return SelectionEvent(self.result_kind)
+        if self.text is None:
+            return SelectionEvent(SelectionEventKind.NO_SELECTION)
+        return SelectionEvent(SelectionEventKind.TEXT, self.text)
+
+
 class ExternalSelectionBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -310,6 +336,99 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
             self.assertEqual(accepted, [chosen])
         finally:
             bridge.close()
+
+    def test_read_on_copy_is_off_until_it_is_switched_on(self) -> None:
+        module = self._module()
+        source = FakeClipboardSource(count=4, text="Đoạn vừa sao chép")
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        watcher.selectionReceived.connect(selections.append)
+
+        self.assertFalse(watcher.is_enabled)
+        self.assertFalse(watcher.is_active)
+
+        # Nothing may be read while the toggle is off, however the clipboard
+        # moves underneath it.
+        source.count = 5
+        watcher.poll()
+        self.assertEqual(selections, [])
+        self.assertEqual(source.text_reads, 0)
+
+        watcher.set_enabled(True)
+        self.assertTrue(watcher.is_active)
+
+        # Switching on adopts whatever is already on the clipboard, so an old
+        # copy is never spoken just because the toggle moved.
+        watcher.poll()
+        self.assertEqual(selections, [])
+        self.assertEqual(source.text_reads, 0)
+
+        source.count = 6
+        watcher.poll()
+        self.assertEqual(selections, ["Đoạn vừa sao chép"])
+
+        # A clipboard that has not moved is not read again.
+        watcher.poll()
+        self.assertEqual(selections, ["Đoạn vừa sao chép"])
+        self.assertEqual(source.text_reads, 1)
+
+        watcher.set_enabled(False)
+        self.assertFalse(watcher.is_active)
+        source.count = 7
+        watcher.poll()
+        self.assertEqual(selections, ["Đoạn vừa sao chép"])
+        watcher.close()
+
+    def test_read_on_copy_stays_silent_for_anything_but_apple_books(self) -> None:
+        module = self._module()
+        source = FakeClipboardSource(count=1, text=None)
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        statuses = []
+        watcher.selectionReceived.connect(selections.append)
+        watcher.statusReceived.connect(statuses.append)
+        watcher.set_enabled(True)
+
+        source.count = 2
+        source.result_kind = module.SelectionEventKind.UNSUPPORTED_SOURCE
+        watcher.poll()
+
+        # Copying a password somewhere else must be silent, not an error the
+        # person has to dismiss.
+        self.assertEqual(selections, [])
+        self.assertEqual(statuses, [])
+        watcher.close()
+
+    def test_restoring_the_clipboard_after_a_hotkey_is_not_a_new_copy(self) -> None:
+        module = self._module()
+        source = FakeClipboardSource(count=10, text="Nội dung cũ trong clipboard")
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        watcher.selectionReceived.connect(selections.append)
+        watcher.set_enabled(True)
+
+        # The shortcut copies and then restores, which moves the change count
+        # twice; the clipboard it leaves behind is the person's own, not a
+        # fresh copy, so it must not be read aloud.
+        source.count = 12
+        watcher.resync()
+        watcher.poll()
+
+        self.assertEqual(selections, [])
+        self.assertEqual(source.text_reads, 0)
+        watcher.close()
+
+    def test_read_on_copy_stays_off_when_the_native_library_is_missing(self) -> None:
+        module = self._module()
+        watcher = module.ClipboardReadingWatcher()
+
+        # No packaged dylib sits beside the test interpreter, so switching on
+        # must fail closed rather than leave a timer running on nothing.
+        watcher.set_enabled(True)
+
+        self.assertFalse(watcher.is_enabled)
+        self.assertFalse(watcher.is_active)
+        watcher.close()
 
     def test_permission_frame_is_safe_status_not_selected_text(self) -> None:
         module = self._module()

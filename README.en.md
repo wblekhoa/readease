@@ -76,7 +76,9 @@ Pasted text stays in the current session, does not become a library book and doe
 3. Press the read shortcut shown in the **Read books** view (**Control-Option-Command-R** unless you changed it).
 4. The first time, enable ReadEase in **System Settings → Privacy & Security → Accessibility**. Use **Open permission settings** in ReadEase to open the correct pane directly.
 
-For each shortcut transaction, ReadEase keeps an in-memory copy of the current clipboard, sends the copy command to Apple Books, then restores every clipboard item/type/byte before reading. If restoration cannot be verified, the app stops before playback. ReadEase does not monitor the screen or clipboard in the background.
+For each shortcut transaction, ReadEase keeps an in-memory copy of the current clipboard, sends the copy command to Apple Books, then restores every clipboard item/type/byte before reading. If restoration cannot be verified, the app stops before playback. ReadEase does not monitor the screen in the background.
+
+ReadEase does not watch the clipboard either, unless you switch on **Read as soon as you copy in Apple Books** in the **Read books** view. While that is on, ReadEase checks the clipboard's change counter a few times a second and reads newly copied text **while Apple Books is the frontmost app**; text copied in any other app is never taken out of the clipboard. Switching it off stops the checking. See [`PRIVACY.md`](PRIVACY.md) for details.
 
 ### Replay recent content
 

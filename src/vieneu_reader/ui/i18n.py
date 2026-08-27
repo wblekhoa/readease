@@ -164,9 +164,21 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Mở cài đặt quyền Trợ năng của macOS cho ReadEase",
         "Open macOS Accessibility settings for ReadEase",
     ),
+    "external.read_on_copy": (
+        "Đọc ngay khi sao chép trong Apple Books",
+        "Read as soon as you copy in Apple Books",
+    ),
+    "external.read_on_copy_accessible": (
+        "Bật hoặc tắt việc đọc ngay khi bạn sao chép trong Apple Books",
+        "Turn reading on copy in Apple Books on or off",
+    ),
     "external.privacy_note": (
-        "ReadEase chỉ xử lý khi bạn bấm phím tắt trong Apple Books; không theo dõi màn hình hoặc clipboard ở chế độ nền.",
-        "ReadEase acts only when you press the shortcut in Apple Books; it does not monitor your screen or clipboard in the background.",
+        "ReadEase chỉ xử lý khi bạn bấm phím tắt trong Apple Books. Mục đọc-khi-sao-chép đang tắt, nên ReadEase không xem clipboard và không theo dõi màn hình ở chế độ nền.",
+        "ReadEase acts only when you press the shortcut in Apple Books. Read-on-copy is off, so ReadEase does not look at your clipboard and does not monitor your screen in the background.",
+    ),
+    "external.privacy_note_on": (
+        "Mục đọc-khi-sao-chép đang bật: ReadEase xem clipboard vài lần mỗi giây và đọc nội dung vừa sao chép khi Apple Books đang ở phía trước. Nội dung bạn sao chép trong ứng dụng khác không được đọc và không rời khỏi máy. Tắt công tắc này để ReadEase ngừng xem clipboard.",
+        "Read-on-copy is on: ReadEase looks at the clipboard a few times a second and reads newly copied text while Apple Books is in front. Text you copy in any other app is not read and never leaves this Mac. Turn this switch off and ReadEase stops looking at the clipboard.",
     ),
     "external.recent_title": (
         "Đã đọc từ Apple Books trong phiên",

@@ -11,8 +11,14 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 from vieneu_reader.config import AppPaths, default_app_root
 from vieneu_reader.importers.service import LibraryService
-from vieneu_reader.integrations.macos_selection import SelectionShortcutBridge
-from vieneu_reader.integrations.selection_shortcut import ShortcutPreferenceStore
+from vieneu_reader.integrations.macos_selection import (
+    ClipboardReadingWatcher,
+    SelectionShortcutBridge,
+)
+from vieneu_reader.integrations.selection_shortcut import (
+    ReadOnCopyPreferenceStore,
+    ShortcutPreferenceStore,
+)
 from vieneu_reader.playback.coordinator import PlaybackCoordinator
 from vieneu_reader.playback.qt_audio import QtAudioOutput
 from vieneu_reader.speech.cache import AudioCache
@@ -50,6 +56,7 @@ class AppRuntime:
     playback: PlaybackCoordinator
     model_setup: ModelSetupCoordinator
     selection_shortcut: SelectionShortcutBridge
+    read_on_copy: ClipboardReadingWatcher
     dispatcher: QtDispatcher
     window: ReaderWindow
     _closed: bool = field(default=False, init=False)
@@ -60,6 +67,7 @@ class AppRuntime:
             if self._closed:
                 return
             self._closed = True
+        self.read_on_copy.close()
         self.selection_shortcut.close()
         self.model_setup.close()
         self.playback.close()
@@ -90,6 +98,7 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
     settings_path = paths.root / "settings.json"
     language_store = LanguagePreferenceStore(settings_path)
     shortcut_store = ShortcutPreferenceStore(settings_path)
+    read_on_copy_store = ReadOnCopyPreferenceStore(settings_path)
     selection_shortcut = SelectionShortcutBridge(shortcut=shortcut_store.load())
     selection_shortcut.selectionReceived.connect(
         controller.read_external_selection
@@ -98,13 +107,22 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         controller.external_selection_failed
     )
     model_setup.ready.connect(lambda _voices: selection_shortcut.start())
+    read_on_copy = ClipboardReadingWatcher()
+    read_on_copy.selectionReceived.connect(controller.read_external_selection)
+    # The shortcut restores the clipboard after copying; that is ReadEase's own
+    # doing, not a fresh copy to read back.
+    selection_shortcut.clipboardTouched.connect(read_on_copy.resync)
     window = ReaderWindow(
         controller,
         model_setup,
         language_store=language_store,
         selection_shortcut=selection_shortcut.shortcut,
         shortcut_store=shortcut_store,
+        read_on_copy=read_on_copy_store.load(),
+        read_on_copy_store=read_on_copy_store,
     )
+    window.readOnCopyChanged.connect(read_on_copy.set_enabled)
+    read_on_copy.set_enabled(read_on_copy_store.load())
     window.selectionShortcutChanged.connect(selection_shortcut.apply_shortcut)
     # The window remembers only a combination macOS actually registered, so a
     # shortcut another app owns can never come back on the next launch.
@@ -115,6 +133,7 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         playback=playback,
         model_setup=model_setup,
         selection_shortcut=selection_shortcut,
+        read_on_copy=read_on_copy,
         dispatcher=dispatcher,
         window=window,
     )
