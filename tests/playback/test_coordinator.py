@@ -197,6 +197,15 @@ class SilentSpeechEngine(FakeSpeechEngine):
         yield from ()
 
 
+class EmptySampleSpeechEngine(FakeSpeechEngine):
+    """Hands back chunks that carry no samples at all."""
+
+    def stream(self, text, voice_id, settings):
+        self.calls.append((text, voice_id))
+        for _step in range(2):
+            yield AudioChunk(b"")
+
+
 class FailingAfterAudioSpeechEngine(FakeSpeechEngine):
     """Delivers real audio and then fails part-way through the paragraph."""
 
@@ -786,6 +795,26 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.assertEqual(self.progress.saved, [])
         cache_files = list((Path(self.temp_dir.name) / "cache").glob("*.f32"))
         self.assertEqual(cache_files, [])
+
+    def test_chunks_carrying_no_samples_do_not_count_as_audio(self):
+        engine = EmptySampleSpeechEngine()
+        coordinator = PlaybackCoordinator(
+            engine=engine,
+            cache=self.cache,
+            progress_repository=self.progress,
+            output=self.output,
+            scheduler=self.scheduler,
+        )
+        coordinator.play(self.book, self.first.id, "Adam")
+
+        self.scheduler.run_next()
+
+        self.assertEqual(coordinator.snapshot.state, PlaybackState.ERROR)
+        self.assertEqual(
+            coordinator.snapshot.error,
+            "Không thể tạo giọng đọc cho đoạn này.",
+        )
+        self.assertEqual(self.progress.saved, [])
 
     def test_selection_that_produces_no_audio_is_reported_as_a_failure(self):
         engine = SilentSpeechEngine()

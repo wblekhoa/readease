@@ -417,13 +417,17 @@ class PlaybackCoordinator:
                                 token,
                                 lambda: self._output.append(token, chunk),
                             )
-                            produced_chunks += 1
-                            if produced_chunks == 1:
-                                self._publish(
-                                    PlaybackState.PLAYING,
-                                    is_selection=is_selection,
-                                    generation=token,
-                                )
+                            # Count what the person can actually hear, so the
+                            # guard below does not depend on the engine never
+                            # handing back an empty chunk.
+                            if chunk.pcm:
+                                produced_chunks += 1
+                                if produced_chunks == 1:
+                                    self._publish(
+                                        PlaybackState.PLAYING,
+                                        is_selection=is_selection,
+                                        generation=token,
+                                    )
                             yield chunk
                     except _CancelledPlayback:
                         raise
