@@ -329,6 +329,14 @@ _RUNTIME_EN: dict[str, str] = {
     "Không thể dọn dẹp bản sao nhập tạm; lần nhập sau sẽ thử lại.": "Could not clean up the temporary imported copy; the next import will try again.",
     "Không thể khóa thư viện cục bộ để nhập sách.": "Could not lock the local library for import.",
     "Không thể đóng tệp khóa import sau lỗi chính.": "Could not close the import lock file after the primary error.",
+    "Không thể truy cập dữ liệu thư viện cục bộ.": "Could not access the local library data.",
+    "Không thể mở dữ liệu thư viện cục bộ.": "Could not open the local library data.",
+    "Dữ liệu sách trong thư viện cục bộ bị hỏng.": "The book data in the local library is damaged.",
+    "Không thể lưu cuốn sách đang mở.": "Could not save which book is open.",
+    "Dữ liệu cuốn sách đang mở trong thư viện cục bộ bị hỏng.": "The record of the open book in the local library is damaged.",
+    "Dữ liệu tiến độ đọc trong thư viện cục bộ bị hỏng.": "The reading-progress data in the local library is damaged.",
+    "Không thể tạo giọng đọc cho đoạn này.": "Could not create the voice for this paragraph.",
+    "Mô hình đọc tiếng Việt chưa được chuẩn bị.": "The Vietnamese voice model has not been prepared yet.",
 }
 
 
