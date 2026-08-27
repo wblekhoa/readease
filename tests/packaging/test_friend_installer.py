@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import pty
 from pathlib import Path
+import select
 import shutil
 import stat
 import subprocess
@@ -22,6 +24,52 @@ def _write_executable(path: Path, content: str) -> None:
 class _InstallerHarness:
     """Runs the real installer against faked system tools."""
 
+    @staticmethod
+    def _run_on_a_terminal(
+        command: list[str],
+        *,
+        cwd: Path,
+        env: dict[str, str],
+        answers: str,
+    ) -> subprocess.CompletedProcess[str]:
+        """Drive the installer through a real pty so `[[ -t 0 ]]` is true.
+
+        A pty merges stdout and stderr; combined output lands in .stdout.
+        """
+        master, slave = pty.openpty()
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            env=env,
+            stdin=slave,
+            stdout=slave,
+            stderr=slave,
+            close_fds=True,
+        )
+        os.close(slave)
+        if answers:
+            os.write(master, answers.encode("utf-8"))
+        chunks: list[bytes] = []
+        while True:
+            readable, _, _ = select.select([master], [], [], 60)
+            if not readable:
+                break
+            try:
+                piece = os.read(master, 4096)
+            except OSError:
+                break
+            if not piece:
+                break
+            chunks.append(piece)
+        returncode = process.wait(timeout=60)
+        os.close(master)
+        return subprocess.CompletedProcess(
+            command,
+            returncode,
+            b"".join(chunks).decode("utf-8", "replace"),
+            "",
+        )
+
     def _run_harness(
         self,
         *arguments: str,
@@ -35,6 +83,7 @@ class _InstallerHarness:
         legacy_app: bool = False,
         stale_workspaces: int = 0,
         quarantined: bool = False,
+        tty_answers: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], str]:
         with TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -179,14 +228,22 @@ exit 2
                 "READEASE_INSTALL_ROOT": str(install_root),
                 "TMPDIR": str(temp),
             }
-            completed = subprocess.run(
-                [scripts / INSTALLER.name, *arguments],
-                cwd=project,
-                env=environment,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            if tty_answers is None:
+                completed = subprocess.run(
+                    [scripts / INSTALLER.name, *arguments],
+                    cwd=project,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            else:
+                completed = self._run_on_a_terminal(
+                    [str(scripts / INSTALLER.name), *arguments],
+                    cwd=project,
+                    env=environment,
+                    answers=tty_answers,
+                )
             actions = action_log.read_text(encoding="utf-8") if action_log.exists() else ""
             return completed, actions
 
@@ -288,7 +345,7 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("READEASE_EXISTING installed version=0.1.0", completed.stdout)
         # The user must be told the outcome, not left guessing.
-        self.assertIn("thay thế", completed.stdout)
+        self.assertIn("replaces it", completed.stdout)
 
     def test_check_reports_a_legacy_bundle_that_will_be_removed(self) -> None:
         completed, _ = self._run_harness("--check", legacy_app=True)
@@ -303,8 +360,8 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertIn("READEASE_STALE_BUILD count=2", completed.stdout)
         # Report-only: it prints a command, it must never remove anything itself.
         self.assertIn("rm -R", completed.stdout)
-        source = INSTALLER.read_text(encoding="utf-8")
-        self.assertNotIn("rm -R -- \"$stale", source)
+        # --check is a dry run: it reports, it never removes.
+        self.assertNotIn("removed=", completed.stdout)
 
     def test_check_detects_gatekeeper_quarantine_and_gives_the_exact_fix(self) -> None:
         completed, _ = self._run_harness("--check", quarantined=True)
@@ -319,6 +376,58 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("READEASE_QUARANTINE none", completed.stdout)
+
+    def test_a_brand_new_machine_installs_without_asking_anything(self) -> None:
+        """Nothing installed, nothing stale: never interrupt the person."""
+        completed, actions = self._run_harness(tty_answers="")
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertEqual(actions, "build\ninstall\n")
+        self.assertNotIn("[Y/n]", completed.stdout)
+        self.assertNotIn("[y/N]", completed.stdout)
+
+    def test_an_existing_install_is_confirmed_on_a_terminal(self) -> None:
+        completed, actions = self._run_harness(
+            existing_version="0.1.0",
+            tty_answers="y\n",
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("[Y/n]", completed.stdout)
+        self.assertEqual(actions, "build\ninstall\n")
+
+    def test_declining_the_replacement_stops_before_building(self) -> None:
+        completed, actions = self._run_harness(
+            existing_version="0.1.0",
+            tty_answers="n\n",
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("READEASE_SOURCE_INSTALL CANCELLED", completed.stdout)
+        self.assertEqual(actions, "")
+
+    def test_stale_workspaces_can_be_cleaned_when_the_person_agrees(self) -> None:
+        completed, actions = self._run_harness(
+            stale_workspaces=2,
+            tty_answers="y\n",
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("READEASE_STALE_BUILD removed=2", completed.stdout)
+        self.assertEqual(actions, "build\ninstall\n")
+
+    def test_a_non_interactive_run_never_blocks_on_a_question(self) -> None:
+        """AI-assistant and CI runs have no tty; they must not hang."""
+        completed, actions = self._run_harness(
+            existing_version="0.1.0",
+            stale_workspaces=1,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("non-interactive", completed.stdout)
+        self.assertEqual(actions, "build\ninstall\n")
+        # The safe default keeps diagnostics; only a person may remove them.
+        self.assertNotIn("removed=", completed.stdout)
 
     def test_install_emits_ordered_progress_steps(self) -> None:
         completed, actions = self._run_harness()

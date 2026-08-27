@@ -4,22 +4,22 @@ set -u
 project_root="$(cd "$(dirname "$0")" && pwd)"
 installer="$project_root/scripts/install-from-source.sh"
 
-printf '\nReadEase — Thư Âm\n'
-printf 'Đang kiểm tra máy và chuẩn bị bản cài cục bộ. Quá trình đầu tiên có thể mất 10–25 phút.\n\n'
+printf '\nReadEase - Thu Am\n'
+printf 'Checking this Mac and preparing a local build. The first run usually takes 10-25 minutes.\n\n'
 
 status=0
 "$installer" "$@" || status=$?
 
 if [[ "$status" -eq 0 && "${1:-}" == "--check" ]]; then
-  printf '\nMáy này tương thích. Bạn có thể bấm lại file này để bắt đầu cài.\n'
+  printf '\nThis Mac is supported. Open this file again to start the install.\n'
 elif [[ "$status" -eq 0 ]]; then
-  printf '\nHoàn tất. ReadEase đã được mở từ thư mục Applications của bạn.\n'
+  printf '\nDone. ReadEase has been opened from your Applications folder.\n'
 else
-  printf '\nCài đặt chưa hoàn tất. Bạn có thể gửi toàn bộ nội dung cửa sổ này cho một trợ lý AI để được hỗ trợ.\n' >&2
+  printf '\nThe install did not finish. You can paste this whole window to an AI assistant for help.\n' >&2
 fi
 
 if [[ -t 0 ]]; then
-  printf '\nNhấn Enter để đóng cửa sổ này...'
+  printf '\nPress Enter to close this window...'
   read -r _answer
 fi
 
