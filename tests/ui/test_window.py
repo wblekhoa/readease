@@ -35,6 +35,7 @@ from vieneu_reader.integrations.selection_shortcut import (
     CMD_KEY,
     CONTROL_KEY,
     OPTION_KEY,
+    ReadOnCopyPreferenceStore,
     Shortcut,
 )
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
@@ -112,12 +113,17 @@ class ReaderWindowTests(unittest.TestCase):
         *,
         language_store: LanguagePreferenceStore | None = None,
         selection_shortcut: Shortcut | None = None,
+        read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
     ) -> ReaderWindow:
         window = ReaderWindow(
             self.controller,
             model_setup,
             language_store=language_store,
             selection_shortcut=selection_shortcut,
+            read_on_copy=(
+                read_on_copy_store.load() if read_on_copy_store is not None else False
+            ),
+            read_on_copy_store=read_on_copy_store,
         )
         self.windows.append(window)
         window.show()
@@ -370,11 +376,16 @@ class ReaderWindowTests(unittest.TestCase):
     def test_read_on_copy_is_off_by_default_and_labelled_in_both_languages(
         self,
     ) -> None:
-        window = self.make_window(FakeModelSetup(ready=True))
+        store = ReadOnCopyPreferenceStore(self.paths.root / "settings.json")
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            read_on_copy_store=store,
+        )
         toggle = window.findChild(QCheckBox, "externalReadingReadOnCopy")
 
         self.assertIsNotNone(toggle)
         self.assertFalse(toggle.isChecked())
+        self.assertFalse(store.load())
         self.assertEqual(toggle.text(), "Đọc ngay khi sao chép trong Apple Books")
 
         changes: list[bool] = []
@@ -384,6 +395,19 @@ class ReaderWindowTests(unittest.TestCase):
 
         self.assertEqual(changes, [True])
         self.assertTrue(toggle.isChecked())
+        # The choice has to survive a restart, not just this window.
+        self.assertTrue(store.load())
+
+        toggle.click()
+        self.application.processEvents()
+
+        # Switching it back off has to be remembered just as faithfully.
+        self.assertEqual(changes, [True, False])
+        self.assertFalse(store.load())
+
+        toggle.click()
+        self.application.processEvents()
+        self.assertEqual(changes, [True, False, True])
 
         language_combo = window.findChild(QComboBox, "languageCombo")
         language_combo.setCurrentIndex(
@@ -393,8 +417,9 @@ class ReaderWindowTests(unittest.TestCase):
 
         self.assertEqual(toggle.text(), "Read as soon as you copy in Apple Books")
         # Switching language must not switch the feature on or off.
-        self.assertEqual(changes, [True])
+        self.assertEqual(changes, [True, False, True])
         self.assertTrue(toggle.isChecked())
+        self.assertTrue(store.load())
 
     def test_privacy_note_describes_read_on_copy_in_both_languages(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))

@@ -60,6 +60,24 @@ class LocalizerTests(unittest.TestCase):
             english.runtime("Không thể khóa thư viện cục bộ để nhập sách."),
             "Could not lock the local library for import.",
         )
+        # These two are built character-for-character in the controller and
+        # translated by exact match, so drift silently ships Vietnamese.
+        self.assertEqual(
+            english.runtime(
+                "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple "
+                "Books rồi nhấn phím tắt đọc."
+            ),
+            "No selected text was found. Select text in Apple Books, then "
+            "press the read shortcut.",
+        )
+        self.assertEqual(
+            english.runtime(
+                "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác "
+                "đang dùng nó. Hãy chọn tổ hợp khác."
+            ),
+            "This shortcut could not be registered; macOS or another app is "
+            "already using it. Choose a different combination.",
+        )
 
     def test_language_store_defaults_safely_and_persists_supported_language(self) -> None:
         with TemporaryDirectory() as directory:
