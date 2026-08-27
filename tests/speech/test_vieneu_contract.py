@@ -303,7 +303,6 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
 
         self.assertFalse(engine.is_model_ready)
 
-
     def test_a_full_disk_is_not_reported_as_a_network_problem(self):
         def direct(**_kwargs):
             raise OSError(errno.ENOSPC, "No space left on device")
