@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from contextlib import contextmanager
+import errno
 from pathlib import Path
 import struct
 from tempfile import TemporaryDirectory
@@ -178,6 +179,27 @@ class PromotionBarrierCache(AudioCache):
             complete_chunks,
             commit_guard=commit_guard,
         )
+
+
+class ThreeChunkSpeechEngine(FakeSpeechEngine):
+    def stream(self, text, voice_id, settings):
+        self.calls.append((text, voice_id))
+        for step in range(3):
+            marker = (step + 1) / 10
+            yield AudioChunk(struct.pack("<2f", marker, -marker))
+
+
+class DiskFullCache(AudioCache):
+    """Fails the write the way a full disk does, at any point in the stream."""
+
+    def __init__(self, root, *, consumed_chunks):
+        super().__init__(root)
+        self.consumed_chunks = consumed_chunks
+
+    def put_complete(self, key, chunks, *, commit_guard=None):
+        for _step, _chunk in zip(range(self.consumed_chunks), chunks):
+            pass
+        raise OSError(errno.ENOSPC, "No space left on device")
 
 
 class BlockingPreferenceRepository:
@@ -662,6 +684,38 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.assertEqual(self.coordinator.snapshot.state, PlaybackState.ERROR)
         self.assertEqual(self.coordinator.snapshot.error, "Không thể tạo giọng đọc cho đoạn này.")
         self.assertEqual(self.progress.saved, [])
+
+    def test_cache_write_failure_is_not_reported_as_a_reading_failure(self):
+        for consumed_chunks in (0, 1, 3):
+            with self.subTest(consumed_chunks=consumed_chunks):
+                output = FakeAudioOutput()
+                progress = FakeProgressRepository()
+                scheduler = ManualScheduler()
+                coordinator = PlaybackCoordinator(
+                    engine=ThreeChunkSpeechEngine(),
+                    cache=DiskFullCache(
+                        Path(self.temp_dir.name) / f"full-{consumed_chunks}",
+                        consumed_chunks=consumed_chunks,
+                    ),
+                    progress_repository=progress,
+                    output=output,
+                    scheduler=scheduler,
+                )
+                coordinator.play(self.book, self.first.id, "Adam")
+
+                scheduler.run_next()
+
+                self.assertEqual(coordinator.snapshot.state, PlaybackState.PLAYING)
+                self.assertIsNone(coordinator.snapshot.error)
+                self.assertEqual(
+                    sum(event[0] == "append" for event in output.events),
+                    3,
+                )
+                self.assertIn(("end",), output.events)
+
+                output.complete()
+
+                self.assertEqual(progress.saved[-1].segment_id, self.second.id)
 
     def test_progress_failure_enters_error_after_audio_drains(self):
         self.progress.failure = RuntimeError("database unavailable")

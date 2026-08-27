@@ -407,22 +407,29 @@ class PlaybackCoordinator:
                 )
             else:
                 first_chunk = True
+                synthesis_failed = False
 
                 def generating_chunks():
-                    nonlocal first_chunk
-                    for chunk in self._engine.stream(text, voice_id, settings):
-                        self._call_output(
-                            token,
-                            lambda: self._output.append(token, chunk),
-                        )
-                        if first_chunk:
-                            self._publish(
-                                PlaybackState.PLAYING,
-                                is_selection=is_selection,
-                                generation=token,
+                    nonlocal first_chunk, synthesis_failed
+                    try:
+                        for chunk in self._engine.stream(text, voice_id, settings):
+                            self._call_output(
+                                token,
+                                lambda: self._output.append(token, chunk),
                             )
-                            first_chunk = False
-                        yield chunk
+                            if first_chunk:
+                                self._publish(
+                                    PlaybackState.PLAYING,
+                                    is_selection=is_selection,
+                                    generation=token,
+                                )
+                                first_chunk = False
+                            yield chunk
+                    except _CancelledPlayback:
+                        raise
+                    except Exception:
+                        synthesis_failed = True
+                        raise
 
                 if is_selection:
                     for _chunk in generating_chunks():
@@ -430,11 +437,24 @@ class PlaybackCoordinator:
                 else:
                     if key is None:
                         raise RuntimeError("cache key is unavailable")
-                    self._cache.put_complete(
-                        key,
-                        generating_chunks(),
-                        commit_guard=lambda: self._cache_commit_guard(token),
-                    )
+                    chunks = generating_chunks()
+                    try:
+                        self._cache.put_complete(
+                            key,
+                            chunks,
+                            commit_guard=lambda: self._cache_commit_guard(token),
+                        )
+                    except _CancelledPlayback:
+                        raise
+                    except Exception:
+                        if synthesis_failed:
+                            raise
+                        # The voice itself worked, so this paragraph is already
+                        # reaching the person; only storing it for next time
+                        # failed. Finish sending the audio and stay quiet about
+                        # the cache, exactly as _prefetch does.
+                        for _chunk in chunks:
+                            pass
             self._guard(token)
             self._call_output(token, lambda: self._output.end(token))
             if not is_selection and index is not None and index + 1 < len(self._segments):
