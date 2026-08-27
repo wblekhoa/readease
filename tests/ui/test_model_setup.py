@@ -9,6 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from vieneu_reader.domain.models import Voice
+from vieneu_reader.speech.vieneu import ModelPreparationError
 from vieneu_reader.ui.model_setup import ModelSetupCoordinator
 
 
@@ -76,6 +77,20 @@ class ModelSetupCoordinatorTests(unittest.TestCase):
         self.assertTrue(self._pump_until(failed))
         self.assertIn("Thử lại", messages[0])
         self.assertNotIn("secret", messages[0])
+        coordinator.close()
+
+    def test_prepared_failure_keeps_the_reason_the_engine_gave(self) -> None:
+        engine = FakeModelEngine()
+        engine.failure = ModelPreparationError("Máy đã hết dung lượng trống.")
+        coordinator = ModelSetupCoordinator(engine)
+        failed = Event()
+        messages = []
+        coordinator.failed.connect(lambda message: (messages.append(message), failed.set()))
+
+        coordinator.start()
+
+        self.assertTrue(self._pump_until(failed))
+        self.assertEqual(messages[0], "Máy đã hết dung lượng trống.")
         coordinator.close()
 
     def test_cancel_discards_late_success(self) -> None:

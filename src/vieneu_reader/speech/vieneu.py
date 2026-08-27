@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 from pathlib import Path
@@ -52,6 +53,22 @@ class ModelPreparationError(RuntimeError):
 
 class ModelNotReadyError(RuntimeError):
     """Synthesis was requested before explicit model preparation."""
+
+
+def _preparation_message(error: BaseException) -> str:
+    """Name what actually stopped the download instead of always blaming the network."""
+
+    seen: set[int] = set()
+    cause: BaseException | None = error
+    while cause is not None and id(cause) not in seen:
+        seen.add(id(cause))
+        if isinstance(cause, OSError) and cause.errno == errno.ENOSPC:
+            return (
+                "Máy đã hết dung lượng trống nên chưa tải xong giọng đọc. "
+                "Hãy giải phóng bớt dung lượng rồi thử lại."
+            )
+        cause = cause.__cause__ or cause.__context__
+    return "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại."
 
 
 @contextmanager
@@ -280,9 +297,7 @@ class VieNeuSpeechEngine:
                 self._write_ready_marker()
             except Exception as error:
                 self._sdk = None
-                raise ModelPreparationError(
-                    "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại."
-                ) from error
+                raise ModelPreparationError(_preparation_message(error)) from error
             progress_callback(1.0, "Mô hình đọc tiếng Việt đã sẵn sàng.")
 
     def _instance(self) -> Any:

@@ -337,6 +337,7 @@ _RUNTIME_EN: dict[str, str] = {
     "Dữ liệu tiến độ đọc trong thư viện cục bộ bị hỏng.": "The reading-progress data in the local library is damaged.",
     "Không thể tạo giọng đọc cho đoạn này.": "Could not create the voice for this paragraph.",
     "Mô hình đọc tiếng Việt chưa được chuẩn bị.": "The Vietnamese voice model has not been prepared yet.",
+    "Máy đã hết dung lượng trống nên chưa tải xong giọng đọc. Hãy giải phóng bớt dung lượng rồi thử lại.": "This Mac ran out of free space before the voice finished downloading. Free up some space, then try again.",
 }
 
 

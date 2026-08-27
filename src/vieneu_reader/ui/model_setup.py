@@ -7,6 +7,8 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Signal
 
+from vieneu_reader.speech.vieneu import ModelPreparationError
+
 
 class _PreparationCancelled(Exception):
     pass
@@ -76,6 +78,10 @@ class ModelSetupCoordinator(QObject):
             self._emit_if_open(self.ready, voices)
         except _PreparationCancelled:
             self._emit_if_open(self.cancelled)
+        except ModelPreparationError as error:
+            # The engine already worked out why preparation stopped, and its
+            # message is written for the person rather than for a log.
+            self._emit_if_open(self.failed, str(error))
         except Exception:
             self._emit_if_open(
                 self.failed,

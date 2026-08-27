@@ -1,3 +1,4 @@
+import errno
 import os
 from pathlib import Path
 import struct
@@ -18,6 +19,7 @@ from vieneu_reader.speech.vieneu import (
     MODEL_REPO,
     MODEL_REVISION,
     MODEL_SUBFOLDER,
+    ModelPreparationError,
     VieNeuSpeechEngine,
     _load_sdk,
     _local_codec_downloads,
@@ -300,6 +302,44 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
             engine.prepare_model(Mock())
 
         self.assertFalse(engine.is_model_ready)
+
+
+    def test_a_full_disk_is_not_reported_as_a_network_problem(self):
+        def direct(**_kwargs):
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+        def wrapped(**_kwargs):
+            try:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            except OSError as error:
+                raise RuntimeError("download failed") from error
+
+        for downloader in (direct, wrapped):
+            with self.subTest(downloader=downloader.__name__):
+                engine = VieNeuSpeechEngine(
+                    self.models,
+                    sdk_factory=lambda **_kwargs: FakeVieNeuSDK(),
+                    model_downloader=downloader,
+                )
+
+                with self.assertRaises(ModelPreparationError) as failure:
+                    engine.prepare_model(Mock())
+
+                self.assertIn("dung lượng", str(failure.exception))
+                self.assertNotIn("mạng", str(failure.exception))
+                self.assertFalse(engine.is_model_ready)
+
+    def test_a_failure_that_is_not_about_space_still_names_the_network(self):
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **_kwargs: FakeVieNeuSDK(),
+            model_downloader=Mock(side_effect=OSError("connection reset")),
+        )
+
+        with self.assertRaises(ModelPreparationError) as failure:
+            engine.prepare_model(Mock())
+
+        self.assertIn("mạng", str(failure.exception))
 
 
 if __name__ == "__main__":
