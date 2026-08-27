@@ -4,7 +4,7 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
 
-uv sync --locked --managed-python --python 3.13
+uv sync --locked --quiet --managed-python --python 3.13
 "$project_root/scripts/build-icon.sh"
 
 if ! uv run python - <<'PY'

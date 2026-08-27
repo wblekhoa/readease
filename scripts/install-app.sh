@@ -64,7 +64,10 @@ stop_installed_bundle() {
       kill "$pid" 2>/dev/null || true
     fi
   done < <(ps -axo pid=,command=)
-  for _attempt in {1..30}; do
+  # A Qt app holding a TTS model in memory needs longer than three seconds to
+  # exit. Wait properly, then escalate rather than giving up on the install.
+  local escalated=0
+  for _attempt in $(seq 1 200); do
     if ! ps -axo command= | awk -v executable="$executable" -v helper="$helper" '
       {
         command = $0
@@ -77,6 +80,15 @@ stop_installed_bundle() {
       END { exit found ? 0 : 1 }
     '; then
       return
+    fi
+    if [[ "$_attempt" -eq 100 && "$escalated" -eq 0 ]]; then
+      escalated=1
+      while read -r pid command; do
+        if [[ "$command" == "$executable" || "$command" == "$executable "* \
+          || "$command" == "$helper" || "$command" == "$helper "* ]]; then
+          kill -9 "$pid" 2>/dev/null || true
+        fi
+      done < <(ps -axo pid=,command=)
     fi
     sleep 0.1
   done

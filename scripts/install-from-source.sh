@@ -149,6 +149,51 @@ else
   printf '  No ReadEase found on this Mac. This is a first install.\n'
 fi
 
+# A running app cannot have its bundle replaced. Catching that here costs five
+# seconds; catching it in install-app.sh costs the whole 20-minute build and
+# leaves a multi-gigabyte workspace behind.
+running_app_pids() {
+  ps -axo pid=,command= 2>/dev/null \
+    | grep -F "$installed_app/Contents/MacOS/" \
+    | grep -v grep \
+    | awk '$1 ~ /^[0-9]+$/ { print $1 }' || true
+}
+
+close_running_app() {
+  local signal attempt pids
+  for signal in TERM KILL; do
+    pids="$(running_app_pids)"
+    [[ -z "$pids" ]] && return 0
+    # shellcheck disable=SC2086
+    kill -"$signal" $pids 2>/dev/null || true
+    for attempt in $(seq 1 50); do
+      [[ -z "$(running_app_pids)" ]] && return 0
+      sleep 0.1
+    done
+  done
+  [[ -z "$(running_app_pids)" ]]
+}
+
+if [[ -n "$(running_app_pids)" ]]; then
+  printf 'READEASE_RUNNING present\n'
+  printf '  ReadEase is running. Its bundle has to be replaced, so it must close first.\n'
+  if [[ "$mode" != "--check" ]]; then
+    if ask "Close ReadEase now?" y; then
+      if close_running_app; then
+        printf 'READEASE_RUNNING closed\n'
+      else
+        fail "app_still_running" "ReadEase would not close. Quit it manually and run this again."
+      fi
+    else
+      printf 'READEASE_SOURCE_INSTALL CANCELLED reason=app-running\n'
+      printf '  Nothing was changed. Quit ReadEase, then run this again.\n'
+      exit 0
+    fi
+  fi
+else
+  printf 'READEASE_RUNNING none\n'
+fi
+
 if [[ -d "$legacy_app" ]]; then
   printf 'READEASE_LEGACY present\n'
   printf '  An older bundle named "VieNeu Reader" is present. It is removed after a\n'
@@ -325,7 +370,7 @@ step 4 "Compiling the app - the longest step, usually 10-20 minutes"
   cd "$export_root"
   ./scripts/build-app.sh
 )
-step 5 "Installing into $install_root"
+step 5 "Verifying and installing into $install_root - runs the full test suite, 3-5 minutes"
 (
   cd "$export_root"
   ./scripts/install-app.sh

@@ -84,6 +84,7 @@ class _InstallerHarness:
         stale_workspaces: int = 0,
         quarantined: bool = False,
         tty_answers: str | None = None,
+        app_running: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], str]:
         with TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -192,6 +193,23 @@ exit 1
 """,
             )
             _write_executable(
+                fake_bin / "ps",
+                """#!/bin/sh
+# A killed child stays a zombie until its parent reaps it, and kill -0 still
+# succeeds on a zombie - so check the real process state, not just existence.
+state=""
+if [ "$READEASE_FAKE_APP_RUNNING" = "1" ]; then
+  state=$(/bin/ps -o stat= -p "$READEASE_FAKE_APP_PID" 2>/dev/null | tr -d ' ')
+fi
+case "$state" in
+  ""|Z*) ;;
+  *) printf '%s %s/ReadEase.app/Contents/MacOS/app_main\\n' \\
+       "$READEASE_FAKE_APP_PID" "$READEASE_INSTALL_ROOT" ;;
+esac
+exit 0
+""",
+            )
+            _write_executable(
                 fake_bin / "curl",
                 """#!/bin/sh
 [ "$READEASE_FAKE_CURL" = "1" ] && exit 0
@@ -216,6 +234,10 @@ exit 2
 """,
                 )
 
+            stand_in = None
+            if app_running:
+                stand_in = subprocess.Popen(["sleep", "600"])
+
             environment = {
                 **os.environ,
                 "PATH": f"{fake_bin}:/usr/bin:/bin:/usr/sbin:/sbin",
@@ -224,6 +246,8 @@ exit 2
                 "READEASE_FAKE_AVAILABLE_KIB": str(available_kib),
                 "READEASE_FAKE_XCODE": "1" if xcode_ready else "0",
                 "READEASE_FAKE_CURL": "1" if curl_succeeds else "0",
+                "READEASE_FAKE_APP_RUNNING": "1" if app_running else "0",
+                "READEASE_FAKE_APP_PID": str(stand_in.pid) if stand_in else "0",
                 "READEASE_TEST_LOG": str(action_log),
                 "READEASE_INSTALL_ROOT": str(install_root),
                 "TMPDIR": str(temp),
@@ -244,6 +268,9 @@ exit 2
                     env=environment,
                     answers=tty_answers,
                 )
+            if stand_in is not None:
+                stand_in.kill()
+                stand_in.wait()
             actions = action_log.read_text(encoding="utf-8") if action_log.exists() else ""
             return completed, actions
 
@@ -428,6 +455,62 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertEqual(actions, "build\ninstall\n")
         # The safe default keeps diagnostics; only a person may remove them.
         self.assertNotIn("removed=", completed.stdout)
+
+    def test_a_running_app_is_caught_in_preflight_not_after_the_build(self) -> None:
+        """Failing at second 5 beats failing at minute 20 with 4 GB left behind."""
+        completed, actions = self._run_harness("--check", app_running=True)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_RUNNING present", completed.stdout)
+        self.assertEqual(actions, "")
+
+    def test_no_running_app_is_reported_as_such(self) -> None:
+        completed, _ = self._run_harness("--check")
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("READEASE_RUNNING none", completed.stdout)
+
+    def test_declining_to_close_the_app_stops_before_building(self) -> None:
+        completed, actions = self._run_harness(
+            app_running=True,
+            existing_version="0.1.0",
+            tty_answers="y\nn\n",
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("READEASE_SOURCE_INSTALL CANCELLED reason=app-running", completed.stdout)
+        self.assertEqual(actions, "")
+
+    def test_a_non_interactive_run_closes_the_app_and_continues(self) -> None:
+        completed, actions = self._run_harness(app_running=True)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        # Only reachable if the installer really terminated the process.
+        self.assertIn("READEASE_RUNNING closed", completed.stdout)
+        self.assertEqual(actions, "build\ninstall\n")
+
+    def test_step_five_says_it_verifies_not_merely_installs(self) -> None:
+        completed, _ = self._run_harness()
+
+        step_five = [
+            line for line in completed.stdout.splitlines()
+            if line.startswith("READEASE_STEP 5/5")
+        ]
+        self.assertTrue(step_five, completed.stdout)
+        self.assertIn("Verifying", step_five[0])
+
+    def test_the_shutdown_wait_is_generous_and_escalates(self) -> None:
+        source = (ROOT / "scripts" / "install-app.sh").read_text(encoding="utf-8")
+
+        # Three seconds is not enough for a Qt app holding a TTS model in memory.
+        self.assertNotIn("{1..30}", source)
+        self.assertIn("kill -9", source)
+
+    def test_build_output_is_quiet_enough_to_see_the_steps(self) -> None:
+        source = (ROOT / "scripts" / "build-app.sh").read_text(encoding="utf-8")
+
+        self.assertIn("uv sync --locked", source)
+        self.assertIn("--quiet", source)
 
     def test_install_emits_ordered_progress_steps(self) -> None:
         completed, actions = self._run_harness()
