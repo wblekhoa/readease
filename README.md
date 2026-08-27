@@ -10,6 +10,9 @@
 
 Liên kết trên tải trực tiếp bản mới nhất từ nhánh `main`. Đây là bản cài từ mã nguồn dành cho Mac, chưa phải file `.dmg` hoặc binary đã notarize.
 
+> [!IMPORTANT]
+> macOS có thể báo **“Install ReadEase.command” Not Opened** vì bản source chưa được Apple notarize. Hãy bấm **Done** — không bấm **Move to Trash** — rồi mở **System Settings → Privacy & Security → Security → Open Anyway**. Xem [hướng dẫn cài đặt đầy đủ](INSTALL.md), gồm ảnh hưởng của Gatekeeper và cách xử lý lỗi.
+
 ### Máy của bạn cần có gì?
 
 | Yêu cầu | Chi tiết |
@@ -26,7 +29,7 @@ Bạn **không cần** API key, Homebrew, Python, `uv` hay kiến thức lập t
 
 1. Bấm [**Tải ReadEase — Source ZIP**](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip), rồi mở file ZIP vừa tải.
 2. Trong thư mục `readease-main`, bấm đúp **Install ReadEase.command**.
-3. Nếu macOS chặn lần mở đầu tiên, Control-click file đó, chọn **Open**, rồi xác nhận **Open**.
+3. Nếu macOS chặn lần mở đầu tiên, bấm **Done** (không bấm **Move to Trash**), rồi vào **System Settings → Privacy & Security → Security → Open Anyway**. Các bước chi tiết nằm trong [INSTALL.md](INSTALL.md).
 4. Nếu installer báo thiếu công cụ của Apple, mở Terminal, chạy:
 
    ```bash
@@ -146,6 +149,9 @@ ReadEase — Thư Âm is a local-first macOS app that reads PDFs, EPUBs and past
 
 ### [⬇️ Download ReadEase — Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip)
 
+> [!IMPORTANT]
+> Because this source build is not Apple-notarized, macOS may show **“Install ReadEase.command” Not Opened**. Click **Done**, not **Move to Trash**, then go to **System Settings → Privacy & Security → Security → Open Anyway**. See the [full installation guide](INSTALL.md#english).
+
 Requirements:
 
 - Apple Silicon Mac (M1 or newer)
@@ -154,7 +160,7 @@ Requirements:
 - Internet access for the first build and first voice-model download
 - Xcode Command Line Tools (`xcode-select --install` if the installer reports they are missing)
 
-You do **not** need an API key, Homebrew, Python or `uv`. Extract the ZIP, open the `readease-main` folder and double-click **Install ReadEase.command**. If macOS blocks it, Control-click the file, choose **Open**, then confirm. The first build usually takes 10–25 minutes and installs the app at `~/Applications/ReadEase.app`. In the app, click **Chuẩn bị giọng đọc** once to download about 330 MB of voice data.
+You do **not** need an API key, Homebrew, Python or `uv`. Extract the ZIP, open the `readease-main` folder and double-click **Install ReadEase.command**. If Gatekeeper blocks it, follow the **Open Anyway** steps above. The first build usually takes 10–25 minutes and installs the app at `~/Applications/ReadEase.app`. In the app, click **Chuẩn bị giọng đọc** once to download about 330 MB of voice data.
 
 This is a local source build, not a notarized `.dmg` or public binary release.
 

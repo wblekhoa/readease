@@ -3,6 +3,7 @@
   "root_files": [
     ".gitignore",
     "CONTRIBUTING.md",
+    "INSTALL.md",
     "Install ReadEase.command",
     "LICENSE",
     "NOTICE.md",
