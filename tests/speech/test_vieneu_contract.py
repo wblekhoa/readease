@@ -319,6 +319,45 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         self.assertTrue(engine.is_model_ready)
         self.assertFalse((self.models / "hub").exists())
 
+    def test_preparation_keeps_hub_entries_outside_the_two_pinned_repositories(self):
+        def download_model(**kwargs):
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+            model_downloader=download_model,
+        )
+        engine.prepare_model(Mock())
+        hub = self.models / "hub"
+        pinned = (
+            hub / "models--pnnbao-ump--VieNeu-TTS-v3-Turbo",
+            hub / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX",
+            hub / ".locks" / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX",
+        )
+        unrelated = hub / "models--some-other--repo"
+        for directory in pinned + (unrelated,):
+            directory.mkdir(parents=True)
+            (directory / "blob").write_bytes(b"fixture")
+        tag = hub / "CACHEDIR.TAG"
+        tag.write_bytes(b"Signature: 8a477f597d28d172789f06886806bc55")
+
+        engine.prepare_model(Mock())
+
+        for directory in pinned:
+            self.assertFalse(directory.exists())
+        self.assertTrue((unrelated / "blob").is_file())
+        self.assertTrue(tag.is_file())
+
     def test_codec_download_override_is_scoped_local_and_fail_closed(self):
         codec_directory = self.models / CODEC_DIRECTORY
         codec_directory.mkdir(parents=True)
