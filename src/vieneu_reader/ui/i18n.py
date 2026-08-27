@@ -1,0 +1,420 @@
+"""Small dependency-free localization layer for the desktop UI."""
+
+from __future__ import annotations
+
+from enum import Enum
+import json
+import os
+from pathlib import Path
+import re
+import tempfile
+
+
+class Language(str, Enum):
+    VIETNAMESE = "vi"
+    ENGLISH = "en"
+
+    @classmethod
+    def parse(cls, value: object) -> "Language":
+        if isinstance(value, cls):
+            return value
+        try:
+            return cls(str(value))
+        except ValueError:
+            return cls.VIETNAMESE
+
+
+_TEXT: dict[str, tuple[str, str]] = {
+    "language.label": ("Ngôn ngữ", "Language"),
+    "language.accessible": ("Chọn ngôn ngữ ứng dụng", "Choose app language"),
+    "model.title": ("Chuẩn bị giọng đọc tiếng Việt", "Set up Vietnamese voice"),
+    "model.description": (
+        "ReadEase cần tải khoảng 330 MB dữ liệu giọng đọc ở lần đầu. Sau đó bạn có thể đọc sách hoàn toàn offline và không cần API key.",
+        "ReadEase downloads about 330 MB of Vietnamese voice data the first time. After that, you can read fully offline without an API key.",
+    ),
+    "model.ready_to_download": ("Sẵn sàng tải giọng đọc.", "Ready to download voice data."),
+    "model.prepare": ("Chuẩn bị giọng đọc", "Set up voice"),
+    "model.prepare_accessible": (
+        "Chuẩn bị giọng đọc tiếng Việt",
+        "Set up the Vietnamese voice",
+    ),
+    "model.cancel": ("Hủy", "Cancel"),
+    "model.cancel_accessible": (
+        "Hủy chuẩn bị giọng đọc",
+        "Cancel Vietnamese voice setup",
+    ),
+    "model.retry": ("Thử lại", "Try again"),
+    "model.preparing": ("Đang chuẩn bị giọng đọc…", "Preparing voice data…"),
+    "model.stopping": (
+        "Đang dừng sau bước tải hiện tại…",
+        "Stopping after the current download step…",
+    ),
+    "model.cancelled": ("Đã hủy chuẩn bị giọng đọc.", "Voice setup was cancelled."),
+    "toolbar.open": ("Mở PDF hoặc EPUB", "Open PDF or EPUB"),
+    "toolbar.open_accessible": (
+        "Mở thêm sách PDF hoặc EPUB",
+        "Open another PDF or EPUB book",
+    ),
+    "toolbar.paste": ("Dán nội dung", "Paste text"),
+    "toolbar.paste_accessible": ("Dán nội dung để đọc", "Paste text to read"),
+    "nav.accessible": ("Chọn tính năng ReadEase", "Choose a ReadEase feature"),
+    "nav.library": ("Thư viện", "Library"),
+    "nav.paste": ("Dán nội dung", "Paste text"),
+    "nav.external": ("Đọc sách", "Read books"),
+    "library.title": ("Thư viện sách", "Book library"),
+    "library.description": (
+        "Mở sách EPUB hoặc PDF có lớp văn bản. Sách được giữ cục bộ để bạn có thể tiếp tục từ vị trí đang đọc.",
+        "Open an EPUB or a PDF with a text layer. Books stay on this Mac so you can continue from your saved position.",
+    ),
+    "library.list_accessible": ("Danh sách sách trong thư viện", "Books in your library"),
+    "library.open_accessible": ("Mở sách PDF hoặc EPUB", "Open a PDF or EPUB book"),
+    "library.paste_accessible": (
+        "Chuyển sang màn hình dán nội dung",
+        "Go to the paste-text view",
+    ),
+    "paste.title": ("Dán nội dung để đọc", "Paste text to read"),
+    "paste.description": (
+        "Dán đoạn văn hoặc bài viết vào đây. Nội dung chỉ dùng trong phiên đọc này: không thêm vào thư viện và không được lưu vào cache.",
+        "Paste a passage or article here. It is used only for this session, is not added to your library and is not stored in the audio cache.",
+    ),
+    "paste.editor_accessible": ("Nội dung cần đọc", "Text to read"),
+    "paste.placeholder": ("Dán nội dung tiếng Việt vào đây…", "Paste text here…"),
+    "paste.count_accessible": ("Số ký tự nội dung đã dán", "Pasted character count"),
+    "paste.read": ("Đọc nội dung", "Read text"),
+    "paste.read_accessible": (
+        "Bắt đầu đọc nội dung đã dán",
+        "Start reading the pasted text",
+    ),
+    "paste.count": ("{count} / {limit} ký tự", "{count} / {limit} characters"),
+    "paste.over_limit": (
+        "Vượt giới hạn {limit} ký tự · hiện có {count}",
+        "Over the {limit}-character limit · currently {count}",
+    ),
+    "reader.back": ("Quay lại thư viện", "Back to library"),
+    "reader.back_accessible": (
+        "Quay lại danh sách sách đã nhập",
+        "Return to the imported-book list",
+    ),
+    "reader.book_title_accessible": ("Tên sách đang đọc", "Current book title"),
+    "reader.chapters": ("Chương", "Chapters"),
+    "reader.chapter_list_accessible": ("Danh sách chương", "Chapter list"),
+    "reader.content_accessible": ("Nội dung sách có thể chọn", "Selectable book content"),
+    "reader.selection": ("Đọc phần đã chọn", "Read selection"),
+    "reader.selection_accessible": (
+        "Đọc phần nội dung đang chọn trong sách",
+        "Read the selected text in this book",
+    ),
+    "reader.figure": ("Hình {number}", "Figure {number}"),
+    "reader.figure_unavailable": (
+        "Không thể hiển thị hình này.",
+        "This figure cannot be displayed.",
+    ),
+    "reader.content_description": (
+        "Nội dung sách có thể chọn và đọc bằng ReadEase.",
+        "Book content can be selected and read with ReadEase.",
+    ),
+    "reader.figures_description": (
+        "Nội dung sách có thể chọn và đọc bằng ReadEase. Chương này có {count} hình: {figures}.",
+        "Book content can be selected and read with ReadEase. This chapter has {count} figures: {figures}.",
+    ),
+    "external.title": ("Đọc từ Apple Books", "Read from Apple Books"),
+    "external.status_accessible": (
+        "Trạng thái đọc từ Apple Books",
+        "Apple Books reading status",
+    ),
+    "external.detail_accessible": (
+        "Chi tiết trạng thái đọc từ Apple Books",
+        "Apple Books reading status details",
+    ),
+    "external.description": (
+        "Giữ ReadEase đang chạy, quét chọn đoạn văn trong Apple Books, rồi dùng phím tắt bên dưới để nghe bằng giọng Việt cục bộ.",
+        "Keep ReadEase running, select text in Apple Books, then use the shortcut below to hear it with the local Vietnamese voice.",
+    ),
+    "external.steps": (
+        "1. Mở sách trong Apple Books.\n2. Quét chọn đúng phần bạn muốn nghe.\n3. Nhấn phím tắt; ReadEase sẽ đọc mà không đưa cửa sổ này lên trước.",
+        "1. Open a book in Apple Books.\n2. Select the text you want to hear.\n3. Press the shortcut; ReadEase reads it without bringing this window forward.",
+    ),
+    "external.steps_accessible": (
+        "Hướng dẫn đọc phần đã chọn trong Apple Books",
+        "How to read selected text from Apple Books",
+    ),
+    "external.shortcut": ("Phím tắt", "Keyboard shortcut"),
+    "external.shortcut_accessible": (
+        "Phím tắt đọc phần đã chọn: Control Option Command R",
+        "Read-selection shortcut: Control Option Command R",
+    ),
+    "external.permission_note": (
+        "Lần đầu sử dụng, macOS cần cho phép ReadEase điều khiển thao tác sao chép trong Apple Books. Bạn có thể mở đúng mục Trợ năng tại đây.",
+        "The first time you use this feature, macOS must allow ReadEase to issue the copy command in Apple Books. Open the correct Accessibility settings here.",
+    ),
+    "external.open_settings": ("Mở Cài đặt quyền", "Open permission settings"),
+    "external.open_settings_accessible": (
+        "Mở cài đặt quyền Trợ năng của macOS cho ReadEase",
+        "Open macOS Accessibility settings for ReadEase",
+    ),
+    "external.privacy_note": (
+        "ReadEase chỉ xử lý khi bạn bấm phím tắt trong Apple Books; không theo dõi màn hình hoặc clipboard ở chế độ nền.",
+        "ReadEase acts only when you press the shortcut in Apple Books; it does not monitor your screen or clipboard in the background.",
+    ),
+    "external.recent_title": (
+        "Đã đọc từ Apple Books trong phiên",
+        "Read from Apple Books this session",
+    ),
+    "external.history_empty": (
+        "Chưa có đoạn nào. Phần bạn đọc bằng phím tắt sẽ xuất hiện ở đây và tự mất khi đóng ReadEase.",
+        "Nothing here yet. Text read with the shortcut appears here and disappears when ReadEase closes.",
+    ),
+    "external.history_accessible": (
+        "Các phần đã đọc từ Apple Books trong phiên",
+        "Text read from Apple Books this session",
+    ),
+    "external.replay": ("Nghe lại phần đã chọn", "Replay selected item"),
+    "external.replay_accessible": (
+        "Nghe lại phần Apple Books đang chọn trong lịch sử phiên",
+        "Replay the selected Apple Books item from session history",
+    ),
+    "external.starting": ("Đang chuẩn bị phím tắt…", "Preparing the shortcut…"),
+    "external.ready": ("Sẵn sàng đọc từ Apple Books", "Ready to read from Apple Books"),
+    "external.received": ("Đã nhận phần chọn gần nhất", "Latest selection received"),
+    "external.permission_required": ("Cần quyền Trợ năng", "Accessibility permission required"),
+    "external.failed": ("Chưa thể đọc phần đã chọn", "Could not read the selection"),
+    "player.previous": ("Trước", "Previous"),
+    "player.previous_accessible": ("Đọc đoạn trước", "Read the previous paragraph"),
+    "player.play": ("Đọc", "Read"),
+    "player.play_accessible": (
+        "Bắt đầu đọc hoặc tạm dừng",
+        "Start reading or pause playback",
+    ),
+    "player.pause": ("Tạm dừng", "Pause"),
+    "player.resume": ("Tiếp tục", "Resume"),
+    "player.stop": ("Dừng", "Stop"),
+    "player.stop_accessible": ("Dừng đọc", "Stop reading"),
+    "player.next": ("Sau", "Next"),
+    "player.next_accessible": ("Đọc đoạn tiếp theo", "Read the next paragraph"),
+    "player.history": ("Lịch sử phiên", "Session history"),
+    "player.history_accessible": (
+        "Mở lịch sử nội dung đã đọc trong phiên",
+        "Open content read during this session",
+    ),
+    "player.history_count": (
+        "Mở {count} nội dung gần đây",
+        "Open {count} recent items",
+    ),
+    "player.history_empty": (
+        "Chưa có nội dung đã đọc trong phiên",
+        "No content has been read this session",
+    ),
+    "player.history_clear": ("Xóa lịch sử phiên", "Clear session history"),
+    "player.source.paste": ("Dán nội dung", "Pasted text"),
+    "player.source.book_selection": ("Trong sách", "In-book selection"),
+    "player.source.apple_books": ("Apple Books", "Apple Books"),
+    "player.voice": ("Giọng", "Voice"),
+    "player.voice_accessible": ("Chọn giọng đọc", "Choose a voice"),
+    "player.speed": ("Tốc độ", "Speed"),
+    "player.speed_accessible": ("Chọn tốc độ đọc", "Choose reading speed"),
+    "status.ready": ("Sẵn sàng.", "Ready."),
+    "status.location_accessible": ("Vị trí đọc trong sách", "Reading position in the book"),
+    "permission.open": ("Mở Cài đặt quyền", "Open permission settings"),
+    "permission.open_accessible": (
+        "Mở cài đặt quyền Trợ năng của macOS",
+        "Open macOS Accessibility settings",
+    ),
+    "dialog.open_title": ("Mở sách", "Open a book"),
+    "dialog.open_filter": (
+        "Sách (*.pdf *.epub);;PDF (*.pdf);;EPUB (*.epub)",
+        "Books (*.pdf *.epub);;PDF (*.pdf);;EPUB (*.epub)",
+    ),
+}
+
+
+_RUNTIME_EN: dict[str, str] = {
+    "Mở sách hoặc dán nội dung để bắt đầu.": "Open a book or paste text to begin.",
+    "Không thể mở sách.": "Could not open the book.",
+    "Sách đã được thêm nhưng chưa thể tải lại. Hãy mở lại ứng dụng.": "The book was added but could not be reloaded. Reopen the app.",
+    "Đã thêm sách nhưng chưa thể tải lại.": "Book added but not reloaded.",
+    "Không thể tải thư viện cục bộ. Hãy mở lại ứng dụng.": "Could not load the local library. Reopen the app.",
+    "Không thể tải thư viện cục bộ.": "Could not load the local library.",
+    "Sách đã có trong thư viện; đã mở lại.": "This book is already in the library and has been reopened.",
+    "Đã thêm sách vào thư viện.": "Book added to the library.",
+    "Không thể tải sách từ thư viện cục bộ. Hãy mở lại ứng dụng.": "Could not load the book from the local library. Reopen the app.",
+    "Không tìm thấy sách trong thư viện.": "The book was not found in the library.",
+    "Sách không có đoạn văn có thể đọc.": "This book has no readable paragraphs.",
+    "Sẵn sàng đọc.": "Ready to read.",
+    "Không thể lưu vị trí đọc. Sách vẫn có thể mở lại.": "Could not save the reading position. The book can still be reopened.",
+    "Không thể lưu vị trí đọc.": "Could not save the reading position.",
+    "Không thể lưu tùy chọn đọc. Sách vẫn có thể mở lại.": "Could not save reading preferences. The book can still be reopened.",
+    "Không thể lưu tùy chọn đọc.": "Could not save reading preferences.",
+    "Hãy mở một cuốn sách trước khi bấm đọc.": "Open a book before pressing Read.",
+    "Hãy chọn một phần nội dung để đọc.": "Select some text to read.",
+    "Nội dung dán vượt quá giới hạn 100.000 ký tự.": "Pasted text exceeds the 100,000-character limit.",
+    "Hãy dán nội dung trước khi bấm đọc.": "Paste some text before pressing Read.",
+    "Phần đã chọn vượt quá giới hạn 100.000 ký tự.": "The selection exceeds the 100,000-character limit.",
+    "Không thể đọc phần đã chọn.": "Could not read the selection.",
+    "Không tìm thấy nội dung đang chọn trong Apple Books.": "No selected text was found in Apple Books.",
+    "ReadEase cần quyền Trợ năng để gửi lệnh sao chép tới Apple Books. Hãy bật ReadEase trong Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng rồi thử lại.": "ReadEase needs Accessibility permission to send the copy command to Apple Books. Enable ReadEase in System Settings > Privacy & Security > Accessibility, then try again.",
+    "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple Books rồi nhấn Control-Option-Command-R.": "No selected text was found. Select text in Apple Books, then press Control-Option-Command-R.",
+    "Phím tắt đọc nhanh hiện chỉ hỗ trợ Apple Books.": "The read-selection shortcut currently supports Apple Books only.",
+    "ReadEase không thể xác nhận đã khôi phục clipboard nên đã dừng trước khi đọc.": "ReadEase could not confirm that the clipboard was restored, so it stopped before reading.",
+    "Phím tắt đọc từ Apple Books chưa sẵn sàng. Hãy mở lại ReadEase.": "The Apple Books shortcut is not ready. Reopen ReadEase.",
+    "Phần nội dung đã chọn vượt quá 100.000 ký tự.": "The selected text exceeds 100,000 characters.",
+    "Nội dung này không còn trong lịch sử phiên.": "This item is no longer in session history.",
+    "Đang chuẩn bị giọng đọc…": "Preparing voice data…",
+    "Đang đọc": "Reading",
+    "Đã tạm dừng": "Paused",
+    "Không thể tiếp tục đọc.": "Could not continue reading.",
+    "Đang kiểm tra giọng đọc…": "Checking the voice…",
+    "Đang tải mô hình…": "Downloading the model…",
+    "Đang kiểm tra…": "Checking…",
+    "Sẵn sàng.": "Ready.",
+    "Mô hình đọc tiếng Việt đã sẵn sàng.": "The Vietnamese voice model is ready.",
+    "Đang tải mô hình đọc tiếng Việt lần đầu…": "Downloading the Vietnamese voice model for the first time…",
+    "Đang tải bộ giải mã âm thanh…": "Downloading the audio decoder…",
+    "Đang kiểm tra bộ đọc tiếng Việt…": "Checking the Vietnamese voice engine…",
+    "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại.": "Could not prepare the Vietnamese voice model. Check your connection and try again.",
+    "Không thể chuẩn bị giọng đọc. Hãy kiểm tra kết nối mạng và Thử lại.": "Could not prepare the voice. Check your connection and try again.",
+    "Vui lòng chọn tệp PDF hoặc EPUB.": "Choose a PDF or EPUB file.",
+    "Không tìm thấy tệp sách đã chọn.": "The selected book file was not found.",
+    "Không thể kiểm tra tệp sách đã chọn.": "Could not inspect the selected book file.",
+    "Tệp sách vượt giới hạn dung lượng 200 MiB.": "The book exceeds the 200 MiB size limit.",
+    "Không thể chuẩn bị thư viện để sao chép sách.": "Could not prepare the library to copy the book.",
+    "Không thể cập nhật thư viện cục bộ; sách chưa được thêm.": "Could not update the local library; the book was not added.",
+    "Không thể sao chép sách vào thư viện cục bộ.": "Could not copy the book into the local library.",
+    "PDF có tiêu đề quá dài.": "The PDF title is too long.",
+    "PDF chứa quá nhiều khối văn bản.": "The PDF contains too many text blocks.",
+    "PDF có nội dung đọc quá dài.": "The PDF contains too much readable text.",
+    "PDF được bảo vệ bằng mật khẩu nên không thể đọc.": "Password-protected PDFs are not supported.",
+    "Không thể đọc tệp PDF bị hỏng.": "The damaged PDF could not be read.",
+    "PDF có số trang không hợp lệ hoặc vượt giới hạn.": "The PDF page count is invalid or exceeds the limit.",
+    "PDF không có lớp văn bản; bản MVP chưa hỗ trợ OCR.": "This PDF has no text layer; OCR is not supported yet.",
+    "EPUB được mã hóa nên không thể đọc.": "Encrypted EPUB files are not supported.",
+    "EPUB không có nội dung đọc trong spine.": "The EPUB spine contains no readable content.",
+    "Không thể đọc tệp EPUB bị hỏng.": "The damaged EPUB could not be read.",
+    "Không thể đọc hình ảnh trong EPUB.": "An EPUB image could not be read.",
+    "Sẵn sàng tải giọng đọc.": "Ready to download voice data.",
+    "Đang dừng sau bước tải hiện tại…": "Stopping after the current download step…",
+    "Đã hủy chuẩn bị giọng đọc.": "Voice setup was cancelled.",
+    "EPUB chứa đường dẫn không an toàn.": "The EPUB contains an unsafe path.",
+    "EPUB chứa quá nhiều thành phần.": "The EPUB contains too many entries.",
+    "EPUB không có mục lục ZIP hợp lệ.": "The EPUB has no valid ZIP directory.",
+    "EPUB có mục lục ZIP không nhất quán.": "The EPUB ZIP directory is inconsistent.",
+    "EPUB nhiều phần không được hỗ trợ.": "Multi-part EPUB archives are not supported.",
+    "EPUB ZIP64 không được hỗ trợ trong bản MVP.": "ZIP64 EPUB files are not supported yet.",
+    "Mục lục EPUB vượt giới hạn an toàn.": "The EPUB directory exceeds the safety limit.",
+    "Mục lục EPUB không hợp lệ.": "The EPUB directory is invalid.",
+    "Mục lục EPUB khai báo số thành phần không nhất quán.": "The EPUB directory declares an inconsistent entry count.",
+    "Một thành phần EPUB vượt giới hạn an toàn.": "An EPUB entry exceeds the safety limit.",
+    "EPUB chứa đường dẫn nội dung không an toàn.": "The EPUB contains an unsafe content path.",
+    "EPUB có tiêu đề quá dài.": "The EPUB title is too long.",
+    "EPUB chứa mục tệp trùng lặp.": "The EPUB contains duplicate file entries.",
+    "EPUB vượt giới hạn dung lượng an toàn.": "The EPUB exceeds the safe size limit.",
+    "Một thành phần EPUB bị hỏng.": "An EPUB entry is damaged.",
+    "EPUB chứa đường dẫn nội dung không hợp lệ.": "The EPUB contains an invalid content path.",
+    "EPUB thiếu đường dẫn package.": "The EPUB package path is missing.",
+    "EPUB manifest chứa quá nhiều mục.": "The EPUB manifest contains too many items.",
+    "EPUB spine chứa quá nhiều mục đọc.": "The EPUB spine contains too many reading items.",
+    "EPUB tạo ra quá nhiều chương.": "The EPUB produces too many chapters.",
+    "EPUB tạo ra quá nhiều đoạn đọc.": "The EPUB produces too many readable paragraphs.",
+    "EPUB có nội dung đọc quá dài.": "The EPUB contains too much readable text.",
+    "EPUB chứa đường dẫn hình ảnh từ xa.": "The EPUB contains a remote image path.",
+    "Nội dung hình ảnh EPUB không còn khớp với bản sách đã nhập.": "The EPUB image content no longer matches the imported book.",
+    "Chương EPUB chứa quá nhiều hình ảnh.": "The EPUB chapter contains too many images.",
+    "EPUB chứa đường dẫn hình ảnh không hợp lệ.": "The EPUB contains an invalid image path.",
+    "EPUB tạo ra quá nhiều hình ảnh đọc.": "The EPUB produces too many readable images.",
+    "Nguồn EPUB được quản lý không còn an toàn.": "The managed EPUB source is no longer safe.",
+    "Spine EPUB không còn khớp bản sách đã nhập.": "The EPUB spine no longer matches the imported book.",
+    "Nguồn EPUB được quản lý đã thay đổi.": "The managed EPUB source has changed.",
+    "Nguồn EPUB không khớp bản sách đã nhập.": "The EPUB source does not match the imported book.",
+    "Không thể dọn dẹp bản sao nhập tạm trong thư viện.": "Could not clean up the temporary imported copy in the library.",
+    "Thư viện có bản sao chưa hoàn tất; cần sửa thư viện trước khi nhập lại.": "The library contains an incomplete copy; repair the library before importing again.",
+    "Không thể dọn dẹp bản sao nhập tạm; lần nhập sau sẽ thử lại.": "Could not clean up the temporary imported copy; the next import will try again.",
+    "Không thể khóa thư viện cục bộ để nhập sách.": "Could not lock the local library for import.",
+    "Không thể đóng tệp khóa import sau lỗi chính.": "Could not close the import lock file after the primary error.",
+}
+
+
+_RUNTIME_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"^Chương (\d+)/(\d+) · Đoạn (\d+)/(\d+)$"),
+        r"Chapter \1/\2 · Paragraph \3/\4",
+    ),
+    (re.compile(r"^Đang chuẩn bị đoạn (\d+)/(\d+)…$"), r"Preparing part \1/\2…"),
+    (re.compile(r"^Đang đọc đoạn (\d+)/(\d+)$"), r"Reading part \1/\2"),
+    (re.compile(r"^Đã tạm dừng · Đoạn (\d+)/(\d+)$"), r"Paused · Part \1/\2"),
+    (re.compile(r"^(.+) có XML quá phức tạp\.$"), r"\1 contains XML that is too complex."),
+    (re.compile(r"^(.+) chứa khai báo XML không an toàn\.$"), r"\1 contains unsafe XML declarations."),
+    (re.compile(r"^(.+) không phải XML hợp lệ\.$"), r"\1 is not valid XML."),
+    (re.compile(r"^EPUB thiếu thành phần bắt buộc: (.+)\.$"), r"The EPUB is missing a required component: \1."),
+    (re.compile(r"^(.+) - Nam Bộ$"), r"\1 - Southern Vietnamese"),
+    (re.compile(r"^(.+) - Bắc Bộ$"), r"\1 - Northern Vietnamese"),
+)
+
+
+class Localizer:
+    def __init__(self, language: Language = Language.VIETNAMESE):
+        self._language = Language.parse(language)
+
+    @property
+    def language(self) -> Language:
+        return self._language
+
+    def set_language(self, language: Language | str) -> None:
+        self._language = Language.parse(language)
+
+    def text(self, key: str, **values: object) -> str:
+        vietnamese, english = _TEXT[key]
+        template = english if self._language is Language.ENGLISH else vietnamese
+        return template.format(**values)
+
+    def runtime(self, message: str | None) -> str:
+        if message is None or self._language is Language.VIETNAMESE:
+            return message or ""
+        translated = _RUNTIME_EN.get(message)
+        if translated is not None:
+            return translated
+        for pattern, replacement in _RUNTIME_PATTERNS:
+            if pattern.fullmatch(message):
+                return pattern.sub(replacement, message)
+        return message
+
+
+class LanguagePreferenceStore:
+    """Persist one non-sensitive UI preference beside other local app data."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+
+    def load(self) -> Language:
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            return Language.VIETNAMESE
+        if not isinstance(payload, dict):
+            return Language.VIETNAMESE
+        return Language.parse(payload.get("language"))
+
+    def save(self, language: Language | str) -> bool:
+        selected = Language.parse(language)
+        temp_path: Path | None = None
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            descriptor, raw_path = tempfile.mkstemp(
+                prefix=f".{self.path.name}.",
+                dir=self.path.parent,
+            )
+            temp_path = Path(raw_path)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as destination:
+                json.dump({"language": selected.value}, destination)
+                destination.write("\n")
+                destination.flush()
+                os.fsync(destination.fileno())
+            temp_path.chmod(0o600)
+            os.replace(temp_path, self.path)
+            self.path.chmod(0o600)
+            return True
+        except OSError:
+            if temp_path is not None:
+                try:
+                    temp_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            return False

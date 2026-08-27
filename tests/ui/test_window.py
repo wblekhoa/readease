@@ -14,6 +14,7 @@ from PySide6.QtGui import QAccessible, QTextCursor, QTextFormat
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QLabel,
     QListWidget,
     QPlainTextEdit,
@@ -32,6 +33,7 @@ from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
 from vieneu_reader.storage.repository import LibraryRepository
 from vieneu_reader.ui.controller import ExternalReadingState, ReaderController
+from vieneu_reader.ui.i18n import Language, LanguagePreferenceStore
 from vieneu_reader.ui.window import ReaderWindow
 
 from tests.importers.epub_fixture import make_epub, make_png
@@ -97,12 +99,74 @@ class ReaderWindowTests(unittest.TestCase):
         self.repository.close()
         self.temporary_directory.cleanup()
 
-    def make_window(self, model_setup: FakeModelSetup) -> ReaderWindow:
-        window = ReaderWindow(self.controller, model_setup)
+    def make_window(
+        self,
+        model_setup: FakeModelSetup,
+        *,
+        language_store: LanguagePreferenceStore | None = None,
+    ) -> ReaderWindow:
+        window = ReaderWindow(
+            self.controller,
+            model_setup,
+            language_store=language_store,
+        )
         self.windows.append(window)
         window.show()
         self.application.processEvents()
         return window
+
+    def test_language_switch_updates_all_core_views_and_persists(self) -> None:
+        store = LanguagePreferenceStore(self.paths.root / "settings.json")
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            language_store=store,
+        )
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        setup_language_combo = window.findChild(QComboBox, "setupLanguageCombo")
+
+        self.assertIsNotNone(language_combo)
+        self.assertIsNotNone(setup_language_combo)
+        english_index = language_combo.findData(Language.ENGLISH.value)
+        self.assertGreaterEqual(english_index, 0)
+
+        language_combo.setCurrentIndex(english_index)
+        self.application.processEvents()
+
+        self.assertEqual(store.load(), Language.ENGLISH)
+        self.assertEqual(
+            [
+                window.feature_navigation.tabText(index)
+                for index in range(window.feature_navigation.count())
+            ],
+            ["Library", "Paste text", "Read books"],
+        )
+        self.assertEqual(window.library_view.title_label.text(), "Book library")
+        self.assertEqual(window.paste_text_view.title_label.text(), "Paste text to read")
+        self.assertEqual(
+            window.external_reading_view.title_label.text(),
+            "Read from Apple Books",
+        )
+        self.assertEqual(window.previous_button.text(), "Previous")
+        self.assertEqual(window.play_button.text(), "Read")
+        self.assertEqual(window.stop_button.text(), "Stop")
+        self.assertEqual(window.next_button.text(), "Next")
+        self.assertEqual(window.session_history_button.text(), "Session history")
+        self.assertEqual(window.model_setup_title.text(), "Set up Vietnamese voice")
+        self.assertEqual(
+            [
+                window.voice_combo.itemText(index)
+                for index in range(window.voice_combo.count())
+            ],
+            ["Adam - Southern Vietnamese", "Trúc Ly - Northern Vietnamese"],
+        )
+        self.assertEqual(setup_language_combo.currentData(), Language.ENGLISH.value)
+
+        restored = self.make_window(
+            FakeModelSetup(ready=True),
+            language_store=store,
+        )
+        self.assertEqual(restored.language_combo.currentData(), Language.ENGLISH.value)
+        self.assertEqual(restored.feature_navigation.tabText(0), "Library")
 
     def test_unprepared_model_shows_plain_language_setup_before_reader(self) -> None:
         model_setup = FakeModelSetup(ready=False)
@@ -119,6 +183,24 @@ class ReaderWindowTests(unittest.TestCase):
 
         self.assertEqual(model_setup.start_count, 1)
         self.assertEqual(stack.currentWidget().objectName(), "readerPage")
+
+    def test_language_switch_preserves_retry_state_after_model_failure(self) -> None:
+        model_setup = FakeModelSetup(ready=False)
+        window = self.make_window(model_setup)
+
+        model_setup.failed.emit(
+            "Không thể chuẩn bị giọng đọc. "
+            "Hãy kiểm tra kết nối mạng và Thử lại."
+        )
+        english_index = window.language_combo.findData(Language.ENGLISH.value)
+        window.language_combo.setCurrentIndex(english_index)
+        self.application.processEvents()
+
+        self.assertEqual(window.prepare_model_button.text(), "Try again")
+        self.assertEqual(
+            window.model_status.text(),
+            "Could not prepare the voice. Check your connection and try again.",
+        )
 
     def test_ready_empty_library_offers_book_and_pasted_text_actions(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))

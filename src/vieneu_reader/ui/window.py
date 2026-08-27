@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QMimeData, Qt
+from PySide6.QtCore import QMimeData, QSignalBlocker, Qt
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -42,6 +42,7 @@ from vieneu_reader.playback.coordinator import PlaybackState
 
 from .controller import ReaderController, ReaderViewState
 from .external_reading_view import ExternalReadingView
+from .i18n import Language, LanguagePreferenceStore, Localizer
 from .library_view import LibraryView
 from .paste_view import PasteTextView
 
@@ -54,17 +55,26 @@ class ReaderWindow(QMainWindow):
         parent: QWidget | None = None,
         *,
         open_accessibility_settings: Callable[[], object] | None = None,
+        localizer: Localizer | None = None,
+        language_store: LanguagePreferenceStore | None = None,
     ):
         super().__init__(parent)
         self._controller = controller
         self._model_setup = model_setup
+        self._language_store = language_store
+        self._localizer = localizer or Localizer(
+            language_store.load() if language_store is not None else Language.VIETNAMESE
+        )
         self._open_accessibility_settings = (
             open_accessibility_settings or open_accessibility_settings_pane
         )
         self._model_ready = False
+        self._model_setup_failed = False
         self._rendering = False
         self._workspace_initialized = False
         self._rendered_session_history = None
+        self._model_status_source = "Sẵn sàng tải giọng đọc."
+        self._available_voices: tuple[Any, ...] = ()
 
         self.setWindowTitle(PRODUCT_DISPLAY_NAME)
         self.setMinimumSize(900, 600)
@@ -80,6 +90,7 @@ class ReaderWindow(QMainWindow):
         self.setCentralWidget(self.root_stack)
 
         self._connect_actions()
+        self._retranslate()
         self._model_setup.progressChanged.connect(self._on_model_progress)
         self._model_setup.ready.connect(self._on_model_ready)
         self._model_setup.failed.connect(self._on_model_failed)
@@ -99,18 +110,15 @@ class ReaderWindow(QMainWindow):
         layout.setSpacing(16)
         layout.addStretch(1)
 
-        title = QLabel("Chuẩn bị giọng đọc tiếng Việt")
-        title_font = QFont(title.font())
+        self.model_setup_title = QLabel()
+        title_font = QFont(self.model_setup_title.font())
         title_font.setPointSize(title_font.pointSize() + 8)
         title_font.setBold(True)
-        title.setFont(title_font)
-        title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        layout.addWidget(title)
+        self.model_setup_title.setFont(title_font)
+        self.model_setup_title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.model_setup_title)
 
-        self.model_setup_description = QLabel(
-            "ReadEase cần tải khoảng 330 MB dữ liệu giọng đọc ở lần đầu. "
-            "Sau đó bạn có thể đọc sách hoàn toàn offline và không cần API key."
-        )
+        self.model_setup_description = QLabel()
         self.model_setup_description.setWordWrap(True)
         self.model_setup_description.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.model_setup_description.setMaximumWidth(620)
@@ -118,6 +126,15 @@ class ReaderWindow(QMainWindow):
             self.model_setup_description,
             alignment=Qt.AlignmentFlag.AlignHCenter,
         )
+
+        language_row = QHBoxLayout()
+        language_row.addStretch(1)
+        self.setup_language_label = QLabel()
+        language_row.addWidget(self.setup_language_label)
+        self.setup_language_combo = self._build_language_combo("setupLanguageCombo")
+        language_row.addWidget(self.setup_language_combo)
+        language_row.addStretch(1)
+        layout.addLayout(language_row)
 
         self.model_progress = QProgressBar()
         self.model_progress.setObjectName("modelProgress")
@@ -127,19 +144,17 @@ class ReaderWindow(QMainWindow):
         self.model_progress.setMaximumWidth(520)
         layout.addWidget(self.model_progress, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.model_status = QLabel("Sẵn sàng tải giọng đọc.")
+        self.model_status = QLabel()
         self.model_status.setWordWrap(True)
         self.model_status.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.model_status)
 
         actions = QHBoxLayout()
         actions.addStretch(1)
-        self.prepare_model_button = QPushButton("Chuẩn bị giọng đọc")
+        self.prepare_model_button = QPushButton()
         self.prepare_model_button.setObjectName("prepareModelButton")
-        self.prepare_model_button.setAccessibleName("Chuẩn bị giọng đọc tiếng Việt")
-        self.cancel_model_button = QPushButton("Hủy")
+        self.cancel_model_button = QPushButton()
         self.cancel_model_button.setObjectName("cancelModelButton")
-        self.cancel_model_button.setAccessibleName("Hủy chuẩn bị giọng đọc")
         self.cancel_model_button.hide()
         actions.addWidget(self.prepare_model_button)
         actions.addWidget(self.cancel_model_button)
@@ -164,29 +179,30 @@ class ReaderWindow(QMainWindow):
         self.brand_title.setFont(title_font)
         header.addWidget(self.brand_title)
         header.addStretch(1)
-        self.toolbar_open_button = QPushButton("Mở PDF hoặc EPUB")
+        self.toolbar_open_button = QPushButton()
         self.toolbar_open_button.setObjectName("openBookButton")
-        self.toolbar_open_button.setAccessibleName("Mở thêm sách PDF hoặc EPUB")
         header.addWidget(self.toolbar_open_button)
-        self.toolbar_paste_button = QPushButton("Dán nội dung")
+        self.toolbar_paste_button = QPushButton()
         self.toolbar_paste_button.setObjectName("pasteTextButton")
-        self.toolbar_paste_button.setAccessibleName("Dán nội dung để đọc")
         header.addWidget(self.toolbar_paste_button)
+        self.language_label = QLabel()
+        header.addWidget(self.language_label)
+        self.language_combo = self._build_language_combo("languageCombo")
+        header.addWidget(self.language_combo)
         root.addLayout(header)
 
         self.feature_navigation = QTabBar()
         self.feature_navigation.setObjectName("featureNavigation")
-        self.feature_navigation.setAccessibleName("Chọn tính năng ReadEase")
         self.feature_navigation.setExpanding(False)
-        for label in ("Thư viện", "Dán nội dung", "Đọc sách"):
-            self.feature_navigation.addTab(label)
+        for _index in range(3):
+            self.feature_navigation.addTab("")
         root.addWidget(self.feature_navigation)
 
         self.feature_stack = QStackedWidget()
         self.feature_stack.setObjectName("featureStack")
-        self.library_view = LibraryView()
-        self.paste_text_view = PasteTextView()
-        self.external_reading_view = ExternalReadingView()
+        self.library_view = LibraryView(localizer=self._localizer)
+        self.paste_text_view = PasteTextView(localizer=self._localizer)
+        self.external_reading_view = ExternalReadingView(localizer=self._localizer)
         for feature_view in (
             self.library_view,
             self.paste_text_view,
@@ -202,23 +218,12 @@ class ReaderWindow(QMainWindow):
         player_layout.setSpacing(8)
 
         self.previous_button = QToolButton()
-        self.previous_button.setText("Trước")
-        self.previous_button.setAccessibleName("Đọc đoạn trước")
-        self.play_button = QPushButton("Đọc")
+        self.play_button = QPushButton()
         self.play_button.setObjectName("playButton")
-        self.play_button.setAccessibleName("Bắt đầu đọc hoặc tạm dừng")
         self.stop_button = QToolButton()
-        self.stop_button.setText("Dừng")
-        self.stop_button.setAccessibleName("Dừng đọc")
         self.next_button = QToolButton()
-        self.next_button.setText("Sau")
-        self.next_button.setAccessibleName("Đọc đoạn tiếp theo")
         self.session_history_button = QToolButton()
         self.session_history_button.setObjectName("sessionHistoryButton")
-        self.session_history_button.setText("Lịch sử phiên")
-        self.session_history_button.setAccessibleName(
-            "Mở lịch sử nội dung đã đọc trong phiên"
-        )
         self.session_history_button.setPopupMode(
             QToolButton.ToolButtonPopupMode.InstantPopup
         )
@@ -236,23 +241,21 @@ class ReaderWindow(QMainWindow):
             player_layout.addWidget(control)
 
         player_layout.addStretch(1)
-        voice_label = QLabel("Giọng")
-        player_layout.addWidget(voice_label)
+        self.voice_label = QLabel()
+        player_layout.addWidget(self.voice_label)
         self.voice_combo = QComboBox()
-        self.voice_combo.setAccessibleName("Chọn giọng đọc")
         self.voice_combo.setMinimumWidth(170)
         player_layout.addWidget(self.voice_combo)
-        rate_label = QLabel("Tốc độ")
-        player_layout.addWidget(rate_label)
+        self.rate_label = QLabel()
+        player_layout.addWidget(self.rate_label)
         self.rate_combo = QComboBox()
-        self.rate_combo.setAccessibleName("Chọn tốc độ đọc")
         for rate in (0.5, 0.75, 1.0, 1.25, 1.5, 2.0):
             self.rate_combo.addItem(f"{rate:g}×", rate)
         player_layout.addWidget(self.rate_combo)
         root.addWidget(player)
 
         status_row = QHBoxLayout()
-        self.status_label = QLabel("Sẵn sàng.")
+        self.status_label = QLabel()
         self.status_label.setObjectName("statusLabel")
         self.status_label.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -261,7 +264,6 @@ class ReaderWindow(QMainWindow):
         status_row.addWidget(self.status_label)
         self.reading_location_label = QLabel()
         self.reading_location_label.setObjectName("readingLocationLabel")
-        self.reading_location_label.setAccessibleName("Vị trí đọc trong sách")
         status_row.addWidget(self.reading_location_label)
         self.error_label = QLabel()
         self.error_label.setObjectName("errorLabel")
@@ -274,17 +276,22 @@ class ReaderWindow(QMainWindow):
         self.error_label.setPalette(error_palette)
         self.error_label.hide()
         status_row.addWidget(self.error_label, 2)
-        self.open_accessibility_settings_button = QPushButton("Mở Cài đặt quyền")
+        self.open_accessibility_settings_button = QPushButton()
         self.open_accessibility_settings_button.setObjectName(
             "openAccessibilitySettingsButton"
-        )
-        self.open_accessibility_settings_button.setAccessibleName(
-            "Mở cài đặt quyền Trợ năng của macOS"
         )
         self.open_accessibility_settings_button.hide()
         status_row.addWidget(self.open_accessibility_settings_button)
         root.addLayout(status_row)
         return page
+
+    @staticmethod
+    def _build_language_combo(object_name: str) -> QComboBox:
+        combo = QComboBox()
+        combo.setObjectName(object_name)
+        combo.addItem("Tiếng Việt", Language.VIETNAMESE.value)
+        combo.addItem("English", Language.ENGLISH.value)
+        return combo
 
     def _connect_actions(self) -> None:
         self.prepare_model_button.clicked.connect(self._start_model_setup)
@@ -321,53 +328,149 @@ class ReaderWindow(QMainWindow):
         )
         self.voice_combo.currentIndexChanged.connect(self._voice_changed)
         self.rate_combo.currentIndexChanged.connect(self._rate_changed)
+        self.language_combo.currentIndexChanged.connect(self._language_changed)
+        self.setup_language_combo.currentIndexChanged.connect(
+            self._language_changed
+        )
 
-        open_action = QAction("Mở sách", self)
-        open_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_action.triggered.connect(self.open_book_dialog)
-        self.addAction(open_action)
+        self.open_action = QAction(self)
+        self.open_action.setShortcut(QKeySequence.StandardKey.Open)
+        self.open_action.triggered.connect(self.open_book_dialog)
+        self.addAction(self.open_action)
+
+    def _language_changed(self, index: int) -> None:
+        combo = self.sender()
+        if not isinstance(combo, QComboBox) or index < 0:
+            return
+        language = Language.parse(combo.itemData(index))
+        if language is self._localizer.language:
+            return
+        self._localizer.set_language(language)
+        if self._language_store is not None:
+            self._language_store.save(language)
+        self._rendered_session_history = None
+        self._retranslate()
+
+    def _sync_language_controls(self) -> None:
+        for combo in (self.language_combo, self.setup_language_combo):
+            blocker = QSignalBlocker(combo)
+            index = combo.findData(self._localizer.language.value)
+            if index >= 0:
+                combo.setCurrentIndex(index)
+            del blocker
+
+    def _retranslate(self) -> None:
+        text = self._localizer.text
+        self._sync_language_controls()
+        for label in (self.language_label, self.setup_language_label):
+            label.setText(text("language.label"))
+        for combo in (self.language_combo, self.setup_language_combo):
+            combo.setAccessibleName(text("language.accessible"))
+        self.model_setup_title.setText(text("model.title"))
+        self.model_setup_description.setText(text("model.description"))
+        prepare_key = "model.retry" if self._model_setup_failed else "model.prepare"
+        self.prepare_model_button.setText(text(prepare_key))
+        self.prepare_model_button.setAccessibleName(
+            text("model.prepare_accessible")
+        )
+        self.cancel_model_button.setText(text("model.cancel"))
+        self.cancel_model_button.setAccessibleName(text("model.cancel_accessible"))
+        self._set_model_status(self._model_status_source)
+        self.toolbar_open_button.setText(text("toolbar.open"))
+        self.toolbar_open_button.setAccessibleName(text("toolbar.open_accessible"))
+        self.toolbar_paste_button.setText(text("toolbar.paste"))
+        self.toolbar_paste_button.setAccessibleName(text("toolbar.paste_accessible"))
+        self.feature_navigation.setAccessibleName(text("nav.accessible"))
+        for index, key in enumerate(("nav.library", "nav.paste", "nav.external")):
+            self.feature_navigation.setTabText(index, text(key))
+        self.library_view.retranslate()
+        self.paste_text_view.retranslate()
+        self.external_reading_view.retranslate()
+        self.previous_button.setText(text("player.previous"))
+        self.previous_button.setAccessibleName(text("player.previous_accessible"))
+        self.play_button.setAccessibleName(text("player.play_accessible"))
+        self.stop_button.setText(text("player.stop"))
+        self.stop_button.setAccessibleName(text("player.stop_accessible"))
+        self.next_button.setText(text("player.next"))
+        self.next_button.setAccessibleName(text("player.next_accessible"))
+        self.session_history_button.setText(text("player.history"))
+        self.session_history_button.setAccessibleName(
+            text("player.history_accessible")
+        )
+        self.voice_label.setText(text("player.voice"))
+        self.voice_combo.setAccessibleName(text("player.voice_accessible"))
+        self._populate_voice_combo()
+        self.rate_label.setText(text("player.speed"))
+        self.rate_combo.setAccessibleName(text("player.speed_accessible"))
+        self.reading_location_label.setAccessibleName(
+            text("status.location_accessible")
+        )
+        self.open_accessibility_settings_button.setText(text("permission.open"))
+        self.open_accessibility_settings_button.setAccessibleName(
+            text("permission.open_accessible")
+        )
+        self.open_action.setText(text("dialog.open_title"))
+        self._render_state(self._controller.state)
+
+    def _set_model_status(self, source: str) -> None:
+        self._model_status_source = source
+        self.model_status.setText(self._localizer.runtime(source))
 
     def _start_model_setup(self) -> None:
+        self._model_setup_failed = False
         self.prepare_model_button.setEnabled(False)
         self.cancel_model_button.show()
         self.model_progress.setRange(0, 100)
-        self.model_status.setText("Đang chuẩn bị giọng đọc…")
+        self._set_model_status("Đang chuẩn bị giọng đọc…")
         self._model_setup.start()
 
     def _cancel_model_setup(self) -> None:
         self.cancel_model_button.setEnabled(False)
-        self.model_status.setText("Đang dừng sau bước tải hiện tại…")
+        self._set_model_status("Đang dừng sau bước tải hiện tại…")
         self._model_setup.cancel()
 
     def _on_model_progress(self, progress: float, message: str) -> None:
         self.model_progress.setValue(round(max(0.0, min(progress, 1.0)) * 100))
-        self.model_status.setText(message)
+        self._set_model_status(message)
 
     def _on_model_ready(self, voices: object) -> None:
         self._model_ready = True
-        self.voice_combo.blockSignals(True)
-        self.voice_combo.clear()
-        for voice in voices:
-            label = voice.label.replace("—", "-").replace("–", "-")
-            self.voice_combo.addItem(label, voice.id)
-        self.voice_combo.blockSignals(False)
+        self._model_setup_failed = False
+        self._available_voices = tuple(voices)
+        self._populate_voice_combo()
         self.root_stack.setCurrentWidget(self.reader_page)
         self._render_state(self._controller.state)
 
+    def _populate_voice_combo(self) -> None:
+        selected_voice_id = self.voice_combo.currentData()
+        if selected_voice_id is None:
+            selected_voice_id = self._controller.state.voice_id
+        blocker = QSignalBlocker(self.voice_combo)
+        self.voice_combo.clear()
+        for voice in self._available_voices:
+            label = voice.label.replace("—", "-").replace("–", "-")
+            self.voice_combo.addItem(self._localizer.runtime(label), voice.id)
+        index = self.voice_combo.findData(selected_voice_id)
+        if index >= 0:
+            self.voice_combo.setCurrentIndex(index)
+        del blocker
+
     def _on_model_failed(self, message: str) -> None:
         self._model_ready = False
-        self.prepare_model_button.setText("Thử lại")
+        self._model_setup_failed = True
+        self.prepare_model_button.setText(self._localizer.text("model.retry"))
         self.prepare_model_button.setEnabled(True)
         self.cancel_model_button.setEnabled(True)
         self.cancel_model_button.hide()
-        self.model_status.setText(message)
+        self._set_model_status(message)
 
     def _on_model_cancelled(self) -> None:
         self._model_ready = False
+        self._model_setup_failed = False
         self.prepare_model_button.setEnabled(True)
         self.cancel_model_button.setEnabled(True)
         self.cancel_model_button.hide()
-        self.model_status.setText("Đã hủy chuẩn bị giọng đọc.")
+        self._set_model_status("Đã hủy chuẩn bị giọng đọc.")
 
     def _render_state(self, state: ReaderViewState) -> None:
         self._rendering = True
@@ -407,9 +510,9 @@ class ReaderWindow(QMainWindow):
             )
             self.voice_combo.setEnabled(self._model_ready)
             self.rate_combo.setEnabled(self._model_ready)
-            self.status_label.setText(state.status)
+            self.status_label.setText(self._localizer.runtime(state.status))
             self._render_reading_location(state)
-            self.error_label.setText(state.error or "")
+            self.error_label.setText(self._localizer.runtime(state.error))
             self._render_contextual_status(state)
         finally:
             self._rendering = False
@@ -440,11 +543,11 @@ class ReaderWindow(QMainWindow):
         self.next_button.setEnabled(can_navigate)
         self.stop_button.setEnabled(state.playback_state is not PlaybackState.IDLE)
         self.play_button.setText(
-            "Tạm dừng"
+            self._localizer.text("player.pause")
             if state.playback_state is PlaybackState.PLAYING
-            else "Tiếp tục"
+            else self._localizer.text("player.resume")
             if state.playback_state is PlaybackState.PAUSED
-            else "Đọc"
+            else self._localizer.text("player.play")
         )
 
     def _render_reading_location(self, state: ReaderViewState) -> None:
@@ -452,7 +555,9 @@ class ReaderWindow(QMainWindow):
             self.feature_stack.currentWidget() is self.library_view
             and self.library_view.is_reader_visible()
         )
-        self.reading_location_label.setText(state.reading_location)
+        self.reading_location_label.setText(
+            self._localizer.runtime(state.reading_location)
+        )
         self.reading_location_label.setVisible(
             reader_visible and bool(state.reading_location)
         )
@@ -473,9 +578,9 @@ class ReaderWindow(QMainWindow):
         history = state.session_history
         self.session_history_button.setEnabled(self._model_ready and bool(history))
         self.session_history_button.setToolTip(
-            f"Mở {len(history)} nội dung gần đây"
+            self._localizer.text("player.history_count", count=len(history))
             if history
-            else "Chưa có nội dung đã đọc trong phiên"
+            else self._localizer.text("player.history_empty")
         )
         if history == self._rendered_session_history:
             return
@@ -483,7 +588,7 @@ class ReaderWindow(QMainWindow):
         self.session_history_menu.clear()
         for item in history:
             action = self.session_history_menu.addAction(
-                f"{item.source_label} · {item.preview}"
+                f"{self._localizer.text(f'player.source.{item.source}')} · {item.preview}"
             )
             action.setData(item.id)
             action.setToolTip(item.preview)
@@ -495,7 +600,7 @@ class ReaderWindow(QMainWindow):
         if history:
             self.session_history_menu.addSeparator()
             clear_action = self.session_history_menu.addAction(
-                "Xóa lịch sử phiên"
+                self._localizer.text("player.history_clear")
             )
             clear_action.triggered.connect(self._controller.clear_session_history)
 
@@ -574,9 +679,9 @@ class ReaderWindow(QMainWindow):
     def open_book_dialog(self) -> None:
         filename, _selected_filter = QFileDialog.getOpenFileName(
             self,
-            "Mở sách",
+            self._localizer.text("dialog.open_title"),
             str(Path.home()),
-            "Sách (*.pdf *.epub);;PDF (*.pdf);;EPUB (*.epub)",
+            self._localizer.text("dialog.open_filter"),
         )
         if filename:
             self.import_path(Path(filename))

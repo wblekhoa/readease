@@ -208,7 +208,9 @@ class PackagePreparationTests(unittest.TestCase):
 
     def test_user_guide_and_notices_cover_local_first_run(self) -> None:
         guide = (ROOT / "README.md").read_text(encoding="utf-8")
+        english_guide = (ROOT / "README.en.md").read_text(encoding="utf-8")
         install_guide = (ROOT / "INSTALL.md").read_text(encoding="utf-8")
+        english_install_guide = (ROOT / "INSTALL.en.md").read_text(encoding="utf-8")
         notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
 
         for phrase in (
@@ -222,6 +224,7 @@ class PackagePreparationTests(unittest.TestCase):
         ):
             self.assertIn(phrase.casefold(), guide.casefold())
         self.assertIn("INSTALL.md", guide)
+        self.assertIn("README.en.md", guide)
         for phrase in (
             "Open Anyway",
             "Move to Trash",
@@ -230,6 +233,20 @@ class PackagePreparationTests(unittest.TestCase):
             "Install ReadEase.command",
         ):
             self.assertIn(phrase.casefold(), install_guide.casefold())
+        for phrase in (
+            "Download ReadEase",
+            "Apple Silicon",
+            "No API key",
+            "Apple Books",
+            "PolyForm Noncommercial",
+        ):
+            self.assertIn(phrase.casefold(), english_guide.casefold())
+        for phrase in (
+            "Open Anyway",
+            "Move to Trash",
+            "Xcode Command Line Tools",
+        ):
+            self.assertIn(phrase.casefold(), english_install_guide.casefold())
         for dependency in ("VieNeu", "PySide6", "QtPdf", "ONNX Runtime"):
             self.assertIn(dependency, notices)
 

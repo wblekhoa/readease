@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from .book_reader_view import BookReaderView
 from .controller import LibraryItem
+from .i18n import Localizer
 
 
 class _KeyboardActivatingListWidget(QListWidget):
@@ -40,8 +41,14 @@ class LibraryView(QWidget):
     bookActivated = Signal(str)
     surfaceChanged = Signal()
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        localizer: Localizer | None = None,
+    ):
         super().__init__(parent)
+        self._localizer = localizer or Localizer()
         self.setObjectName("libraryView")
 
         layout = QVBoxLayout(self)
@@ -56,40 +63,34 @@ class LibraryView(QWidget):
         shelf_layout.setContentsMargins(24, 20, 24, 20)
         shelf_layout.setSpacing(12)
 
-        title = QLabel("Thư viện sách")
-        title_font = QFont(title.font())
+        self.title_label = QLabel()
+        title_font = QFont(self.title_label.font())
         title_font.setPointSize(title_font.pointSize() + 4)
         title_font.setBold(True)
-        title.setFont(title_font)
-        shelf_layout.addWidget(title)
+        self.title_label.setFont(title_font)
+        shelf_layout.addWidget(self.title_label)
 
-        description = QLabel(
-            "Mở sách EPUB hoặc PDF có lớp văn bản. Sách được giữ cục bộ để bạn "
-            "có thể tiếp tục từ vị trí đang đọc."
-        )
-        description.setWordWrap(True)
-        shelf_layout.addWidget(description)
+        self.description_label = QLabel()
+        self.description_label.setWordWrap(True)
+        shelf_layout.addWidget(self.description_label)
 
         self.library_list = _KeyboardActivatingListWidget()
         self.library_list.setObjectName("libraryList")
-        self.library_list.setAccessibleName("Danh sách sách trong thư viện")
         self.library_list.setAlternatingRowColors(True)
         shelf_layout.addWidget(self.library_list, 1)
 
         actions = QHBoxLayout()
-        self.open_button = QPushButton("Mở PDF hoặc EPUB")
+        self.open_button = QPushButton()
         self.open_button.setObjectName("emptyOpenButton")
-        self.open_button.setAccessibleName("Mở sách PDF hoặc EPUB")
         actions.addWidget(self.open_button)
 
-        self.paste_button = QPushButton("Dán nội dung")
+        self.paste_button = QPushButton()
         self.paste_button.setObjectName("emptyPasteTextButton")
-        self.paste_button.setAccessibleName("Chuyển sang màn hình dán nội dung")
         actions.addWidget(self.paste_button)
         actions.addStretch(1)
         shelf_layout.addLayout(actions)
 
-        self.book_reader_view = BookReaderView()
+        self.book_reader_view = BookReaderView(localizer=self._localizer)
         self.surface_stack.addWidget(self.library_page)
         self.surface_stack.addWidget(self.book_reader_view)
 
@@ -101,6 +102,23 @@ class LibraryView(QWidget):
         self.library_list.itemActivated.connect(self._emit_book_activation)
         self.book_reader_view.backRequested.connect(self.show_library)
         self.surface_stack.currentChanged.connect(self._surface_changed)
+        self.retranslate()
+
+    def retranslate(self) -> None:
+        self.title_label.setText(self._localizer.text("library.title"))
+        self.description_label.setText(self._localizer.text("library.description"))
+        self.library_list.setAccessibleName(
+            self._localizer.text("library.list_accessible")
+        )
+        self.open_button.setText(self._localizer.text("toolbar.open"))
+        self.open_button.setAccessibleName(
+            self._localizer.text("library.open_accessible")
+        )
+        self.paste_button.setText(self._localizer.text("toolbar.paste"))
+        self.paste_button.setAccessibleName(
+            self._localizer.text("library.paste_accessible")
+        )
+        self.book_reader_view.retranslate()
 
     def show_library(self) -> None:
         self.surface_stack.setCurrentWidget(self.library_page)

@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 from .controller import ChapterItem, FigureItem, SegmentItem
+from .i18n import Localizer
 
 
 _MAX_SOURCE_IMAGE_PIXELS = 40_000_000
@@ -64,8 +65,14 @@ class BookReaderView(QWidget):
     segmentActivated = Signal(str)
     readSelectionRequested = Signal(str)
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        localizer: Localizer | None = None,
+    ):
         super().__init__(parent)
+        self._localizer = localizer or Localizer()
         self.setObjectName("bookReaderView")
 
         layout = QVBoxLayout(self)
@@ -74,14 +81,12 @@ class BookReaderView(QWidget):
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        self.back_button = QPushButton("Quay lại thư viện")
+        self.back_button = QPushButton()
         self.back_button.setObjectName("backToLibraryButton")
-        self.back_button.setAccessibleName("Quay lại danh sách sách đã nhập")
         header.addWidget(self.back_button)
 
         self.active_book_title = QLabel()
         self.active_book_title.setObjectName("activeBookTitle")
-        self.active_book_title.setAccessibleName("Tên sách đang đọc")
         title_font = QFont(self.active_book_title.font())
         title_font.setPointSize(title_font.pointSize() + 2)
         title_font.setBold(True)
@@ -100,14 +105,13 @@ class BookReaderView(QWidget):
         chapter_layout = QVBoxLayout(chapters)
         chapter_layout.setContentsMargins(0, 0, 8, 0)
         chapter_layout.setSpacing(8)
-        chapter_label = QLabel("Chương")
-        chapter_font = QFont(chapter_label.font())
+        self.chapter_label = QLabel()
+        chapter_font = QFont(self.chapter_label.font())
         chapter_font.setBold(True)
-        chapter_label.setFont(chapter_font)
-        chapter_layout.addWidget(chapter_label)
+        self.chapter_label.setFont(chapter_font)
+        chapter_layout.addWidget(self.chapter_label)
         self.chapter_list = QListWidget()
         self.chapter_list.setObjectName("chapterList")
-        self.chapter_list.setAccessibleName("Danh sách chương")
         self.chapter_list.setWordWrap(True)
         self.chapter_list.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.chapter_list.setHorizontalScrollBarPolicy(
@@ -123,7 +127,6 @@ class BookReaderView(QWidget):
         content_layout.setSpacing(8)
         self.reader_text = QTextBrowser()
         self.reader_text.setObjectName("readerText")
-        self.reader_text.setAccessibleName("Nội dung sách có thể chọn")
         self.reader_text.setReadOnly(True)
         self.reader_text.document().setDocumentMargin(24)
         self.reader_text.setHorizontalScrollBarPolicy(
@@ -138,11 +141,8 @@ class BookReaderView(QWidget):
         self.reader_text.setFont(reading_font)
         content_layout.addWidget(self.reader_text, 1)
 
-        self.read_selection_button = QPushButton("Đọc phần đã chọn")
+        self.read_selection_button = QPushButton()
         self.read_selection_button.setObjectName("readSelectionButton")
-        self.read_selection_button.setAccessibleName(
-            "Đọc phần nội dung đang chọn trong sách"
-        )
         content_layout.addWidget(
             self.read_selection_button,
             alignment=Qt.AlignmentFlag.AlignRight,
@@ -170,7 +170,38 @@ class BookReaderView(QWidget):
         self.reader_text.selectionChanged.connect(self._update_selection_action)
         self.back_button.clicked.connect(self.backRequested.emit)
         self.read_selection_button.clicked.connect(self._emit_selection_request)
+        self.retranslate()
         self._update_selection_action()
+
+    def retranslate(self) -> None:
+        self.back_button.setText(self._localizer.text("reader.back"))
+        self.back_button.setAccessibleName(
+            self._localizer.text("reader.back_accessible")
+        )
+        self.active_book_title.setAccessibleName(
+            self._localizer.text("reader.book_title_accessible")
+        )
+        self.chapter_label.setText(self._localizer.text("reader.chapters"))
+        self.chapter_list.setAccessibleName(
+            self._localizer.text("reader.chapter_list_accessible")
+        )
+        self.reader_text.setAccessibleName(
+            self._localizer.text("reader.content_accessible")
+        )
+        self.read_selection_button.setText(
+            self._localizer.text("reader.selection")
+        )
+        self.read_selection_button.setAccessibleName(
+            self._localizer.text("reader.selection_accessible")
+        )
+        self._update_figure_accessibility(self._rendered_figures)
+        if self._rendered_segments:
+            self._figure_signature = ()
+            self.render_segments(
+                self._rendered_segments,
+                self._rendered_active_segment_id,
+                self._rendered_figures,
+            )
 
     def set_active_book_title(self, title: str) -> None:
         self.active_book_title.setText(title)
@@ -348,7 +379,10 @@ class BookReaderView(QWidget):
         label_format = QTextCharFormat()
         label_format.setForeground(QColor("#D42525"))
         label_format.setFontWeight(QFont.Weight.DemiBold)
-        cursor.insertText(f"Hình {figure.number}", label_format)
+        cursor.insertText(
+            self._localizer.text("reader.figure", number=figure.number),
+            label_format,
+        )
 
         cursor.insertBlock()
         image, decoded_bytes = self._decode_figure(
@@ -359,7 +393,10 @@ class BookReaderView(QWidget):
         if image is None:
             placeholder = QTextCharFormat()
             placeholder.setForeground(self.palette().color(QPalette.ColorRole.PlaceholderText))
-            cursor.insertText("Không thể hiển thị hình này.", placeholder)
+            cursor.insertText(
+                self._localizer.text("reader.figure_unavailable"),
+                placeholder,
+            )
             return True, 0
 
         document = cursor.document()
@@ -367,14 +404,14 @@ class BookReaderView(QWidget):
         document.addResource(QTextDocument.ResourceType.ImageResource, resource, image)
         image_format = QTextImageFormat()
         image_format.setName(resource.toString())
-        image_alt = f"Hình {figure.number}"
+        image_alt = self._localizer.text("reader.figure", number=figure.number)
         if figure.alt_text and not figure.alt_is_generic:
             image_alt = figure.alt_text
             image_format.setToolTip(figure.alt_text)
         image_format.setProperty(QTextFormat.Property.ImageAltText, image_alt)
         image_format.setProperty(
             QTextFormat.Property.ImageTitle,
-            f"Hình {figure.number}",
+            self._localizer.text("reader.figure", number=figure.number),
         )
         image_format.setWidth(image.width())
         image_format.setHeight(image.height())
@@ -434,20 +471,21 @@ class BookReaderView(QWidget):
     ) -> None:
         if not figures:
             self.reader_text.setAccessibleDescription(
-                "Nội dung sách có thể chọn và đọc bằng ReadEase."
+                self._localizer.text("reader.content_description")
             )
             return
         descriptions = []
         for figure in figures:
-            label = f"Hình {figure.number}"
+            label = self._localizer.text("reader.figure", number=figure.number)
             if figure.alt_text and not figure.alt_is_generic:
                 label = f"{label}: {figure.alt_text}"
             descriptions.append(label)
         self.reader_text.setAccessibleDescription(
-            "Nội dung sách có thể chọn và đọc bằng ReadEase. "
-            f"Chương này có {len(figures)} hình: "
-            + "; ".join(descriptions)
-            + "."
+            self._localizer.text(
+                "reader.figures_description",
+                count=len(figures),
+                figures="; ".join(descriptions),
+            )
         )
 
     def resizeEvent(self, event) -> None:  # noqa: N802

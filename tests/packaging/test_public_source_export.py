@@ -22,7 +22,9 @@ class PublicSourceExportTests(unittest.TestCase):
 
         self.assertEqual(payload["schema_version"], 1)
         self.assertIn("INSTALL.md", payload["root_files"])
+        self.assertIn("INSTALL.en.md", payload["root_files"])
         self.assertIn("Install ReadEase.command", payload["root_files"])
+        self.assertIn("README.en.md", payload["root_files"])
         for directory in ("assets", "legal", "native", "script", "scripts", "src", "tests"):
             self.assertIn(directory, payload["directories"])
         self.assertTrue({"__pycache__", ".git"}.issubset(payload["excluded_names"]))
@@ -57,7 +59,9 @@ class PublicSourceExportTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn("PUBLIC_SOURCE_EXPORT PASS", completed.stdout)
             self.assertTrue((output / "INSTALL.md").is_file())
+            self.assertTrue((output / "INSTALL.en.md").is_file())
             self.assertTrue((output / "README.md").is_file())
+            self.assertTrue((output / "README.en.md").is_file())
             self.assertTrue((output / "uv.lock").is_file())
             command = output / "Install ReadEase.command"
             self.assertTrue(command.is_file())

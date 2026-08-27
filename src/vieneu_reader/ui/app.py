@@ -19,6 +19,7 @@ from vieneu_reader.speech.vieneu import VieNeuSpeechEngine
 from vieneu_reader.storage.repository import LibraryRepository
 
 from .controller import ReaderController
+from .i18n import LanguagePreferenceStore
 from .model_setup import ModelSetupCoordinator
 from .window import ReaderWindow
 
@@ -85,6 +86,7 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         dispatch=dispatcher,
     )
     model_setup = ModelSetupCoordinator(engine)
+    language_store = LanguagePreferenceStore(paths.root / "settings.json")
     selection_shortcut = SelectionShortcutBridge()
     selection_shortcut.selectionReceived.connect(
         controller.read_external_selection
@@ -93,7 +95,11 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         controller.external_selection_failed
     )
     model_setup.ready.connect(lambda _voices: selection_shortcut.start())
-    window = ReaderWindow(controller, model_setup)
+    window = ReaderWindow(
+        controller,
+        model_setup,
+        language_store=language_store,
+    )
     return AppRuntime(
         paths=paths,
         repository=repository,

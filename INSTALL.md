@@ -2,7 +2,7 @@
 
 Hướng dẫn này dành cho người muốn cài ReadEase từ mã nguồn trên máy Mac mà không cần biết lập trình.
 
-> **English version below:** [Jump to English](#english)
+> **English installation guide:** [INSTALL.en.md](INSTALL.en.md)
 
 ## Trước khi bắt đầu
 
