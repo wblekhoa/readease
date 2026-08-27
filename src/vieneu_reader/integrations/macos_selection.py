@@ -13,6 +13,11 @@ from typing import Protocol
 
 from PySide6.QtCore import QObject, QProcess, Signal, Slot
 
+from vieneu_reader.integrations.selection_shortcut import (
+    DEFAULT_SHORTCUT,
+    Shortcut,
+)
+
 
 class SelectionProtocolError(ValueError):
     """Raised when the native helper violates the bounded pipe protocol."""
@@ -26,6 +31,7 @@ class SelectionEventKind(str, Enum):
     NO_SELECTION = "no_selection"
     UNSUPPORTED_SOURCE = "unsupported_source"
     CLIPBOARD_RESTORE_FAILED = "clipboard_restore_failed"
+    SHORTCUT_UNAVAILABLE = "shortcut_unavailable"
     UNAVAILABLE = "unavailable"
 
 
@@ -43,6 +49,7 @@ _FRAME_KINDS = {
     ord("N"): SelectionEventKind.NO_SELECTION,
     ord("U"): SelectionEventKind.UNSUPPORTED_SOURCE,
     ord("C"): SelectionEventKind.CLIPBOARD_RESTORE_FAILED,
+    ord("K"): SelectionEventKind.SHORTCUT_UNAVAILABLE,
     ord("E"): SelectionEventKind.UNAVAILABLE,
 }
 
@@ -169,12 +176,15 @@ class SelectionShortcutBridge(QObject):
 
     selectionReceived = Signal(str)
     statusReceived = Signal(str)
+    shortcutAccepted = Signal(object)
+    shortcutRejected = Signal(object)
 
     def __init__(
         self,
         *,
         command: tuple[str, ...] | None = None,
         acquirer: SelectionAcquirer | None = None,
+        shortcut: Shortcut | None = None,
         parent: QObject | None = None,
     ):
         super().__init__(parent)
@@ -183,6 +193,10 @@ class SelectionShortcutBridge(QObject):
             raise ValueError("helper command cannot be empty")
         self._decoder = SelectionFrameDecoder()
         self._acquirer = acquirer
+        self._shortcut = shortcut or DEFAULT_SHORTCUT
+        self._registered: Shortcut | None = None
+        self._restart_pending: Shortcut | None = None
+        self._suppress_exit_status = False
         self._closing = False
         self._process = QProcess(self)
         self._process.setProcessChannelMode(
@@ -196,6 +210,12 @@ class SelectionShortcutBridge(QObject):
     def is_running(self) -> bool:
         return self._process.state() is not QProcess.ProcessState.NotRunning
 
+    @property
+    def shortcut(self) -> Shortcut:
+        """The combination the helper is registering or has registered."""
+
+        return self._shortcut
+
     @Slot()
     def start(self) -> None:
         if self.is_running:
@@ -205,10 +225,46 @@ class SelectionShortcutBridge(QObject):
             self.statusReceived.emit(SelectionEventKind.UNAVAILABLE.value)
             return
         self._closing = False
+        self._suppress_exit_status = False
         self._decoder = SelectionFrameDecoder()
         self._process.setProgram(program)
-        self._process.setArguments(arguments)
+        self._process.setArguments(
+            [
+                *arguments,
+                str(self._shortcut.key_code),
+                str(self._shortcut.modifiers),
+            ]
+        )
         self._process.start()
+
+    def apply_shortcut(self, shortcut: Shortcut) -> None:
+        """Re-register the helper on a newly chosen combination."""
+
+        if shortcut == self._shortcut and self.is_running:
+            return
+        self._restart_pending = shortcut
+        if not self.is_running:
+            self._begin_pending_restart()
+            return
+        # The helper exits when its parent changes; asking it to stop is the
+        # same mechanism, and the finished handler picks the new one up.
+        self._suppress_exit_status = True
+        self._process.terminate()
+
+    def _begin_pending_restart(self) -> None:
+        pending = self._restart_pending
+        self._restart_pending = None
+        if pending is None:
+            return
+        self._shortcut = pending
+        self.start()
+
+    def _fallback_shortcut(self) -> Shortcut | None:
+        if self._registered is not None and self._registered != self._shortcut:
+            return self._registered
+        if self._shortcut != DEFAULT_SHORTCUT:
+            return DEFAULT_SHORTCUT
+        return None
 
     @Slot()
     def _read_stdout(self) -> None:
@@ -226,8 +282,23 @@ class SelectionShortcutBridge(QObject):
                 self._handle_hotkey()
             elif event.kind is SelectionEventKind.TEXT:
                 self.selectionReceived.emit(event.text)
+            elif event.kind is SelectionEventKind.SHORTCUT_UNAVAILABLE:
+                self._handle_rejected_shortcut()
             else:
+                if event.kind is SelectionEventKind.READY:
+                    self._registered = self._shortcut
+                    self.shortcutAccepted.emit(self._shortcut)
                 self.statusReceived.emit(event.kind.value)
+
+    def _handle_rejected_shortcut(self) -> None:
+        refused = self._shortcut
+        fallback = self._fallback_shortcut()
+        # The helper exits right after refusing; that exit must not replace the
+        # honest "this combination is taken" message with a generic failure.
+        self._suppress_exit_status = True
+        self._restart_pending = fallback
+        self.shortcutRejected.emit(refused)
+        self.statusReceived.emit(SelectionEventKind.SHORTCUT_UNAVAILABLE.value)
 
     def _handle_hotkey(self) -> None:
         if self._acquirer is None:
@@ -249,8 +320,7 @@ class SelectionShortcutBridge(QObject):
 
     @Slot(QProcess.ProcessError)
     def _on_process_error(self, _error: QProcess.ProcessError) -> None:
-        if not self._closing:
-            self.statusReceived.emit(SelectionEventKind.UNAVAILABLE.value)
+        self._report_exit()
 
     @Slot(int, QProcess.ExitStatus)
     def _on_process_finished(
@@ -258,11 +328,21 @@ class SelectionShortcutBridge(QObject):
         _exit_code: int,
         _exit_status: QProcess.ExitStatus,
     ) -> None:
+        self._report_exit()
+
+    def _report_exit(self) -> None:
+        if self._restart_pending is not None and not self._closing:
+            self._begin_pending_restart()
+            return
+        if self._suppress_exit_status:
+            self._suppress_exit_status = False
+            return
         if not self._closing:
             self.statusReceived.emit(SelectionEventKind.UNAVAILABLE.value)
 
     def close(self) -> None:
         self._closing = True
+        self._restart_pending = None
         if self._process.state() is QProcess.ProcessState.NotRunning:
             return
         self._process.terminate()

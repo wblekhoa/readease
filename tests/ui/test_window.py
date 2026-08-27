@@ -28,6 +28,12 @@ from PySide6.QtWidgets import (
 
 from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.models import Voice
+from vieneu_reader.integrations.selection_shortcut import (
+    CMD_KEY,
+    CONTROL_KEY,
+    OPTION_KEY,
+    Shortcut,
+)
 from vieneu_reader.domain.segmenter import prepare_pasted_text
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
@@ -104,11 +110,13 @@ class ReaderWindowTests(unittest.TestCase):
         model_setup: FakeModelSetup,
         *,
         language_store: LanguagePreferenceStore | None = None,
+        selection_shortcut: Shortcut | None = None,
     ) -> ReaderWindow:
         window = ReaderWindow(
             self.controller,
             model_setup,
             language_store=language_store,
+            selection_shortcut=selection_shortcut,
         )
         self.windows.append(window)
         window.show()
@@ -276,6 +284,87 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertEqual(shortcut.text(), "Control + Option + Command + R")
         self.assertTrue(window.feature_navigation.isTabEnabled(2))
         self.assertFalse(window.paste_text_view.read_button.isEnabled())
+
+    def test_shortcut_label_follows_the_setting_and_can_be_rerecorded(self) -> None:
+        saved = Shortcut(key_code=38, modifiers=CONTROL_KEY | CMD_KEY)
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            selection_shortcut=saved,
+        )
+        label = window.findChild(QLabel, "externalReadingShortcut")
+
+        self.assertIsNotNone(label)
+        self.assertEqual(label.text(), "Control + Command + J")
+        self.assertEqual(
+            label.accessibleName(),
+            "Phím tắt đọc phần đã chọn: Control + Command + J",
+        )
+
+        recorder = window.findChild(QPushButton, "externalReadingShortcutRecorder")
+        self.assertIsNotNone(recorder)
+        self.assertEqual(recorder.text(), "Đổi phím tắt")
+
+        chosen: list[Shortcut] = []
+        window.selectionShortcutChanged.connect(chosen.append)
+        recorder.click()
+        self.application.processEvents()
+
+        self.assertEqual(recorder.text(), "Nhấn tổ hợp phím mới…")
+        QTest.keyClick(
+            recorder,
+            Qt.Key.Key_K,
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier,
+        )
+        self.application.processEvents()
+
+        self.assertEqual(
+            chosen,
+            [Shortcut(key_code=40, modifiers=CMD_KEY | OPTION_KEY)],
+        )
+        # The label only moves once the helper reports the choice registered.
+        self.assertEqual(label.text(), "Control + Command + J")
+        self.assertEqual(recorder.text(), "Đổi phím tắt")
+
+        window.set_selection_shortcut(chosen[0])
+        self.application.processEvents()
+
+        self.assertEqual(label.text(), "Option + Command + K")
+        self.assertEqual(
+            label.accessibleName(),
+            "Phím tắt đọc phần đã chọn: Option + Command + K",
+        )
+
+    def test_shortcut_controls_are_translated_without_losing_the_combination(
+        self,
+    ) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        language_combo = window.findChild(QComboBox, "languageCombo")
+        label = window.findChild(QLabel, "externalReadingShortcut")
+        recorder = window.findChild(QPushButton, "externalReadingShortcutRecorder")
+
+        language_combo.setCurrentIndex(
+            language_combo.findData(Language.ENGLISH.value)
+        )
+        self.application.processEvents()
+
+        self.assertEqual(label.text(), "Control + Option + Command + R")
+        self.assertEqual(
+            label.accessibleName(),
+            "Read-selection shortcut: Control + Option + Command + R",
+        )
+        self.assertEqual(recorder.text(), "Change shortcut")
+
+    def test_a_shortcut_macos_refuses_explains_itself(self) -> None:
+        window = self.make_window(FakeModelSetup(ready=True))
+        window.feature_navigation.setCurrentIndex(2)
+
+        self.controller.external_selection_failed("shortcut_unavailable")
+        self.application.processEvents()
+
+        detail = window.external_reading_view.detail_label
+        self.assertTrue(detail.isVisible())
+        self.assertIn("tổ hợp khác", detail.text())
+        self.assertFalse(window.open_accessibility_settings_button.isVisible())
 
     def test_session_history_control_starts_disabled_and_accessible(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))

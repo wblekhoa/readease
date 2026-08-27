@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import struct
 import sys
+from tempfile import TemporaryDirectory
 import time
 import unittest
 
@@ -213,6 +214,102 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         self.assertEqual(event.kind, module.SelectionEventKind.TEXT)
         self.assertEqual(event.text, "Đọc từ process chính")
         self.assertEqual(library.freed, [ctypes.addressof(library.buffer)])
+
+    def test_helper_is_launched_with_the_chosen_keycode_and_modifier_mask(
+        self,
+    ) -> None:
+        module = self._module()
+        from vieneu_reader.integrations.selection_shortcut import Shortcut
+
+        script = (
+            "import os,struct,sys,time;"
+            "payload=' '.join(sys.argv[1:]).encode();"
+            "os.write(1,b'T'+struct.pack('>I',len(payload))+payload);"
+            "time.sleep(0.05)"
+        )
+        chosen = Shortcut(key_code=38, modifiers=4352)
+        bridge = module.SelectionShortcutBridge(
+            command=(sys.executable, "-c", script),
+            shortcut=chosen,
+        )
+        selections = []
+        bridge.selectionReceived.connect(selections.append)
+
+        bridge.start()
+        try:
+            self.assertTrue(self._pump_until(lambda: bool(selections)))
+            self.assertEqual(selections, ["38 4352"])
+        finally:
+            bridge.close()
+
+    def test_rejected_shortcut_is_reported_once_and_falls_back(self) -> None:
+        module = self._module()
+        from vieneu_reader.integrations.selection_shortcut import (
+            DEFAULT_SHORTCUT,
+            Shortcut,
+        )
+
+        with TemporaryDirectory() as directory:
+            marker = Path(directory) / "attempted"
+            # First launch refuses to register, as macOS does for a combination
+            # another app already owns; the fallback launch succeeds.
+            script = (
+                "import os,struct,time;"
+                f"marker={str(marker)!r};"
+                "taken=not os.path.exists(marker);"
+                "open(marker,'a').close();"
+                "os.write(1,(b'K' if taken else b'R')+struct.pack('>I',0));"
+                "time.sleep(0.0 if taken else 0.3)"
+            )
+            occupied = Shortcut(key_code=38, modifiers=4352)
+            bridge = module.SelectionShortcutBridge(
+                command=(sys.executable, "-c", script),
+                shortcut=occupied,
+            )
+            statuses = []
+            rejected = []
+            accepted = []
+            bridge.statusReceived.connect(statuses.append)
+            bridge.shortcutRejected.connect(rejected.append)
+            bridge.shortcutAccepted.connect(accepted.append)
+
+            bridge.start()
+            try:
+                self.assertTrue(self._pump_until(lambda: len(statuses) >= 2))
+                # The helper exits after refusing; that exit must not overwrite
+                # the honest "this combination is taken" message.
+                self.assertEqual(statuses, ["shortcut_unavailable", "ready"])
+                self.assertEqual(rejected, [occupied])
+                # A refused choice must not leave the person without a shortcut.
+                self.assertEqual(accepted, [DEFAULT_SHORTCUT])
+                self.assertEqual(bridge.shortcut, DEFAULT_SHORTCUT)
+            finally:
+                bridge.close()
+
+    def test_registered_shortcut_is_announced_so_it_can_be_persisted(self) -> None:
+        module = self._module()
+        from vieneu_reader.integrations.selection_shortcut import Shortcut
+
+        frame = b"R" + struct.pack(">I", 0)
+        script = (
+            "import os,time;"
+            f"os.write(1,{frame!r});"
+            "time.sleep(0.05)"
+        )
+        chosen = Shortcut(key_code=38, modifiers=4352)
+        bridge = module.SelectionShortcutBridge(
+            command=(sys.executable, "-c", script),
+            shortcut=chosen,
+        )
+        accepted = []
+        bridge.shortcutAccepted.connect(accepted.append)
+
+        bridge.start()
+        try:
+            self.assertTrue(self._pump_until(lambda: bool(accepted)))
+            self.assertEqual(accepted, [chosen])
+        finally:
+            bridge.close()
 
     def test_permission_frame_is_safe_status_not_selected_text(self) -> None:
         module = self._module()

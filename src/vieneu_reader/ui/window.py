@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QMimeData, QSignalBlocker, Qt
+from PySide6.QtCore import QMimeData, QSignalBlocker, Qt, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -38,6 +38,11 @@ from vieneu_reader.identity import PRODUCT_DISPLAY_NAME
 from vieneu_reader.integrations.macos_settings import (
     open_accessibility_settings as open_accessibility_settings_pane,
 )
+from vieneu_reader.integrations.selection_shortcut import (
+    DEFAULT_SHORTCUT,
+    Shortcut,
+    ShortcutPreferenceStore,
+)
 from vieneu_reader.playback.coordinator import PlaybackState
 
 from .controller import ReaderController, ReaderViewState
@@ -48,6 +53,8 @@ from .paste_view import PasteTextView
 
 
 class ReaderWindow(QMainWindow):
+    selectionShortcutChanged = Signal(object)
+
     def __init__(
         self,
         controller: ReaderController,
@@ -57,11 +64,15 @@ class ReaderWindow(QMainWindow):
         open_accessibility_settings: Callable[[], object] | None = None,
         localizer: Localizer | None = None,
         language_store: LanguagePreferenceStore | None = None,
+        selection_shortcut: Shortcut | None = None,
+        shortcut_store: ShortcutPreferenceStore | None = None,
     ):
         super().__init__(parent)
         self._controller = controller
         self._model_setup = model_setup
         self._language_store = language_store
+        self._shortcut_store = shortcut_store
+        self._selection_shortcut = selection_shortcut or DEFAULT_SHORTCUT
         self._localizer = localizer or Localizer(
             language_store.load() if language_store is not None else Language.VIETNAMESE
         )
@@ -202,7 +213,10 @@ class ReaderWindow(QMainWindow):
         self.feature_stack.setObjectName("featureStack")
         self.library_view = LibraryView(localizer=self._localizer)
         self.paste_text_view = PasteTextView(localizer=self._localizer)
-        self.external_reading_view = ExternalReadingView(localizer=self._localizer)
+        self.external_reading_view = ExternalReadingView(
+            localizer=self._localizer,
+            shortcut=self._selection_shortcut,
+        )
         for feature_view in (
             self.library_view,
             self.paste_text_view,
@@ -319,6 +333,9 @@ class ReaderWindow(QMainWindow):
         self.external_reading_view.replayRequested.connect(
             self._controller.replay_session_reading
         )
+        self.external_reading_view.shortcutRecorded.connect(
+            self.selectionShortcutChanged.emit
+        )
         self.play_button.clicked.connect(self._toggle_playback)
         self.stop_button.clicked.connect(self._controller.stop)
         self.previous_button.clicked.connect(self._controller.previous)
@@ -337,6 +354,14 @@ class ReaderWindow(QMainWindow):
         self.open_action.setShortcut(QKeySequence.StandardKey.Open)
         self.open_action.triggered.connect(self.open_book_dialog)
         self.addAction(self.open_action)
+
+    def set_selection_shortcut(self, shortcut: Shortcut) -> None:
+        """Follow, and remember, the combination the helper registered."""
+
+        self._selection_shortcut = shortcut
+        self.external_reading_view.set_shortcut(shortcut)
+        if self._shortcut_store is not None:
+            self._shortcut_store.save(shortcut)
 
     def _language_changed(self, index: int) -> None:
         combo = self.sender()

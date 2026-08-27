@@ -564,10 +564,14 @@ class ReaderController:
             ),
             "no_selection": (
                 "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple "
-                "Books rồi nhấn Control-Option-Command-R."
+                "Books rồi nhấn phím tắt đọc."
             ),
             "unsupported_source": (
                 "Phím tắt đọc nhanh hiện chỉ hỗ trợ Apple Books."
+            ),
+            "shortcut_unavailable": (
+                "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác "
+                "đang dùng nó. Hãy chọn tổ hợp khác."
             ),
             "clipboard_restore_failed": (
                 "ReadEase không thể xác nhận đã khôi phục clipboard nên đã "

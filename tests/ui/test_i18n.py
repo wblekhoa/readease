@@ -78,6 +78,24 @@ class LocalizerTests(unittest.TestCase):
             path.write_text('{"language":"unsupported"}', encoding="utf-8")
             self.assertEqual(store.load(), Language.VIETNAMESE)
 
+    def test_saving_a_language_keeps_the_other_saved_settings(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(
+                '{"selection_shortcut": {"key_code": 38, "modifiers": 4352}}',
+                encoding="utf-8",
+            )
+
+            self.assertTrue(LanguagePreferenceStore(path).save(Language.ENGLISH))
+
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {
+                    "language": "en",
+                    "selection_shortcut": {"key_code": 38, "modifiers": 4352},
+                },
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

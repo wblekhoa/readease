@@ -42,7 +42,7 @@ See [INSTALL.en.md](INSTALL.en.md) for screenshots-message wording, Gatekeeper d
 - **In-app reader:** choose a chapter, read continuously by paragraph or read only selected text.
 - **EPUB figures:** show meaningful local raster images in reading order, number them as **Figure 1, Figure 2…**, and add a spoken cue at the correct position.
 - **Paste text:** paste up to 100,000 characters while preserving paragraph boundaries; long passages are split into manageable playback parts.
-- **Read from Apple Books:** select text and press **Control-Option-Command-R** without bringing ReadEase to the foreground.
+- **Read from Apple Books:** select text and press the read shortcut (**Control-Option-Command-R** by default, changeable in the **Read books** view) without bringing ReadEase to the foreground.
 - **Session history:** replay up to 10 recent items from books, pasted text or Apple Books. History disappears when the app closes.
 - **Vietnamese and English UI:** choose `🇻🇳 Tiếng Việt` or `🇬🇧 English` from the language selector. The choice is applied immediately and saved for the next launch.
 - **Local-first privacy:** books, progress, model data and audio cache stay on the Mac. There is no API key, telemetry or background server.
@@ -73,7 +73,7 @@ Pasted text stays in the current session, does not become a library book and doe
 
 1. Open the **Read books** view in ReadEase to confirm shortcut status.
 2. Open Apple Books and select the text you want to hear.
-3. Press **Control-Option-Command-R**.
+3. Press the read shortcut shown in the **Read books** view (**Control-Option-Command-R** unless you changed it).
 4. The first time, enable ReadEase in **System Settings → Privacy & Security → Accessibility**. Use **Open permission settings** in ReadEase to open the correct pane directly.
 
 For each shortcut transaction, ReadEase keeps an in-memory copy of the current clipboard, sends the copy command to Apple Books, then restores every clipboard item/type/byte before reading. If restoration cannot be verified, the app stops before playback. ReadEase does not monitor the screen or clipboard in the background.

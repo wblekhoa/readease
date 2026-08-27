@@ -12,6 +12,7 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 from vieneu_reader.config import AppPaths, default_app_root
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.integrations.macos_selection import SelectionShortcutBridge
+from vieneu_reader.integrations.selection_shortcut import ShortcutPreferenceStore
 from vieneu_reader.playback.coordinator import PlaybackCoordinator
 from vieneu_reader.playback.qt_audio import QtAudioOutput
 from vieneu_reader.speech.cache import AudioCache
@@ -86,8 +87,10 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         dispatch=dispatcher,
     )
     model_setup = ModelSetupCoordinator(engine)
-    language_store = LanguagePreferenceStore(paths.root / "settings.json")
-    selection_shortcut = SelectionShortcutBridge()
+    settings_path = paths.root / "settings.json"
+    language_store = LanguagePreferenceStore(settings_path)
+    shortcut_store = ShortcutPreferenceStore(settings_path)
+    selection_shortcut = SelectionShortcutBridge(shortcut=shortcut_store.load())
     selection_shortcut.selectionReceived.connect(
         controller.read_external_selection
     )
@@ -99,7 +102,13 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         controller,
         model_setup,
         language_store=language_store,
+        selection_shortcut=selection_shortcut.shortcut,
+        shortcut_store=shortcut_store,
     )
+    window.selectionShortcutChanged.connect(selection_shortcut.apply_shortcut)
+    # The window remembers only a combination macOS actually registered, so a
+    # shortcut another app owns can never come back on the next launch.
+    selection_shortcut.shortcutAccepted.connect(window.set_selection_shortcut)
     return AppRuntime(
         paths=paths,
         repository=repository,
