@@ -1,142 +1,183 @@
 # ReadEase — Thư Âm
 
-ReadEase — Thư Âm là ứng dụng macOS đọc sách tiếng Việt bằng VieNeu-TTS chạy cục
-bộ. Ứng dụng mở PDF có lớp văn bản và EPUB, đọc liên tục theo đoạn hoặc chỉ đọc
-phần bạn đang quét chọn. Không cần API key và không chạy máy chủ nền.
+Ứng dụng macOS đọc PDF, EPUB và văn bản tiếng Việt bằng **VieNeu-TTS chạy cục bộ**. ReadEase không cần API key, không gửi nội dung sách lên máy chủ và có thể đọc offline sau khi chuẩn bị giọng lần đầu.
 
-## Cài từ mã nguồn — cách đơn giản để chia sẻ với bạn bè
+> **English version below:** [Jump to English](#english)
 
-Yêu cầu: máy Mac Apple Silicon (M1 trở lên), macOS 15 trở lên, kết nối mạng và
-ít nhất 6 GB trống trong lúc cài. Không cần API key.
+## Tải và cài ngay
 
-1. Tải source ZIP từ repository rồi giải nén, hoặc clone repository.
-2. Trong thư mục vừa mở, bấm đúp **Install ReadEase.command**. Nếu macOS chặn
-   lần đầu, Control-click file, chọn **Open**, rồi xác nhận **Open**.
-3. Nếu cửa sổ báo thiếu Xcode Command Line Tools, chạy
-   `xcode-select --install`, hoàn tất trình cài của Apple rồi bấm lại file trên.
-4. Chờ khoảng 10–25 phút ở lần đầu. Installer tự kiểm tra máy, tải công cụ build
-   đã khóa checksum, dựng và kiểm tra app, cài vào
-   `~/Applications/ReadEase.app`, rồi mở app. Môi trường build, Python và cache
-   tải xuống nằm trong một thư mục tạm và được xóa sau khi app đã cài thành công;
-   installer không sửa shell profile và không dùng `sudo`.
-5. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. Lần này app tải khoảng 330 MB dữ
-   liệu giọng; các lần sau có thể đọc offline.
+### [⬇️ Tải ReadEase — Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip)
 
-Muốn nhờ AI làm thay, hãy mở repository trong công cụ AI và gửi đúng câu:
+Liên kết trên tải trực tiếp bản mới nhất từ nhánh `main`. Đây là bản cài từ mã nguồn dành cho Mac, chưa phải file `.dmg` hoặc binary đã notarize.
 
-> Hãy chạy `./Install ReadEase.command`, sửa lỗi cài đặt nếu có, rồi xác nhận
-> `~/Applications/ReadEase.app` đã mở được. Không publish hay thay dependency.
+### Máy của bạn cần có gì?
 
-Có thể kiểm tra tương thích mà chưa build bằng
-`./Install\ ReadEase.command --check`. Đây là bản bạn bè tự build cục bộ; không
-phải binary đã notarize để phát hành đại trà.
+| Yêu cầu | Chi tiết |
+| --- | --- |
+| Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn |
+| macOS | macOS 15 trở lên |
+| Dung lượng trống | Tối thiểu 6 GB trong lúc cài đặt |
+| Kết nối mạng | Cần ở lần cài đầu và lần tải giọng đọc đầu tiên |
+| Công cụ của Apple | Xcode Command Line Tools; installer sẽ báo nếu máy còn thiếu |
 
-## Cách dùng sau khi cài
+Bạn **không cần** API key, Homebrew, Python, `uv` hay kiến thức lập trình. Installer tự tải môi trường build đã khóa phiên bản và checksum, sau đó dọn môi trường tạm khi cài thành công.
 
-1. Mở `ReadEase` trong thư mục Applications.
-2. Nếu chưa chuẩn bị giọng đọc ở bước cài đặt, bấm **Chuẩn bị giọng đọc**.
-3. Ở màn hình **Thư viện**, bấm **Mở PDF hoặc EPUB** hoặc kéo tệp sách vào
-   cửa sổ. Chọn một cuốn sách để mở trình đọc ngay bên trong Thư viện; bấm
-   **Quay lại thư viện** để chọn cuốn khác.
-4. Ở màn hình **Dán nội dung**, dán tối đa 100.000 ký tự rồi bấm
-   **Đọc nội dung**. Bản nháp được giữ khi chuyển qua lại giữa các màn hình,
-   nhưng chỉ nằm trong phiên hiện tại và không tạo sách mới.
-5. Trong trình đọc của **Thư viện**, chọn chương ở cột trái rồi bấm **Đọc**
-   để đọc liên tục. Với EPUB dạng reflowable, ReadEase đặt các hình có ý nghĩa
-   đúng theo thứ tự đọc, gắn nhãn **Hình 1, Hình 2…** và nói “Mời bạn xem Hình
-   …” khi tới vị trí tương ứng. Ảnh trang trí nhỏ không tạo lời đọc nhiễu.
-6. Muốn nghe riêng một phần trong sách đã nhập, quét chọn văn bản rồi bấm
-   **Đọc phần đã chọn**.
-7. Màn hình **Đọc sách** dành cho Apple Books; màn hình này hiển thị trạng thái
-   phím tắt, hướng dẫn, nút mở đúng mục quyền Trợ năng và các phần Apple Books
-   đã đọc gần đây trong phiên.
-8. Dùng **Trước**, **Sau**, **Dừng**, giọng đọc và tốc độ ở thanh phía dưới.
-   Dòng trạng thái cho biết bạn đang ở chương và đoạn thứ bao nhiêu. Khi phần
-   được dán hoặc quét chọn dài, ReadEase giữ ranh giới đoạn văn, tự chia thành
-   phần vừa đọc và hiển thị tiến độ như **Đang đọc đoạn 2/7**.
-9. Muốn nghe lại phần vừa đọc, mở **Lịch sử phiên** trên thanh phát rồi
-   chọn nội dung. Menu giữ tối đa 10 mục gần nhất từ **Dán nội dung**,
-   phần chọn **Trong sách** và **Apple Books**. Mục được chọn sẽ dùng giọng
-   và tốc độ hiện tại; chọn **Xóa lịch sử phiên** nếu muốn xóa ngay. Riêng màn
-   hình **Đọc sách** lọc sẵn các mục Apple Books và có nút **Nghe lại phần đã
-   chọn** để không phải mở menu chung.
+### Cách cài đơn giản
 
-### Đọc phần đang chọn trong Apple Books
+1. Bấm [**Tải ReadEase — Source ZIP**](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip), rồi mở file ZIP vừa tải.
+2. Trong thư mục `readease-main`, bấm đúp **Install ReadEase.command**.
+3. Nếu macOS chặn lần mở đầu tiên, Control-click file đó, chọn **Open**, rồi xác nhận **Open**.
+4. Nếu installer báo thiếu công cụ của Apple, mở Terminal, chạy:
 
-1. Mở màn hình **Đọc sách** trong ReadEase để xem hướng dẫn và phím tắt, rồi
-   giữ ReadEase đang chạy và mở sách trong Apple Books.
-2. Quét chọn đoạn muốn nghe.
-3. Nhấn **Control-Option-Command-R**. Ở lần đầu, cho phép ReadEase trong
-   **Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng** khi macOS hỏi.
-   Nếu quyền chưa bật, màn hình **Đọc sách** chuyển sang trạng thái **Cần quyền
-   Trợ năng**; bấm **Mở Cài đặt quyền** tại đó để mở thẳng đúng mục này.
-4. ReadEase đọc đoạn đã chọn nhưng không đưa cửa sổ app lên trước. Phím tắt chỉ
-   nhận Apple Books và không theo dõi màn hình hay clipboard ở chế độ nền.
+   ```bash
+   xcode-select --install
+   ```
 
-Trong đúng giao dịch phím tắt, ReadEase giữ bản sao clipboard hiện tại trong
-bộ nhớ, gửi Command-C tới Apple Books, rồi khôi phục từng item/type/byte trước
-khi chuyển văn bản sang giọng đọc. Nếu không xác nhận được bước khôi phục, app
-dừng trước khi đọc. Văn bản chọn không được ghi log, lưu thư viện hay audio
-cache. Clipboard manager hoặc Universal Clipboard vẫn có thể nhận thấy lần
-sao chép rất ngắn do đây là giới hạn của phương án copy/read/restore.
+   Hoàn tất cửa sổ cài đặt của Apple rồi bấm lại **Install ReadEase.command**.
+5. Chờ khoảng 10–25 phút. Installer sẽ kiểm tra máy, build, kiểm thử, cài app vào `~/Applications/ReadEase.app` và tự mở app.
+6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline.
 
-Vị trí đọc, sách đã nhập, mô hình và audio cache được giữ cục bộ trong
-`~/Library/Application Support/VieNeu Reader/`. ReadEase chủ động giữ tên thư
-mục cũ để toàn bộ thư viện và tiến độ đã có tiếp tục hoạt động. Phần văn bản
-quét chọn hoặc dán không được thêm vào thư viện và không thay đổi tiến độ đọc
-liên tục. Audio của hai chế độ tạm thời này không được lưu vào cache.
-Lịch sử phiên cũng chỉ nằm trong bộ nhớ: nội dung trùng chính xác được gộp
-thành một mục, và toàn bộ danh sách tự biến mất khi thoát ReadEase.
+Muốn kiểm tra máy trước mà chưa cài, mở Terminal tại thư mục source và chạy:
 
-## Giới hạn của bản đầu tiên
+```bash
+./Install\ ReadEase.command --check
+```
 
-- PDF scan chỉ chứa ảnh chưa được OCR; app sẽ giải thích thay vì nhập một cuốn
-  sách rỗng.
-- Trình đọc EPUB ưu tiên nội dung reflowable, văn bản và ảnh raster cục bộ; chưa
-  tái tạo toàn bộ CSS/layout của sách, fixed-layout, SVG tương tác, bảng phức tạp
-  hoặc mô tả ảnh bằng AI. Nếu ảnh lỗi, văn bản và tiến độ đọc vẫn hoạt động.
-- Tệp DRM, PDF đặt mật khẩu và EPUB hỏng không được hỗ trợ.
-- Lần chuẩn bị mô hình đầu tiên cần mạng. Sau khi hoàn tất, việc đọc không cần
-  mạng.
+Muốn nhờ AI cài giúp, mở thư mục source trong công cụ AI và gửi câu này:
+
+> Hãy chạy `./Install ReadEase.command`, sửa lỗi cài đặt nếu có, rồi xác nhận `~/Applications/ReadEase.app` đã mở được. Không publish hay thay dependency.
+
+## ReadEase làm được gì?
+
+- **Thư viện:** nhập PDF có lớp văn bản và EPUB, lưu tiến độ và tiếp tục đọc ở lần sau.
+- **Trình đọc trong app:** chọn chương, đọc liên tục theo đoạn, đọc riêng phần đang quét chọn và điều chỉnh giọng/tốc độ.
+- **Hình trong EPUB:** đặt hình có ý nghĩa theo thứ tự đọc, đánh số **Hình 1, Hình 2…** và nhắc “Mời bạn xem Hình …” ở đúng vị trí.
+- **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
+- **Đọc từ Apple Books:** quét chọn văn bản rồi nhấn **Control-Option-Command-R** để nghe mà không cần chuyển cửa sổ.
+- **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ sách, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
+- **Riêng tư và local-first:** sách, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
+
+## Cách dùng
+
+### 1. Đọc PDF hoặc EPUB trong Thư viện
+
+1. Mở **ReadEase** trong `~/Applications`.
+2. Chọn **Thư viện** → **Mở PDF hoặc EPUB**, hoặc kéo tệp sách vào cửa sổ.
+3. Chọn sách và chương, rồi bấm **Đọc** để đọc liên tục.
+4. Quét chọn một phần trong trình đọc và bấm **Đọc phần đã chọn** nếu chỉ muốn nghe đoạn đó.
+5. Dùng **Trước**, **Sau**, **Dừng**, giọng đọc và tốc độ ở thanh phát phía dưới.
+
+Với EPUB dạng reflowable, ReadEase hiển thị văn bản và ảnh raster cục bộ theo thứ tự đọc. Ảnh trang trí nhỏ được bỏ qua để tránh lời nhắc thừa.
+
+### 2. Đọc nội dung bạn dán
+
+1. Chọn **Dán nội dung**.
+2. Dán văn bản, chọn giọng và tốc độ.
+3. Bấm **Đọc nội dung**. Với văn bản dài, trạng thái sẽ hiển thị tiến độ như **Đang đọc đoạn 2/7**.
+
+Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo sách mới và không thay đổi tiến độ của sách trong Thư viện.
+
+### 3. Đọc phần đang chọn trong Apple Books
+
+1. Mở màn hình **Đọc sách** trong ReadEase để xem trạng thái phím tắt.
+2. Mở Apple Books và quét chọn đoạn muốn nghe.
+3. Nhấn **Control-Option-Command-R**.
+4. Ở lần đầu, cho phép ReadEase trong **Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Trợ năng**. Nếu chưa có quyền, bấm **Mở Cài đặt quyền** trong ReadEase để đi thẳng tới đúng mục.
+
+Trong mỗi lần dùng phím tắt, ReadEase giữ bản sao clipboard trong bộ nhớ, gửi lệnh sao chép tới Apple Books rồi khôi phục từng item/type/byte trước khi đọc. Nếu không xác nhận được việc khôi phục, app dừng trước khi đọc. App không theo dõi màn hình hoặc clipboard ở chế độ nền.
+
+### 4. Nghe lại nội dung gần đây
+
+Mở **Lịch sử phiên** trên thanh phát để nghe lại nội dung. Các mục trùng chính xác được gộp; bạn có thể xóa lịch sử ngay, và toàn bộ lịch sử tự mất khi thoát ReadEase.
+
+## Dữ liệu và quyền riêng tư
+
+ReadEase lưu sách đã nhập, vị trí đọc, mô hình và audio cache tại:
+
+```text
+~/Library/Application Support/VieNeu Reader/
+```
+
+Tên thư mục cũ được giữ để người dùng nâng cấp không mất thư viện và tiến độ. Nội dung dán hoặc quét chọn không được thêm vào Thư viện, không ghi log và không lưu audio cache. Lần chuẩn bị mô hình đầu tiên cần mạng; sau đó việc đọc diễn ra cục bộ.
+
+## Giới hạn hiện tại
+
+- PDF scan chỉ chứa ảnh cần OCR trước khi nhập; ReadEase chưa tích hợp OCR.
+- Chưa hỗ trợ PDF đặt mật khẩu, EPUB có DRM hoặc tệp bị hỏng.
+- Trình đọc EPUB chưa tái tạo toàn bộ CSS/layout của sách, fixed-layout, SVG tương tác, bảng phức tạp hoặc mô tả ảnh bằng AI.
+- Phím tắt đọc phần chọn hiện chỉ dành cho Apple Books.
+- Bản source này được build và ký ad-hoc trên máy của bạn; chưa phải binary có Developer ID và notarization để phát hành đại trà.
+
+## Chạy local để phát triển
+
+Ngoài các yêu cầu hệ thống ở trên, contributor nên dùng `uv` và Python 3.13 được khóa bởi dự án:
+
+```bash
+git clone https://github.com/wblekhoa/readease.git
+cd readease
+uv sync --locked --managed-python --python 3.13
+./scripts/verify.sh
+```
+
+`uv.lock` là nguồn sự thật cho dependency. Đừng thêm model weights, sách có bản quyền, audio sinh ra, database, cache hoặc dữ liệu người dùng vào repository. Xem [CONTRIBUTING.md](CONTRIBUTING.md) để biết quy ước đóng góp.
 
 ## Khi app không mở được
 
 1. Mở lại app một lần.
-2. Nếu đang chuẩn bị mô hình, kiểm tra mạng rồi bấm **Thử lại**.
-3. Sách gốc không bị app xóa. Có thể mở lại cùng tệp để app tập trung vào bản đã
-   có trong thư viện.
-4. Nếu vẫn lỗi, giữ báo cáo crash mới nhất trong
-   `~/Library/Logs/DiagnosticReports/` để chẩn đoán.
+2. Nếu lỗi khi chuẩn bị giọng, kiểm tra mạng rồi bấm **Thử lại**.
+3. Mở lại cùng tệp nếu quá trình nhập sách bị gián đoạn; app không xóa sách gốc.
+4. Nếu vẫn lỗi, giữ báo cáo crash mới nhất trong `~/Library/Logs/DiagnosticReports/` để chẩn đoán.
 
-## Ghi chú đóng gói
+## Giấy phép
 
-Người dùng thông thường không cần phần này. Bản `.app` được tạo bằng đường dẫn
-chính thức `pyside6-deploy`/Nuitka, ký ad-hoc, kiểm tra arm64, metadata, launch
-và socket trước khi cài. Build dùng Python 3.13 do `uv` quản lý, Nuitka 4.1.1 và
-toàn bộ dependency trong `uv.lock`; PDF dùng QtPdf đã nằm trong PySide6. Không
-publish binary ra ngoài khi chưa hoàn tất gói giấy phép, ký Developer ID và
-notarization.
+Phần mã nguồn, tài liệu và khung ứng dụng first-party được chia sẻ theo [PolyForm Noncommercial 1.0.0](LICENSE): được dùng, sửa và chia sẻ cho mục đích phi thương mại theo điều khoản giấy phép; không được thương mại hóa ReadEase, bản sửa đổi hoặc sản phẩm dựa trên khung này nếu chưa có giấy phép riêng bằng văn bản từ chủ sở hữu bản quyền áp dụng. Đây là source-available, không phải giấy phép open-source theo định nghĩa OSI.
 
-## Giấy phép mã nguồn và phát hành
+Model VieNeu, codec MOSS và các dependency giữ giấy phép riêng của nhà cung cấp. Xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), thư mục [`legal/`](legal/) và [PRIVACY.md](PRIVACY.md). Mỗi bản source/app mang provenance ID tĩnh `READEASE-THU-AM-NC-2026-01`; marker này không chứa thông tin người dùng, không kết nối mạng và không theo dõi.
 
-Phần mã nguồn, tài liệu và khung ứng dụng do ReadEase sở hữu được chia sẻ theo
-`PolyForm-Noncommercial-1.0.0`: bạn có thể dùng, sửa và chia sẻ cho các mục đích
-phi thương mại mà giấy phép cho phép. Không được thương mại hóa ReadEase, bản
-sửa đổi hoặc sản phẩm dựa trên khung first-party này nếu chưa có giấy phép riêng
-bằng văn bản từ chủ sở hữu bản quyền áp dụng. Lê Khoa là chủ sở hữu first-party
-hiện tại được ghi trong bản phát hành này; contributor độc lập trong tương lai
-giữ quyền của họ nếu không có thỏa thuận chuyển giao riêng. Đây là
-source-available, không phải giấy phép open-source theo định nghĩa OSI;
-`LICENSE` là văn bản có hiệu lực.
+---
 
-Mỗi bản source và app có provenance ID tĩnh
-`READEASE-THU-AM-NC-2026-01`. Marker này giống nhau trong mọi bản, không chứa
-thông tin user/máy/cài đặt, không kết nối mạng và không theo dõi. Model VieNeu,
-codec MOSS cùng các dependency vẫn giữ giấy phép riêng của bên cung cấp;
-`THIRD_PARTY_NOTICES.md`, `legal/` và manifest sinh từ compilation report ghi
-lại ranh giới đó.
+<a id="english"></a>
 
-Trước khi chia sẻ mã nguồn, hãy dùng một clean squash export theo
-`PUBLIC_RELEASE_CHECKLIST.md`; lịch sử workspace hiện tại có metadata nội bộ và
-không phải lịch sử public. Một binary public còn cần Developer ID,
-notarization và legal review riêng, dù source audit đã xanh.
+# English
+
+ReadEase — Thư Âm is a local-first macOS app that reads PDFs, EPUBs and pasted text with Vietnamese VieNeu-TTS. It requires no API key and can work offline after the first voice-model setup.
+
+## Download and install
+
+### [⬇️ Download ReadEase — Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip)
+
+Requirements:
+
+- Apple Silicon Mac (M1 or newer)
+- macOS 15 or newer
+- At least 6 GB of free disk space during installation
+- Internet access for the first build and first voice-model download
+- Xcode Command Line Tools (`xcode-select --install` if the installer reports they are missing)
+
+You do **not** need an API key, Homebrew, Python or `uv`. Extract the ZIP, open the `readease-main` folder and double-click **Install ReadEase.command**. If macOS blocks it, Control-click the file, choose **Open**, then confirm. The first build usually takes 10–25 minutes and installs the app at `~/Applications/ReadEase.app`. In the app, click **Chuẩn bị giọng đọc** once to download about 330 MB of voice data.
+
+This is a local source build, not a notarized `.dmg` or public binary release.
+
+## Main features
+
+- Import and read text-based PDFs and reflowable EPUBs.
+- Preserve local library progress and show meaningful EPUB images in reading order.
+- Read pasted text and automatically segment long passages.
+- Read selected text from Apple Books with **Control-Option-Command-R** after granting Accessibility permission.
+- Replay up to 10 recent items during the current session.
+- Keep books, model data, progress and audio cache on the Mac; no API key, telemetry or background server.
+
+## Local development
+
+```bash
+git clone https://github.com/wblekhoa/readease.git
+cd readease
+uv sync --locked --managed-python --python 3.13
+./scripts/verify.sh
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development rules. Scanned-image PDFs require OCR; DRM-protected books, password-protected PDFs and complex fixed-layout EPUBs are not supported.
+
+## License
+
+First-party source, documentation and application framework are available under [PolyForm Noncommercial 1.0.0](LICENSE) for permitted noncommercial use. Commercial use requires a separate written license from the applicable copyright owner. VieNeu, MOSS and other dependencies retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [`legal/`](legal/).
