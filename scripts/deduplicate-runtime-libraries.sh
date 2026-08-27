@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+# Drop the ONNX Runtime dylib that the finished bundle never links.
+
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 bundle="${1:-$project_root/dist/ReadEase.app}"
 macos="$bundle/Contents/MacOS"
@@ -21,29 +23,17 @@ if [[ "$versioned_count" -ne 1 || ! -f "$versioned_library" ]]; then
   exit 1
 fi
 
-if [[ -L "$compatibility_name" ]]; then
-  if [[ "$(readlink "$compatibility_name")" != "$(basename "$versioned_library")" ]]; then
-    echo "RUNTIME_DEDUP RED unexpected_compatibility_symlink=$compatibility_name" >&2
-    exit 1
-  fi
-elif [[ -f "$compatibility_name" ]]; then
-  library_id="$(otool -D "$versioned_library" | tail -n 1)"
-  if [[ "$library_id" != "@rpath/libonnxruntime.1.dylib" ]]; then
-    echo "RUNTIME_DEDUP RED unexpected_versioned_library_id=$library_id" >&2
-    exit 1
-  fi
-  case "$(file "$versioned_library")" in
-    *Mach-O*arm64*) ;;
-    *)
-    echo "RUNTIME_DEDUP RED versioned_library_is_not_arm64=$versioned_library" >&2
-    exit 1
-      ;;
-  esac
-  rm -f -- "$compatibility_name"
-  ln -s "$(basename "$versioned_library")" "$compatibility_name"
-else
-  echo "RUNTIME_DEDUP RED missing_compatibility_name=$compatibility_name" >&2
-  exit 1
-fi
+# ONNX Runtime 1.29 ships a self-contained onnxruntime_pybind11_state.so, so the
+# only Mach-O in the bundle that names libonnxruntime is the dylib itself. The
+# 33 MB library and its compatibility alias are dead weight the friend would
+# download for nothing. Nuitka 4.1.1 still resolves the install name while it
+# collects native libraries, so both files have to survive the build and can
+# only be dropped here, once the bundle exists. The gated bundle contract
+# re-proves the linkage claim after every build, so a future ONNX Runtime that
+# does link the dylib fails that gate instead of shipping a bundle that cannot
+# load its own speech backend.
+removed="$(basename "$versioned_library"),$(basename "$compatibility_name")"
+rm -f -- "$compatibility_name"
+rm -f -- "$versioned_library"
 
-echo "RUNTIME_DEDUP PASS compatibility=$(basename "$compatibility_name") target=$(basename "$versioned_library")"
+echo "RUNTIME_DEDUP PASS removed=$removed"

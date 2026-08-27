@@ -247,6 +247,163 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
 
         self.assertFalse(engine.is_model_ready)
 
+    def test_preparation_leaves_no_duplicate_hub_cache_under_the_models_root(self):
+        residue = (
+            self.models
+            / "hub"
+            / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX"
+            / "snapshots"
+            / CODEC_REVISION
+        )
+
+        def download_model(**kwargs):
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+                residue.mkdir(parents=True, exist_ok=True)
+                for filename in filenames:
+                    (residue / filename).write_bytes(b"fixture")
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+            model_downloader=download_model,
+        )
+
+        engine.prepare_model(Mock())
+
+        self.assertTrue(engine.is_model_ready)
+        self.assertFalse((self.models / "hub").exists())
+        self.assertTrue(
+            (self.models / CODEC_DIRECTORY / CODEC_FILES[0]).is_file()
+        )
+
+    def test_preparation_clears_hub_residue_left_by_an_earlier_install(self):
+        download_calls = []
+
+        def download_model(**kwargs):
+            download_calls.append(kwargs)
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+            model_downloader=download_model,
+        )
+        engine.prepare_model(Mock())
+        residue = (
+            self.models
+            / "hub"
+            / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX"
+        )
+        residue.mkdir(parents=True)
+        (residue / CODEC_FILES[0]).write_bytes(b"fixture")
+
+        engine.prepare_model(Mock())
+
+        self.assertEqual(len(download_calls), 2)
+        self.assertTrue(engine.is_model_ready)
+        self.assertFalse((self.models / "hub").exists())
+
+    def test_preparation_keeps_hub_entries_outside_the_two_pinned_repositories(self):
+        def download_model(**kwargs):
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+            model_downloader=download_model,
+        )
+        engine.prepare_model(Mock())
+        hub = self.models / "hub"
+        pinned = (
+            hub / "models--pnnbao-ump--VieNeu-TTS-v3-Turbo",
+            hub / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX",
+            hub / ".locks" / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX",
+        )
+        unrelated = hub / "models--some-other--repo"
+        for directory in pinned + (unrelated,):
+            directory.mkdir(parents=True)
+            (directory / "blob").write_bytes(b"fixture")
+        tag = hub / "CACHEDIR.TAG"
+        tag.write_bytes(b"Signature: 8a477f597d28d172789f06886806bc55")
+
+        engine.prepare_model(Mock())
+
+        for directory in pinned:
+            self.assertFalse(directory.exists())
+        self.assertTrue((unrelated / "blob").is_file())
+        self.assertTrue(tag.is_file())
+
+    def test_hub_cleanup_never_deletes_through_a_symlinked_component(self):
+        def download_model(**kwargs):
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        pinned = "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX"
+        for component in ("hub", "repository", "locks"):
+            with self.subTest(component=component):
+                models = Path(self.temp_dir.name) / f"models-{component}"
+                outside = Path(self.temp_dir.name) / f"outside-{component}"
+                (outside / pinned).mkdir(parents=True)
+                (outside / pinned / "keep.bin").write_bytes(b"fixture")
+                engine = VieNeuSpeechEngine(
+                    models,
+                    sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+                    model_downloader=download_model,
+                )
+                engine.prepare_model(Mock())
+                hub = models / "hub"
+                if component == "hub":
+                    hub.symlink_to(outside, target_is_directory=True)
+                elif component == "repository":
+                    hub.mkdir()
+                    (hub / pinned).symlink_to(
+                        outside / pinned,
+                        target_is_directory=True,
+                    )
+                else:
+                    hub.mkdir()
+                    (hub / ".locks").symlink_to(outside, target_is_directory=True)
+
+                engine.prepare_model(Mock())
+
+                self.assertTrue(engine.is_model_ready)
+                self.assertTrue((outside / pinned / "keep.bin").is_file())
+
     def test_codec_download_override_is_scoped_local_and_fail_closed(self):
         codec_directory = self.models / CODEC_DIRECTORY
         codec_directory.mkdir(parents=True)

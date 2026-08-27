@@ -16,6 +16,21 @@ BUNDLE = Path(
     )
 )
 BUNDLE_GATE = os.environ.get("VIENEU_READER_BUNDLE_TEST") == "1"
+MACHO_MAGICS = {
+    b"\xfe\xed\xfa\xce",
+    b"\xce\xfa\xed\xfe",
+    b"\xfe\xed\xfa\xcf",
+    b"\xcf\xfa\xed\xfe",
+    b"\xca\xfe\xba\xbe",
+    b"\xbe\xba\xfe\xca",
+    b"\xca\xfe\xba\xbf",
+    b"\xbf\xba\xfe\xca",
+}
+
+
+def _is_macho(path: Path) -> bool:
+    with path.open("rb") as source:
+        return source.read(4) in MACHO_MAGICS
 
 
 @unittest.skipUnless(BUNDLE_GATE, "bundle gate is opt-in")
@@ -139,18 +154,30 @@ class BundleContractTests(unittest.TestCase):
         ):
             self.assertFalse(any(forbidden in path for path in bundle_paths))
 
-    def test_onnxruntime_compatibility_name_is_a_symlink_not_a_duplicate(self) -> None:
-        macos = BUNDLE / "Contents" / "MacOS"
-        compatibility_name = macos / "libonnxruntime.1.dylib"
-        versioned = [
-            path
-            for path in macos.glob("libonnxruntime.*.dylib")
-            if path != compatibility_name
+    def test_onnxruntime_dylib_is_dropped_because_no_macho_links_it(self) -> None:
+        shipped = [
+            str(path.relative_to(BUNDLE))
+            for path in BUNDLE.rglob("*")
+            if "libonnxruntime" in path.name
         ]
+        machos = 0
+        linkers = []
+        for path in sorted(BUNDLE.rglob("*"), key=str):
+            if path.is_symlink() or not path.is_file() or not _is_macho(path):
+                continue
+            machos += 1
+            result = subprocess.run(
+                ["otool", "-L", str(path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            if "libonnxruntime" in result.stdout:
+                linkers.append(str(path.relative_to(BUNDLE)))
 
-        self.assertEqual(len(versioned), 1)
-        self.assertTrue(compatibility_name.is_symlink())
-        self.assertEqual(compatibility_name.resolve(), versioned[0].resolve())
+        self.assertEqual(shipped, [])
+        self.assertGreater(machos, 0)
+        self.assertEqual(linkers, [])
 
     def test_bundle_contains_a_machine_auditable_license_payload(self) -> None:
         legal = BUNDLE / "Contents" / "Resources" / "Legal"

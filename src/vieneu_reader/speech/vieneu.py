@@ -6,6 +6,7 @@ import errno
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import tempfile
 from contextlib import contextmanager
@@ -44,6 +45,12 @@ CODEC_FILES = (
     "moss_audio_tokenizer_encode.data",
 )
 _READY_MARKER = ".vieneu-ready.json"
+_HUB_CACHE_DIRECTORY = "hub"
+_HUB_LOCK_DIRECTORY = ".locks"
+_HUB_BOOKKEEPING_FILES = ("CACHEDIR.TAG",)
+_PINNED_HUB_CACHE_NAMES = tuple(
+    "models--" + repo.replace("/", "--") for repo in (MODEL_REPO, CODEC_REPO)
+)
 _SDK_LOAD_LOCK = RLock()
 
 
@@ -116,6 +123,27 @@ def _download_snapshot(**kwargs: Any) -> str:
     from huggingface_hub import snapshot_download
 
     return snapshot_download(**kwargs)
+
+
+def _hub_cache_is_bookkeeping_only(hub: Path) -> bool:
+    """Report whether nothing but huggingface_hub's own scaffolding is left."""
+
+    try:
+        for entry in hub.iterdir():
+            if entry.is_symlink():
+                return False
+            if entry.is_file() and entry.name in _HUB_BOOKKEEPING_FILES:
+                continue
+            if (
+                entry.is_dir()
+                and entry.name == _HUB_LOCK_DIRECTORY
+                and not any(entry.iterdir())
+            ):
+                continue
+            return False
+    except OSError:
+        return False
+    return True
 
 
 class VieNeuSpeechEngine:
@@ -253,6 +281,22 @@ class VieNeuSpeechEngine:
             except FileNotFoundError:
                 pass
 
+    def _discard_duplicate_hub_cache(self) -> None:
+        """Drop the hub copies of the two repositories we already keep pinned."""
+
+        hub = self._models_path / _HUB_CACHE_DIRECTORY
+        if hub.is_symlink() or not hub.is_dir():
+            return
+        duplicates = [hub / name for name in _PINNED_HUB_CACHE_NAMES]
+        locks = hub / _HUB_LOCK_DIRECTORY
+        if locks.is_dir() and not locks.is_symlink():
+            duplicates.extend(locks / name for name in _PINNED_HUB_CACHE_NAMES)
+        for duplicate in duplicates:
+            if duplicate.is_dir() and not duplicate.is_symlink():
+                shutil.rmtree(duplicate, ignore_errors=True)
+        if _hub_cache_is_bookkeeping_only(hub):
+            shutil.rmtree(hub, ignore_errors=True)
+
     def _configure_huggingface_environment(self, *, offline: bool = False) -> None:
         os.environ["HF_HOME"] = str(self._models_path)
         os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
@@ -268,6 +312,7 @@ class VieNeuSpeechEngine:
 
         with self._lock:
             if self.is_model_ready:
+                self._discard_duplicate_hub_cache()
                 progress_callback(1.0, "Mô hình đọc tiếng Việt đã sẵn sàng.")
                 return
             self._configure_huggingface_environment()
@@ -295,6 +340,7 @@ class VieNeuSpeechEngine:
                     raise RuntimeError("VieNeu exposes no preset voices")
                 self._sdk = sdk
                 self._write_ready_marker()
+                self._discard_duplicate_hub_cache()
             except Exception as error:
                 self._sdk = None
                 raise ModelPreparationError(_preparation_message(error)) from error
