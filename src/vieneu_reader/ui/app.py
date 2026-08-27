@@ -72,6 +72,16 @@ class AppRuntime:
         self.model_setup.close()
         self.playback.close()
         self.repository.close()
+        # The window and its widget tree sit in reference cycles - Qt parent
+        # links, signal connections, this dataclass - so refcounting alone never
+        # frees them. Only the cyclic collector does, and it runs at whatever
+        # allocation happens to cross its threshold. When a second runtime
+        # provides that pressure, the collector has torn this widget tree down
+        # in the middle of an unrelated Qt call and taken the process with it.
+        # Handing the objects to Qt moves destruction to a point Qt controls.
+        self.window.close()
+        self.window.deleteLater()
+        self.dispatcher.deleteLater()
 
 
 def build_runtime(app_data_root: Path | None = None) -> AppRuntime:

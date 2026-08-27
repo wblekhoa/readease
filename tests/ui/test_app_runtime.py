@@ -26,8 +26,6 @@ class AppRuntimeTests(unittest.TestCase):
         cls.application = QApplication.instance() or QApplication([])
 
     def test_runtime_composes_local_services_without_starting_network_setup(self) -> None:
-        # One runtime per process: a second full runtime plus the real-book
-        # smoke module crashes Qt teardown, on this commit and before it.
         with TemporaryDirectory() as directory:
             root = Path(directory) / "VieNeu Reader"
             root.mkdir(parents=True)
@@ -71,6 +69,25 @@ class AppRuntimeTests(unittest.TestCase):
                 self.assertEqual(label.text(), "Option + Command + K")
             finally:
                 runtime.close()
+
+    def test_a_second_runtime_composes_and_closes_in_the_same_process(self) -> None:
+        # Building two runtimes used to segfault once the real-book smoke module
+        # ran in the same process: the cyclic collector destroyed the first
+        # widget tree inside an unrelated Qt call. Composition-root tests may be
+        # written independently again.
+        with TemporaryDirectory() as directory:
+            for name in ("first", "second"):
+                root = Path(directory) / name
+                root.mkdir(parents=True)
+                runtime = build_runtime(root)
+                try:
+                    self.assertEqual(
+                        runtime.window.root_stack.currentWidget().objectName(),
+                        "modelSetupPage",
+                    )
+                    self.assertTrue((root / "Books").is_dir())
+                finally:
+                    runtime.close()
 
     def test_rebrand_keeps_the_existing_application_support_directory(self) -> None:
         self.assertEqual(default_app_root().name, "VieNeu Reader")
