@@ -455,12 +455,12 @@ class PlaybackCoordinator:
                         # the cache, exactly as _prefetch does.
                         for _chunk in chunks:
                             pass
-                        if not produced_chunks:
-                            # The engine finished without a single sample, so
-                            # the person is sitting in silence. That is the
-                            # voice failing, not the cache, and staying quiet
-                            # about it would leave them with no way to tell.
-                            raise
+                if not produced_chunks:
+                    # The engine finished without a single sample, so the person
+                    # is sitting in silence. On either path that is the voice
+                    # failing, and staying quiet would leave them with no way to
+                    # tell whether the app is working, stuck or done.
+                    raise RuntimeError("synthesis produced no audio")
             self._guard(token)
             self._call_output(token, lambda: self._output.end(token))
             if not is_selection and index is not None and index + 1 < len(self._segments):

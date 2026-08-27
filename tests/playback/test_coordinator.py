@@ -197,6 +197,17 @@ class SilentSpeechEngine(FakeSpeechEngine):
         yield from ()
 
 
+class FailingAfterAudioSpeechEngine(FakeSpeechEngine):
+    """Delivers real audio and then fails part-way through the paragraph."""
+
+    def stream(self, text, voice_id, settings):
+        self.calls.append((text, voice_id))
+        for step in range(2):
+            marker = (step + 1) / 10
+            yield AudioChunk(struct.pack("<2f", marker, -marker))
+        raise RuntimeError("speech failed")
+
+
 class DiskFullCache(AudioCache):
     """Fails the write the way a full disk does, at any point in the stream."""
 
@@ -748,6 +759,58 @@ class PlaybackCoordinatorTests(unittest.TestCase):
             coordinator.snapshot.error,
             "Không thể tạo giọng đọc cho đoạn này.",
         )
+        self.assertEqual(self.progress.saved, [])
+
+    def test_synthesis_that_fails_after_real_audio_is_still_reported(self):
+        engine = FailingAfterAudioSpeechEngine()
+        coordinator = PlaybackCoordinator(
+            engine=engine,
+            cache=self.cache,
+            progress_repository=self.progress,
+            output=self.output,
+            scheduler=self.scheduler,
+        )
+        coordinator.play(self.book, self.first.id, "Adam")
+
+        self.scheduler.run_next()
+
+        self.assertEqual(
+            sum(event[0] == "append" for event in self.output.events),
+            2,
+        )
+        self.assertEqual(coordinator.snapshot.state, PlaybackState.ERROR)
+        self.assertEqual(
+            coordinator.snapshot.error,
+            "Không thể tạo giọng đọc cho đoạn này.",
+        )
+        self.assertEqual(self.progress.saved, [])
+        cache_files = list((Path(self.temp_dir.name) / "cache").glob("*.f32"))
+        self.assertEqual(cache_files, [])
+
+    def test_selection_that_produces_no_audio_is_reported_as_a_failure(self):
+        engine = SilentSpeechEngine()
+        coordinator = PlaybackCoordinator(
+            engine=engine,
+            cache=self.cache,
+            progress_repository=self.progress,
+            output=self.output,
+            scheduler=self.scheduler,
+        )
+        coordinator.play_selection("Một hai ba.", "Adam")
+
+        self.scheduler.run_next()
+
+        self.assertEqual(len(engine.calls), 1)
+        self.assertEqual(
+            sum(event[0] == "append" for event in self.output.events),
+            0,
+        )
+        self.assertEqual(coordinator.snapshot.state, PlaybackState.ERROR)
+        self.assertEqual(
+            coordinator.snapshot.error,
+            "Không thể tạo giọng đọc cho đoạn này.",
+        )
+        self.assertTrue(coordinator.snapshot.is_selection)
         self.assertEqual(self.progress.saved, [])
 
     def test_progress_failure_enters_error_after_audio_drains(self):
