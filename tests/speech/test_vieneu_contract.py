@@ -358,6 +358,50 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         self.assertTrue((unrelated / "blob").is_file())
         self.assertTrue(tag.is_file())
 
+    def test_hub_cleanup_never_deletes_through_a_symlinked_component(self):
+        def download_model(**kwargs):
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        pinned = "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX"
+        for component in ("hub", "repository", "locks"):
+            with self.subTest(component=component):
+                models = Path(self.temp_dir.name) / f"models-{component}"
+                outside = Path(self.temp_dir.name) / f"outside-{component}"
+                (outside / pinned).mkdir(parents=True)
+                (outside / pinned / "keep.bin").write_bytes(b"fixture")
+                engine = VieNeuSpeechEngine(
+                    models,
+                    sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+                    model_downloader=download_model,
+                )
+                engine.prepare_model(Mock())
+                hub = models / "hub"
+                if component == "hub":
+                    hub.symlink_to(outside, target_is_directory=True)
+                elif component == "repository":
+                    hub.mkdir()
+                    (hub / pinned).symlink_to(
+                        outside / pinned,
+                        target_is_directory=True,
+                    )
+                else:
+                    hub.mkdir()
+                    (hub / ".locks").symlink_to(outside, target_is_directory=True)
+
+                engine.prepare_model(Mock())
+
+                self.assertTrue(engine.is_model_ready)
+                self.assertTrue((outside / pinned / "keep.bin").is_file())
+
     def test_codec_download_override_is_scoped_local_and_fail_closed(self):
         codec_directory = self.models / CODEC_DIRECTORY
         codec_directory.mkdir(parents=True)

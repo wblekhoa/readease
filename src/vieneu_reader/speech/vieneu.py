@@ -270,10 +270,13 @@ class VieNeuSpeechEngine:
         hub = self._models_path / _HUB_CACHE_DIRECTORY
         if hub.is_symlink() or not hub.is_dir():
             return
-        for name in _PINNED_HUB_CACHE_NAMES:
-            for duplicate in (hub / name, hub / _HUB_LOCK_DIRECTORY / name):
-                if duplicate.is_dir() and not duplicate.is_symlink():
-                    shutil.rmtree(duplicate, ignore_errors=True)
+        duplicates = [hub / name for name in _PINNED_HUB_CACHE_NAMES]
+        locks = hub / _HUB_LOCK_DIRECTORY
+        if locks.is_dir() and not locks.is_symlink():
+            duplicates.extend(locks / name for name in _PINNED_HUB_CACHE_NAMES)
+        for duplicate in duplicates:
+            if duplicate.is_dir() and not duplicate.is_symlink():
+                shutil.rmtree(duplicate, ignore_errors=True)
         if _hub_cache_is_bookkeeping_only(hub):
             shutil.rmtree(hub, ignore_errors=True)
 
