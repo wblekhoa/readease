@@ -245,6 +245,80 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
 
         self.assertFalse(engine.is_model_ready)
 
+    def test_preparation_leaves_no_duplicate_hub_cache_under_the_models_root(self):
+        residue = (
+            self.models
+            / "hub"
+            / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX"
+            / "snapshots"
+            / CODEC_REVISION
+        )
+
+        def download_model(**kwargs):
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+                residue.mkdir(parents=True, exist_ok=True)
+                for filename in filenames:
+                    (residue / filename).write_bytes(b"fixture")
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+            model_downloader=download_model,
+        )
+
+        engine.prepare_model(Mock())
+
+        self.assertTrue(engine.is_model_ready)
+        self.assertFalse((self.models / "hub").exists())
+        self.assertTrue(
+            (self.models / CODEC_DIRECTORY / CODEC_FILES[0]).is_file()
+        )
+
+    def test_preparation_clears_hub_residue_left_by_an_earlier_install(self):
+        download_calls = []
+
+        def download_model(**kwargs):
+            download_calls.append(kwargs)
+            target = Path(kwargs["local_dir"])
+            if kwargs["repo_id"] == MODEL_REPO:
+                target = target / MODEL_SUBFOLDER
+                filenames = MODEL_FILES
+            else:
+                filenames = CODEC_FILES
+            target.mkdir(parents=True, exist_ok=True)
+            for filename in filenames:
+                (target / filename).write_bytes(b"fixture")
+            return str(target)
+
+        engine = VieNeuSpeechEngine(
+            self.models,
+            sdk_factory=lambda **kwargs: FakeVieNeuSDK(**kwargs),
+            model_downloader=download_model,
+        )
+        engine.prepare_model(Mock())
+        residue = (
+            self.models
+            / "hub"
+            / "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX"
+        )
+        residue.mkdir(parents=True)
+        (residue / CODEC_FILES[0]).write_bytes(b"fixture")
+
+        engine.prepare_model(Mock())
+
+        self.assertEqual(len(download_calls), 2)
+        self.assertTrue(engine.is_model_ready)
+        self.assertFalse((self.models / "hub").exists())
+
     def test_codec_download_override_is_scoped_local_and_fail_closed(self):
         codec_directory = self.models / CODEC_DIRECTORY
         codec_directory.mkdir(parents=True)

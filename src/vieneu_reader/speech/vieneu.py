@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import tempfile
 from contextlib import contextmanager
@@ -43,6 +44,7 @@ CODEC_FILES = (
     "moss_audio_tokenizer_encode.data",
 )
 _READY_MARKER = ".vieneu-ready.json"
+_HUB_CACHE_DIRECTORY = "hub"
 _SDK_LOAD_LOCK = RLock()
 
 
@@ -236,6 +238,14 @@ class VieNeuSpeechEngine:
             except FileNotFoundError:
                 pass
 
+    def _discard_duplicate_hub_cache(self) -> None:
+        """Drop the hub cache that duplicates the snapshots we already keep."""
+
+        residue = self._models_path / _HUB_CACHE_DIRECTORY
+        if residue.is_symlink() or not residue.is_dir():
+            return
+        shutil.rmtree(residue, ignore_errors=True)
+
     def _configure_huggingface_environment(self, *, offline: bool = False) -> None:
         os.environ["HF_HOME"] = str(self._models_path)
         os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
@@ -251,6 +261,7 @@ class VieNeuSpeechEngine:
 
         with self._lock:
             if self.is_model_ready:
+                self._discard_duplicate_hub_cache()
                 progress_callback(1.0, "Mô hình đọc tiếng Việt đã sẵn sàng.")
                 return
             self._configure_huggingface_environment()
@@ -278,6 +289,7 @@ class VieNeuSpeechEngine:
                     raise RuntimeError("VieNeu exposes no preset voices")
                 self._sdk = sdk
                 self._write_ready_marker()
+                self._discard_duplicate_hub_cache()
             except Exception as error:
                 self._sdk = None
                 raise ModelPreparationError(
