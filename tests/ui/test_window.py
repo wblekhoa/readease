@@ -126,6 +126,13 @@ class ReaderWindowTests(unittest.TestCase):
 
         self.assertIsNotNone(language_combo)
         self.assertIsNotNone(setup_language_combo)
+        self.assertEqual(
+            [
+                language_combo.itemText(index)
+                for index in range(language_combo.count())
+            ],
+            ["🇻🇳 Tiếng Việt", "🇬🇧 English"],
+        )
         english_index = language_combo.findData(Language.ENGLISH.value)
         self.assertGreaterEqual(english_index, 0)
 

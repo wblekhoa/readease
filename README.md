@@ -59,7 +59,7 @@ Muốn nhờ AI cài giúp, mở thư mục source trong công cụ AI và gửi
 - **Đọc từ Apple Books:** quét chọn văn bản rồi nhấn **Control-Option-Command-R** để nghe mà không cần chuyển cửa sổ.
 - **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ sách, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
 - **Riêng tư và local-first:** sách, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
-- **Giao diện song ngữ:** chuyển tức thời giữa `Tiếng Việt` và `English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
+- **Giao diện song ngữ:** chuyển tức thời giữa `🇻🇳 Tiếng Việt` và `🇬🇧 English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
 
 ## Cách dùng
 

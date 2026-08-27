@@ -89,7 +89,7 @@ READEASE_SOURCE_INSTALL PASS target=.../Applications/ReadEase.app
 
 ### Step 6 — Set up the Vietnamese voice
 
-In ReadEase, choose `English` from the language selector if needed, then click **Set up voice**. The app downloads about 330 MB of Vietnamese voice data the first time. Reading is local and can work offline afterward.
+In ReadEase, choose `🇬🇧 English` from the language selector if needed, then click **Set up voice**. The app downloads about 330 MB of Vietnamese voice data the first time. Reading is local and can work offline afterward.
 
 ## Check compatibility without installing
 

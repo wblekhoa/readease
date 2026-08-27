@@ -289,8 +289,8 @@ class ReaderWindow(QMainWindow):
     def _build_language_combo(object_name: str) -> QComboBox:
         combo = QComboBox()
         combo.setObjectName(object_name)
-        combo.addItem("Tiếng Việt", Language.VIETNAMESE.value)
-        combo.addItem("English", Language.ENGLISH.value)
+        combo.addItem("🇻🇳 Tiếng Việt", Language.VIETNAMESE.value)
+        combo.addItem("🇬🇧 English", Language.ENGLISH.value)
         return combo
 
     def _connect_actions(self) -> None:

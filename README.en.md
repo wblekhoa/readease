@@ -44,7 +44,7 @@ See [INSTALL.en.md](INSTALL.en.md) for screenshots-message wording, Gatekeeper d
 - **Paste text:** paste up to 100,000 characters while preserving paragraph boundaries; long passages are split into manageable playback parts.
 - **Read from Apple Books:** select text and press **Control-Option-Command-R** without bringing ReadEase to the foreground.
 - **Session history:** replay up to 10 recent items from books, pasted text or Apple Books. History disappears when the app closes.
-- **Vietnamese and English UI:** choose `Tiếng Việt` or `English` from the language selector. The choice is applied immediately and saved for the next launch.
+- **Vietnamese and English UI:** choose `🇻🇳 Tiếng Việt` or `🇬🇧 English` from the language selector. The choice is applied immediately and saved for the next launch.
 - **Local-first privacy:** books, progress, model data and audio cache stay on the Mac. There is no API key, telemetry or background server.
 
 The English option translates the app interface, status messages and common import errors. VieNeu remains a Vietnamese TTS model; switching the UI language does not install an English speech model.
