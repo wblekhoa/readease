@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import sqlite3
+import zipfile
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -25,10 +26,14 @@ def _make_library(root: Path, books: tuple[tuple[str, str, str, float], ...]) ->
     connection = sqlite3.connect(path)
     connection.execute(
         "CREATE TABLE ZBKLIBRARYASSET ("
-        "ZASSETID TEXT, ZTITLE TEXT, ZEPUBID TEXT, ZREADINGPROGRESS REAL)"
+        "ZASSETID TEXT, ZTITLE TEXT, ZEPUBID TEXT, ZREADINGPROGRESS REAL,"
+        " ZPATH TEXT)"
     )
     connection.executemany(
-        "INSERT INTO ZBKLIBRARYASSET VALUES (?, ?, ?, ?)", books
+        "INSERT INTO ZBKLIBRARYASSET VALUES (?, ?, ?, ?, ?)",
+        # Most cases do not care where the book file is; those rows say nowhere,
+        # which is also what a library row looks like before the file lands.
+        [tuple(book) + ("",) * (5 - len(book)) for book in books],
     )
     connection.commit()
     connection.close()
@@ -55,6 +60,54 @@ def _make_annotations(
     return path
 
 
+def _make_book(
+    root: Path,
+    name: str,
+    *,
+    chapters: int = 20,
+    differs_at: int | None = None,
+) -> Path:
+    """A minimal EPUB with enough spine items for the CFIs used here.
+
+    `differs_at` alters exactly one chapter, which is how two copies of a book
+    come to share an edition id while a position inside them stops meaning the
+    same thing.
+    """
+
+    path = root / name
+    manifest, spine = [], []
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("mimetype", "application/epub+zip")
+        archive.writestr(
+            "META-INF/container.xml",
+            '<?xml version="1.0"?><container version="1.0" '
+            'xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+            '<rootfiles><rootfile full-path="OEBPS/content.opf" '
+            'media-type="application/oebps-package+xml"/></rootfiles></container>',
+        )
+        for index in range(chapters):
+            item = f"id{200 + index}"
+            href = f"text/part{index:04d}.html"
+            extra = "<img src=\"x.png\"/>" if index == differs_at else ""
+            archive.writestr(
+                f"OEBPS/{href}",
+                '<html xmlns="http://www.w3.org/1999/xhtml"><body>'
+                f"{extra}<p>Chương {index}.</p></body></html>",
+            )
+            manifest.append(
+                f'<item id="{item}" href="{href}" media-type="application/xhtml+xml"/>'
+            )
+            spine.append(f'<itemref idref="{item}"/>')
+        archive.writestr(
+            "OEBPS/content.opf",
+            '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" '
+            'version="3.0" unique-identifier="uid"><metadata/>'
+            f'<manifest>{"".join(manifest)}</manifest>'
+            f'<spine>{"".join(spine)}</spine></package>',
+        )
+    return path
+
+
 SAME_EPUB = "urn:uuid:8b873e3e"
 BOOKS = (
     # Titles and edition ids vary independently on purpose: SRC and DST share an
@@ -73,6 +126,32 @@ ROWS = (
     ("SRC", 2, "epubcfi(/6/26[id220]!/4/12/1:0)", "đã xoá", None, 1),
     ("DST", 3, "epubcfi(/6/38[id206]!/4/16/1,:201,:202)", None, None, 0),
 )
+
+
+def _paired_library(
+    root: Path,
+    rows=None,
+    *,
+    differs_at: int | None = None,
+) -> AppleBooksLibrary:
+    """SRC and DST as two real book files, identical unless `differs_at` says.
+
+    The plan compares the documents themselves, so a library whose rows point at
+    no file can only ever return "needs-review".
+    """
+
+    source = _make_book(root, "src.epub")
+    target = _make_book(root, "dst.epub", differs_at=differs_at)
+    books = tuple(
+        book + (str(source if book[0] == "SRC" else target),)
+        if book[0] in ("SRC", "DST")
+        else book
+        for book in BOOKS
+    )
+    return AppleBooksLibrary(
+        library_database=_make_library(root, books),
+        annotation_database=_make_annotations(root, rows or ROWS),
+    )
 
 
 class AppleBooksReaderTests(unittest.TestCase):
@@ -110,12 +189,7 @@ class AppleBooksReaderTests(unittest.TestCase):
 
     def test_plan_marks_a_same_edition_transfer(self) -> None:
         with TemporaryDirectory() as directory:
-            root = Path(directory)
-            library = AppleBooksLibrary(
-                library_database=_make_library(root, BOOKS),
-                annotation_database=_make_annotations(root, ROWS),
-            )
-            plan = build_transfer_plan(library, "SRC", "DST")
+            plan = build_transfer_plan(_paired_library(Path(directory)), "SRC", "DST")
             self.assertEqual(len(plan.items), 3)
             self.assertTrue(all(item.verdict == "same-edition" for item in plan.items))
             self.assertTrue(plan.same_edition)
@@ -430,10 +504,7 @@ class AlreadyCarriedTests(unittest.TestCase):
 
     @staticmethod
     def _library(root: Path, rows):
-        return AppleBooksLibrary(
-            library_database=_make_library(root, BOOKS),
-            annotation_database=_make_annotations(root, rows),
-        )
+        return _paired_library(root, rows)
 
     def test_a_note_at_the_same_position_on_the_target_is_marked(self) -> None:
         carried = "epubcfi(/6/26[id220]!/4/64/4/1,:0,:119)"
@@ -484,3 +555,73 @@ class AlreadyCarriedTests(unittest.TestCase):
 
             self.assertEqual(len(copies), 2, copies)
             self.assertEqual(len(set(copies)), 2, "each database exactly once")
+
+
+class ChapterDiffersTests(unittest.TestCase):
+    """The failure this whole check exists for.
+
+    A real library held two files with the same ZEPUBID, the same 28-item spine
+    and the same chapter filenames, where one chapter carried four extra images.
+    Notes copied into it listed correctly in the sidebar and highlighted nothing
+    on the page. A shared edition id had been treated as proof they matched.
+    """
+
+    # ROWS puts two annotations in spine 12 and one in spine 18.
+    SPINE_OF_TWO = 12
+    SPINE_OF_ONE = 18
+
+    def test_a_shared_edition_id_is_not_enough_to_copy(self) -> None:
+        with TemporaryDirectory() as directory:
+            library = _paired_library(Path(directory), differs_at=self.SPINE_OF_ONE)
+            plan = build_transfer_plan(library, "SRC", "DST")
+            self.assertTrue(plan.same_edition, "the edition ids do still match")
+            self.assertEqual(len(plan.copyable), 2, "copied into a differing chapter")
+            self.assertEqual(
+                [item.verdict for item in plan.items].count("needs-review"), 1
+            )
+
+    def test_notes_in_chapters_that_match_are_still_offered(self) -> None:
+        """One bad chapter must not condemn the whole book."""
+
+        with TemporaryDirectory() as directory:
+            library = _paired_library(Path(directory), differs_at=self.SPINE_OF_ONE)
+            plan = build_transfer_plan(library, "SRC", "DST")
+            spines = {
+                item.annotation.location.split("!")[0]
+                for item in plan.copyable
+            }
+            self.assertEqual(spines, {"epubcfi(/6/26[id220]"})
+
+    def test_a_differing_chapter_with_the_notes_in_it_leaves_nothing_to_copy(self) -> None:
+        with TemporaryDirectory() as directory:
+            library = _paired_library(Path(directory), differs_at=self.SPINE_OF_TWO)
+            plan = build_transfer_plan(library, "SRC", "DST")
+            self.assertEqual(len(plan.copyable), 1)
+
+    def test_a_book_file_that_is_missing_vouches_for_nothing(self) -> None:
+        """No file, no evidence - and no evidence means no copy."""
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            library = AppleBooksLibrary(
+                library_database=_make_library(root, BOOKS),
+                annotation_database=_make_annotations(root, ROWS),
+            )
+            plan = build_transfer_plan(library, "SRC", "DST")
+            self.assertEqual(plan.copyable, ())
+            self.assertTrue(all(i.verdict == "needs-review" for i in plan.items))
+
+    def test_an_unreadable_book_file_vouches_for_nothing(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            broken = root / "broken.epub"
+            broken.write_bytes(b"not an epub at all")
+            books = tuple(
+                book + (str(broken),) if book[0] in ("SRC", "DST") else book
+                for book in BOOKS
+            )
+            library = AppleBooksLibrary(
+                library_database=_make_library(root, books),
+                annotation_database=_make_annotations(root, ROWS),
+            )
+            self.assertEqual(build_transfer_plan(library, "SRC", "DST").copyable, ())

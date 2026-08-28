@@ -466,6 +466,11 @@ class ReaderWindow(QMainWindow):
                 source_asset_id,
                 target_asset_id,
                 backup=backup,
+                # Only the positions the plan proved mean the same thing over
+                # there. The rest stay listed and unwritten.
+                only_locations={
+                    item.annotation.location for item in plan.copyable
+                },
                 books_is_running=self._books_is_running,
             )
         except AppleBooksBusy:

@@ -136,7 +136,9 @@ class TransferNotesRenderingTests(unittest.TestCase):
         view.show_plan(_plan(1))
         self.assertEqual(view.plan_table.item(0, 2).text(), "Chuyển được nguyên vẹn")
 
-    def test_a_different_edition_row_says_the_position_needs_checking(self) -> None:
+    def test_a_row_that_cannot_carry_over_says_why(self) -> None:
+        """"Needs checking" hid the reason; the chapter differing is the reason."""
+
         view = self._view()
         other = Book("OTHER", "Bản khác", "urn:uuid:different", 0.1)
         items = tuple(
@@ -144,7 +146,10 @@ class TransferNotesRenderingTests(unittest.TestCase):
             for item in _plan(1).items
         )
         view.show_plan(TransferPlan(source=SOURCE, target=other, items=items))
-        self.assertEqual(view.plan_table.item(0, 2).text(), "Cần kiểm lại vị trí")
+        self.assertEqual(view.plan_table.item(0, 2).text(), "Chương này khác nhau")
+        self.assertFalse(
+            view.transfer_button.isEnabled(), "offered to copy a position it cannot vouch for"
+        )
         self.assertIn("khác nhau", view.summary_label.text())
 
     def test_each_row_is_labelled_from_its_own_annotation(self) -> None:

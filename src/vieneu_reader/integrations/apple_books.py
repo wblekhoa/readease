@@ -22,6 +22,13 @@ import shutil
 import sqlite3
 import tempfile
 
+from vieneu_reader.integrations.epub_layout import (
+    Layout,
+    UnreadableBook,
+    carries_over,
+    read_layout,
+)
+
 _LIBRARY_CONTAINER = (
     Path.home()
     / "Library"
@@ -65,6 +72,9 @@ class Book:
     title: str
     edition_id: str
     reading_progress: float
+    # Where the book itself sits. Two copies can share an edition id and still
+    # differ in content, and only the files can settle that.
+    path: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,9 +119,14 @@ class TransferPlan:
 
     @property
     def copyable(self) -> tuple["TransferItem", ...]:
-        """The items a copy would actually write - what the count should mean."""
+        """The items a copy would actually write - what the count should mean.
 
-        return tuple(item for item in self.items if item.verdict != "already-there")
+        Only positions proven to mean the same thing in the target book. A note
+        whose chapter differs stays listed and is never written: it would look
+        like it worked and highlight the wrong words, or nothing at all.
+        """
+
+        return tuple(item for item in self.items if item.verdict == "same-edition")
 
 
 def _as_float(value: object) -> float:
@@ -235,7 +250,7 @@ class AppleBooksLibrary:
     def books(self) -> tuple[Book, ...]:
         rows = self._rows(
             self._library,
-            "SELECT ZASSETID, ZTITLE, ZEPUBID, ZREADINGPROGRESS "
+            "SELECT ZASSETID, ZTITLE, ZEPUBID, ZREADINGPROGRESS, ZPATH "
             "FROM ZBKLIBRARYASSET WHERE ZASSETID IS NOT NULL",
         )
         return tuple(
@@ -244,8 +259,9 @@ class AppleBooksLibrary:
                 title=str(title or ""),
                 edition_id=str(edition_id or ""),
                 reading_progress=_as_float(progress),
+                path=str(path or ""),
             )
-            for asset_id, title, edition_id, progress in rows
+            for asset_id, title, edition_id, progress, path in rows
         )
 
     def book(self, asset_id: str) -> Book:
@@ -311,6 +327,37 @@ def select_book(books: tuple[Book, ...], asset_id: str) -> Book:
     return matches[0]
 
 
+def _layouts(source: Book, target: Book) -> tuple[Layout, Layout] | None:
+    """Both books' spine digests, or None when either cannot be read.
+
+    A book that cannot be opened yields no verdict rather than a hopeful one:
+    every position then needs a person to look at it.
+    """
+
+    if not source.path or not target.path:
+        return None
+    try:
+        return read_layout(source.path), read_layout(target.path)
+    except (UnreadableBook, OSError):
+        return None
+
+
+def _verdict(
+    annotation: Annotation,
+    already_there: set[str],
+    layouts: tuple[Layout, Layout] | None,
+) -> str:
+    if annotation.location in already_there:
+        return "already-there"
+    if layouts is None:
+        return "needs-review"
+    return (
+        "same-edition"
+        if carries_over(layouts[0], layouts[1], annotation.location)
+        else "needs-review"
+    )
+
+
 def build_transfer_plan(
     library: AppleBooksLibrary,
     source_asset_id: str,
@@ -318,10 +365,16 @@ def build_transfer_plan(
 ) -> TransferPlan:
     """Describe what moving the source book's annotations would mean.
 
-    Nothing is written. The verdict is deliberately conservative: two copies of the
-    same EPUB share an edition id, and their CFI paths address the same spine, so
-    those transfer as-is. Anything else is flagged for a person to look at, because a
-    character offset into one edition means nothing in another.
+    Nothing is written. A verdict of `same-edition` means the chapter this note
+    sits in is byte-for-byte the same document in both books, so its position
+    means the same thing there.
+
+    A shared edition id is **not** enough and was once trusted here. Two files
+    can carry the same `ZEPUBID`, the same spine, the same chapter filenames, and
+    still differ inside: one extra image in a chapter shifts every element index
+    after it, and a note copied on that evidence appears in the sidebar while
+    highlighting nothing on the page. So the documents themselves are compared,
+    and anything that cannot be established is flagged for a person to look at.
     """
 
     if source_asset_id == target_asset_id:
@@ -331,8 +384,7 @@ def build_transfer_plan(
     books = library.books()
     source = select_book(books, source_asset_id)
     target = select_book(books, target_asset_id)
-    same_edition = bool(source.edition_id) and source.edition_id == target.edition_id
-    verdict = "same-edition" if same_edition else "needs-review"
+    layouts = _layouts(source, target)
     # The target's annotations are read for one reason: to say which of these
     # are already over there. Without it the preview promises items the copy
     # will skip, and the two disagree in front of the person using them. Both
@@ -344,9 +396,7 @@ def build_transfer_plan(
     items = [
         TransferItem(
             annotation=annotation,
-            verdict=(
-                "already-there" if annotation.location in already_there else verdict
-            ),
+            verdict=_verdict(annotation, already_there, layouts),
         )
         for annotation in found.get(source_asset_id, ())
     ]

@@ -4,6 +4,7 @@ from contextlib import closing
 import os
 from pathlib import Path
 import sqlite3
+from dataclasses import replace
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -93,19 +94,35 @@ class _FakeAppleBooks:
     # swallows inside a slot and turns into a silent do-nothing.
     annotation_database = None
 
-    def __init__(self, carried: tuple[int, ...] = ()) -> None:
+    def __init__(
+        self,
+        carried: tuple[int, ...] = (),
+        root: Path | None = None,
+        differs_at: int | None = None,
+    ) -> None:
         self.calls = 0
         # Which of SRC's positions the target already holds. Without this the
         # double cannot express a partly-copied book, and no window test can
         # reach the already-there path at all.
         self.carried = carried
+        # The plan compares the book files, so a double with no files behind it
+        # can only ever produce "needs-review". Given a directory it writes a
+        # matching pair, optionally differing in one chapter.
+        self.source, self.target = self.SOURCE, self.TARGET
+        if root is not None:
+            from tests.integrations.test_apple_books import _make_book
+
+            first = _make_book(root, "fake-src.epub")
+            second = _make_book(root, "fake-dst.epub", differs_at=differs_at)
+            self.source = replace(self.SOURCE, path=str(first))
+            self.target = replace(self.TARGET, path=str(second))
 
     def books(self):
         self.calls += 1
-        return (self.SOURCE, self.TARGET)
+        return (self.source, self.target)
 
     def book(self, asset_id):
-        return self.SOURCE if asset_id == "SRC" else self.TARGET
+        return self.source if asset_id == "SRC" else self.target
 
     def annotations(self, asset_id):
         return self.annotations_for(asset_id).get(asset_id, ())
@@ -127,7 +144,9 @@ class _FakeAppleBooks:
 
         found = {key: () for key in asset_ids}
         if "SRC" in found:
-            found["SRC"] = tuple(note("SRC", index) for index in range(5))
+            # Numbered from one to match the annotation database fixture; the
+            # copy intersects the two by position, so they must agree.
+            found["SRC"] = tuple(note("SRC", index) for index in range(1, 6))
         if "DST" in found:
             found["DST"] = tuple(note("DST", index) for index in self.carried)
         return found
@@ -225,7 +244,7 @@ class ReaderWindowTests(unittest.TestCase):
 
         from tests.integrations.test_apple_books_writer import _database
 
-        library = _FakeAppleBooks()
+        library = _FakeAppleBooks(root=Path(self.temporary_directory.name))
         library.database = _database(Path(self.temporary_directory.name), count=5)
         library.annotation_database = library.database
         return library
@@ -300,7 +319,9 @@ class ReaderWindowTests(unittest.TestCase):
 
         from tests.integrations.test_apple_books_writer import _database
 
-        library = _FakeAppleBooks(carried=(0, 1, 2))
+        library = _FakeAppleBooks(
+            carried=(1, 2, 3), root=Path(self.temporary_directory.name)
+        )
         library.annotation_database = _database(Path(self.temporary_directory.name))
         asked: list[str] = []
         window = self.make_window(
@@ -321,7 +342,9 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertNotIn("5", asked[0], "the dialog offered to copy all five")
 
     def test_a_fully_copied_book_is_not_put_up_for_approval(self) -> None:
-        library = _FakeAppleBooks(carried=(0, 1, 2, 3, 4))
+        library = _FakeAppleBooks(
+            carried=(1, 2, 3, 4, 5), root=Path(self.temporary_directory.name)
+        )
         asked: list[str] = []
         window = self.make_window(
             FakeModelSetup(ready=True),

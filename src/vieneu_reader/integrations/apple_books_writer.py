@@ -111,6 +111,7 @@ def copy_annotations(
     *,
     backup: Path | None,
     limit: int | None = None,
+    only_locations: frozenset[str] | set[str] | None = None,
     books_is_running=apple_books_is_running,
     now: datetime | None = None,
 ) -> int:
@@ -118,6 +119,11 @@ def copy_annotations(
 
     Returns how many were written. `limit` exists so the first run can be a single
     annotation that a person checks in Apple Books before the rest follow.
+
+    `only_locations` restricts the copy to positions the caller has established
+    mean the same thing in the target book. Copying a position whose chapter
+    differs produces an annotation that lists correctly and highlights the wrong
+    words, so the caller decides and this refuses to guess on its behalf.
     """
 
     if backup is None or not (Path(backup) / Path(database).resolve().name).is_file():
@@ -160,6 +166,8 @@ def copy_annotations(
         }
         location_column = columns.index("ZANNOTATIONLOCATION")
         rows = [row for row in rows if row[location_column] not in already_there]
+        if only_locations is not None:
+            rows = [row for row in rows if row[location_column] in only_locations]
 
         if limit is not None:
             rows = rows[:limit]

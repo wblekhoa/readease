@@ -38,6 +38,14 @@ book in your library is read at all.
 Nothing is read until you open that tab. Previewing never opens the originals for
 writing: ReadEase copies the database files, reads the copy, and deletes it.
 
+Previewing also opens the two book files themselves. A note's position is recorded as
+a count of elements inside one chapter, so it only means the same thing in the other
+copy when that chapter is the same document — two files can share an edition id and
+still differ inside. ReadEase reads each book's package listing to learn its chapter
+order, then takes a checksum of each chapter to compare the two. Chapter text is
+hashed, never stored, never shown, and never leaves this Mac; only the two books you
+picked are opened.
+
 **Copy across** does write to Apple Books, and it is the only thing in ReadEase that
 writes to data belonging to another app. Apple does not support this, so it is built
 to be undone:
@@ -48,8 +56,11 @@ to be undone:
   change.
 - It copies the annotation database and its journal files into
   `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/` before writing anything.
+- It only copies notes whose chapter is byte-for-byte the same document in both books.
+  Anything else stays listed, marked, and unwritten - copying it would put a highlight
+  on the wrong words.
 - It only ever inserts. The book the notes came from is not modified, and nothing is
-  deleted or edited in any book.
+  deleted or edited in any book. The book files are never written to at all.
 - It skips anything already there, so pressing it again copies nothing rather than
   making a second set. A note already at that position in the target book is left as
   it is, including one you wrote yourself.

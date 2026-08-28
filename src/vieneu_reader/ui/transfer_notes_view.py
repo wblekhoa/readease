@@ -237,14 +237,16 @@ class TransferNotesView(QWidget):
         if not plan.items:
             return text("transfer.no_notes")
         copyable = len(plan.copyable)
-        carried = len(plan.items) - copyable
+        carried = sum(1 for item in plan.items if item.verdict == "already-there")
+        risky = len(plan.items) - copyable - carried
         if not copyable:
-            return text("transfer.all_already_there", count=carried)
+            key = "transfer.none_safe" if risky else "transfer.all_already_there"
+            return text(key, count=risky or carried)
         body = text("transfer.count", count=copyable)
         if carried:
             body = f"{body} {text('transfer.some_already_there', count=carried)}"
-        if not plan.same_edition:
-            body = f"{body} {text('transfer.different_edition')}"
+        if risky:
+            body = f"{body} {text('transfer.some_need_review', count=risky)}"
         if shown < len(plan.items):
             body = f"{body} {text('transfer.truncated', shown=shown)}"
         return body

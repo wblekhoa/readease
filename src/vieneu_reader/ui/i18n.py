@@ -130,7 +130,18 @@ _TEXT: dict[str, tuple[str, str]] = {
     "transfer.no_text": ("(không có chữ kèm theo)", "(no text attached)"),
     "transfer.kind_highlight": ("Đoạn bôi màu", "Highlight"),
     "transfer.verdict_same": ("Chuyển được nguyên vẹn", "Carries over as-is"),
-    "transfer.verdict_review": ("Cần kiểm lại vị trí", "Position needs checking"),
+    "transfer.verdict_review": ("Chương này khác nhau", "That chapter differs"),
+    "transfer.some_need_review": (
+        "{count} mục nằm ở chương mà hai bản khác nhau nên không chép.",
+        "{count} sit in a chapter that differs between the copies, so they are "
+        "not copied.",
+    ),
+    "transfer.none_safe": (
+        "Cả {count} mục đều nằm ở chương mà hai bản sách khác nhau. Chép sang sẽ "
+        "tô nhầm chỗ, nên ReadEase không chép.",
+        "All {count} sit in chapters that differ between the two copies. Copying "
+        "them would highlight the wrong words, so ReadEase does not.",
+    ),
     "transfer.verdict_already": ("Đã có ở cuốn kia", "Already in the other copy"),
     "transfer.count": ("Sẽ chép {count} mục.", "{count} items would be copied."),
     "transfer.some_already_there": (
