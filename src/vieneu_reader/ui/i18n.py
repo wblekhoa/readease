@@ -71,7 +71,7 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Chuyển sang màn hình dán nội dung",
         "Go to the paste-text view",
     ),
-    "nav.transfer": ("Đối chiếu ghi chú", "Compare notes"),
+    "nav.transfer": ("Chuyển ghi chú", "Move notes"),
     "transfer.ambiguous": (
         "Apple Books đang có nhiều mục trùng mã cho cuốn này, nên chưa chọn được "
         "chắc chắn. Hãy mở lại Apple Books rồi thử lại.",
@@ -97,8 +97,8 @@ _TEXT: dict[str, tuple[str, str]] = {
         "The Apple Books library could not be read on this Mac.",
     ),
     "transfer.title": (
-        "Xem ghi chú nào chuyển được giữa hai bản sách",
-        "See which notes carry over between two copies of a book",
+        "Xem trước rồi chuyển ghi chú sang bản sách kia",
+        "Preview your notes, then move them to the other copy",
     ),
     "transfer.description": (
         "ReadEase đọc thư viện Apple Books để xem ghi chú và đoạn bôi màu của bạn, "
@@ -112,7 +112,7 @@ _TEXT: dict[str, tuple[str, str]] = {
         "from.",
     ),
     "transfer.source": ("Lấy ghi chú từ", "Take notes from"),
-    "transfer.target": ("Đối chiếu với", "Compare with"),
+    "transfer.target": ("Chuyển sang", "Move them to"),
     "transfer.preview": ("Xem trước", "Preview"),
     "transfer.pick_two": (
         "Chọn hai cuốn khác nhau để xem trước.",

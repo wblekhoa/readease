@@ -311,11 +311,29 @@ class AppleBooksDisclosureTests(unittest.TestCase):
         self.assertIn("clean undo only while Apple Books has not launched", privacy)
         self.assertIn("delete them inside Apple Books", privacy)
 
-    def test_both_readmes_mention_the_tab(self) -> None:
+    def test_every_surface_calls_the_tab_the_same_thing(self) -> None:
+        """One name, taken from the app rather than retyped here.
+
+        The tab moves notes now; it was still called "Compare notes" in the app
+        and "Move notes" in PRIVACY.md, so someone looking for how to move their
+        notes found a tab that said it only compared them. Reading the name out
+        of the localizer means renaming it again cannot leave a document behind.
+        """
+
+        from vieneu_reader.ui.i18n import _TEXT
+
+        vietnamese, english = _TEXT["nav.transfer"]
+        for name, expected in (
+            ("README.md", vietnamese),
+            ("README.en.md", english),
+            ("PRIVACY.md", english),
+        ):
+            body = self._prose(name)
+            with self.subTest(document=name):
+                self.assertIn(
+                    expected,
+                    body,
+                    f"{name} does not call the tab {expected!r}",
+                )
         for name in ("README.md", "README.en.md"):
-            body = (self.ROOT / name).read_text(encoding="utf-8")
-            self.assertIn("PRIVACY.md", body)
-            self.assertTrue(
-                "Đối chiếu ghi chú" in body or "Compare notes" in body,
-                f"{name} does not mention the tab that reads Apple Books",
-            )
+            self.assertIn("PRIVACY.md", (self.ROOT / name).read_text(encoding="utf-8"))

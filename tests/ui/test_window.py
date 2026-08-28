@@ -468,7 +468,7 @@ class ReaderWindowTests(unittest.TestCase):
                 window.feature_navigation.tabText(index)
                 for index in range(window.feature_navigation.count())
             ],
-            ["Library", "Paste text", "Read books", "Compare notes"],
+            ["Library", "Paste text", "Read books", "Move notes"],
         )
         self.assertEqual(window.library_view.title_label.text(), "Book library")
         self.assertEqual(window.paste_text_view.title_label.text(), "Paste text to read")
@@ -554,7 +554,7 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertIsNotNone(feature_stack)
         self.assertEqual(
             [navigation.tabText(index) for index in range(navigation.count())],
-            ["Thư viện", "Dán nội dung", "Đọc sách", "Đối chiếu ghi chú"],
+            ["Thư viện", "Dán nội dung", "Đọc sách", "Chuyển ghi chú"],
         )
         self.assertEqual(feature_stack.count(), 4)
         self.assertEqual(

@@ -114,9 +114,9 @@ Mặc định ReadEase cũng **không** xem clipboard: chỉ khi bạn tự bậ
 Mở **Lịch sử phiên** trên thanh phát để nghe lại nội dung. Các mục trùng chính xác được gộp; bạn có thể xóa lịch sử ngay, và toàn bộ lịch sử tự mất khi thoát ReadEase.
 
 
-### 5. Đối chiếu ghi chú giữa hai bản sách
+### 5. Chuyển ghi chú sang bản sách khác
 
-Mục **Đối chiếu ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng cuốn sách. Xem trước xong, bấm **Chép sang** là ReadEase chuyển chúng thật. ReadEase chỉ đọc khi bạn mở mục đó, và chỉ ghi khi bạn tự bấm nút — sau khi xem trước đúng cặp sách đó và xác nhận số mục. ReadEase chỉ chép những ghi chú nằm ở chương **giống hệt nhau** giữa hai bản — hai file có thể cùng edition mà nội dung vẫn khác, và chép nhầm thì highlight sẽ rơi sai chỗ; những mục còn lại vẫn hiện trong danh sách nhưng không được chép. Trước khi ghi, app sao lưu dữ liệu Apple Books vào `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/`; app chỉ **thêm** vào cuốn đích, không sửa hay xoá gì, và không đụng tới cuốn nguồn. Phải thoát Apple Books thì mới chép được. Nếu bạn bật iCloud cho Apple Books thì các ghi chú này cũng hiện trên thiết bị khác. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+Mục **Chuyển ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng cuốn sách. Xem trước xong, bấm **Chép sang** là ReadEase chuyển chúng thật. ReadEase chỉ đọc khi bạn mở mục đó, và chỉ ghi khi bạn tự bấm nút — sau khi xem trước đúng cặp sách đó và xác nhận số mục. ReadEase chỉ chép những ghi chú nằm ở chương **giống hệt nhau** giữa hai bản — hai file có thể cùng edition mà nội dung vẫn khác, và chép nhầm thì highlight sẽ rơi sai chỗ; những mục còn lại vẫn hiện trong danh sách nhưng không được chép. Trước khi ghi, app sao lưu dữ liệu Apple Books vào `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/`; app chỉ **thêm** vào cuốn đích, không sửa hay xoá gì, và không đụng tới cuốn nguồn. Phải thoát Apple Books thì mới chép được. Nếu bạn bật iCloud cho Apple Books thì các ghi chú này cũng hiện trên thiết bị khác. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ## Dữ liệu và quyền riêng tư
 
