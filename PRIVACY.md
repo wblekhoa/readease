@@ -45,7 +45,7 @@ to be undone:
 - It refuses while Apple Books is running, because Apple Books would overwrite the
   change.
 - It copies the annotation database and its journal files into
-  `~/Library/Application Support/ReadEase/AppleBooksBackups/` before writing anything.
+  `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/` before writing anything.
 - It only ever inserts. The book the notes came from is not modified, and nothing is
   deleted or edited in any book.
 - The whole copy is one transaction, so if it fails part way through, your library is

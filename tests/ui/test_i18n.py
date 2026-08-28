@@ -279,12 +279,26 @@ class AppleBooksDisclosureTests(unittest.TestCase):
         for bound in (
             "only runs when you press the button",
             "refuses while Apple Books is running",
-            "AppleBooksBackups",
             "only ever inserts",
             "one transaction",
             "iCloud",
         ):
             self.assertIn(bound, privacy, f"PRIVACY.md no longer promises: {bound}")
+
+    def test_the_documented_backup_folder_is_the_one_the_code_writes_to(self) -> None:
+        """Where to look when you want your notes back is not a place to guess.
+
+        The app root keeps its pre-rebrand folder name on purpose, so the
+        plausible-looking "ReadEase/" path is wrong in exactly the situation
+        someone would be reading this document.
+        """
+
+        from vieneu_reader.config import default_app_root
+
+        backups = default_app_root() / "AppleBooksBackups"
+        documented = f"~/Library/Application Support/{backups.parent.name}/AppleBooksBackups/"
+        for name in ("PRIVACY.md", "README.md", "README.en.md"):
+            self.assertIn(documented, self._prose(name), f"{name} points elsewhere")
 
     def test_privacy_does_not_promise_an_undo_icloud_can_take_away(self) -> None:
         """The backup stops being a clean undo once Apple Books has synced.
