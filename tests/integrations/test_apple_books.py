@@ -419,3 +419,68 @@ class RemainingEdgeTests(unittest.TestCase):
 
             self.assertEqual(len(copies), 2, copies)
             self.assertEqual(len(set(copies)), 2, "each database exactly once")
+
+
+class AlreadyCarriedTests(unittest.TestCase):
+    """The plan must know what is already on the other side.
+
+    The writer skips those, so a plan that does not mark them promises work that
+    will not happen.
+    """
+
+    @staticmethod
+    def _library(root: Path, rows):
+        return AppleBooksLibrary(
+            library_database=_make_library(root, BOOKS),
+            annotation_database=_make_annotations(root, rows),
+        )
+
+    def test_a_note_at_the_same_position_on_the_target_is_marked(self) -> None:
+        carried = "epubcfi(/6/26[id220]!/4/64/4/1,:0,:119)"
+        rows = ROWS + (("DST", 2, carried, "đoạn được bôi", "ghi chú", 0),)
+        with TemporaryDirectory() as directory:
+            plan = build_transfer_plan(self._library(Path(directory), rows), "SRC", "DST")
+            verdicts = {
+                item.annotation.location: item.verdict for item in plan.items
+            }
+            self.assertEqual(verdicts[carried], "already-there")
+            self.assertEqual(len(plan.copyable), len(plan.items) - 1)
+
+    def test_a_deleted_note_on_the_target_does_not_block_the_copy(self) -> None:
+        """Someone deleted it in Apple Books; copying it again is the point."""
+
+        carried = "epubcfi(/6/26[id220]!/4/64/4/1,:0,:119)"
+        rows = ROWS + (("DST", 2, carried, "đoạn được bôi", None, 1),)
+        with TemporaryDirectory() as directory:
+            plan = build_transfer_plan(self._library(Path(directory), rows), "SRC", "DST")
+            self.assertEqual(len(plan.copyable), len(plan.items))
+
+    def test_nothing_is_marked_when_the_target_is_empty(self) -> None:
+        with TemporaryDirectory() as directory:
+            plan = build_transfer_plan(self._library(Path(directory), ROWS), "SRC", "DST")
+            self.assertEqual(len(plan.copyable), len(plan.items))
+            self.assertTrue(plan.items)
+
+    def test_the_target_is_not_matched_by_position_across_books(self) -> None:
+        """DST's own note sits at a CFI that SRC does not use; nothing to mark."""
+
+        with TemporaryDirectory() as directory:
+            plan = build_transfer_plan(self._library(Path(directory), ROWS), "SRC", "DST")
+            self.assertNotIn("already-there", {item.verdict for item in plan.items})
+
+    def test_both_books_come_out_of_one_read(self) -> None:
+        with TemporaryDirectory() as directory:
+            library = self._library(Path(directory), ROWS)
+            copies: list[str] = []
+            original = AppleBooksLibrary._rows
+
+            def spy(self, database, query, parameters=()):
+                copies.append(Path(database).name)
+                return original(self, database, query, parameters)
+
+            AppleBooksLibrary._rows = spy
+            self.addCleanup(setattr, AppleBooksLibrary, "_rows", original)
+            build_transfer_plan(library, "SRC", "DST")
+
+            self.assertEqual(len(copies), 2, copies)
+            self.assertEqual(len(set(copies)), 2, "each database exactly once")

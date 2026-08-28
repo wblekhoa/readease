@@ -30,8 +30,10 @@ verified locally, speech initialization fails closed on any remote lookup.
 
 The **Move notes** tab reads Apple Books' own databases so it can show which of your
 notes and highlights could carry over between two copies of a book. It reads the list
-of books and, for the book you pick, the annotations on it: their positions, the text
-you highlighted, and the notes you wrote.
+of books and, for the two books you pick, the annotations on them: their positions, the
+text you highlighted, and the notes you wrote. Both books are read because the preview
+says which notes are already on the other side; they come out of one read, and no other
+book in your library is read at all.
 
 Nothing is read until you open that tab. Previewing never opens the originals for
 writing: ReadEase copies the database files, reads the copy, and deletes it.

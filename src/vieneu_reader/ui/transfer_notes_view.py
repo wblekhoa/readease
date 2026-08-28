@@ -154,7 +154,9 @@ class TransferNotesView(QWidget):
     def show_plan(self, plan: TransferPlan) -> None:
         self._unavailable = False
         self._previewed = (plan.source.asset_id, plan.target.asset_id)
-        self._previewed_count = len(plan.items)
+        # What arms the button is what would be written, not what is listed:
+        # a plan of items that are all already there copies nothing.
+        self._previewed_count = len(plan.copyable)
         rows = plan.items[:_PREVIEW_ROW_LIMIT]
         self.plan_table.setRowCount(len(rows))
         for row, item in enumerate(rows):
@@ -224,18 +226,23 @@ class TransferNotesView(QWidget):
         return "transfer.kind_highlight"
 
     def _verdict_text(self, verdict: str) -> str:
-        key = (
-            "transfer.verdict_same"
-            if verdict == "same-edition"
-            else "transfer.verdict_review"
-        )
+        key = {
+            "same-edition": "transfer.verdict_same",
+            "already-there": "transfer.verdict_already",
+        }.get(verdict, "transfer.verdict_review")
         return self._localizer.text(key)
 
     def _summary(self, plan: TransferPlan, *, shown: int) -> str:
         text = self._localizer.text
         if not plan.items:
             return text("transfer.no_notes")
-        body = text("transfer.count", count=len(plan.items))
+        copyable = len(plan.copyable)
+        carried = len(plan.items) - copyable
+        if not copyable:
+            return text("transfer.all_already_there", count=carried)
+        body = text("transfer.count", count=copyable)
+        if carried:
+            body = f"{body} {text('transfer.some_already_there', count=carried)}"
         if not plan.same_edition:
             body = f"{body} {text('transfer.different_edition')}"
         if shown < len(plan.items):

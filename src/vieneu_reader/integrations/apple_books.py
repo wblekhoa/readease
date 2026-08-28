@@ -107,6 +107,12 @@ class TransferPlan:
             self.source.edition_id == self.target.edition_id
         )
 
+    @property
+    def copyable(self) -> tuple["TransferItem", ...]:
+        """The items a copy would actually write - what the count should mean."""
+
+        return tuple(item for item in self.items if item.verdict != "already-there")
+
 
 def _as_float(value: object) -> float:
     """Apple's schema is undocumented; a surprising value must not crash a slot."""
@@ -253,25 +259,43 @@ class AppleBooksLibrary:
         must reject an unknown book do that where they already hold the listing.
         """
 
+        return self.annotations_for(asset_id).get(asset_id, ())
+
+    def annotations_for(
+        self, *asset_ids: str
+    ) -> dict[str, tuple[Annotation, ...]]:
+        """Annotations for several books, grouped by book, in one read.
+
+        Two books need comparing to say which notes are already on the other
+        side. Asking twice would copy the database to disk twice, so the ids are
+        bound into a single query instead.
+        """
+
+        if not asset_ids:
+            return {}
         rows = self._rows(
             self._annotations,
             # Bound in SQL, not filtered afterwards: reading every book's notes
             # into memory to show one book's would make the privacy note false.
             "SELECT ZANNOTATIONASSETID, ZANNOTATIONTYPE, ZANNOTATIONLOCATION, "
             "ZANNOTATIONSELECTEDTEXT, ZANNOTATIONNOTE FROM ZAEANNOTATION "
-            "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID = ?",
-            (asset_id,),
+            "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID IN "
+            f"({', '.join('?' for _ in asset_ids)})",
+            tuple(asset_ids),
         )
-        return tuple(
-            Annotation(
-                asset_id=str(row[0]),
-                kind=_as_int(row[1]),
-                location=str(row[2] or ""),
-                selected_text=row[3],
-                note=row[4],
+        grouped: dict[str, list[Annotation]] = {key: [] for key in asset_ids}
+        for row in rows:
+            asset_id = str(row[0])
+            grouped.setdefault(asset_id, []).append(
+                Annotation(
+                    asset_id=asset_id,
+                    kind=_as_int(row[1]),
+                    location=str(row[2] or ""),
+                    selected_text=row[3],
+                    note=row[4],
+                )
             )
-            for row in rows
-        )
+        return {key: tuple(value) for key, value in grouped.items()}
 
 
 def select_book(books: tuple[Book, ...], asset_id: str) -> Book:
@@ -309,8 +333,21 @@ def build_transfer_plan(
     target = select_book(books, target_asset_id)
     same_edition = bool(source.edition_id) and source.edition_id == target.edition_id
     verdict = "same-edition" if same_edition else "needs-review"
+    # The target's annotations are read for one reason: to say which of these
+    # are already over there. Without it the preview promises items the copy
+    # will skip, and the two disagree in front of the person using them. Both
+    # books come out of one read, so this still copies the database only once.
+    found = library.annotations_for(source_asset_id, target_asset_id)
+    already_there = {
+        annotation.location for annotation in found.get(target_asset_id, ())
+    }
     items = [
-        TransferItem(annotation=annotation, verdict=verdict)
-        for annotation in library.annotations(source_asset_id)
+        TransferItem(
+            annotation=annotation,
+            verdict=(
+                "already-there" if annotation.location in already_there else verdict
+            ),
+        )
+        for annotation in found.get(source_asset_id, ())
     ]
     return TransferPlan(source=source, target=target, items=tuple(items))

@@ -131,7 +131,16 @@ _TEXT: dict[str, tuple[str, str]] = {
     "transfer.kind_highlight": ("Đoạn bôi màu", "Highlight"),
     "transfer.verdict_same": ("Chuyển được nguyên vẹn", "Carries over as-is"),
     "transfer.verdict_review": ("Cần kiểm lại vị trí", "Position needs checking"),
-    "transfer.count": ("Tìm thấy {count} mục.", "Found {count} items."),
+    "transfer.verdict_already": ("Đã có ở cuốn kia", "Already in the other copy"),
+    "transfer.count": ("Sẽ chép {count} mục.", "{count} items would be copied."),
+    "transfer.some_already_there": (
+        "{count} mục đã có sẵn nên sẽ bỏ qua.",
+        "{count} are already there and will be skipped.",
+    ),
+    "transfer.all_already_there": (
+        "Cả {count} mục đều đã có ở cuốn kia, không còn gì để chép.",
+        "All {count} are already in the other copy; there is nothing to copy.",
+    ),
     "transfer.no_notes": (
         "Cuốn này chưa có ghi chú hay đoạn bôi màu nào trong Apple Books.",
         "This book has no notes or highlights in Apple Books yet.",

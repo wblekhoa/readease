@@ -100,20 +100,27 @@ class _FakeAppleBooks:
         return self.SOURCE if asset_id == "SRC" else self.TARGET
 
     def annotations(self, asset_id):
+        return self.annotations_for(asset_id).get(asset_id, ())
+
+    def annotations_for(self, *asset_ids):
+        # `reads` counts trips to the database; `asked` records which books were
+        # named. One read naming two books is not the same as two reads.
+        self.reads = getattr(self, "reads", 0) + 1
         self.asked = getattr(self, "asked", [])
-        self.asked.append(asset_id)
-        if asset_id != "SRC":
-            return ()
-        return tuple(
-            AppleAnnotation(
-                asset_id="SRC",
-                kind=2,
-                location=f"epubcfi(/6/26!/4/{index})",
-                selected_text="đoạn được bôi",
-                note="ghi chú" if index % 2 else None,
+        self.asked.extend(asset_ids)
+        found = {key: () for key in asset_ids}
+        if "SRC" in found:
+            found["SRC"] = tuple(
+                AppleAnnotation(
+                    asset_id="SRC",
+                    kind=2,
+                    location=f"epubcfi(/6/26!/4/{index})",
+                    selected_text="đoạn được bôi",
+                    note="ghi chú" if index % 2 else None,
+                )
+                for index in range(5)
             )
-            for index in range(5)
-        )
+        return found
 
 
 class ReaderWindowTests(unittest.TestCase):
@@ -303,13 +310,21 @@ class ReaderWindowTests(unittest.TestCase):
             library.calls, 0, "only the transfer tab may read the Books library"
         )
 
-    def test_the_preview_asks_about_the_source_not_the_target(self) -> None:
+    def test_the_preview_reads_the_two_chosen_books_and_no_others(self) -> None:
+        """It reads the target too, to say what is already over there.
+
+        That is a wider read than the source alone, so the bound that matters is
+        this one: the two books named in the pickers, nothing else in the
+        library, and one trip to the database rather than one per book.
+        """
+
         library = _FakeAppleBooks()
         _window, view = self._open_tab(library)
         view.source_selector.setCurrentIndex(0)
         view.target_selector.setCurrentIndex(1)
         view.preview_button.click()
-        self.assertEqual(getattr(library, "asked", []), ["SRC"])
+        self.assertEqual(sorted(getattr(library, "asked", [])), ["DST", "SRC"])
+        self.assertEqual(getattr(library, "reads", 0), 1, "read the database twice")
         self.assertEqual(view.plan_table.rowCount(), 5)
 
     def test_a_library_it_cannot_read_becomes_a_message_not_a_crash(self) -> None:

@@ -362,3 +362,55 @@ class TransferPermissionTests(unittest.TestCase):
             view.transfer_button.isEnabled(),
             "armed on a plan describing books other than the chosen pair",
         )
+
+
+class AlreadyThereTests(unittest.TestCase):
+    """A preview that promises notes the copy will skip is a preview that lies."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def _view(self, plan: TransferPlan) -> TransferNotesView:
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.show_plan(plan)
+        return view
+
+    @staticmethod
+    def _mixed(copied: int, total: int = 3) -> TransferPlan:
+        items = tuple(
+            TransferItem(
+                annotation=_plan(total).items[index].annotation,
+                verdict="already-there" if index < copied else "same-edition",
+            )
+            for index in range(total)
+        )
+        return TransferPlan(source=SOURCE, target=TARGET, items=items)
+
+    def test_the_count_is_what_would_be_copied_not_what_is_listed(self) -> None:
+        view = self._view(self._mixed(copied=2))
+        summary = view.summary_label.text()
+        self.assertIn("1", summary, summary)
+        self.assertIn("2", summary, "the skipped ones are not accounted for")
+        self.assertEqual(view.plan_table.rowCount(), 3, "all three stay visible")
+
+    def test_a_plan_with_nothing_left_to_copy_disarms_the_button(self) -> None:
+        view = self._view(self._mixed(copied=3))
+        self.assertFalse(
+            view.transfer_button.isEnabled(),
+            "offered a copy that would write nothing",
+        )
+        self.assertIn("đã có ở cuốn kia", view.summary_label.text())
+
+    def test_one_new_note_among_copied_ones_is_still_copyable(self) -> None:
+        self.assertTrue(self._view(self._mixed(copied=2)).transfer_button.isEnabled())
+
+    def test_each_row_says_which_side_it_is_on(self) -> None:
+        view = self._view(self._mixed(copied=2))
+        verdicts = [view.plan_table.item(row, 2).text() for row in range(3)]
+        self.assertEqual(verdicts.count("Đã có ở cuốn kia"), 2, verdicts)
+        self.assertEqual(verdicts.count("Chuyển được nguyên vẹn"), 1, verdicts)
