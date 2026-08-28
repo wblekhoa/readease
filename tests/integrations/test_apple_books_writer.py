@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import sqlite3
 from tempfile import TemporaryDirectory
@@ -11,6 +12,7 @@ from vieneu_reader.integrations.apple_books_writer import (
     NothingToCopy,
     back_up,
     copy_annotations,
+    prune_backups,
     restore,
 )
 
@@ -325,3 +327,148 @@ class RepeatTests(unittest.TestCase):
             self.assertEqual(len(rows), 3)
             mine = [row for row in rows if row[1] == "mine"]
             self.assertEqual(len(mine), 1, "the reader's own note was disturbed")
+
+
+class OnlyLocationsTests(unittest.TestCase):
+    """The last gate before somebody else's data is written.
+
+    The plan decides which positions mean the same thing in the target book;
+    this is how that decision reaches the write. Nothing else in the writer
+    knows why a position might be unsafe, and it must not try to guess.
+    """
+
+    def _copy(self, database: Path, backup: Path, **kwargs) -> int:
+        return copy_annotations(
+            database, "SRC", "DST", backup=backup, books_is_running=_quiet, **kwargs
+        )
+
+    def test_only_the_named_positions_are_written(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+            wanted = "epubcfi(/6/26!/4/2)"
+
+            self.assertEqual(self._copy(database, saved, only_locations={wanted}), 1)
+
+            rows = _annotations(database, "DST")
+            self.assertEqual([row[3] for row in rows], [wanted])
+
+    def test_an_empty_set_writes_nothing_rather_than_everything(self) -> None:
+        """The dangerous reading of "no positions were vouched for"."""
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+
+            with self.assertRaises(NothingToCopy):
+                self._copy(database, saved, only_locations=set())
+
+            self.assertEqual(_annotations(database, "DST"), [])
+            self.assertEqual(_bookkeeping(database), (3, 3))
+
+    def test_omitting_it_copies_everything_as_before(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+            self.assertEqual(self._copy(database, saved), 3)
+
+    def test_a_position_that_is_not_in_the_source_is_simply_absent(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+            with self.assertRaises(NothingToCopy):
+                self._copy(database, saved, only_locations={"epubcfi(/6/99!/4/1)"})
+
+    def test_it_narrows_the_copy_and_never_widens_it(self) -> None:
+        """Naming a position already on the target must not resurrect it."""
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+            everything = {f"epubcfi(/6/26!/4/{n})" for n in range(1, 4)}
+
+            self.assertEqual(self._copy(database, saved, only_locations=everything), 3)
+            with self.assertRaises(NothingToCopy):
+                self._copy(database, saved, only_locations=everything)
+            self.assertEqual(len(_annotations(database, "DST")), 3)
+
+    def test_a_frozenset_works_as_well_as_a_set(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+            wanted = frozenset({"epubcfi(/6/26!/4/1)", "epubcfi(/6/26!/4/3)"})
+            self.assertEqual(self._copy(database, saved, only_locations=wanted), 2)
+
+
+class PruneBackupsTests(unittest.TestCase):
+    """Backups are snapshots of someone's whole annotation database.
+
+    Keeping a few is the point of taking them; keeping every one forever hoards
+    the person's data on their own disk with nothing ever removing it.
+    """
+
+    def _saved(self, root: Path, names: tuple[str, ...]) -> Path:
+        store = root / "backups"
+        for name in names:
+            (store / name).mkdir(parents=True)
+            (store / name / "AEAnnotation_v1.sqlite").write_bytes(b"snapshot")
+        return store
+
+    def test_the_newest_are_kept_and_the_rest_go(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = self._saved(
+                Path(directory),
+                tuple(f"2026-08-2{n}-120000" for n in range(1, 9)),
+            )
+            self.assertEqual(prune_backups(store, keep=3), 5)
+            self.assertEqual(
+                sorted(item.name for item in store.iterdir()),
+                ["2026-08-26-120000", "2026-08-27-120000", "2026-08-28-120000"],
+            )
+
+    def test_age_is_read_from_the_name_not_the_filesystem(self) -> None:
+        """A sync client or backup tool rewrites mtimes; the stamp is ours."""
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self._saved(root, ("2026-01-01-000000", "2026-08-28-120000"))
+            # Make the *older* one look freshly touched.
+            os.utime(store / "2026-01-01-000000", (2_000_000_000, 2_000_000_000))
+            prune_backups(store, keep=1)
+            self.assertEqual(
+                [item.name for item in store.iterdir()], ["2026-08-28-120000"]
+            )
+
+    def test_fewer_than_the_limit_are_left_alone(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = self._saved(Path(directory), ("2026-08-28-120000",))
+            self.assertEqual(prune_backups(store, keep=5), 0)
+            self.assertEqual(len(list(store.iterdir())), 1)
+
+    def test_a_store_that_does_not_exist_yet_is_not_an_error(self) -> None:
+        with TemporaryDirectory() as directory:
+            self.assertEqual(prune_backups(Path(directory) / "never-made"), 0)
+
+    def test_keeping_none_is_refused(self) -> None:
+        """Pruning to zero would delete the backup for the copy just made."""
+
+        with TemporaryDirectory() as directory:
+            store = self._saved(Path(directory), ("2026-08-28-120000",))
+            with self.assertRaises(ValueError):
+                prune_backups(store, keep=0)
+            self.assertEqual(len(list(store.iterdir())), 1)
+
+    def test_loose_files_beside_the_backups_are_left_alone(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = self._saved(
+                Path(directory), ("2026-08-01-120000", "2026-08-28-120000")
+            )
+            (store / "README.txt").write_text("không phải bản sao lưu")
+            prune_backups(store, keep=1)
+            self.assertTrue((store / "README.txt").is_file())

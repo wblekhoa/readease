@@ -56,6 +56,9 @@ to be undone:
   change.
 - It copies the annotation database and its journal files into
   `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/` before writing anything.
+  The five most recent are kept and older ones are removed after a successful copy, so
+  snapshots of your annotations do not pile up there indefinitely. Deleting that folder
+  yourself is safe; it only costs the ability to go back.
 - It only copies notes whose chapter is byte-for-byte the same document in both books.
   Anything else stays listed, marked, and unwritten - copying it would put a highlight
   on the wrong words.

@@ -66,6 +66,7 @@ from vieneu_reader.integrations.apple_books_writer import (
     apple_books_is_running,
     back_up,
     copy_annotations,
+    prune_backups,
 )
 
 from .transfer_notes_view import TransferNotesView
@@ -491,6 +492,9 @@ class ReaderWindow(QMainWindow):
                 text("transfer.copy_failed", path=str(backup))
             )
             return
+        # Only once the write has landed: an older backup is worth more than a
+        # tidy folder right up until the new one exists.
+        prune_backups(backup_root)
         self.transfer_notes_view.show_transfer_result(
             text("transfer.copied", count=written, book=plan.target.title)
         )

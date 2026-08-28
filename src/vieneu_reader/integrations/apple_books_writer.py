@@ -21,9 +21,11 @@ What must change per copy:
 * the creation and modification timestamps.
 
 Everything else, including the EPUB CFI that decides which sentence the note
-lands on, is carried verbatim. That only works because the two books share an
-edition; `build_transfer_plan` is what establishes that, and this module refuses
-to guess it for itself.
+lands on, is carried verbatim. That only works where the chapter the note sits
+in is the same document in both books - a shared edition id is not enough, and
+believing it was put highlights on the wrong words once already.
+`build_transfer_plan` establishes that by comparing the documents, and passes
+the result here as `only_locations`. This module refuses to guess it for itself.
 """
 
 from __future__ import annotations
@@ -39,6 +41,9 @@ _ENTITY = "AEAnnotation"
 _SIDECARS = ("-wal", "-shm")
 # Core Data timestamps count seconds from 2001-01-01 UTC, not from the epoch.
 _APPLE_EPOCH = datetime(2001, 1, 1, tzinfo=timezone.utc)
+# Enough to go back after a copy that turned out wrong, without keeping every
+# snapshot of the person's annotations forever.
+_BACKUPS_KEPT = 5
 
 
 class AppleBooksBusy(RuntimeError):
@@ -81,6 +86,38 @@ def back_up(database: Path, destination: Path) -> Path:
         if sidecar.is_file():
             shutil.copy2(sidecar, target / sidecar.name)
     return target
+
+
+def prune_backups(root: Path, keep: int = _BACKUPS_KEPT) -> int:
+    """Delete all but the newest `keep` backups, returning how many went.
+
+    Every copy leaves a snapshot of somebody's whole annotation database, and
+    nothing else ever removes them. Keeping a handful covers going back after a
+    copy that turned out wrong, which is what they are for; keeping every one
+    forever quietly hoards the person's data on their own disk.
+
+    Newest is decided by directory name, which is a sortable timestamp written
+    by the caller - not by mtime, which a backup tool or a sync client can move.
+    """
+
+    if keep < 1:
+        raise ValueError("keep at least one backup")
+    try:
+        saved = sorted(
+            (item for item in Path(root).iterdir() if item.is_dir()),
+            key=lambda item: item.name,
+        )
+    except (FileNotFoundError, NotADirectoryError):
+        return 0
+    removed = 0
+    for stale in saved[:-keep]:
+        try:
+            shutil.rmtree(stale)
+        except OSError:
+            # A backup we cannot remove is not worth failing a copy over.
+            continue
+        removed += 1
+    return removed
 
 
 def restore(database: Path, backup: Path) -> None:
