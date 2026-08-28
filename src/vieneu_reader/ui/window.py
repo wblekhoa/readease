@@ -427,13 +427,22 @@ class ReaderWindow(QMainWindow):
         if not plan.items:
             self.transfer_notes_view.show_transfer_result(text("transfer.no_notes"))
             return
+        if not plan.copyable:
+            # Everything is over there already. Stop before the dialog rather
+            # than asking someone to approve a copy of nothing.
+            self.transfer_notes_view.show_transfer_result(
+                text("transfer.all_already_there", count=len(plan.items))
+            )
+            return
         if self._apple_books is None:
             return
         database = self._apple_books.annotation_database
         if database is None:
             self.transfer_notes_view.show_transfer_result(text("transfer.unsupported"))
             return
-        if not self._confirm_transfer(len(plan.items), plan.target.title):
+        # The number someone approves must be the number that gets written, and
+        # the writer skips what is already there.
+        if not self._confirm_transfer(len(plan.copyable), plan.target.title):
             return
         # Ask again after the dialog: Apple Books may have been opened while it
         # was up, and a backup taken then would capture a torn write-ahead log.

@@ -88,9 +88,17 @@ class _FakeAppleBooks:
 
     SOURCE = AppleBook("SRC", "Bản một", "urn:uuid:same", 0.30)
     TARGET = AppleBook("DST", "Bản hai", "urn:uuid:same", 0.60)
+    # Declared so a test that forgets to point this at a database gets the
+    # window's own "unsupported" path rather than an AttributeError, which Qt
+    # swallows inside a slot and turns into a silent do-nothing.
+    annotation_database = None
 
-    def __init__(self) -> None:
+    def __init__(self, carried: tuple[int, ...] = ()) -> None:
         self.calls = 0
+        # Which of SRC's positions the target already holds. Without this the
+        # double cannot express a partly-copied book, and no window test can
+        # reach the already-there path at all.
+        self.carried = carried
 
     def books(self):
         self.calls += 1
@@ -108,18 +116,20 @@ class _FakeAppleBooks:
         self.reads = getattr(self, "reads", 0) + 1
         self.asked = getattr(self, "asked", [])
         self.asked.extend(asset_ids)
+        def note(asset: str, index: int) -> AppleAnnotation:
+            return AppleAnnotation(
+                asset_id=asset,
+                kind=2,
+                location=f"epubcfi(/6/26!/4/{index})",
+                selected_text="đoạn được bôi",
+                note="ghi chú" if index % 2 else None,
+            )
+
         found = {key: () for key in asset_ids}
         if "SRC" in found:
-            found["SRC"] = tuple(
-                AppleAnnotation(
-                    asset_id="SRC",
-                    kind=2,
-                    location=f"epubcfi(/6/26!/4/{index})",
-                    selected_text="đoạn được bôi",
-                    note="ghi chú" if index % 2 else None,
-                )
-                for index in range(5)
-            )
+            found["SRC"] = tuple(note("SRC", index) for index in range(5))
+        if "DST" in found:
+            found["DST"] = tuple(note("DST", index) for index in self.carried)
         return found
 
 
@@ -280,6 +290,54 @@ class ReaderWindowTests(unittest.TestCase):
         view.transfer_button.click()
         view.transfer_button.click()
         self.assertEqual(self._rows_on(library, "DST"), 5)
+
+    def test_the_confirmation_counts_what_will_be_written_not_what_is_listed(self) -> None:
+        """Approving "5 items" and getting 2 is consent for something else.
+
+        This is the partly-copied case: some notes carried over earlier, more
+        were added to the source since. The preview says 2; so must the dialog.
+        """
+
+        from tests.integrations.test_apple_books_writer import _database
+
+        library = _FakeAppleBooks(carried=(0, 1, 2))
+        library.annotation_database = _database(Path(self.temporary_directory.name))
+        asked: list[str] = []
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            apple_books=library,
+            backup_root=Path(self.temporary_directory.name) / "backups",
+            confirm_transfer=lambda title, body: (asked.append(body), False)[1],
+        )
+        view = window.transfer_notes_view
+        window.feature_navigation.setCurrentIndex(window.feature_stack.indexOf(view))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.preview_button.click()
+        view.transfer_button.click()
+
+        self.assertEqual(len(asked), 1, "no confirmation was shown")
+        self.assertIn("2", asked[0], asked[0])
+        self.assertNotIn("5", asked[0], "the dialog offered to copy all five")
+
+    def test_a_fully_copied_book_is_not_put_up_for_approval(self) -> None:
+        library = _FakeAppleBooks(carried=(0, 1, 2, 3, 4))
+        asked: list[str] = []
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            apple_books=library,
+            backup_root=Path(self.temporary_directory.name) / "backups",
+            confirm_transfer=lambda title, body: (asked.append(body), True)[1],
+        )
+        view = window.transfer_notes_view
+        window.feature_navigation.setCurrentIndex(window.feature_stack.indexOf(view))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.preview_button.click()
+
+        self.assertFalse(view.transfer_button.isEnabled())
+        window._transfer_notes("SRC", "DST")  # even if reached another way
+        self.assertEqual(asked, [], "asked to approve copying nothing")
 
     def test_a_second_copy_says_they_are_already_there_not_that_it_failed(self) -> None:
         """Re-previewing and pressing again is what a careful person does."""
