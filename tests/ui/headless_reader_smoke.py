@@ -57,8 +57,9 @@ def main() -> int:
             "libraryView",
             "pasteTextView",
             "externalReadingView",
+            "transferNotesView",
         ]:
-            raise AssertionError("three feature views are not mounted in stable order")
+            raise AssertionError("feature views are not mounted in stable order")
         if window.feature_stack.currentWidget().objectName() != "libraryView":
             raise AssertionError("empty startup did not open the library view")
 
