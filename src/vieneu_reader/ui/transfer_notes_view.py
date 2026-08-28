@@ -26,6 +26,7 @@ from vieneu_reader.integrations.apple_books import Book, TransferPlan
 from .i18n import Localizer
 
 _PREVIEW_ROW_LIMIT = 200
+_BOOKMARK_KIND = 3
 
 
 class TransferNotesView(QWidget):
@@ -144,10 +145,10 @@ class TransferNotesView(QWidget):
         self.plan_table.setRowCount(len(rows))
         for row, item in enumerate(rows):
             annotation = item.annotation
-            kind = self._localizer.text(
-                "transfer.kind_note" if annotation.has_note else "transfer.kind_highlight"
-            )
+            kind = self._localizer.text(self._kind_key(annotation))
             excerpt = (annotation.note or annotation.selected_text or "").strip()
+            if not excerpt:
+                excerpt = self._localizer.text("transfer.no_text")
             cells = (kind, excerpt, self._verdict_text(item.verdict))
             for column, value in enumerate(cells):
                 cell = QTableWidgetItem(value)
@@ -177,14 +178,25 @@ class TransferNotesView(QWidget):
         """
 
         plain = [
-            f"{book.title} — {round(book.reading_progress * 100)}%" for book in books
+            f"{round(book.reading_progress * 100)}% · {book.title}" for book in books
         ]
         labels = []
         for index, label in enumerate(plain):
             if plain.count(label) > 1:
-                label = f"{label} · {books[index].asset_id[:6]}"
+                position = f"{round(books[index].reading_progress * 100)}%"
+                label = label.replace(
+                    position, f"{position} ({books[index].asset_id[:4]})", 1
+                )
             labels.append(label)
         return tuple(labels)
+
+    @staticmethod
+    def _kind_key(annotation) -> str:
+        if annotation.has_note:
+            return "transfer.kind_note"
+        if annotation.kind == _BOOKMARK_KIND:
+            return "transfer.kind_bookmark"
+        return "transfer.kind_highlight"
 
     def _verdict_text(self, verdict: str) -> str:
         key = (

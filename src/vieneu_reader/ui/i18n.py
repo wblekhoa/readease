@@ -123,6 +123,8 @@ _TEXT: dict[str, tuple[str, str]] = {
     "transfer.column_text": ("Nội dung", "Content"),
     "transfer.column_verdict": ("Kết quả", "Outcome"),
     "transfer.kind_note": ("Ghi chú", "Note"),
+    "transfer.kind_bookmark": ("Đánh dấu trang", "Bookmark"),
+    "transfer.no_text": ("(không có chữ kèm theo)", "(no text attached)"),
     "transfer.kind_highlight": ("Đoạn bôi màu", "Highlight"),
     "transfer.verdict_same": ("Chuyển được nguyên vẹn", "Carries over as-is"),
     "transfer.verdict_review": ("Cần kiểm lại vị trí", "Position needs checking"),

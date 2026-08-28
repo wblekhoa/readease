@@ -207,3 +207,63 @@ class TransferNotesRenderingTests(unittest.TestCase):
         self.assertFalse(
             view.plan_table.item(0, 1).flags() & Qt.ItemFlag.ItemIsEditable
         )
+
+
+class TransferNotesReadabilityTests(unittest.TestCase):
+    """What the screen actually communicates, as opposed to what it contains."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def _view(self) -> TransferNotesView:
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        return view
+
+    @staticmethod
+    def _annotation(kind: int, selected: str | None, note: str | None) -> Annotation:
+        return Annotation(
+            asset_id="SRC",
+            kind=kind,
+            location="epubcfi(/6/26!/4/1)",
+            selected_text=selected,
+            note=note,
+        )
+
+    def _single(self, annotation: Annotation) -> TransferPlan:
+        return TransferPlan(
+            source=SOURCE,
+            target=TARGET,
+            items=(TransferItem(annotation=annotation, verdict="same-edition"),),
+        )
+
+    def test_a_bookmark_is_not_called_a_highlight(self) -> None:
+        view = self._view()
+        view.set_books((SOURCE, TARGET))
+        view.show_plan(self._single(self._annotation(3, None, None)))
+        self.assertEqual(view.plan_table.item(0, 0).text(), "Đánh dấu trang")
+
+    def test_an_entry_with_no_text_says_so_instead_of_showing_a_blank(self) -> None:
+        view = self._view()
+        view.set_books((SOURCE, TARGET))
+        view.show_plan(self._single(self._annotation(3, None, None)))
+        self.assertTrue(
+            view.plan_table.item(0, 1).text().strip(),
+            "a blank cell reads as a bug, not as an entry without text",
+        )
+
+    def test_what_tells_two_copies_apart_survives_a_narrow_dropdown(self) -> None:
+        """The titles are long and identical; a suffix is cut off before it is read."""
+        first = Book("A", "Đừng bắt tôi phải suy nghĩ! — Tái bản", "urn:uuid:x", 0.30)
+        second = Book("B", "Đừng bắt tôi phải suy nghĩ! — Tái bản", "urn:uuid:x", 0.60)
+        view = self._view()
+        view.set_books((first, second))
+        labels = [
+            view.source_selector.itemText(index)
+            for index in range(view.source_selector.count())
+        ]
+        prefixes = {label[:14] for label in labels}
+        self.assertEqual(
+            len(prefixes), 2, f"first 14 characters must already differ: {labels}"
+        )
