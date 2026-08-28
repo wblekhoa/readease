@@ -54,6 +54,13 @@ to be undone:
 If Apple Books syncs with iCloud, notes copied this way sync to your other devices like
 any other annotation. The confirmation says so before you agree.
 
+That also bounds what the backup can undo. Restoring it puts this Mac's database back,
+which is a clean undo only while Apple Books has not launched and synced since the
+copy. Once it has, the copied notes exist in iCloud too and Apple Books will bring them
+back; from that point the way to remove them is to delete them inside Apple Books,
+where they are easy to find - they are the newest annotations on the book you copied
+into, and nothing else in that book was touched.
+
 What it reads stays on this Mac and is not stored by ReadEase: the table is built when
 you press Preview and is gone when you close the app. macOS may ask you to grant
 ReadEase access to that folder; if you decline, the tab says so and nothing else

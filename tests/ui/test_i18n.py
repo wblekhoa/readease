@@ -286,6 +286,17 @@ class AppleBooksDisclosureTests(unittest.TestCase):
         ):
             self.assertIn(bound, privacy, f"PRIVACY.md no longer promises: {bound}")
 
+    def test_privacy_does_not_promise_an_undo_icloud_can_take_away(self) -> None:
+        """The backup stops being a clean undo once Apple Books has synced.
+
+        Saying "built to be undone" without that bound is the overclaim this
+        document exists to avoid.
+        """
+
+        privacy = self._prose("PRIVACY.md")
+        self.assertIn("clean undo only while Apple Books has not launched", privacy)
+        self.assertIn("delete them inside Apple Books", privacy)
+
     def test_both_readmes_mention_the_tab(self) -> None:
         for name in ("README.md", "README.en.md"):
             body = (self.ROOT / name).read_text(encoding="utf-8")
