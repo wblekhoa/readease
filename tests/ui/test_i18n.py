@@ -256,11 +256,35 @@ class AppleBooksDisclosureTests(unittest.TestCase):
 
     ROOT = Path(__file__).resolve().parents[2]
 
-    def test_privacy_names_the_apple_books_library_and_the_read_only_promise(self) -> None:
-        privacy = (self.ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+    def _prose(self, name: str) -> str:
+        # Collapse wrapping: these are claims, and a claim does not stop being
+        # made because the line broke in the middle of it.
+        return " ".join((self.ROOT / name).read_text(encoding="utf-8").split())
+
+    def test_privacy_states_what_is_read_and_when(self) -> None:
+        privacy = self._prose("PRIVACY.md")
         self.assertIn("Apple Books library", privacy)
-        self.assertIn("never opens the originals for writing", privacy)
         self.assertIn("Nothing is read until you open that tab", privacy)
+        self.assertIn("Previewing never opens the originals for writing", privacy)
+
+    def test_privacy_discloses_the_write_and_every_bound_on_it(self) -> None:
+        """The write is the part someone would most regret not being told about.
+
+        Each bound here is enforced somewhere in code; if one is ever dropped,
+        this is the reminder that a promise was made about it in writing.
+        """
+
+        privacy = self._prose("PRIVACY.md")
+        self.assertIn("does write to Apple Books", privacy)
+        for bound in (
+            "only runs when you press the button",
+            "refuses while Apple Books is running",
+            "AppleBooksBackups",
+            "only ever inserts",
+            "one transaction",
+            "iCloud",
+        ):
+            self.assertIn(bound, privacy, f"PRIVACY.md no longer promises: {bound}")
 
     def test_both_readmes_mention_the_tab(self) -> None:
         for name in ("README.md", "README.en.md"):
