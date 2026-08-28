@@ -267,3 +267,98 @@ class TransferNotesReadabilityTests(unittest.TestCase):
         self.assertEqual(
             len(prefixes), 2, f"first 14 characters must already differ: {labels}"
         )
+
+
+class TransferPermissionTests(unittest.TestCase):
+    """Copying is allowed only for the exact pair someone previewed."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def _armed_view(self) -> TransferNotesView:
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.show_plan(_plan(3))
+        return view
+
+    def test_nothing_can_be_copied_before_a_preview(self) -> None:
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        self.assertTrue(view.preview_button.isEnabled())
+        self.assertFalse(
+            view.transfer_button.isEnabled(),
+            "copying was offered for a pair nobody has looked at",
+        )
+
+    def test_a_preview_arms_the_copy_button(self) -> None:
+        self.assertTrue(self._armed_view().transfer_button.isEnabled())
+
+    def test_changing_a_book_withdraws_the_approval(self) -> None:
+        view = self._armed_view()
+        view.set_books((SOURCE, TARGET, Book("THIRD", "Bản ba", "urn:uuid:other", 0.1)))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(2)
+        self.assertFalse(
+            view.transfer_button.isEnabled(),
+            "approval for one pair carried over to a different pair",
+        )
+
+    def test_a_finished_copy_does_not_stay_armed(self) -> None:
+        """A second click would duplicate every note."""
+
+        view = self._armed_view()
+        view.show_transfer_result("xong")
+        self.assertFalse(view.transfer_button.isEnabled())
+
+    def test_an_empty_preview_cannot_be_copied(self) -> None:
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.show_plan(_plan(0))
+        self.assertFalse(view.transfer_button.isEnabled())
+
+    def test_a_failed_preview_disarms_the_copy_button(self) -> None:
+        view = self._armed_view()
+        view.show_unavailable("không đọc được")
+        self.assertFalse(view.transfer_button.isEnabled())
+
+    def test_the_signal_carries_the_pair_that_was_previewed(self) -> None:
+        view = self._armed_view()
+        seen: list[tuple[str, str]] = []
+        view.transferRequested.connect(lambda a, b: seen.append((a, b)))
+        view.transfer_button.click()
+        self.assertEqual(seen, [("SRC", "DST")])
+
+    def test_a_plan_for_other_books_does_not_arm_the_button(self) -> None:
+        """A preview that arrives describing a different pair must not count.
+
+        The plan comes back from the window, not from the selectors, so it can
+        describe books other than the ones now chosen - and arming on it would
+        copy notes nobody looked at.
+        """
+
+        third = Book("THIRD", "Bản ba", "urn:uuid:other", 0.1)
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        view.set_books((SOURCE, TARGET, third))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+
+        mismatched = TransferPlan(
+            source=SOURCE, target=third, items=_plan(3).items
+        )
+        view.show_plan(mismatched)
+
+        self.assertFalse(
+            view.transfer_button.isEnabled(),
+            "armed on a plan describing books other than the chosen pair",
+        )

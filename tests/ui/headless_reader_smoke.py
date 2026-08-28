@@ -180,7 +180,7 @@ def main() -> int:
         repository.close()
         print(
             "HEADLESS_READER_SMOKE PASS "
-            "features=library,paste,external nested_reader=1 formats=epub,pdf "
+            "features=library,paste,external,transfer nested_reader=1 formats=epub,pdf "
             "paste=1 paste_progress_immutable=1 "
             "external_selection=1 external_progress_immutable=1 "
             "selection=1 continuous=1 session_history=1 replay=1 "

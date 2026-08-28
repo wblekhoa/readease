@@ -153,6 +153,9 @@ class ReaderWindowTests(unittest.TestCase):
         selection_shortcut: Shortcut | None = None,
         read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
         apple_books=None,
+        backup_root: Path | None = None,
+        confirm_transfer=None,
+        books_is_running=lambda: False,
     ) -> ReaderWindow:
         window = ReaderWindow(
             self.controller,
@@ -164,6 +167,9 @@ class ReaderWindowTests(unittest.TestCase):
             ),
             read_on_copy_store=read_on_copy_store,
             apple_books=apple_books,
+            backup_root=backup_root,
+            confirm_transfer=confirm_transfer,
+            books_is_running=books_is_running,
         )
         self.windows.append(window)
         window.show()
@@ -194,6 +200,79 @@ class ReaderWindowTests(unittest.TestCase):
         view.preview_button.click()
         self.assertEqual(view.plan_table.rowCount(), 5)
         self.assertIn("5", view.summary_label.text())
+
+    # -- copying them across -----------------------------------------
+
+    def _writable_library(self):
+        """A fake library backed by a real annotation database on disk."""
+
+        from tests.integrations.test_apple_books_writer import _database
+
+        library = _FakeAppleBooks()
+        library.database = _database(Path(self.temporary_directory.name), count=5)
+        library.annotation_database = library.database
+        return library
+
+    def _ready_to_copy(self, *, confirm=True, books_is_running=lambda: False):
+        library = self._writable_library()
+        self.backup_root = Path(self.temporary_directory.name) / "backups"
+        window = self.make_window(
+            FakeModelSetup(ready=True),
+            apple_books=library,
+            backup_root=self.backup_root,
+            confirm_transfer=lambda title, body: confirm,
+            books_is_running=books_is_running,
+        )
+        view = window.transfer_notes_view
+        window.feature_navigation.setCurrentIndex(window.feature_stack.indexOf(view))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.preview_button.click()
+        return library, view
+
+    def _rows_on(self, library, asset_id: str) -> int:
+        connection = sqlite3.connect(library.database)
+        try:
+            return connection.execute(
+                "SELECT COUNT(*) FROM ZAEANNOTATION WHERE ZANNOTATIONASSETID = ?"
+                " AND ZANNOTATIONDELETED = 0",
+                (asset_id,),
+            ).fetchone()[0]
+        finally:
+            connection.close()
+
+    def test_saying_no_to_the_confirmation_writes_nothing(self) -> None:
+        library, view = self._ready_to_copy(confirm=False)
+        view.transfer_button.click()
+        self.assertEqual(self._rows_on(library, "DST"), 0)
+        self.assertFalse(self.backup_root.exists(), "backed up a copy nobody approved")
+
+    def test_nothing_is_written_while_apple_books_is_open(self) -> None:
+        library, view = self._ready_to_copy(books_is_running=lambda: True)
+        view.transfer_button.click()
+        self.assertEqual(self._rows_on(library, "DST"), 0)
+        self.assertIn("Apple Books", view.summary_label.text())
+
+    def test_confirming_copies_the_notes_into_the_other_book(self) -> None:
+        library, view = self._ready_to_copy()
+        self.assertTrue(view.transfer_button.isEnabled())
+        view.transfer_button.click()
+        self.assertEqual(self._rows_on(library, "DST"), 5)
+        self.assertEqual(
+            self._rows_on(library, "SRC"), 5, "the source book was altered"
+        )
+
+    def test_a_backup_exists_before_the_write_lands(self) -> None:
+        library, view = self._ready_to_copy()
+        view.transfer_button.click()
+        saved = list(self.backup_root.glob("*/" + library.database.name))
+        self.assertEqual(len(saved), 1, f"no backup was kept: {self.backup_root}")
+
+    def test_clicking_twice_does_not_duplicate_every_note(self) -> None:
+        library, view = self._ready_to_copy()
+        view.transfer_button.click()
+        view.transfer_button.click()
+        self.assertEqual(self._rows_on(library, "DST"), 5)
 
 
     def test_other_tabs_never_reach_into_the_books_library(self) -> None:

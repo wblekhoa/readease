@@ -161,6 +161,16 @@ class AppleBooksLibrary:
     def _annotations(self) -> Path | None:
         return self._annotation_override or default_annotation_database()
 
+    @property
+    def annotation_database(self) -> Path | None:
+        """Where the annotations live, for the one caller that writes to them.
+
+        Resolving this still touches the Books container, so it stays lazy like
+        everything else here.
+        """
+
+        return self._annotations
+
     def _rows(
         self,
         database: Path | None,

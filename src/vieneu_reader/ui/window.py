@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMenu,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QSizePolicy,
@@ -34,6 +36,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from vieneu_reader.config import default_app_root
 from vieneu_reader.identity import PRODUCT_DISPLAY_NAME
 from vieneu_reader.integrations.macos_settings import (
     open_accessibility_settings as open_accessibility_settings_pane,
@@ -57,11 +60,23 @@ from vieneu_reader.integrations.apple_books import (
     SameBook,
     build_transfer_plan,
 )
+from vieneu_reader.integrations.apple_books_writer import (
+    AppleBooksBusy,
+    apple_books_is_running,
+    back_up,
+    copy_annotations,
+)
 
 from .transfer_notes_view import TransferNotesView
 from .i18n import Language, LanguagePreferenceStore, Localizer
 from .library_view import LibraryView
 from .paste_view import PasteTextView
+
+_BACKUP_DIRECTORY = "AppleBooksBackups"
+
+
+def _backup_stamp() -> str:
+    return datetime.now().strftime("%Y-%m-%d-%H%M%S")
 
 
 class ReaderWindow(QMainWindow):
@@ -82,11 +97,17 @@ class ReaderWindow(QMainWindow):
         read_on_copy: bool = False,
         read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
         apple_books: AppleBooksLibrary | None = None,
+        backup_root: Path | None = None,
+        confirm_transfer: Callable[[str, str], bool] | None = None,
+        books_is_running: Callable[[], bool] = apple_books_is_running,
     ):
         super().__init__(parent)
         self._controller = controller
         self._model_setup = model_setup
         self._apple_books = apple_books
+        self._backup_root = backup_root
+        self._confirm_transfer_with = confirm_transfer
+        self._books_is_running = books_is_running
         self._language_store = language_store
         self._shortcut_store = shortcut_store
         self._read_on_copy_store = read_on_copy_store
@@ -355,8 +376,15 @@ class ReaderWindow(QMainWindow):
             )
 
     def _preview_transfer(self, source_asset_id: str, target_asset_id: str) -> None:
+        plan = self._plan_or_report(source_asset_id, target_asset_id)
+        if plan is not None:
+            self.transfer_notes_view.show_plan(plan)
+
+    def _plan_or_report(self, source_asset_id: str, target_asset_id: str):
+        """Build the plan, or put the reason on screen and return None."""
+
         if self._apple_books is None:
-            return
+            return None
         try:
             plan = build_transfer_plan(
                 self._apple_books, source_asset_id, target_asset_id
@@ -384,8 +412,84 @@ class ReaderWindow(QMainWindow):
             self.transfer_notes_view.show_unavailable(
                 self._localizer.runtime(str(error))
             )
+            return None
+        return plan
+
+    def _transfer_notes(self, source_asset_id: str, target_asset_id: str) -> None:
+        text = self._localizer.text
+        # Rebuild the plan rather than trusting the view's cached count: the
+        # library may have changed since the preview, and this decides what the
+        # confirmation promises.
+        plan = self._plan_or_report(source_asset_id, target_asset_id)
+        if plan is None:
             return
-        self.transfer_notes_view.show_plan(plan)
+        if not plan.items:
+            self.transfer_notes_view.show_transfer_result(text("transfer.no_notes"))
+            return
+        if self._apple_books is None:
+            return
+        database = self._apple_books.annotation_database
+        if database is None:
+            self.transfer_notes_view.show_transfer_result(text("transfer.unsupported"))
+            return
+        if not self._confirm_transfer(len(plan.items), plan.target.title):
+            return
+        # Ask again after the dialog: Apple Books may have been opened while it
+        # was up, and a backup taken then would capture a torn write-ahead log.
+        if self._books_is_running():
+            self.transfer_notes_view.show_transfer_result(text("transfer.books_open"))
+            return
+
+        backup_root = self._backup_root or (default_app_root() / _BACKUP_DIRECTORY)
+        destination = backup_root / _backup_stamp()
+        try:
+            backup = back_up(database, destination)
+        except OSError:
+            self.transfer_notes_view.show_transfer_result(
+                text("transfer.backup_failed")
+            )
+            return
+
+        try:
+            written = copy_annotations(
+                database,
+                source_asset_id,
+                target_asset_id,
+                backup=backup,
+                books_is_running=self._books_is_running,
+            )
+        except AppleBooksBusy:
+            self.transfer_notes_view.show_transfer_result(text("transfer.books_open"))
+            return
+        except Exception:
+            # copy_annotations is atomic, so the library is as it was; say where
+            # the backup is anyway, because that is what someone will look for.
+            self.transfer_notes_view.show_transfer_result(
+                text("transfer.copy_failed", path=str(backup))
+            )
+            return
+        self.transfer_notes_view.show_transfer_result(
+            text("transfer.copied", count=written, book=plan.target.title)
+        )
+
+    def _confirm_transfer(self, count: int, book: str) -> bool:
+        text = self._localizer.text
+        body = "\n\n".join(
+            (
+                text("transfer.confirm_body", count=count, book=book),
+                text("transfer.confirm_icloud"),
+            )
+        )
+        if self._confirm_transfer_with is not None:
+            return bool(self._confirm_transfer_with(text("transfer.confirm_title"), body))
+        answer = QMessageBox.question(
+            self,
+            text("transfer.confirm_title"),
+            body,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return answer == QMessageBox.StandardButton.Yes
 
     def _connect_actions(self) -> None:
         self.prepare_model_button.clicked.connect(self._start_model_setup)
@@ -417,6 +521,7 @@ class ReaderWindow(QMainWindow):
             self.selectionShortcutChanged.emit
         )
         self.transfer_notes_view.previewRequested.connect(self._preview_transfer)
+        self.transfer_notes_view.transferRequested.connect(self._transfer_notes)
         self.external_reading_view.readOnCopyChanged.connect(
             self._read_on_copy_changed
         )

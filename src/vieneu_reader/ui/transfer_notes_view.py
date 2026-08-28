@@ -33,6 +33,7 @@ class TransferNotesView(QWidget):
     """Pick two books, see what would carry over."""
 
     previewRequested = Signal(str, str)
+    transferRequested = Signal(str, str)
 
     def __init__(
         self,
@@ -72,6 +73,9 @@ class TransferNotesView(QWidget):
         self.preview_button = QPushButton()
         self.preview_button.setObjectName("transferPreviewButton")
         pickers.addWidget(self.preview_button)
+        self.transfer_button = QPushButton()
+        self.transfer_button.setObjectName("transferCopyButton")
+        pickers.addWidget(self.transfer_button)
         layout.addLayout(pickers)
 
         self.summary_label = QLabel()
@@ -92,14 +96,19 @@ class TransferNotesView(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.plan_table, 1)
 
-        self.source_selector.currentIndexChanged.connect(self._refresh_preview_button)
-        self.target_selector.currentIndexChanged.connect(self._refresh_preview_button)
+        self.source_selector.currentIndexChanged.connect(self._selection_changed)
+        self.target_selector.currentIndexChanged.connect(self._selection_changed)
         self.preview_button.clicked.connect(self._request_preview)
+        self.transfer_button.clicked.connect(self._request_transfer)
 
         self._unavailable = False
+        # Copying is allowed only for the exact pair a preview was shown for, so
+        # that what someone approved on screen is what actually gets written.
+        self._previewed: tuple[str, str] | None = None
+        self._previewed_count = 0
         self.retranslate()
         # A QPushButton starts enabled; nothing is selected yet, so it must not.
-        self._refresh_preview_button()
+        self._refresh_buttons()
 
     # -- language -----------------------------------------------------------
 
@@ -113,6 +122,8 @@ class TransferNotesView(QWidget):
         self.target_label.setText(text("transfer.target"))
         self.preview_button.setText(text("transfer.preview"))
         self.preview_button.setAccessibleName(text("transfer.preview_accessible"))
+        self.transfer_button.setText(text("transfer.copy"))
+        self.transfer_button.setAccessibleName(text("transfer.copy_accessible"))
         self.summary_label.setAccessibleName(text("transfer.table_accessible"))
         self.source_selector.setAccessibleName(text("transfer.source"))
         self.target_selector.setAccessibleName(text("transfer.target"))
@@ -128,6 +139,7 @@ class TransferNotesView(QWidget):
 
     def set_books(self, books: tuple[Book, ...]) -> None:
         self._unavailable = False
+        self._forget_preview()
         for selector in (self.source_selector, self.target_selector):
             selector.blockSignals(True)
             selector.clear()
@@ -137,10 +149,12 @@ class TransferNotesView(QWidget):
             selector.blockSignals(False)
         self.plan_table.setRowCount(0)
         self.summary_label.setText(self._localizer.text("transfer.pick_two"))
-        self._refresh_preview_button()
+        self._refresh_buttons()
 
     def show_plan(self, plan: TransferPlan) -> None:
         self._unavailable = False
+        self._previewed = (plan.source.asset_id, plan.target.asset_id)
+        self._previewed_count = len(plan.items)
         rows = plan.items[:_PREVIEW_ROW_LIMIT]
         self.plan_table.setRowCount(len(rows))
         for row, item in enumerate(rows):
@@ -156,15 +170,26 @@ class TransferNotesView(QWidget):
                 cell.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
                 self.plan_table.setItem(row, column, cell)
         self.summary_label.setText(self._summary(plan, shown=len(rows)))
-        self._refresh_preview_button()
+        self._refresh_buttons()
 
     def show_unavailable(self, message: str) -> None:
         # Only a library we could not load at all blocks the button. A preview that
         # failed with books still listed is worth retrying, so it must not lock up.
         self._unavailable = self.source_selector.count() == 0
+        self._forget_preview()
         self.plan_table.setRowCount(0)
         self.summary_label.setText(message)
-        self._refresh_preview_button()
+        self._refresh_buttons()
+
+    def show_transfer_result(self, message: str) -> None:
+        """Report a finished copy, and require a fresh preview before another.
+
+        Leaving the button live would let a second click duplicate every note.
+        """
+
+        self._forget_preview()
+        self.summary_label.setText(message)
+        self._refresh_buttons()
 
     # -- internals ----------------------------------------------------------
 
@@ -223,16 +248,37 @@ class TransferNotesView(QWidget):
             self.target_selector.currentData(),
         )
 
-    def _refresh_preview_button(self) -> None:
+    def _forget_preview(self) -> None:
+        self._previewed = None
+        self._previewed_count = 0
+
+    def _selection_changed(self) -> None:
+        # A preview describes one pair of books. Change either one and the
+        # approval it earned no longer applies.
+        self._forget_preview()
+        self._refresh_buttons()
+
+    def _refresh_buttons(self) -> None:
         source, target = self._selection()
-        self.preview_button.setEnabled(
+        pair_is_usable = (
             not self._unavailable
             and bool(source)
             and bool(target)
             and source != target
+        )
+        self.preview_button.setEnabled(pair_is_usable)
+        self.transfer_button.setEnabled(
+            pair_is_usable
+            and self._previewed == (source, target)
+            and self._previewed_count > 0
         )
 
     def _request_preview(self) -> None:
         source, target = self._selection()
         if source and target and source != target:
             self.previewRequested.emit(source, target)
+
+    def _request_transfer(self) -> None:
+        source, target = self._selection()
+        if self._previewed == (source, target) and self._previewed_count > 0:
+            self.transferRequested.emit(source, target)

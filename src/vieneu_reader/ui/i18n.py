@@ -102,11 +102,14 @@ _TEXT: dict[str, tuple[str, str]] = {
     ),
     "transfer.description": (
         "ReadEase đọc thư viện Apple Books để xem ghi chú và đoạn bôi màu của bạn, "
-        "rồi cho biết những gì chuyển được sang bản kia. ReadEase không ghi gì vào "
-        "Apple Books.",
+        "rồi cho biết những gì chuyển được sang bản kia. Xem trước xong, bạn có thể "
+        "bấm Chép sang để chuyển thật; ReadEase sao lưu dữ liệu Apple Books trước khi "
+        "ghi, và không sửa gì ở cuốn nguồn.",
         "ReadEase reads your Apple Books library to see your notes and highlights, "
-        "then shows which of them would carry over to the other copy. ReadEase never "
-        "writes anything back to Apple Books.",
+        "then shows which of them would carry over to the other copy. Once you have "
+        "previewed them you can press Copy across to move them for real; ReadEase "
+        "backs up your Apple Books data first, and never alters the book they came "
+        "from.",
     ),
     "transfer.source": ("Lấy ghi chú từ", "Take notes from"),
     "transfer.target": ("Đối chiếu với", "Compare with"),
@@ -140,6 +143,42 @@ _TEXT: dict[str, tuple[str, str]] = {
     "transfer.truncated": (
         "Đang hiện {shown} mục đầu.",
         "Showing the first {shown}.",
+    ),
+    "transfer.copy": ("Chép sang", "Copy across"),
+    "transfer.copy_accessible": (
+        "Chép các ghi chú vừa xem trước sang bản sách kia",
+        "Copy the previewed notes into the other copy of the book",
+    ),
+    "transfer.confirm_title": ("Chép ghi chú sang bản kia?", "Copy notes across?"),
+    "transfer.confirm_body": (
+        "ReadEase sẽ chép {count} mục sang “{book}”. Cuốn nguồn giữ nguyên, và bản "
+        "sao lưu dữ liệu Apple Books được tạo trước khi ghi.",
+        "ReadEase will copy {count} items into “{book}”. The book they came from is "
+        "left untouched, and your Apple Books data is backed up before anything is "
+        "written.",
+    ),
+    "transfer.confirm_icloud": (
+        "Nếu bạn bật đồng bộ iCloud cho Apple Books, các ghi chú này sẽ xuất hiện "
+        "trên những thiết bị khác.",
+        "If iCloud syncing is on for Apple Books, these notes will appear on your "
+        "other devices too.",
+    ),
+    "transfer.copied": (
+        "Đã chép {count} mục sang “{book}”. Mở Apple Books để kiểm tra.",
+        "Copied {count} items into “{book}”. Open Apple Books to check them.",
+    ),
+    "transfer.books_open": (
+        "Apple Books đang mở nên chưa chép được. Hãy thoát Apple Books rồi thử lại.",
+        "Apple Books is open, so nothing was copied. Quit Apple Books and try again.",
+    ),
+    "transfer.copy_failed": (
+        "Không chép được; dữ liệu Apple Books giữ nguyên như trước. Bản sao lưu ở {path}.",
+        "Nothing was copied and your Apple Books data is exactly as it was. The "
+        "backup is at {path}.",
+    ),
+    "transfer.backup_failed": (
+        "Không tạo được bản sao lưu nên ReadEase không ghi gì cả.",
+        "The backup could not be made, so ReadEase wrote nothing.",
     ),
     "paste.title": ("Dán nội dung để đọc", "Paste text to read"),
     "paste.description": (
