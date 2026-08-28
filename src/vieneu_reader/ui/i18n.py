@@ -296,6 +296,8 @@ _RUNTIME_EN: dict[str, str] = {
     "Đang tải bộ giải mã âm thanh…": "Downloading the audio decoder…",
     "Đang kiểm tra bộ đọc tiếng Việt…": "Checking the Vietnamese voice engine…",
     "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại.": "Could not prepare the Vietnamese voice model. Check your connection and try again.",
+    'Không tìm thấy dữ liệu Apple Books trên máy này.': 'No Apple Books data was found on this Mac.',
+    'Không đọc được dữ liệu Apple Books. Hãy thử lại sau.': 'Could not read the Apple Books data. Try again in a moment.',
     "Không thể chuẩn bị giọng đọc. Hãy kiểm tra kết nối mạng và Thử lại.": "Could not prepare the voice. Check your connection and try again.",
     "Vui lòng chọn tệp PDF hoặc EPUB.": "Choose a PDF or EPUB file.",
     "Không tìm thấy tệp sách đã chọn.": "The selected book file was not found.",
