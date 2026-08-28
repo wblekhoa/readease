@@ -113,6 +113,11 @@ Mặc định ReadEase cũng **không** xem clipboard: chỉ khi bạn tự bậ
 
 Mở **Lịch sử phiên** trên thanh phát để nghe lại nội dung. Các mục trùng chính xác được gộp; bạn có thể xóa lịch sử ngay, và toàn bộ lịch sử tự mất khi thoát ReadEase.
 
+
+### 5. Đối chiếu ghi chú giữa hai bản sách
+
+Mục **Đối chiếu ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng cuốn sách. ReadEase chỉ **hiển thị** danh sách đó — bạn vẫn tự chép sang, vì ReadEase không ghi vào Apple Books. ReadEase chỉ đọc khi bạn mở mục đó, và **không bao giờ ghi** gì vào Apple Books — nên nó không thể sửa hay xoá ghi chú của bạn. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+
 ## Dữ liệu và quyền riêng tư
 
 ReadEase lưu sách đã nhập, vị trí đọc, mô hình và audio cache tại:

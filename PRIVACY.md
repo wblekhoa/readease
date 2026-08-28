@@ -26,6 +26,24 @@ model. The backbone and codec are downloaded from the public model repositories
 at the exact revisions listed in `legal/MODEL_PROVENANCE.md`. Once both are
 verified locally, speech initialization fails closed on any remote lookup.
 
+## Apple Books library
+
+The **Move notes** tab reads Apple Books' own databases so it can show which of your
+notes and highlights could carry over between two copies of a book. It reads the list
+of books and, for the book you pick, the annotations on it: their positions, the text
+you highlighted, and the notes you wrote.
+
+Nothing is read until you open that tab. ReadEase copies the database files, reads the
+copy, and deletes it; it never opens the originals for writing, so it cannot alter or
+remove anything in Apple Books. There is no button that writes back, because putting
+annotations into Apple Books is unsupported by Apple and would risk the notes in every
+one of your books.
+
+What it reads stays on this Mac and is not stored by ReadEase: the table is built when
+you press Preview and is gone when you close the app. macOS may ask you to grant
+ReadEase access to that folder; if you decline, the tab says so and nothing else
+changes.
+
 ## Clipboard and Accessibility
 
 For the Apple Books shortcut, ReadEase uses macOS Accessibility permission to

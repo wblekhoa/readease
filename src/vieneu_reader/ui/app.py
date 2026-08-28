@@ -25,6 +25,7 @@ from vieneu_reader.speech.cache import AudioCache
 from vieneu_reader.speech.vieneu import VieNeuSpeechEngine
 from vieneu_reader.storage.repository import LibraryRepository
 
+from vieneu_reader.integrations.apple_books import AppleBooksLibrary
 from .controller import ReaderController
 from .i18n import LanguagePreferenceStore
 from .model_setup import ModelSetupCoordinator
@@ -130,6 +131,9 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         shortcut_store=shortcut_store,
         read_on_copy=read_on_copy_store.load(),
         read_on_copy_store=read_on_copy_store,
+        # Holds no path and touches no disk until the tab that needs it is
+        # opened; a person who never opens it never has their Books folder read.
+        apple_books=AppleBooksLibrary(),
     )
     window.readOnCopyChanged.connect(read_on_copy.set_enabled)
     read_on_copy.set_enabled(read_on_copy_store.load())

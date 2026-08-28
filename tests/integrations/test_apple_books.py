@@ -10,6 +10,7 @@ import unittest
 from vieneu_reader.integrations.apple_books import (
     AppleBooksLibrary,
     AppleBooksUnavailable,
+    AppleBooksNotPermitted,
     AppleBooksUnreadable,
     UnknownAsset,
     build_transfer_plan,
@@ -263,14 +264,15 @@ class HostileFilesystemTests(unittest.TestCase):
         case.addCleanup(connection.close)
         return path
 
-    def test_an_unreadable_database_is_named_not_raised_raw(self) -> None:
+    def test_a_refused_folder_is_told_apart_from_a_missing_one(self) -> None:
+        """Only the person can fix a refusal, so it must not read as "not found"."""
         with TemporaryDirectory() as directory:
             root = Path(directory)
             path = self._wal_database(root, self)
             os.chmod(path, 0)
             try:
                 library = AppleBooksLibrary(annotation_database=path)
-                with self.assertRaises(AppleBooksUnreadable):
+                with self.assertRaises(AppleBooksNotPermitted):
                     library.annotations("S")
             finally:
                 # Restore inside the scope: the temp directory is gone by the time
@@ -311,3 +313,50 @@ class HostileFilesystemTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadScopeTests(unittest.TestCase):
+    """PRIVACY.md promises the annotations of the book you pick - only those."""
+
+    def test_only_the_chosen_books_annotations_are_read_into_memory(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows = tuple(
+                (asset, 2, "cfi", f"secret of {asset}", None, 0)
+                for asset in ("PICKED", "OTHER_1", "OTHER_2")
+            )
+            library = AppleBooksLibrary(
+                annotation_database=_make_annotations(root, rows)
+            )
+            fetched: list[list[tuple]] = []
+            original = AppleBooksLibrary._rows
+
+            def spy(self, database, query, parameters=()):
+                result = original(self, database, query, parameters)
+                fetched.append(result)
+                return result
+
+            AppleBooksLibrary._rows = spy
+            self.addCleanup(setattr, AppleBooksLibrary, "_rows", original)
+            library.annotations("PICKED")
+
+            self.assertEqual(
+                [row[0] for row in fetched[0]],
+                ["PICKED"],
+                "another book's note text must never reach memory",
+            )
+
+    def test_constructing_the_library_touches_no_disk(self) -> None:
+        """Someone who never opens the tab must never have their Books folder read."""
+        visited: list[str] = []
+        original = os.scandir
+
+        def spy(path="."):
+            visited.append(str(path))
+            return original(path)
+
+        os.scandir = spy
+        self.addCleanup(setattr, os, "scandir", original)
+        AppleBooksLibrary()
+
+        self.assertEqual([path for path in visited if "iBooksX" in path], [])

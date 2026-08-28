@@ -130,3 +130,7 @@ uv sync --locked --managed-python --python 3.13
 First-party source, documentation and application framework are available under [PolyForm Noncommercial 1.0.0](LICENSE) for permitted noncommercial use. ReadEase, modified versions or products based on this first-party framework may not be commercialized without a separate written license from the applicable copyright owner. This is source-available software, not an OSI-approved open-source license.
 
 VieNeu, MOSS and other dependencies retain their own licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [`legal/`](legal/) and [PRIVACY.md](PRIVACY.md). Every source/app build carries the static provenance ID `READEASE-THU-AM-NC-2026-01`; it contains no user information, makes no network connection and performs no tracking.
+
+### 5. Compare notes between two copies of a book
+
+The **Compare notes** tab reads your Apple Books library to show which notes and highlights would carry over to another copy of the same book. ReadEase only **shows** that list - you still copy them across yourself, because ReadEase does not write to Apple Books. It reads only when you open that tab and **never writes** to Apple Books, so it cannot change or delete your notes. Details in [`PRIVACY.md`](PRIVACY.md).

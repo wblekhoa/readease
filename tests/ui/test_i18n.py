@@ -245,3 +245,28 @@ class TranslationCoverageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AppleBooksDisclosureTests(unittest.TestCase):
+    """The Move notes tab reads a person's Books library; the docs must say so.
+
+    A surface that reaches into another app's data is exactly where a stale
+    privacy document becomes a lie, so these pin the claim to the behaviour.
+    """
+
+    ROOT = Path(__file__).resolve().parents[2]
+
+    def test_privacy_names_the_apple_books_library_and_the_read_only_promise(self) -> None:
+        privacy = (self.ROOT / "PRIVACY.md").read_text(encoding="utf-8")
+        self.assertIn("Apple Books library", privacy)
+        self.assertIn("never opens the originals for writing", privacy)
+        self.assertIn("Nothing is read until you open that tab", privacy)
+
+    def test_both_readmes_mention_the_tab(self) -> None:
+        for name in ("README.md", "README.en.md"):
+            body = (self.ROOT / name).read_text(encoding="utf-8")
+            self.assertIn("PRIVACY.md", body)
+            self.assertTrue(
+                "Đối chiếu ghi chú" in body or "Compare notes" in body,
+                f"{name} does not mention the tab that reads Apple Books",
+            )

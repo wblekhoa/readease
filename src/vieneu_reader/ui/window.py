@@ -48,6 +48,15 @@ from vieneu_reader.playback.coordinator import PlaybackState
 
 from .controller import ReaderController, ReaderViewState
 from .external_reading_view import ExternalReadingView
+from vieneu_reader.integrations.apple_books import (
+    AppleBooksLibrary,
+    AppleBooksNotPermitted,
+    AppleBooksUnavailable,
+    AppleBooksUnreadable,
+    build_transfer_plan,
+)
+
+from .transfer_notes_view import TransferNotesView
 from .i18n import Language, LanguagePreferenceStore, Localizer
 from .library_view import LibraryView
 from .paste_view import PasteTextView
@@ -70,10 +79,12 @@ class ReaderWindow(QMainWindow):
         shortcut_store: ShortcutPreferenceStore | None = None,
         read_on_copy: bool = False,
         read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
+        apple_books: AppleBooksLibrary | None = None,
     ):
         super().__init__(parent)
         self._controller = controller
         self._model_setup = model_setup
+        self._apple_books = apple_books
         self._language_store = language_store
         self._shortcut_store = shortcut_store
         self._read_on_copy_store = read_on_copy_store
@@ -211,7 +222,7 @@ class ReaderWindow(QMainWindow):
         self.feature_navigation = QTabBar()
         self.feature_navigation.setObjectName("featureNavigation")
         self.feature_navigation.setExpanding(False)
-        for _index in range(3):
+        for _index in range(4):
             self.feature_navigation.addTab("")
         root.addWidget(self.feature_navigation)
 
@@ -224,10 +235,12 @@ class ReaderWindow(QMainWindow):
             shortcut=self._selection_shortcut,
             read_on_copy=self._read_on_copy,
         )
+        self.transfer_notes_view = TransferNotesView(localizer=self._localizer)
         for feature_view in (
             self.library_view,
             self.paste_text_view,
             self.external_reading_view,
+            self.transfer_notes_view,
         ):
             self.feature_stack.addWidget(feature_view)
         root.addWidget(self.feature_stack, 1)
@@ -314,6 +327,56 @@ class ReaderWindow(QMainWindow):
         combo.addItem("🇬🇧 English", Language.ENGLISH.value)
         return combo
 
+    def _load_transfer_books(self, index: int) -> None:
+        """Load the Apple Books library the first time its tab is opened.
+
+        Reading it eagerly at startup would touch a person's book library for a
+        feature they may never open, so this waits until they ask.
+        """
+
+        if self.feature_stack.widget(index) is not self.transfer_notes_view:
+            return
+        if self._apple_books is None:
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.text("transfer.unsupported")
+            )
+            return
+        try:
+            self.transfer_notes_view.set_books(self._apple_books.books())
+        except AppleBooksNotPermitted:
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.text("transfer.not_permitted")
+            )
+        except (AppleBooksUnavailable, AppleBooksUnreadable) as error:
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.runtime(str(error))
+            )
+
+    def _preview_transfer(self, source_asset_id: str, target_asset_id: str) -> None:
+        if self._apple_books is None:
+            return
+        try:
+            plan = build_transfer_plan(
+                self._apple_books, source_asset_id, target_asset_id
+            )
+        except AppleBooksNotPermitted:
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.text("transfer.not_permitted")
+            )
+            return
+        except LookupError:
+            # str(UnknownAsset) is the bare asset id - meaningless to read.
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.text("transfer.book_gone")
+            )
+            return
+        except (AppleBooksUnavailable, AppleBooksUnreadable) as error:
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.runtime(str(error))
+            )
+            return
+        self.transfer_notes_view.show_plan(plan)
+
     def _connect_actions(self) -> None:
         self.prepare_model_button.clicked.connect(self._start_model_setup)
         self.cancel_model_button.clicked.connect(self._cancel_model_setup)
@@ -343,6 +406,7 @@ class ReaderWindow(QMainWindow):
         self.external_reading_view.shortcutRecorded.connect(
             self.selectionShortcutChanged.emit
         )
+        self.transfer_notes_view.previewRequested.connect(self._preview_transfer)
         self.external_reading_view.readOnCopyChanged.connect(
             self._read_on_copy_changed
         )
@@ -425,11 +489,14 @@ class ReaderWindow(QMainWindow):
         self.toolbar_paste_button.setText(text("toolbar.paste"))
         self.toolbar_paste_button.setAccessibleName(text("toolbar.paste_accessible"))
         self.feature_navigation.setAccessibleName(text("nav.accessible"))
-        for index, key in enumerate(("nav.library", "nav.paste", "nav.external")):
+        for index, key in enumerate(
+            ("nav.library", "nav.paste", "nav.external", "nav.transfer")
+        ):
             self.feature_navigation.setTabText(index, text(key))
         self.library_view.retranslate()
         self.paste_text_view.retranslate()
         self.external_reading_view.retranslate()
+        self.transfer_notes_view.retranslate()
         self.previous_button.setText(text("player.previous"))
         self.previous_button.setAccessibleName(text("player.previous_accessible"))
         self.play_button.setAccessibleName(text("player.play_accessible"))
@@ -696,6 +763,7 @@ class ReaderWindow(QMainWindow):
             self.feature_stack.setCurrentIndex(index)
         if index == 1:
             self.paste_text_view.text_edit.setFocus()
+        self._load_transfer_books(index)
         self._render_playback_controls(self._controller.state)
         self._render_reading_location(self._controller.state)
         self._render_contextual_status(self._controller.state)

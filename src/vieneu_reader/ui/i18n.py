@@ -71,6 +71,68 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Chuyển sang màn hình dán nội dung",
         "Go to the paste-text view",
     ),
+    "nav.transfer": ("Đối chiếu ghi chú", "Compare notes"),
+    "transfer.book_gone": (
+        "Cuốn sách này không còn trong thư viện Apple Books. Mở lại mục này để làm mới.",
+        "That book is no longer in the Apple Books library. Reopen this tab to refresh.",
+    ),
+    "transfer.preview_accessible": (
+        "Xem trước ghi chú chuyển được",
+        "Preview the notes that carry over",
+    ),
+    "transfer.not_permitted": (
+        "ReadEase chưa được phép đọc thư mục Apple Books. Cấp quyền trong "
+        "Cài đặt hệ thống rồi mở lại mục này.",
+        "ReadEase has not been allowed to read the Apple Books folder. Grant "
+        "access in System Settings, then open this tab again.",
+    ),
+    "transfer.unsupported": (
+        "Không đọc được thư viện Apple Books trên máy này.",
+        "The Apple Books library could not be read on this Mac.",
+    ),
+    "transfer.title": (
+        "Xem ghi chú nào chuyển được giữa hai bản sách",
+        "See which notes carry over between two copies of a book",
+    ),
+    "transfer.description": (
+        "ReadEase đọc thư viện Apple Books để xem ghi chú và đoạn bôi màu của bạn, "
+        "rồi cho biết những gì chuyển được sang bản kia. ReadEase không ghi gì vào "
+        "Apple Books.",
+        "ReadEase reads your Apple Books library to see your notes and highlights, "
+        "then shows which of them would carry over to the other copy. ReadEase never "
+        "writes anything back to Apple Books.",
+    ),
+    "transfer.source": ("Lấy ghi chú từ", "Take notes from"),
+    "transfer.target": ("Đối chiếu với", "Compare with"),
+    "transfer.preview": ("Xem trước", "Preview"),
+    "transfer.pick_two": (
+        "Chọn hai cuốn khác nhau để xem trước.",
+        "Pick two different books to preview.",
+    ),
+    "transfer.table_accessible": (
+        "Danh sách ghi chú có thể chuyển được sang bản kia",
+        "List of notes that could carry over to the other copy",
+    ),
+    "transfer.column_kind": ("Loại", "Kind"),
+    "transfer.column_text": ("Nội dung", "Content"),
+    "transfer.column_verdict": ("Kết quả", "Outcome"),
+    "transfer.kind_note": ("Ghi chú", "Note"),
+    "transfer.kind_highlight": ("Đoạn bôi màu", "Highlight"),
+    "transfer.verdict_same": ("Chuyển được nguyên vẹn", "Carries over as-is"),
+    "transfer.verdict_review": ("Cần kiểm lại vị trí", "Position needs checking"),
+    "transfer.count": ("Tìm thấy {count} mục.", "Found {count} items."),
+    "transfer.no_notes": (
+        "Cuốn này chưa có ghi chú hay đoạn bôi màu nào trong Apple Books.",
+        "This book has no notes or highlights in Apple Books yet.",
+    ),
+    "transfer.different_edition": (
+        "Hai bản này khác nhau, nên vị trí từng đoạn cần được kiểm lại.",
+        "These are different editions, so each position needs checking.",
+    ),
+    "transfer.truncated": (
+        "Đang hiện {shown} mục đầu.",
+        "Showing the first {shown}.",
+    ),
     "paste.title": ("Dán nội dung để đọc", "Paste text to read"),
     "paste.description": (
         "Dán đoạn văn hoặc bài viết vào đây. Nội dung chỉ dùng trong phiên đọc này: không thêm vào thư viện và không được lưu vào cache.",
@@ -252,6 +314,7 @@ _TEXT: dict[str, tuple[str, str]] = {
 
 
 _RUNTIME_EN: dict[str, str] = {
+    'ReadEase chưa được phép đọc thư mục Apple Books.': "ReadEase has not been allowed to read the Apple Books folder.",
     "Mở sách hoặc dán nội dung để bắt đầu.": "Open a book or paste text to begin.",
     "Không thể mở sách.": "Could not open the book.",
     "Sách đã được thêm nhưng chưa thể tải lại. Hãy mở lại ứng dụng.": "The book was added but could not be reloaded. Reopen the app.",

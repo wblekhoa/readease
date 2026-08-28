@@ -43,6 +43,10 @@ class AppleBooksUnreadable(RuntimeError):
     """The databases exist but could not be read as Apple Books data."""
 
 
+class AppleBooksNotPermitted(RuntimeError):
+    """macOS has not granted access to the Apple Books folder."""
+
+
 class UnknownAsset(LookupError):
     """The requested book is not in the Apple Books library."""
 
@@ -96,6 +100,22 @@ class TransferPlan:
         )
 
 
+def _as_float(value: object) -> float:
+    """Apple's schema is undocumented; a surprising value must not crash a slot."""
+
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _as_int(value: object) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _newest(directory: Path, pattern: str) -> Path | None:
     """Most recently written match - lexicographic order puts -9 after -10."""
 
@@ -120,11 +140,36 @@ class AppleBooksLibrary:
         library_database: Path | None = None,
         annotation_database: Path | None = None,
     ) -> None:
-        self._library = library_database or default_library_database()
-        self._annotations = annotation_database or default_annotation_database()
+        # Kept unresolved: locating the defaults means listing the person's Books
+        # container, which must not happen for someone who never opens the tab.
+        self._library_override = library_database
+        self._annotation_override = annotation_database
 
-    def _rows(self, database: Path | None, query: str) -> list[tuple]:
-        if database is None or not Path(database).is_file():
+    @property
+    def _library(self) -> Path | None:
+        return self._library_override or default_library_database()
+
+    @property
+    def _annotations(self) -> Path | None:
+        return self._annotation_override or default_annotation_database()
+
+    def _rows(
+        self,
+        database: Path | None,
+        query: str,
+        parameters: tuple = (),
+    ) -> list[tuple]:
+        if database is None:
+            raise AppleBooksUnavailable(
+                "Không tìm thấy dữ liệu Apple Books trên máy này."
+            )
+        try:
+            present = Path(database).is_file()
+        except PermissionError as error:
+            raise AppleBooksNotPermitted(
+                "ReadEase chưa được phép đọc thư mục Apple Books."
+            ) from error
+        if not present:
             raise AppleBooksUnavailable(
                 "Không tìm thấy dữ liệu Apple Books trên máy này."
             )
@@ -144,6 +189,10 @@ class AppleBooksLibrary:
                         # Books removes the log on a clean quit. Missing is normal;
                         # unreadable is not, and falls through to the handler below.
                         continue
+            except PermissionError as error:
+                raise AppleBooksNotPermitted(
+                    "ReadEase chưa được phép đọc thư mục Apple Books."
+                ) from error
             except OSError as error:
                 raise AppleBooksUnreadable(
                     "Không đọc được dữ liệu Apple Books. Hãy thử lại sau."
@@ -151,7 +200,7 @@ class AppleBooksLibrary:
             try:
                 connection = sqlite3.connect(copy)
                 try:
-                    return connection.execute(query).fetchall()
+                    return connection.execute(query, parameters).fetchall()
                 finally:
                     connection.close()
             except sqlite3.Error as error:
@@ -170,7 +219,7 @@ class AppleBooksLibrary:
                 asset_id=str(asset_id),
                 title=str(title or ""),
                 edition_id=str(edition_id or ""),
-                reading_progress=float(progress or 0.0),
+                reading_progress=_as_float(progress),
             )
             for asset_id, title, edition_id, progress in rows
         )
@@ -184,20 +233,22 @@ class AppleBooksLibrary:
     def annotations(self, asset_id: str) -> tuple[Annotation, ...]:
         rows = self._rows(
             self._annotations,
+            # Bound in SQL, not filtered afterwards: reading every book's notes
+            # into memory to show one book's would make the privacy note false.
             "SELECT ZANNOTATIONASSETID, ZANNOTATIONTYPE, ZANNOTATIONLOCATION, "
             "ZANNOTATIONSELECTEDTEXT, ZANNOTATIONNOTE FROM ZAEANNOTATION "
-            "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID IS NOT NULL",
+            "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID = ?",
+            (asset_id,),
         )
         return tuple(
             Annotation(
                 asset_id=str(row[0]),
-                kind=int(row[1] or 0),
+                kind=_as_int(row[1]),
                 location=str(row[2] or ""),
                 selected_text=row[3],
                 note=row[4],
             )
             for row in rows
-            if str(row[0]) == asset_id
         )
 
 

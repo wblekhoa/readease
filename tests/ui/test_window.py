@@ -42,6 +42,11 @@ from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
 from vieneu_reader.storage.repository import LibraryRepository
 from vieneu_reader.ui.controller import ExternalReadingState, ReaderController
 from vieneu_reader.ui.i18n import Language, LanguagePreferenceStore
+from vieneu_reader.integrations.apple_books import (
+    Annotation as AppleAnnotation,
+    AppleBooksUnavailable,
+    Book as AppleBook,
+)
 from vieneu_reader.ui.window import ReaderWindow
 
 from tests.importers.epub_fixture import make_epub, make_png
@@ -76,6 +81,39 @@ class FakeModelSetup(QObject):
     def cancel(self) -> None:
         self.cancel_count += 1
         self.cancelled.emit()
+
+
+class _FakeAppleBooks:
+    """Two copies of one edition, five annotations on the first."""
+
+    SOURCE = AppleBook("SRC", "Bản một", "urn:uuid:same", 0.30)
+    TARGET = AppleBook("DST", "Bản hai", "urn:uuid:same", 0.60)
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def books(self):
+        self.calls += 1
+        return (self.SOURCE, self.TARGET)
+
+    def book(self, asset_id):
+        return self.SOURCE if asset_id == "SRC" else self.TARGET
+
+    def annotations(self, asset_id):
+        self.asked = getattr(self, "asked", [])
+        self.asked.append(asset_id)
+        if asset_id != "SRC":
+            return ()
+        return tuple(
+            AppleAnnotation(
+                asset_id="SRC",
+                kind=2,
+                location=f"epubcfi(/6/26!/4/{index})",
+                selected_text="đoạn được bôi",
+                note="ghi chú" if index % 2 else None,
+            )
+            for index in range(5)
+        )
 
 
 class ReaderWindowTests(unittest.TestCase):
@@ -114,6 +152,7 @@ class ReaderWindowTests(unittest.TestCase):
         language_store: LanguagePreferenceStore | None = None,
         selection_shortcut: Shortcut | None = None,
         read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
+        apple_books=None,
     ) -> ReaderWindow:
         window = ReaderWindow(
             self.controller,
@@ -124,11 +163,73 @@ class ReaderWindowTests(unittest.TestCase):
                 read_on_copy_store.load() if read_on_copy_store is not None else False
             ),
             read_on_copy_store=read_on_copy_store,
+            apple_books=apple_books,
         )
         self.windows.append(window)
         window.show()
         self.application.processEvents()
         return window
+
+    # -- transfer-notes tab ------------------------------------------
+
+    def _open_tab(self, library):
+        window = self.make_window(FakeModelSetup(ready=True), apple_books=library)
+        view = window.transfer_notes_view
+        window.feature_navigation.setCurrentIndex(window.feature_stack.indexOf(view))
+        return window, view
+
+    def test_the_library_is_untouched_until_the_tab_is_opened(self) -> None:
+        library = _FakeAppleBooks()
+        window = self.make_window(FakeModelSetup(ready=True), apple_books=library)
+        self.assertEqual(library.calls, 0)
+        view = window.transfer_notes_view
+        window.feature_navigation.setCurrentIndex(window.feature_stack.indexOf(view))
+        self.assertEqual(library.calls, 1)
+        self.assertEqual(view.source_selector.count(), 2)
+
+    def test_previewing_two_copies_lists_every_note(self) -> None:
+        _window, view = self._open_tab(_FakeAppleBooks())
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.preview_button.click()
+        self.assertEqual(view.plan_table.rowCount(), 5)
+        self.assertIn("5", view.summary_label.text())
+
+
+    def test_other_tabs_never_reach_into_the_books_library(self) -> None:
+        """The guard behind "nothing is read until you open that tab"."""
+        library = _FakeAppleBooks()
+        window = self.make_window(FakeModelSetup(ready=True), apple_books=library)
+        transfer = window.feature_stack.indexOf(window.transfer_notes_view)
+
+        for index in range(window.feature_navigation.count()):
+            if index != transfer:
+                window.feature_navigation.setCurrentIndex(index)
+
+        self.assertEqual(
+            library.calls, 0, "only the transfer tab may read the Books library"
+        )
+
+    def test_the_preview_asks_about_the_source_not_the_target(self) -> None:
+        library = _FakeAppleBooks()
+        _window, view = self._open_tab(library)
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.preview_button.click()
+        self.assertEqual(getattr(library, "asked", []), ["SRC"])
+        self.assertEqual(view.plan_table.rowCount(), 5)
+
+    def test_a_library_it_cannot_read_becomes_a_message_not_a_crash(self) -> None:
+        class Refusing(_FakeAppleBooks):
+            def books(self):
+                raise AppleBooksUnavailable(
+                    "Không tìm thấy dữ liệu Apple Books trên máy này."
+                )
+
+        _window, view = self._open_tab(Refusing())
+        self.assertEqual(view.plan_table.rowCount(), 0)
+        self.assertIn("Apple Books", view.summary_label.text())
+        self.assertFalse(view.preview_button.isEnabled())
 
     def test_language_switch_updates_all_core_views_and_persists(self) -> None:
         store = LanguagePreferenceStore(self.paths.root / "settings.json")
@@ -160,7 +261,7 @@ class ReaderWindowTests(unittest.TestCase):
                 window.feature_navigation.tabText(index)
                 for index in range(window.feature_navigation.count())
             ],
-            ["Library", "Paste text", "Read books"],
+            ["Library", "Paste text", "Read books", "Compare notes"],
         )
         self.assertEqual(window.library_view.title_label.text(), "Book library")
         self.assertEqual(window.paste_text_view.title_label.text(), "Paste text to read")
@@ -236,7 +337,7 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertFalse(window.play_button.isEnabled())
         self.assertEqual(window.library_view.library_list.count(), 0)
 
-    def test_ready_workspace_has_three_persistent_feature_views(self) -> None:
+    def test_ready_workspace_has_four_persistent_feature_views(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))
 
         navigation = window.findChild(QTabBar, "featureNavigation")
@@ -246,9 +347,9 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertIsNotNone(feature_stack)
         self.assertEqual(
             [navigation.tabText(index) for index in range(navigation.count())],
-            ["Thư viện", "Dán nội dung", "Đọc sách"],
+            ["Thư viện", "Dán nội dung", "Đọc sách", "Đối chiếu ghi chú"],
         )
-        self.assertEqual(feature_stack.count(), 3)
+        self.assertEqual(feature_stack.count(), 4)
         self.assertEqual(
             [feature_stack.widget(index).objectName() for index in range(3)],
             ["libraryView", "pasteTextView", "externalReadingView"],
@@ -530,7 +631,7 @@ class ReaderWindowTests(unittest.TestCase):
             window.rate_combo.geometry().right(),
             window.rate_combo.parentWidget().contentsRect().right(),
         )
-        self.assertEqual(window.feature_navigation.count(), 3)
+        self.assertEqual(window.feature_navigation.count(), 4)
         self.assertEqual(
             window.session_history_button.focusPolicy(),
             Qt.FocusPolicy.StrongFocus,
