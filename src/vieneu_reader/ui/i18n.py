@@ -145,6 +145,10 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Showing the first {shown}.",
     ),
     "transfer.copy": ("Chép sang", "Copy across"),
+    "transfer.already_there": (
+        "Những ghi chú này đã có sẵn ở cuốn kia rồi, nên không chép thêm gì.",
+        "These notes are already in the other copy, so nothing was copied.",
+    ),
     "transfer.copy_accessible": (
         "Chép các ghi chú vừa xem trước sang bản sách kia",
         "Copy the previewed notes into the other copy of the book",

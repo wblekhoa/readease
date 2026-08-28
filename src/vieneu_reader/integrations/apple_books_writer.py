@@ -144,6 +144,23 @@ def copy_annotations(
             " AND ZANNOTATIONDELETED = 0 ORDER BY Z_PK",
             (source_asset_id,),
         ).fetchall()
+
+        # Skip what is already there. Without this, copying twice duplicates
+        # every annotation, which is what happens when someone presses the
+        # button again after a first copy they were not sure had worked. The
+        # position is the identity: two annotations at the same CFI in the same
+        # book are the same annotation, whatever their row ids say.
+        already_there = {
+            location
+            for (location,) in connection.execute(
+                "SELECT ZANNOTATIONLOCATION FROM ZAEANNOTATION"
+                " WHERE ZANNOTATIONASSETID = ? AND ZANNOTATIONDELETED = 0",
+                (target_asset_id,),
+            )
+        }
+        location_column = columns.index("ZANNOTATIONLOCATION")
+        rows = [row for row in rows if row[location_column] not in already_there]
+
         if limit is not None:
             rows = rows[:limit]
         if not rows:

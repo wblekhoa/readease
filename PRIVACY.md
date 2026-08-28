@@ -48,6 +48,9 @@ to be undone:
   `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/` before writing anything.
 - It only ever inserts. The book the notes came from is not modified, and nothing is
   deleted or edited in any book.
+- It skips anything already there, so pressing it again copies nothing rather than
+  making a second set. A note already at that position in the target book is left as
+  it is, including one you wrote yourself.
 - The whole copy is one transaction, so if it fails part way through, your library is
   left exactly as it was.
 

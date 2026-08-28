@@ -62,6 +62,7 @@ from vieneu_reader.integrations.apple_books import (
 )
 from vieneu_reader.integrations.apple_books_writer import (
     AppleBooksBusy,
+    NothingToCopy,
     apple_books_is_running,
     back_up,
     copy_annotations,
@@ -460,6 +461,14 @@ class ReaderWindow(QMainWindow):
             )
         except AppleBooksBusy:
             self.transfer_notes_view.show_transfer_result(text("transfer.books_open"))
+            return
+        except NothingToCopy:
+            # Everything in the plan is already on the target - the second press
+            # of a copy that already worked. Nothing was written; say so plainly
+            # rather than reporting it as a failure.
+            self.transfer_notes_view.show_transfer_result(
+                text("transfer.already_there")
+            )
             return
         except Exception:
             # copy_annotations is atomic, so the library is as it was; say where

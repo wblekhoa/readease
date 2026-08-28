@@ -274,6 +274,20 @@ class ReaderWindowTests(unittest.TestCase):
         view.transfer_button.click()
         self.assertEqual(self._rows_on(library, "DST"), 5)
 
+    def test_a_second_copy_says_they_are_already_there_not_that_it_failed(self) -> None:
+        """Re-previewing and pressing again is what a careful person does."""
+
+        library, view = self._ready_to_copy()
+        view.transfer_button.click()
+        self.assertEqual(self._rows_on(library, "DST"), 5)
+
+        view.preview_button.click()
+        view.transfer_button.click()
+
+        self.assertEqual(self._rows_on(library, "DST"), 5)
+        summary = view.summary_label.text()
+        self.assertIn("đã có sẵn", summary, summary)
+
 
     def test_other_tabs_never_reach_into_the_books_library(self) -> None:
         """The guard behind "nothing is read until you open that tab"."""

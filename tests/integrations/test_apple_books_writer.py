@@ -266,3 +266,62 @@ class CopyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RepeatTests(unittest.TestCase):
+    """Pressing copy twice must not duplicate the book's notes.
+
+    This is not hypothetical: it happened on a real library on 2026-08-28,
+    leaving four duplicated annotations that had to be cleaned up by hand.
+    """
+
+    def _copy(self, database: Path, backup: Path, **kwargs) -> int:
+        return copy_annotations(
+            database, "SRC", "DST", backup=backup, books_is_running=_quiet, **kwargs
+        )
+
+    def test_copying_twice_copies_nothing_the_second_time(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+
+            self.assertEqual(self._copy(database, saved), 3)
+            with self.assertRaises(NothingToCopy):
+                self._copy(database, saved)
+            self.assertEqual(len(_annotations(database, "DST")), 3)
+
+    def test_only_the_notes_that_are_missing_are_copied(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            saved = back_up(database, root / "backup")
+
+            self.assertEqual(self._copy(database, saved, limit=1), 1)
+            # The other two are still missing, so a full run brings exactly them.
+            self.assertEqual(self._copy(database, saved), 2)
+
+            positions = [row[3] for row in _annotations(database, "DST")]
+            self.assertEqual(len(positions), len(set(positions)), positions)
+
+    def test_a_note_the_reader_already_had_is_not_overwritten_or_repeated(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _database(root)
+            connection = sqlite3.connect(database)
+            connection.execute(
+                "INSERT INTO ZAEANNOTATION VALUES"
+                " (9, 1, 1, 0, 2, 'DST', 'mine', 'mine-storage',"
+                " 'epubcfi(/6/26!/4/2)', 'cua toi', NULL, 700.0, 700.0, 'carry-me')"
+            )
+            connection.commit()
+            connection.close()
+            saved = back_up(database, root / "backup")
+
+            # Source row 2 sits at that same position; it must be left alone.
+            self.assertEqual(self._copy(database, saved), 2)
+
+            rows = _annotations(database, "DST")
+            self.assertEqual(len(rows), 3)
+            mine = [row for row in rows if row[1] == "mine"]
+            self.assertEqual(len(mine), 1, "the reader's own note was disturbed")
