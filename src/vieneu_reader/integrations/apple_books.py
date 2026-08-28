@@ -51,6 +51,14 @@ class UnknownAsset(LookupError):
     """The requested book is not in the Apple Books library."""
 
 
+class AmbiguousAsset(LookupError):
+    """One asset id names more than one row, so a choice cannot be made safely."""
+
+
+class SameBook(ValueError):
+    """Source and target are the same book; there is nothing to compare."""
+
+
 @dataclass(frozen=True, slots=True)
 class Book:
     asset_id: str
@@ -225,12 +233,16 @@ class AppleBooksLibrary:
         )
 
     def book(self, asset_id: str) -> Book:
-        for candidate in self.books():
-            if candidate.asset_id == asset_id:
-                return candidate
-        raise UnknownAsset(asset_id)
+        return select_book(self.books(), asset_id)
 
     def annotations(self, asset_id: str) -> tuple[Annotation, ...]:
+        """Annotations stored against this asset id.
+
+        A book that is not in the library simply has none, because the filter is
+        bound in SQL - so this needs no library read of its own, and callers that
+        must reject an unknown book do that where they already hold the listing.
+        """
+
         rows = self._rows(
             self._annotations,
             # Bound in SQL, not filtered afterwards: reading every book's notes
@@ -252,6 +264,19 @@ class AppleBooksLibrary:
         )
 
 
+def select_book(books: tuple[Book, ...], asset_id: str) -> Book:
+    """Find one book by id, refusing to guess when the id is not unique."""
+
+    matches = [book for book in books if book.asset_id == asset_id]
+    if not matches:
+        raise UnknownAsset(asset_id)
+    if len(matches) > 1 and len({book.edition_id for book in matches}) > 1:
+        # Same id, different editions: choosing one would settle the verdict by
+        # row order, which is not a decision this module may make.
+        raise AmbiguousAsset(asset_id)
+    return matches[0]
+
+
 def build_transfer_plan(
     library: AppleBooksLibrary,
     source_asset_id: str,
@@ -265,8 +290,13 @@ def build_transfer_plan(
     character offset into one edition means nothing in another.
     """
 
-    source = library.book(source_asset_id)
-    target = library.book(target_asset_id)
+    if source_asset_id == target_asset_id:
+        raise SameBook(source_asset_id)
+    # One listing serves both lookups: each extra read copies the person's data
+    # to disk again for no gain.
+    books = library.books()
+    source = select_book(books, source_asset_id)
+    target = select_book(books, target_asset_id)
     same_edition = bool(source.edition_id) and source.edition_id == target.edition_id
     verdict = "same-edition" if same_edition else "needs-review"
     items = [

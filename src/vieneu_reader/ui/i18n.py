@@ -72,6 +72,12 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Go to the paste-text view",
     ),
     "nav.transfer": ("Đối chiếu ghi chú", "Compare notes"),
+    "transfer.ambiguous": (
+        "Apple Books đang có nhiều mục trùng mã cho cuốn này, nên chưa chọn được "
+        "chắc chắn. Hãy mở lại Apple Books rồi thử lại.",
+        "Apple Books lists more than one entry under this book's id, so it cannot "
+        "be chosen safely. Reopen Apple Books and try again.",
+    ),
     "transfer.book_gone": (
         "Cuốn sách này không còn trong thư viện Apple Books. Mở lại mục này để làm mới.",
         "That book is no longer in the Apple Books library. Reopen this tab to refresh.",

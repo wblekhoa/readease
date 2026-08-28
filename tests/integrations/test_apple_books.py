@@ -10,8 +10,11 @@ import unittest
 from vieneu_reader.integrations.apple_books import (
     AppleBooksLibrary,
     AppleBooksUnavailable,
+    AmbiguousAsset,
     AppleBooksNotPermitted,
     AppleBooksUnreadable,
+    SameBook,
+    select_book,
     UnknownAsset,
     build_transfer_plan,
 )
@@ -61,6 +64,7 @@ BOOKS = (
     ("DST", "Bản hai", SAME_EPUB, 0.60),
     ("TWIN", "Bản một", "urn:uuid:different", 0.10),
     ("NOEDITION", "Không rõ bản", None, 0.05),
+    ("NOEDITION2", "Cũng không rõ", None, 0.05),
 )
 ROWS = (
     ("SRC", 2, "epubcfi(/6/26[id220]!/4/64/4/1,:0,:119)", "đoạn được bôi", "ghi chú", 0),
@@ -79,7 +83,7 @@ class AppleBooksReaderTests(unittest.TestCase):
                 library_database=_make_library(root, BOOKS),
                 annotation_database=_make_annotations(root, ROWS),
             )
-            self.assertEqual(len(library.books()), 4)
+            self.assertEqual(len(library.books()), 5)
             # The deleted row must not appear.
             self.assertEqual(len(library.annotations("SRC")), 3)
             self.assertEqual(len(library.annotations("DST")), 1)
@@ -139,7 +143,7 @@ class AppleBooksReaderTests(unittest.TestCase):
                 annotation_database=_make_annotations(root, ROWS),
             )
             self.assertEqual(library.book("NOEDITION").edition_id, "")
-            plan = build_transfer_plan(library, "NOEDITION", "NOEDITION")
+            plan = build_transfer_plan(library, "NOEDITION", "NOEDITION2")
             self.assertFalse(plan.same_edition)
 
     def test_each_annotation_field_comes_from_its_own_column(self) -> None:
@@ -360,3 +364,58 @@ class ReadScopeTests(unittest.TestCase):
         AppleBooksLibrary()
 
         self.assertEqual([path for path in visited if "iBooksX" in path], [])
+
+
+class RemainingEdgeTests(unittest.TestCase):
+    """The cases an adversarial pass listed as low severity but real."""
+
+    @staticmethod
+    def _library(root: Path, books, rows=()):
+        return AppleBooksLibrary(
+            library_database=_make_library(root, books),
+            annotation_database=_make_annotations(root, rows or ROWS),
+        )
+
+    def test_moving_a_book_onto_itself_is_refused(self) -> None:
+        with TemporaryDirectory() as directory:
+            library = self._library(Path(directory), BOOKS)
+            with self.assertRaises(SameBook):
+                build_transfer_plan(library, "SRC", "SRC")
+
+    def test_a_duplicated_asset_id_is_reported_not_silently_halved(self) -> None:
+        """Two rows for one id could mean two editions; picking the first guesses."""
+        with TemporaryDirectory() as directory:
+            books = BOOKS + (("SRC", "Bản một", "urn:uuid:different", 0.9),)
+            library = self._library(Path(directory), books)
+            with self.assertRaises(AmbiguousAsset):
+                library.book("SRC")
+
+    def test_a_book_outside_the_library_simply_has_no_annotations(self) -> None:
+        """The SQL filter is what stops another book's rows from appearing."""
+        with TemporaryDirectory() as directory:
+            library = self._library(Path(directory), BOOKS)
+            self.assertEqual(library.annotations("GHOST"), ())
+
+    def test_a_plan_refuses_a_book_outside_the_library(self) -> None:
+        with TemporaryDirectory() as directory:
+            library = self._library(Path(directory), BOOKS)
+            with self.assertRaises(UnknownAsset):
+                build_transfer_plan(library, "SRC", "GHOST")
+
+    def test_one_plan_reads_each_database_once(self) -> None:
+        """Every extra copy is another window with the person's notes on disk."""
+        with TemporaryDirectory() as directory:
+            library = self._library(Path(directory), BOOKS)
+            copies: list[str] = []
+            original = AppleBooksLibrary._rows
+
+            def spy(self, database, query, parameters=()):
+                copies.append(Path(database).name)
+                return original(self, database, query, parameters)
+
+            AppleBooksLibrary._rows = spy
+            self.addCleanup(setattr, AppleBooksLibrary, "_rows", original)
+            build_transfer_plan(library, "SRC", "DST")
+
+            self.assertEqual(len(copies), 2, copies)
+            self.assertEqual(len(set(copies)), 2, "each database exactly once")

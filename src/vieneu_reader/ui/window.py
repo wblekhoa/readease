@@ -50,9 +50,11 @@ from .controller import ReaderController, ReaderViewState
 from .external_reading_view import ExternalReadingView
 from vieneu_reader.integrations.apple_books import (
     AppleBooksLibrary,
+    AmbiguousAsset,
     AppleBooksNotPermitted,
     AppleBooksUnavailable,
     AppleBooksUnreadable,
+    SameBook,
     build_transfer_plan,
 )
 
@@ -362,6 +364,14 @@ class ReaderWindow(QMainWindow):
         except AppleBooksNotPermitted:
             self.transfer_notes_view.show_unavailable(
                 self._localizer.text("transfer.not_permitted")
+            )
+            return
+        except SameBook:
+            # The view disables the button for this; belt and braces.
+            return
+        except AmbiguousAsset:
+            self.transfer_notes_view.show_unavailable(
+                self._localizer.text("transfer.ambiguous")
             )
             return
         except LookupError:
