@@ -33,11 +33,26 @@ notes and highlights could carry over between two copies of a book. It reads the
 of books and, for the book you pick, the annotations on it: their positions, the text
 you highlighted, and the notes you wrote.
 
-Nothing is read until you open that tab. ReadEase copies the database files, reads the
-copy, and deletes it; it never opens the originals for writing, so it cannot alter or
-remove anything in Apple Books. There is no button that writes back, because putting
-annotations into Apple Books is unsupported by Apple and would risk the notes in every
-one of your books.
+Nothing is read until you open that tab. Previewing never opens the originals for
+writing: ReadEase copies the database files, reads the copy, and deletes it.
+
+**Copy across** does write to Apple Books, and it is the only thing in ReadEase that
+writes to data belonging to another app. Apple does not support this, so it is built
+to be undone:
+
+- It only runs when you press the button, after a preview of that exact pair of books,
+  and after a confirmation naming the book and the number of items.
+- It refuses while Apple Books is running, because Apple Books would overwrite the
+  change.
+- It copies the annotation database and its journal files into
+  `~/Library/Application Support/ReadEase/AppleBooksBackups/` before writing anything.
+- It only ever inserts. The book the notes came from is not modified, and nothing is
+  deleted or edited in any book.
+- The whole copy is one transaction, so if it fails part way through, your library is
+  left exactly as it was.
+
+If Apple Books syncs with iCloud, notes copied this way sync to your other devices like
+any other annotation. The confirmation says so before you agree.
 
 What it reads stays on this Mac and is not stored by ReadEase: the table is built when
 you press Preview and is gone when you close the app. macOS may ask you to grant

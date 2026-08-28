@@ -116,7 +116,7 @@ Mở **Lịch sử phiên** trên thanh phát để nghe lại nội dung. Các 
 
 ### 5. Đối chiếu ghi chú giữa hai bản sách
 
-Mục **Đối chiếu ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng cuốn sách. ReadEase chỉ **hiển thị** danh sách đó — bạn vẫn tự chép sang, vì ReadEase không ghi vào Apple Books. ReadEase chỉ đọc khi bạn mở mục đó, và **không bao giờ ghi** gì vào Apple Books — nên nó không thể sửa hay xoá ghi chú của bạn. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+Mục **Đối chiếu ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng cuốn sách. Xem trước xong, bấm **Chép sang** là ReadEase chuyển chúng thật. ReadEase chỉ đọc khi bạn mở mục đó, và chỉ ghi khi bạn tự bấm nút — sau khi xem trước đúng cặp sách đó và xác nhận số mục. Trước khi ghi, app sao lưu dữ liệu Apple Books vào `~/Library/Application Support/ReadEase/AppleBooksBackups/`; app chỉ **thêm** vào cuốn đích, không sửa hay xoá gì, và không đụng tới cuốn nguồn. Phải thoát Apple Books thì mới chép được. Nếu bạn bật iCloud cho Apple Books thì các ghi chú này cũng hiện trên thiết bị khác. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ## Dữ liệu và quyền riêng tư
 
