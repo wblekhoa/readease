@@ -304,6 +304,24 @@ class ReaderWindowTests(unittest.TestCase):
         saved = list(self.backup_root.glob("*/" + library.database.name))
         self.assertEqual(len(saved), 1, f"no backup was kept: {self.backup_root}")
 
+    def test_a_successful_copy_clears_out_the_older_backups(self) -> None:
+        """Pruning lives in the writer; this pins that the window calls it.
+
+        Without this the call could be deleted and every other test would still
+        pass, because they all run with fewer backups than the limit.
+        """
+
+        library, view = self._ready_to_copy()
+        for day in range(1, 9):
+            (self.backup_root / f"2026-08-0{day}-120000").mkdir(parents=True)
+
+        view.transfer_button.click()
+
+        kept = sorted(item.name for item in self.backup_root.iterdir())
+        self.assertLessEqual(len(kept), 5, kept)
+        self.assertNotIn("2026-08-01-120000", kept, "the oldest survived")
+        self.assertEqual(self._rows_on(library, "DST"), 5, "the copy itself broke")
+
     def test_clicking_twice_does_not_duplicate_every_note(self) -> None:
         library, view = self._ready_to_copy()
         view.transfer_button.click()

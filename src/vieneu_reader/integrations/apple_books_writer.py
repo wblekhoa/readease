@@ -107,7 +107,12 @@ def prune_backups(root: Path, keep: int = _BACKUPS_KEPT) -> int:
             (item for item in Path(root).iterdir() if item.is_dir()),
             key=lambda item: item.name,
         )
-    except (FileNotFoundError, NotADirectoryError):
+    except OSError:
+        # Every reason the listing can fail - absent, not a directory, not
+        # readable - is a reason to leave the backups alone, not to raise. This
+        # is called after a copy has already committed, from a Qt slot that
+        # swallows exceptions, so raising here would lose the result message for
+        # a write that actually succeeded.
         return 0
     removed = 0
     for stale in saved[:-keep]:

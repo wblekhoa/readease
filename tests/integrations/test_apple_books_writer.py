@@ -472,3 +472,20 @@ class PruneBackupsTests(unittest.TestCase):
             (store / "README.txt").write_text("không phải bản sao lưu")
             prune_backups(store, keep=1)
             self.assertTrue((store / "README.txt").is_file())
+
+    def test_a_store_it_cannot_read_is_left_alone_not_raised_over(self) -> None:
+        """This runs after the copy has committed, inside a Qt slot.
+
+        Qt swallows an exception raised there, so the person would see no result
+        at all for a write that actually succeeded.
+        """
+
+        with TemporaryDirectory() as directory:
+            store = self._saved(Path(directory), ("2026-08-28-120000",))
+            os.chmod(store, 0o000)
+            try:
+                self.assertEqual(prune_backups(store, keep=1), 0)
+            finally:
+                # Restore before the temporary directory is torn down, or its
+                # own cleanup cannot remove what it made.
+                os.chmod(store, 0o700)
