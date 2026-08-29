@@ -53,6 +53,16 @@ class PackagePreparationTests(unittest.TestCase):
             "--macos-target-arch=arm64",
         ):
             self.assertIn(expected, extra_args)
+        # The helper refuses to send Copy to ReadEase itself, and it does that
+        # by naming the bundle id. Renaming the app without updating the helper
+        # would leave the shortcut copying out of ReadEase's own window.
+        native = (ROOT / "native/macos/ReadEaseSelectionNative.m").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'RDXReadEaseBundleIdentifier = @"vn.dolenglish.vieneureader"',
+            native,
+        )
         tokens = shlex.split(extra_args)
         self.assertIn("--noinclude-qt-translations", tokens)
         self.assertIn("--disable-cache=ccache", tokens)

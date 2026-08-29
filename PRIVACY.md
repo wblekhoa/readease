@@ -132,8 +132,8 @@ and switch to Apple Books within that quarter-second window, and the item is not
 marked concealed, ReadEase can still read it. Universal Clipboard content that
 arrives from another device while Apple Books is in front is likewise treated as
 copied from Apple Books. If that residual risk matters to you, leave read-on-copy
-off and use the shortcut, which reads only what you have selected in Apple Books
-at the moment you press it.
+off and use the shortcut, which reads only what you had selected at the moment
+you pressed it, in whichever app you pressed it over.
 
 Switching it off stops the checking. Text read this way is transient like the
 rest: it is not added to the library or the persistent audio cache, and it

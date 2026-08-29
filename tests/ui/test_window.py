@@ -1172,7 +1172,7 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertEqual(
             [action.text() for action in actions],
             [
-                "Apple Books · Phần Apple Books.",
+                "Quét đọc · Phần Apple Books.",
                 "Trong sách · Phần trong sách.",
                 "Dán nội dung · Bản dán.",
                 "Xóa lịch sử phiên",
@@ -1850,6 +1850,30 @@ class ReaderWindowTests(unittest.TestCase):
             "libraryShelfView",
         )
         self.assertFalse(window.play_button.isEnabled())
+
+    def test_session_history_does_not_still_name_one_app(self) -> None:
+        """The shortcut reads from anywhere now, so a row that says the text
+        came from Apple Books would be telling people the wrong thing."""
+        window = self.make_window(FakeModelSetup(ready=True))
+        window.library_view.paste_button.click()
+        window.paste_text_view.text_edit.setPlainText("Nội dung để nghe lại.")
+        self.application.processEvents()
+        window.paste_text_view.read_button.click()
+        self.application.processEvents()
+
+        for language in (Language.VIETNAMESE, Language.ENGLISH):
+            with self.subTest(language=language):
+                combo = window.language_combo
+                combo.setCurrentIndex(combo.findData(language.value))
+                self.application.processEvents()
+                rows = [
+                    action.text()
+                    for action in window.session_history_menu.actions()
+                ]
+
+                self.assertTrue(rows)
+                for row in rows:
+                    self.assertNotIn("Apple Books", row)
 
     def test_selected_text_is_sent_to_read_selection_command(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))
