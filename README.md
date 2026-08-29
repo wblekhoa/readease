@@ -55,7 +55,7 @@ Nếu máy chưa có công cụ của Apple, macOS sẽ tự hiện cửa sổ c
 
 4. Installer liệt kê **trước** mọi thứ nó sẽ cài, thay, đóng và dọn, rồi hỏi **đúng một câu**. Đồng ý xong là nó chạy một mạch, không hỏi thêm gì nữa.
 5. Chờ khoảng 10–25 phút. Installer in rõ từng bước (`READEASE_STEP 1/5` → `5/5`), cho biết máy đã có bản ReadEase nào chưa, có bản cũ nào sẽ được gỡ, rồi cài vào `~/Applications/ReadEase.app` và tự mở app.
-6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**. App **chỉ tải bản bạn chọn**, không tải cả hai: *Tiêu chuẩn* (mặc định) tốn khoảng 330 MB tổng cộng, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Nếu sau này bạn đổi bản, app sẽ báo bản cũ đang chiếm bao nhiêu và cho xoá bằng một nút.
+6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**. App **chỉ tải bản bạn chọn**, không tải cả hai: *Tiêu chuẩn* (mặc định) tốn khoảng 330 MB tổng cộng, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Đổi bản ở thanh phát khi đang đọc thì app hỏi lại trước, nói rõ cần tải bao nhiêu nếu bản đó chưa có trên máy. Sau khi đổi, app báo bản cũ đang chiếm bao nhiêu và cho xoá bằng một nút.
 
 Muốn kiểm tra máy trước mà chưa cài, mở Terminal tại thư mục source và chạy:
 
@@ -71,6 +71,7 @@ Muốn nhờ AI cài giúp, mở thư mục source trong công cụ AI và gửi
 
 - **Thư viện:** nhập PDF có lớp văn bản và EPUB, lưu tiến độ và tiếp tục đọc ở lần sau.
 - **Trình đọc trong app:** chọn chương, đọc liên tục theo đoạn, đọc riêng phần đang quét chọn và điều chỉnh giọng/tốc độ.
+- **Đọc có ngắt nghỉ:** ReadEase ngắt theo cấu trúc văn bản chứ không đọc luông tuồng — nghỉ dài nhất khi sang chương, vừa khi hết đoạn, rồi ngắn dần ở tiêu đề, danh sách, dấu chấm, dấu hai chấm và gạch ngang. Cụm chữ viết hoa toàn bộ (chữ trên biển báo, tiêu đề) được đọc như chữ thường để phát âm đúng, nhưng chữ hiển thị vẫn nguyên như tác giả viết. Khoảng nghỉ co lại khi bạn tăng tốc độ đọc.
 - **Hình trong EPUB:** đặt hình có ý nghĩa theo thứ tự đọc, đánh số **Hình 1, Hình 2…** và nhắc “Mời bạn xem Hình …” ở đúng vị trí.
 - **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
 - **Đọc từ Apple Books:** quét chọn văn bản rồi nhấn phím tắt đọc (mặc định **Control-Option-Command-R**, đổi được trong màn hình **Đọc sách**) để nghe mà không cần chuyển cửa sổ.
@@ -192,6 +193,7 @@ This is a local source build, not a notarized `.dmg` or public binary release.
 ## Main features
 
 - Import and read text-based PDFs and reflowable EPUBs.
+- Pause where the writing does: longest between chapters, then paragraphs, headings, list items, full stops, colons and dashes, instead of running the text together. Words written in capitals for emphasis are spoken as ordinary words so they are pronounced rather than announced, while the page keeps what the author wrote. Pauses shorten as the reading speed rises.
 - Preserve local library progress and show meaningful EPUB images in reading order.
 - Read pasted text and automatically segment long passages.
 - Read selected text from Apple Books with a configurable shortcut (**Control-Option-Command-R** by default) after granting Accessibility permission.
