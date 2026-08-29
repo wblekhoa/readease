@@ -12,6 +12,7 @@ from vieneu_reader.domain.prosody import (
     selection_pause_ms,
     speakable_text,
     split_sentences,
+    unshout,
 )
 
 
@@ -176,9 +177,12 @@ class SentenceSplittingTests(unittest.TestCase):
         )
 
     def test_a_closing_quote_stays_with_the_sentence_it_closes(self):
+        # The colon introducing the quote is its own break; what matters here
+        # is that the question mark keeps its closing quote rather than
+        # stranding it at the head of the next piece.
         self.assertEqual(
             split_sentences('Anh ấy hỏi: "Đi đâu?" Rồi im lặng.'),
-            ('Anh ấy hỏi: "Đi đâu?"', "Rồi im lặng."),
+            ("Anh ấy hỏi:", '"Đi đâu?"', "Rồi im lặng."),
         )
 
     def test_titles_and_initials_are_not_mistaken_for_full_stops(self):
@@ -216,4 +220,94 @@ class SentenceSplittingTests(unittest.TestCase):
             split_sentences("Cô ấy gật đầu. - Vâng, em hiểu."),
             ("Cô ấy gật đầu.", "- Vâng, em hiểu."),
         )
+
+
+class ClauseSplittingTests(unittest.TestCase):
+    """A colon and a dash are breaks the voice will not take on its own."""
+
+    def test_a_colon_introducing_something_is_a_break(self):
+        self.assertEqual(
+            split_sentences("Chú giải ảnh: Dòng biển báo cùng mũi tên."),
+            ("Chú giải ảnh:", "Dòng biển báo cùng mũi tên."),
+        )
+
+    def test_a_dash_sets_an_aside_apart_even_with_no_spaces(self):
+        self.assertEqual(
+            split_sentences("sơn ngay mép đường—ngắn gọn, đúng lúc."),
+            ("sơn ngay mép đường—", "ngắn gọn, đúng lúc."),
+        )
+
+    def test_a_colon_with_no_gap_after_it_is_not_a_break(self):
+        for text in (
+            "Chuyến bay lúc 10:30 sáng.",
+            "Xem tại https://readease.vn nhé.",
+            "Tỉ lệ 3:1 là hợp lý.",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(split_sentences(text), (text,))
+
+    def test_a_dash_between_numbers_is_a_range_not_an_aside(self):
+        self.assertEqual(
+            split_sentences("Giai đoạn 1975—1980 rất khó."),
+            ("Giai đoạn 1975—1980 rất khó.",),
+        )
+
+    def test_a_dash_that_opens_the_line_has_nothing_before_it_to_end(self):
+        self.assertEqual(
+            split_sentences("—Anh đi đâu đấy?"), ("—Anh đi đâu đấy?",)
+        )
+
+    def test_full_stops_and_clause_marks_are_both_honoured_in_one_paragraph(self):
+        self.assertEqual(
+            split_sentences(
+                "Chú giải ảnh: Dòng chữ nằm ở mép đường—rất khó bỏ qua. "
+                "Nó từng cứu tôi."
+            ),
+            (
+                "Chú giải ảnh:",
+                "Dòng chữ nằm ở mép đường—",
+                "rất khó bỏ qua.",
+                "Nó từng cứu tôi.",
+            ),
+        )
+
+
+class UnshoutTests(unittest.TestCase):
+    """Capitals slow the voice down and make it less predictable."""
+
+    def test_a_run_of_shouted_words_is_lowered(self):
+        self.assertEqual(
+            unshout('Dòng "LOOK RIGHT" (NHÌN BÊN PHẢI) cùng mũi tên.'),
+            'Dòng "look right" (nhìn bên phải) cùng mũi tên.',
+        )
+
+    def test_a_shouted_opening_keeps_its_sentence_capital(self):
+        self.assertEqual(unshout("CHƯƠNG MỘT: KHỞI ĐẦU"), "Chương một: khởi đầu")
+        self.assertEqual(unshout('"LOOK RIGHT" là biển báo.'), '"Look right" là biển báo.')
+
+    def test_a_lone_capitalised_word_is_left_alone(self):
+        for text in (
+            "Anh ấy làm ở NASA mỗi ngày.",
+            "Tôi xem TV mỗi tối.",
+            "Chỉ một từ ĐÚNG được nhấn.",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(unshout(text), text)
+
+    def test_abbreviations_without_vowels_keep_their_letters(self):
+        # "tp hcm" would ask the voice to pronounce what should be spelled.
+        self.assertEqual(unshout("Trụ sở ở TP HCM rất lớn."), "Trụ sở ở TP HCM rất lớn.")
+        self.assertEqual(unshout("Xem BBC và CNN."), "Xem BBC và CNN.")
+
+    def test_ordinary_text_is_returned_unchanged(self):
+        for text in ("Câu thường không đổi gì cả.", "", "   "):
+            with self.subTest(text=text):
+                self.assertEqual(unshout(text), text)
+
+    def test_the_voice_gets_the_lowered_text_but_the_page_does_not(self):
+        shouted = 'Dòng "LOOK RIGHT" phía trước.'
+        self.assertEqual(
+            speakable_text(shouted), 'Dòng "look right" phía trước.'
+        )
+        self.assertEqual(shouted, 'Dòng "LOOK RIGHT" phía trước.')
 
