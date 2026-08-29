@@ -45,6 +45,14 @@ class ModelSetupCoordinator(QObject):
                 return precision, size
         return None
 
+    def is_build_downloaded(self, precision: str) -> bool:
+        """Whether that build's files are already on this Mac."""
+
+        try:
+            return self._engine.installed_builds().get(precision, 0) > 0
+        except AttributeError:
+            return False
+
     def remove_unused_build(self) -> bool:
         spare = self.unused_build()
         if spare is None:

@@ -50,6 +50,25 @@ _TEXT: dict[str, tuple[str, str]] = {
     ),
     "model.quality_standard": ("Tiêu chuẩn · tải 158 MB", "Standard · 158 MB download"),
     "model.quality_maximum": ("Cao nhất · tải 453 MB", "Highest · 453 MB download"),
+    # The player bar names the builds without their sizes: the download only
+    # matters at the moment someone actually switches, and it is spelled out
+    # there instead.
+    "player.quality_standard": ("Tiêu chuẩn", "Standard"),
+    "player.quality_maximum": ("Cao nhất", "Highest"),
+    "player.quality_confirm_title": (
+        "Đổi chất lượng giọng đọc?",
+        "Change voice quality?",
+    ),
+    "player.quality_confirm_download": (
+        "Bản {name} chưa có trên máy. ReadEase sẽ tải {size} khi bạn mở lại ứng dụng.",
+        "The {name} build is not on this Mac yet. ReadEase downloads {size} the "
+        "next time you open the app.",
+    ),
+    "player.quality_confirm_ready": (
+        "Bản {name} đã có sẵn trên máy, sẽ được dùng khi bạn mở lại ứng dụng.",
+        "The {name} build is already on this Mac, and is used the next time you "
+        "open the app.",
+    ),
     "model.quality_restart": (
         "Đổi chất lượng sẽ có hiệu lực khi mở lại ứng dụng. "
         "Bản chưa tải sẽ được tải ở lần mở đó.",

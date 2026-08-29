@@ -88,6 +88,11 @@ class FakeModelSetup(QObject):
     removal_succeeds = True
     removed = 0
 
+    downloaded_builds: tuple[str, ...] = ()
+
+    def is_build_downloaded(self, precision: str) -> bool:
+        return precision in self.downloaded_builds
+
     def unused_build(self) -> tuple[str, int] | None:
         return self.spare
 
@@ -264,7 +269,7 @@ class VoiceQualityChoiceTests(unittest.TestCase):
         self.repository.close()
         self.temporary_directory.cleanup()
 
-    def make_window(self) -> ReaderWindow:
+    def make_window(self, confirm_quality=None, model_setup=None) -> ReaderWindow:
         window = ReaderWindow(
             ReaderController(
                 self.repository,
@@ -272,8 +277,9 @@ class VoiceQualityChoiceTests(unittest.TestCase):
                 self.playback,
                 dispatch=lambda action: action(),
             ),
-            FakeModelSetup(ready=False, complete_on_start=False),
+            model_setup or FakeModelSetup(ready=False, complete_on_start=False),
             voice_quality_store=VoiceQualityPreferenceStore(self.settings_path),
+            confirm_quality=confirm_quality or (lambda title, body: True),
         )
         self.windows.append(window)
         return window
@@ -364,6 +370,77 @@ class VoiceQualityChoiceTests(unittest.TestCase):
                     VoiceQualityPreferenceStore(self.settings_path).load(), "fp32"
                 )
                 VoiceQualityPreferenceStore(self.settings_path).save("int8")
+
+    def test_the_player_bar_names_the_builds_without_their_sizes(self):
+        window = self.make_window()
+
+        player_labels = " ".join(
+            window.quality_combo.itemText(index)
+            for index in range(window.quality_combo.count())
+        )
+        setup_labels = " ".join(
+            window.setup_quality_combo.itemText(index)
+            for index in range(window.setup_quality_combo.count())
+        )
+
+        self.assertNotIn("MB", player_labels)
+        self.assertIn("Tiêu chuẩn", player_labels)
+        self.assertIn("Cao nhất", player_labels)
+        # The size stays where a download is about to start.
+        self.assertIn("158 MB", setup_labels)
+
+    def test_switching_from_the_player_bar_asks_first_and_names_the_download(self):
+        """Its note lives on the setup page, which is gone by then, so without
+        this question the switch would spend 453 MB with nothing said."""
+        asked = []
+        window = self.make_window(
+            confirm_quality=lambda title, body: (asked.append(body), True)[1]
+        )
+
+        window.quality_combo.setCurrentIndex(window.quality_combo.findData("fp32"))
+
+        self.assertEqual(len(asked), 1)
+        self.assertIn("453 MB", asked[0])
+        self.assertEqual(
+            VoiceQualityPreferenceStore(self.settings_path).load(), "fp32"
+        )
+
+    def test_declining_leaves_the_choice_and_the_controls_where_they_were(self):
+        window = self.make_window(confirm_quality=lambda title, body: False)
+
+        window.quality_combo.setCurrentIndex(window.quality_combo.findData("fp32"))
+
+        self.assertEqual(
+            VoiceQualityPreferenceStore(self.settings_path).load(), "int8"
+        )
+        self.assertEqual(window.quality_combo.currentData(), "int8")
+        self.assertEqual(window.setup_quality_combo.currentData(), "int8")
+
+    def test_a_build_already_on_disk_is_not_announced_as_a_download(self):
+        model_setup = FakeModelSetup(ready=False, complete_on_start=False)
+        model_setup.downloaded_builds = ("fp32",)
+        asked = []
+        window = self.make_window(
+            confirm_quality=lambda title, body: (asked.append(body), True)[1],
+            model_setup=model_setup,
+        )
+
+        window.quality_combo.setCurrentIndex(window.quality_combo.findData("fp32"))
+
+        self.assertEqual(len(asked), 1)
+        self.assertNotIn("MB", asked[0])
+
+    def test_the_setup_page_explains_instead_of_asking(self):
+        asked = []
+        window = self.make_window(
+            confirm_quality=lambda title, body: (asked.append(body), True)[1]
+        )
+
+        index = window.setup_quality_combo.findData("fp32")
+        window.setup_quality_combo.setCurrentIndex(index)
+
+        self.assertEqual(asked, [])
+        self.assertTrue(window.quality_restart_note.isVisibleTo(window))
 
     def test_a_saved_choice_shows_on_both_controls_at_startup(self):
         VoiceQualityPreferenceStore(self.settings_path).save("fp32")

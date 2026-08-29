@@ -48,7 +48,10 @@ from vieneu_reader.integrations.selection_shortcut import (
     ShortcutPreferenceStore,
 )
 from vieneu_reader.playback.coordinator import PlaybackState
-from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
+from vieneu_reader.speech.preferences import (
+    DOWNLOAD_MEGABYTES,
+    VoiceQualityPreferenceStore,
+)
 from vieneu_reader.speech.vieneu import DEFAULT_PRECISION, PRECISIONS
 
 from .controller import ReaderController, ReaderViewState
@@ -104,6 +107,7 @@ class ReaderWindow(QMainWindow):
         apple_books: AppleBooksLibrary | None = None,
         backup_root: Path | None = None,
         confirm_transfer: Callable[[str, str], bool] | None = None,
+        confirm_quality: Callable[[str, str], bool] | None = None,
         books_is_running: Callable[[], bool] = apple_books_is_running,
     ):
         super().__init__(parent)
@@ -112,6 +116,7 @@ class ReaderWindow(QMainWindow):
         self._apple_books = apple_books
         self._backup_root = backup_root
         self._confirm_transfer_with = confirm_transfer
+        self._confirm_quality_with = confirm_quality
         self._books_is_running = books_is_running
         self._language_store = language_store
         self._shortcut_store = shortcut_store
@@ -997,13 +1002,18 @@ class ReaderWindow(QMainWindow):
             if self._voice_quality_store is not None
             else DEFAULT_PRECISION
         )
-        for combo in (self.setup_quality_combo, self.quality_combo):
+        # The setup page is where a download is about to start, so it names the
+        # sizes; the player bar only names the builds.
+        for combo, domain in (
+            (self.setup_quality_combo, "model"),
+            (self.quality_combo, "player"),
+        ):
             blocker = QSignalBlocker(combo)
             combo.setAccessibleName(text("model.quality_accessible"))
             for index in range(combo.count()):
                 precision = combo.itemData(index)
                 suffix = "standard" if precision == DEFAULT_PRECISION else "maximum"
-                combo.setItemText(index, text(f"model.quality_{suffix}"))
+                combo.setItemText(index, text(f"{domain}.quality_{suffix}"))
             position = combo.findData(chosen)
             if position >= 0:
                 combo.setCurrentIndex(position)
@@ -1024,11 +1034,10 @@ class ReaderWindow(QMainWindow):
             return
         precision, size = spare
         text = self._localizer.text
-        suffix = "standard" if precision == DEFAULT_PRECISION else "maximum"
         self.spare_build_label.setText(
             text(
                 "model.spare_build",
-                name=text(f"model.quality_{suffix}").split("·")[0].strip(),
+                name=self._quality_name(precision),
                 size=self._readable_size(size),
             )
         )
@@ -1058,6 +1067,14 @@ class ReaderWindow(QMainWindow):
         precision = combo.itemData(index)
         if not precision or precision == self._voice_quality_store.load():
             return
+        # A switch made here is silent: its note and status live on the setup
+        # page, which nobody can see once the voice is ready. Say what will
+        # happen — including any download — before it is saved.
+        if combo is self.quality_combo and not self._confirm_quality_change(
+            str(precision)
+        ):
+            self._sync_quality_controls()
+            return
         self._voice_quality_store.save(str(precision))
         self._refresh_spare_build()
         # Both controls show the same choice, wherever it was made.
@@ -1065,6 +1082,37 @@ class ReaderWindow(QMainWindow):
         # The engine is built once at startup, so the change lands on reopen.
         self.quality_restart_note.show()
         self._set_model_status(self._localizer.text("model.quality_restart"))
+
+    def _quality_name(self, precision: str) -> str:
+        suffix = "standard" if precision == DEFAULT_PRECISION else "maximum"
+        return self._localizer.text(f"player.quality_{suffix}")
+
+    def _confirm_quality_change(self, precision: str) -> bool:
+        text = self._localizer.text
+        downloaded = False
+        if hasattr(self._model_setup, "is_build_downloaded"):
+            downloaded = bool(self._model_setup.is_build_downloaded(precision))
+        name = self._quality_name(precision)
+        body = (
+            text("player.quality_confirm_ready", name=name)
+            if downloaded
+            else text(
+                "player.quality_confirm_download",
+                name=name,
+                size=f"{DOWNLOAD_MEGABYTES.get(precision, 0)} MB",
+            )
+        )
+        title = text("player.quality_confirm_title")
+        if self._confirm_quality_with is not None:
+            return bool(self._confirm_quality_with(title, body))
+        answer = QMessageBox.question(
+            self,
+            title,
+            body,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return answer == QMessageBox.StandardButton.Yes
 
     def _voice_changed(self, index: int) -> None:
         if not self._rendering and index >= 0:

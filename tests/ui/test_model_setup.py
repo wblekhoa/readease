@@ -135,5 +135,40 @@ class ModelSetupCoordinatorTests(unittest.TestCase):
         self.assertEqual(late_signals, [])
 
 
+class BuildsOnDiskTests(unittest.TestCase):
+    """What the coordinator reports about builds it did not download itself."""
+
+    class _Engine:
+        precision = "int8"
+
+        def __init__(self, sizes):
+            self._sizes = sizes
+
+        def installed_builds(self):
+            return dict(self._sizes)
+
+    def test_a_build_with_bytes_on_disk_is_reported_as_downloaded(self):
+        coordinator = ModelSetupCoordinator(
+            self._Engine({"int8": 165_675_008, "fp32": 475_000_000})
+        )
+
+        self.assertTrue(coordinator.is_build_downloaded("fp32"))
+        self.assertTrue(coordinator.is_build_downloaded("int8"))
+
+    def test_a_build_that_is_absent_or_empty_is_not_downloaded(self):
+        coordinator = ModelSetupCoordinator(
+            self._Engine({"int8": 165_675_008, "fp32": 0})
+        )
+
+        self.assertFalse(coordinator.is_build_downloaded("fp32"))
+        self.assertFalse(coordinator.is_build_downloaded("unknown"))
+
+    def test_an_engine_without_the_capability_answers_no_instead_of_raising(self):
+        class Older:
+            precision = "int8"
+
+        self.assertFalse(ModelSetupCoordinator(Older()).is_build_downloaded("fp32"))
+
+
 if __name__ == "__main__":
     unittest.main()
