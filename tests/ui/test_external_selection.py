@@ -245,6 +245,43 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         self.assertEqual(event.text, "Đọc từ process chính")
         self.assertEqual(library.freed, [ctypes.addressof(library.buffer)])
 
+    def test_a_concealed_selection_is_reported_rather_than_read(self) -> None:
+        """Now that any window can be the source, a password manager can be
+        one. The native side refuses what it marks; the wrapper must carry
+        that refusal through as its own reason, not as a generic failure."""
+        module = self._module()
+
+        class Function:
+            def __init__(self, implementation):
+                self.implementation = implementation
+                self.argtypes = None
+                self.restype = None
+
+            def __call__(self, *arguments):
+                return self.implementation(*arguments)
+
+        class Library:
+            def __init__(self, code):
+                self.code = code
+                self.RDXSelectionAcquire = Function(self.acquire)
+                self.RDXSelectionFree = Function(lambda pointer: None)
+
+            def acquire(self, output, length):
+                return self.code
+
+        for code, expected in (
+            (6, module.SelectionEventKind.CONCEALED_SOURCE),
+            (3, module.SelectionEventKind.UNSUPPORTED_SOURCE),
+            (2, module.SelectionEventKind.NO_SELECTION),
+        ):
+            with self.subTest(code=code):
+                event = module.MacOSSelectionAcquirer(
+                    library=Library(code)
+                ).acquire()
+
+                self.assertEqual(event.kind, expected)
+                self.assertIsNone(event.text)
+
     def test_helper_is_launched_with_the_chosen_keycode_and_modifier_mask(
         self,
     ) -> None:

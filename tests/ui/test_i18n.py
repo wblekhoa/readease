@@ -158,11 +158,11 @@ class LocalizerTests(unittest.TestCase):
         # translated by exact match, so drift silently ships Vietnamese.
         self.assertEqual(
             english.runtime(
-                "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple "
-                "Books rồi nhấn phím tắt đọc."
+                "Không tìm thấy nội dung đang chọn. Hãy bôi đen phần muốn "
+                "nghe rồi nhấn phím tắt đọc."
             ),
-            "No selected text was found. Select text in Apple Books, then "
-            "press the read shortcut.",
+            "No selected text was found. Select the text you want to hear, "
+            "then press the read shortcut.",
         )
         self.assertEqual(
             english.runtime(

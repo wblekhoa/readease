@@ -858,13 +858,13 @@ class ReaderWindowTests(unittest.TestCase):
                 window.feature_navigation.tabText(index)
                 for index in range(window.feature_navigation.count())
             ],
-            ["Library", "Paste text", "Read books", "Move notes"],
+            ["Library", "Paste text", "Read a selection", "Move notes"],
         )
         self.assertEqual(window.library_view.title_label.text(), "Book library")
         self.assertEqual(window.paste_text_view.title_label.text(), "Paste text to read")
         self.assertEqual(
             window.external_reading_view.title_label.text(),
-            "Read from Apple Books",
+            "Read a selection",
         )
         self.assertEqual(window.previous_button.text(), "Previous")
         self.assertEqual(window.play_button.text(), "Read")
@@ -944,7 +944,7 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertIsNotNone(feature_stack)
         self.assertEqual(
             [navigation.tabText(index) for index in range(navigation.count())],
-            ["Thư viện", "Dán nội dung", "Đọc sách", "Chuyển ghi chú"],
+            ["Thư viện", "Dán nội dung", "Quét đọc", "Chuyển ghi chú"],
         )
         self.assertEqual(feature_stack.count(), 4)
         self.assertEqual(

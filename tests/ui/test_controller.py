@@ -158,6 +158,25 @@ class ReaderControllerTests(unittest.TestCase):
         self.assertEqual((voice_id, rate), ("Trúc Ly", 1.25))
         self.assertEqual(self.repository.list_books(), ())
 
+    def test_each_selection_failure_says_something_a_person_can_act_on(self):
+        controller = self.make_controller()
+
+        for reason, must_contain, must_not_contain in (
+            ("permission_required", "Trợ năng", "Apple Books"),
+            ("no_selection", "bôi đen", "Apple Books"),
+            ("unsupported_source", "cửa sổ này", "Apple Books"),
+            ("concealed_source", "bí mật", "Apple Books"),
+            ("unavailable", "quét đọc", "Apple Books"),
+        ):
+            with self.subTest(reason=reason):
+                controller.external_selection_failed(reason)
+
+                message = controller.state.error
+                self.assertIn(must_contain, message)
+                # The shortcut is no longer about one app, so naming it here
+                # would send people to the wrong place.
+                self.assertNotIn(must_not_contain, message)
+
     def test_external_ready_signal_updates_only_the_companion_state(self):
         controller = self.make_controller()
         original_status = controller.state.status
@@ -224,7 +243,7 @@ class ReaderControllerTests(unittest.TestCase):
         )
         self.assertEqual(
             [item.source_label for item in controller.state.session_history],
-            ["Apple Books", "Trong sách", "Dán nội dung"],
+            ["Quét đọc", "Trong sách", "Dán nội dung"],
         )
         self.assertEqual(
             [item.preview for item in controller.state.session_history],

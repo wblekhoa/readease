@@ -1,4 +1,4 @@
-"""Companion surface for reading selected text from Apple Books."""
+"""Companion surface for reading text selected in any app."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from .shortcut_recorder import ShortcutRecorderButton
 
 
 class ExternalReadingView(QWidget):
-    """Render the explicit Apple Books workflow and transient session context."""
+    """Render the explicit read-selection workflow and transient session context."""
 
     openAccessibilitySettingsRequested = Signal()
     replayRequested = Signal(str)

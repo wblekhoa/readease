@@ -30,6 +30,7 @@ class SelectionEventKind(str, Enum):
     PERMISSION_REQUIRED = "permission_required"
     NO_SELECTION = "no_selection"
     UNSUPPORTED_SOURCE = "unsupported_source"
+    CONCEALED_SOURCE = "concealed_source"
     CLIPBOARD_RESTORE_FAILED = "clipboard_restore_failed"
     SHORTCUT_UNAVAILABLE = "shortcut_unavailable"
     UNAVAILABLE = "unavailable"
@@ -124,6 +125,7 @@ class MacOSSelectionAcquirer:
         3: SelectionEventKind.UNSUPPORTED_SOURCE,
         4: SelectionEventKind.CLIPBOARD_RESTORE_FAILED,
         5: SelectionEventKind.UNAVAILABLE,
+        6: SelectionEventKind.CONCEALED_SOURCE,
     }
 
     def __init__(

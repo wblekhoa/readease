@@ -70,7 +70,7 @@ class SessionReadingItem:
 
 
 class ExternalReadingState(str, Enum):
-    """Transient lifecycle of the explicit Apple Books shortcut."""
+    """Transient lifecycle of the explicit read-selection shortcut."""
 
     STARTING = "starting"
     READY = "ready"
@@ -174,7 +174,9 @@ class ReaderController:
     _SESSION_SOURCE_LABELS = {
         "paste": "Dán nội dung",
         "book_selection": "Trong sách",
-        "apple_books": "Apple Books",
+        # The shortcut reads a selection from any app now, so the label says
+        # how it arrived rather than naming one program.
+        "apple_books": "Quét đọc",
     }
 
     def __init__(
@@ -591,23 +593,28 @@ class ReaderController:
             return
         self._read_text(
             text,
-            empty_error="Không tìm thấy nội dung đang chọn trong Apple Books.",
+            empty_error="Không tìm thấy nội dung đang chọn.",
             source="apple_books",
         )
 
     def external_selection_failed(self, reason: str) -> None:
         messages = {
             "permission_required": (
-                "ReadEase cần quyền Trợ năng để gửi lệnh sao chép tới Apple "
-                "Books. Hãy bật ReadEase trong Cài đặt hệ thống > Quyền riêng "
-                "tư & Bảo mật > Trợ năng rồi thử lại."
+                "ReadEase cần quyền Trợ năng để gửi lệnh sao chép tới ứng "
+                "dụng bạn đang dùng. Hãy bật ReadEase trong Cài đặt hệ thống "
+                "> Quyền riêng tư & Bảo mật > Trợ năng rồi thử lại."
             ),
             "no_selection": (
-                "Không tìm thấy nội dung đang chọn. Hãy chọn chữ trong Apple "
-                "Books rồi nhấn phím tắt đọc."
+                "Không tìm thấy nội dung đang chọn. Hãy bôi đen phần muốn "
+                "nghe rồi nhấn phím tắt đọc."
             ),
             "unsupported_source": (
-                "Phím tắt đọc nhanh hiện chỉ hỗ trợ Apple Books."
+                "Không quét đọc được từ cửa sổ này. Hãy chuyển sang ứng dụng "
+                "có phần chữ bạn muốn nghe rồi thử lại."
+            ),
+            "concealed_source": (
+                "Phần đang chọn được đánh dấu là nội dung bí mật nên ReadEase "
+                "không đọc."
             ),
             "shortcut_unavailable": (
                 "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác "
@@ -618,7 +625,7 @@ class ReaderController:
                 "dừng trước khi đọc."
             ),
             "unavailable": (
-                "Phím tắt đọc từ Apple Books chưa sẵn sàng. Hãy mở lại ReadEase."
+                "Phím tắt quét đọc chưa sẵn sàng. Hãy mở lại ReadEase."
             ),
         }
         if reason == "ready":

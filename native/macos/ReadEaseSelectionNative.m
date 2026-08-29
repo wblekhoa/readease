@@ -6,6 +6,7 @@
 #import <unistd.h>
 
 static NSString *const RDXBooksBundleIdentifier = @"com.apple.iBooksX";
+static NSString *const RDXReadEaseBundleIdentifier = @"vn.dolenglish.vieneureader";
 // Password managers mark their items with this so clipboard tools skip them.
 static NSString *const RDXConcealedType = @"org.nspasteboard.ConcealedType";
 static NSString *const RDXSnapshotTypeKey = @"type";
@@ -18,10 +19,21 @@ enum {
     RDXSelectionUnsupportedSource = 3,
     RDXSelectionClipboardRestoreFailed = 4,
     RDXSelectionUnavailable = 5,
+    RDXSelectionConcealedSource = 6,
 };
 
-BOOL RDXIsSupportedBundleIdentifier(NSString *bundleIdentifier) {
+BOOL RDXIsBooksBundleIdentifier(NSString *bundleIdentifier) {
     return [bundleIdentifier isEqualToString:RDXBooksBundleIdentifier];
+}
+
+// The shortcut reads a selection wherever the person made one, so this asks
+// what must be refused rather than what is allowed: a process with no identity
+// to send a copy to, and ReadEase itself, which has its own read button.
+BOOL RDXCanReadSelectionFrom(NSString *bundleIdentifier) {
+    if (bundleIdentifier.length == 0) {
+        return NO;
+    }
+    return ![bundleIdentifier isEqualToString:RDXReadEaseBundleIdentifier];
 }
 
 BOOL RDXPasteboardIsConcealed(NSPasteboard *pasteboard) {
@@ -33,6 +45,29 @@ BOOL RDXPasteboardIsConcealed(NSPasteboard *pasteboard) {
         }
     }
     return NO;
+}
+
+// The only way text leaves a pasteboard in this file. Routing every reader
+// through here means a caller cannot forget to ask whether the item was marked
+// secret; it reports that separately from "there was simply no text".
+NSString *RDXReadableStringFrom(NSPasteboard *pasteboard, BOOL *outConcealed) {
+    BOOL concealed = RDXPasteboardIsConcealed(pasteboard);
+    if (outConcealed != NULL) {
+        *outConcealed = concealed;
+    }
+    if (concealed) {
+        return nil;
+    }
+    return [pasteboard stringForType:NSPasteboardTypeString];
+}
+
+// Read-on-copy is deliberately narrower than the shortcut: it watches Apple
+// Books and nothing else, so text copied in a banking page or a password
+// manager never reaches ReadEase even when the switch is on.
+int RDXCopyWatchDecision(NSString *bundleIdentifier) {
+    return RDXIsBooksBundleIdentifier(bundleIdentifier)
+        ? RDXSelectionSuccess
+        : RDXSelectionUnsupportedSource;
 }
 
 NSArray *RDXCapturePasteboard(NSPasteboard *pasteboard) {
@@ -163,7 +198,7 @@ int RDXSelectionAcquire(char **outputBytes, size_t *outputLength) {
     *outputLength = 0;
     @autoreleasepool {
         NSRunningApplication *sourceApplication = NSWorkspace.sharedWorkspace.frontmostApplication;
-        if (!RDXIsSupportedBundleIdentifier(sourceApplication.bundleIdentifier)) {
+        if (!RDXCanReadSelectionFrom(sourceApplication.bundleIdentifier)) {
             return RDXSelectionUnsupportedSource;
         }
         if (!RDXEnsureAccessibility(YES)) {
@@ -181,9 +216,13 @@ int RDXSelectionAcquire(char **outputBytes, size_t *outputLength) {
             return RDXSelectionNoSelection;
         }
 
-        NSString *selectedText = [pasteboard stringForType:NSPasteboardTypeString];
+        BOOL concealed = NO;
+        NSString *selectedText = RDXReadableStringFrom(pasteboard, &concealed);
         if (!RDXRestorePasteboard(pasteboard, snapshot)) {
             return RDXSelectionClipboardRestoreFailed;
+        }
+        if (concealed) {
+            return RDXSelectionConcealedSource;
         }
         NSString *trimmed = [selectedText stringByTrimmingCharactersInSet:
             NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -209,7 +248,7 @@ __attribute__((visibility("default")))
 int RDXClipboardBooksIsFrontmost(void) {
     @autoreleasepool {
         NSRunningApplication *front = NSWorkspace.sharedWorkspace.frontmostApplication;
-        return RDXIsSupportedBundleIdentifier(front.bundleIdentifier) ? 1 : 0;
+        return RDXIsBooksBundleIdentifier(front.bundleIdentifier) ? 1 : 0;
     }
 }
 
@@ -232,16 +271,18 @@ int RDXClipboardCopyBooksText(char **outputBytes, size_t *outputLength) {
         // a password manager, a banking page -- must not reach ReadEase at
         // all, so the gate lives here rather than in the caller.
         NSRunningApplication *source = NSWorkspace.sharedWorkspace.frontmostApplication;
-        if (!RDXIsSupportedBundleIdentifier(source.bundleIdentifier)) {
-            return RDXSelectionUnsupportedSource;
+        int decision = RDXCopyWatchDecision(source.bundleIdentifier);
+        if (decision != RDXSelectionSuccess) {
+            return decision;
         }
         // A password manager asks every clipboard tool to ignore its items;
         // honour that regardless of which app happens to be in front.
-        if (RDXPasteboardIsConcealed(NSPasteboard.generalPasteboard)) {
+        BOOL concealed = NO;
+        NSString *copiedText = RDXReadableStringFrom(
+            NSPasteboard.generalPasteboard, &concealed);
+        if (concealed) {
             return RDXSelectionUnsupportedSource;
         }
-        NSString *copiedText = [NSPasteboard.generalPasteboard
-            stringForType:NSPasteboardTypeString];
         NSString *trimmed = [copiedText stringByTrimmingCharactersInSet:
             NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if (trimmed.length == 0) {

@@ -15,7 +15,7 @@ model files, and reusable book-audio cache live under
 `~/Library/Application Support/VieNeu Reader/`. The historical folder name is
 kept so existing readers do not lose their library when upgrading to ReadEase.
 
-Pasted text and text selected in Apple Books are transient. They are not added
+Pasted text and text read from a selection are transient. They are not added
 to the library or persistent audio cache. The recent-reading list is held in
 memory and disappears when ReadEase exits.
 
@@ -87,13 +87,22 @@ changes.
 
 ## Clipboard and Accessibility
 
-For the Apple Books shortcut, ReadEase uses macOS Accessibility permission to
-send Copy. During that one action it snapshots the current clipboard in memory,
-reads the selected text, and restores every captured clipboard item. If restore
-cannot be confirmed, ReadEase does not read the selection. Clipboard managers
-or Universal Clipboard may still observe this brief copy transaction.
+For the read-selection shortcut, ReadEase uses macOS Accessibility permission
+to send Copy to whichever app is in front, so a selection can be read from a web
+page, a PDF, an email or anywhere else - not only from Apple Books. It acts only
+at the moment the shortcut is pressed: during that one action it snapshots the
+current clipboard in memory, reads the selected text, and restores every
+captured clipboard item. If restore cannot be confirmed, ReadEase does not read
+the selection. Clipboard managers or Universal Clipboard may still observe this
+brief copy transaction.
 
-The shortcut itself can be changed in the Read books view. The chosen key and
+Because the shortcut reaches into any app, two limits are worth stating plainly.
+A selection that its own app marks concealed - what password managers do - is
+refused and never read. Everything else is read as-is, so what gets spoken is
+whatever was selected when the shortcut was pressed; ReadEase cannot tell
+sensitive text from ordinary text. Reading from ReadEase itself is refused.
+
+The shortcut itself can be changed in the Read a selection view. The chosen key and
 modifiers are stored in `settings.json`, beside the other preferences kept there
 - the interface language, the voice and reading speed the app starts with, and
   which build of the reading model it uses;
@@ -102,7 +111,7 @@ nothing about your keyboard is recorded anywhere else.
 ### Read on copy
 
 "Read as soon as you copy in Apple Books" is off until you switch it on in the
-Read books view, and it is the only setting that makes ReadEase look at the
+Read a selection view, and it is the only setting that makes ReadEase look at the
 clipboard on its own. While it is on, ReadEase checks the clipboard's change
 counter a few times a second; when that counter moves and Apple Books is the
 frontmost app, ReadEase reads the newly copied text aloud. In this mode it only
