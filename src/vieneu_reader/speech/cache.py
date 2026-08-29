@@ -32,10 +32,15 @@ def audio_cache_key(
     engine_version: str,
     model_revision: str,
     settings: SynthesisSettings,
+    reading_revision: str = "",
 ) -> str:
     payload = {
         "engine_version": engine_version,
         "model_revision": model_revision,
+        # How the text was turned into sound, which is not the engine's
+        # business: the same voice reading the same paragraph one sentence at
+        # a time is different audio.
+        "reading_revision": reading_revision,
         "settings": asdict(settings),
         "text": normalize_paragraph(text),
         "voice_id": voice_id,

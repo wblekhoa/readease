@@ -5,12 +5,13 @@ from vieneu_reader.domain.prosody import (
     BLOCK_PAUSE_MS,
     CHAPTER_PAUSE_MS,
     LINE_PAUSE_MS,
-    SENTENCE_SPLIT_PAUSE_MS,
+    SENTENCE_PAUSE_MS,
     ends_sentence,
     final_punctuation,
     pause_after_ms,
     selection_pause_ms,
     speakable_text,
+    split_sentences,
 )
 
 
@@ -66,8 +67,8 @@ class PauseAfterTests(unittest.TestCase):
 
     def test_split_boundary_depends_on_how_the_text_was_cut(self):
         for text, expected in (
-            ("Câu đã trọn vẹn.", SENTENCE_SPLIT_PAUSE_MS),
-            ("Anh ấy hỏi?”", SENTENCE_SPLIT_PAUSE_MS),
+            ("Câu đã trọn vẹn.", SENTENCE_PAUSE_MS),
+            ("Anh ấy hỏi?”", SENTENCE_PAUSE_MS),
             ("mới nửa chừng,", 0),
             ("đứt giữa từ", 0),
         ):
@@ -114,7 +115,7 @@ class SelectionPauseTests(unittest.TestCase):
         self.assertEqual(selection_pause_ms("Đoạn trước.", "block"), BLOCK_PAUSE_MS)
         self.assertEqual(selection_pause_ms("Dòng trước", "line"), LINE_PAUSE_MS)
         self.assertEqual(
-            selection_pause_ms("Câu trọn.", "split"), SENTENCE_SPLIT_PAUSE_MS
+            selection_pause_ms("Câu trọn.", "split"), SENTENCE_PAUSE_MS
         )
         self.assertEqual(selection_pause_ms("nửa chừng,", "split"), 0)
 
@@ -150,3 +151,69 @@ class SpeakableTextTests(unittest.TestCase):
 
     def test_paragraphs_never_gain_a_period(self):
         self.assertEqual(speakable_text("không dấu cuối"), "không dấu cuối")
+
+
+class SentenceSplittingTests(unittest.TestCase):
+    """A paragraph is read one sentence at a time, so the cuts must be right."""
+
+    def test_a_full_stop_between_sentences_is_a_cut(self):
+        self.assertEqual(
+            split_sentences(
+                "Tôi tin nó đã cứu mạng rất nhiều du khách vốn quen xe chạy "
+                "đến từ hướng ngược lại. (Ít nhất nó từng cứu tôi một lần.)"
+            ),
+            (
+                "Tôi tin nó đã cứu mạng rất nhiều du khách vốn quen xe chạy "
+                "đến từ hướng ngược lại.",
+                "(Ít nhất nó từng cứu tôi một lần.)",
+            ),
+        )
+
+    def test_question_and_exclamation_marks_also_end_sentences(self):
+        self.assertEqual(
+            split_sentences("Anh đi đâu? Tôi về nhà! Thế thôi."),
+            ("Anh đi đâu?", "Tôi về nhà!", "Thế thôi."),
+        )
+
+    def test_a_closing_quote_stays_with_the_sentence_it_closes(self):
+        self.assertEqual(
+            split_sentences('Anh ấy hỏi: "Đi đâu?" Rồi im lặng.'),
+            ('Anh ấy hỏi: "Đi đâu?"', "Rồi im lặng."),
+        )
+
+    def test_titles_and_initials_are_not_mistaken_for_full_stops(self):
+        for text in (
+            "TS. Nguyễn Văn A đã tới.",
+            "T. P. Hồ Chí Minh rất đông.",
+            "Gặp Dr. Watson ở đó.",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(split_sentences(text), (text,))
+
+    def test_a_decimal_point_is_not_a_full_stop(self):
+        self.assertEqual(
+            split_sentences("Giá là 3.5 triệu. Rẻ thật!"),
+            ("Giá là 3.5 triệu.", "Rẻ thật!"),
+        )
+
+    def test_a_lowercase_continuation_is_not_a_new_sentence(self):
+        self.assertEqual(
+            split_sentences("Táo, cam, v.v. rồi thì mít."),
+            ("Táo, cam, v.v. rồi thì mít.",),
+        )
+
+    def test_text_without_a_full_stop_is_one_piece(self):
+        self.assertEqual(
+            split_sentences("Không có dấu chấm nào ở đây"),
+            ("Không có dấu chấm nào ở đây",),
+        )
+
+    def test_empty_text_yields_nothing(self):
+        self.assertEqual(split_sentences("   "), ())
+
+    def test_a_dash_opens_a_line_of_dialogue(self):
+        self.assertEqual(
+            split_sentences("Cô ấy gật đầu. - Vâng, em hiểu."),
+            ("Cô ấy gật đầu.", "- Vâng, em hiểu."),
+        )
+

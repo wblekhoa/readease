@@ -12,9 +12,12 @@ from typing import Mapping, Protocol
 
 from vieneu_reader.domain.models import AudioChunk, BookDocument, Segment
 from vieneu_reader.domain.prosody import (
+    READING_REVISION,
+    SENTENCE_PAUSE_MS,
     pause_after_ms,
     selection_pause_ms,
     speakable_text,
+    split_sentences,
 )
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_transient_parts
 from vieneu_reader.playback.preferences import DEFAULT_RATE, DEFAULT_VOICE_ID
@@ -400,13 +403,7 @@ class PlaybackCoordinator:
             key = None
             cached = None
             if not is_selection:
-                key = audio_cache_key(
-                    text,
-                    voice_id,
-                    self._engine.engine_version,
-                    self._engine.model_revision,
-                    settings,
-                )
+                key = self._cache_key(text, voice_id, settings)
                 cached = self._cache.get(key)
             self._guard(token)
             self._call_output(
@@ -435,7 +432,9 @@ class PlaybackCoordinator:
                 def generating_chunks():
                     nonlocal produced_chunks, synthesis_failed
                     try:
-                        for chunk in self._engine.stream(text, voice_id, settings):
+                        for chunk, from_voice in self._read_aloud(
+                            text, voice_id, settings
+                        ):
                             self._call_output(
                                 token,
                                 lambda: self._output.append(token, chunk),
@@ -443,7 +442,7 @@ class PlaybackCoordinator:
                             # Count what the person can actually hear, so the
                             # guard below does not depend on the engine never
                             # handing back an empty chunk.
-                            if chunk.pcm:
+                            if chunk.pcm and from_voice:
                                 produced_chunks += 1
                                 if produced_chunks == 1:
                                     self._publish(
@@ -515,6 +514,30 @@ class PlaybackCoordinator:
                     generation=token,
                 )
 
+    def _read_aloud(self, text: str, voice_id: str, settings: SynthesisSettings):
+        """Stream one paragraph a sentence at a time, resting at each full stop.
+
+        Yields ``(chunk, from_voice)``; a rest is not from the voice, so it can
+        never stand in for audio the engine failed to produce.
+        """
+
+        sentences = split_sentences(text) or (text,)
+        for index, sentence in enumerate(sentences):
+            if index:
+                yield _silence_chunk(SENTENCE_PAUSE_MS), False
+            for chunk in self._engine.stream(sentence, voice_id, settings):
+                yield chunk, True
+
+    def _cache_key(self, text: str, voice_id: str, settings: SynthesisSettings) -> str:
+        return audio_cache_key(
+            text,
+            voice_id,
+            self._engine.engine_version,
+            self._engine.model_revision,
+            settings,
+            READING_REVISION,
+        )
+
     def _pause_after_ms(self, index: int | None, *, is_selection: bool) -> int:
         if index is None:
             return 0
@@ -542,18 +565,12 @@ class PlaybackCoordinator:
                 settings = self._settings
                 segment = self._segments[index]
                 text = self._speech_text_by_segment.get(segment.id, segment.text)
-            key = audio_cache_key(
-                text,
-                voice_id,
-                self._engine.engine_version,
-                self._engine.model_revision,
-                settings,
-            )
+            key = self._cache_key(text, voice_id, settings)
             if self._cache.get(key) is not None:
                 return
 
             def guarded_chunks():
-                for chunk in self._engine.stream(text, voice_id, settings):
+                for chunk, _from_voice in self._read_aloud(text, voice_id, settings):
                     self._guard(token)
                     yield chunk
 

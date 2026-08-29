@@ -8,6 +8,7 @@ from threading import Event, RLock, Thread, current_thread
 import unittest
 
 from vieneu_reader.domain.models import AudioChunk
+from vieneu_reader.domain.prosody import SENTENCE_PAUSE_MS
 from vieneu_reader.playback.coordinator import PlaybackCoordinator, PlaybackState
 from vieneu_reader.speech.cache import AudioCache
 from vieneu_reader.speech.contracts import SynthesisSettings
@@ -61,10 +62,14 @@ class FakeSpeechEngine:
     def voices(self):
         return ()
 
+    silent = False
+
     def stream(self, text, voice_id, settings):
         self.calls.append((text, voice_id))
         if text == self.failure_text:
             raise RuntimeError("speech failed")
+        if self.silent:
+            return
         marker = (sum(text.encode("utf-8")) % 50) / 100
         yield AudioChunk(struct.pack("<2f", marker, -marker))
 
@@ -414,9 +419,16 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.scheduler.run_next()
         self.scheduler.run_next()
 
+        # The voice is handed one sentence at a time, so the figure cue is its
+        # own utterance rather than something tacked onto the paragraph.
         self.assertEqual(
             self.engine.calls,
-            [(first_spoken, "Adam"), (second_spoken, "Adam")],
+            [
+                ("Xin chào.", "Adam"),
+                ("Mời bạn xem Hình 1.", "Adam"),
+                ("Mời bạn xem Hình 2.", "Adam"),
+                ("Tiếng Việt.", "Adam"),
+            ],
         )
         self.assertNotIn("Mời bạn xem", self.first.text)
         self.assertNotIn("Mời bạn xem", self.second.text)
@@ -1098,11 +1110,11 @@ class StructurePauseTests(unittest.TestCase):
         self.assertEqual(
             pauses,
             [
-                700,   # heading -> paragraph
-                150,   # split at a finished sentence
-                450,   # paragraph block -> list
-                300,   # one list item to the next
-                1200,  # chapter change
+                700,                # heading -> paragraph
+                SENTENCE_PAUSE_MS,  # split at a finished sentence
+                450,                # paragraph block -> list
+                300,                # one list item to the next
+                1200,               # chapter change
             ],
         )
 
@@ -1116,6 +1128,59 @@ class StructurePauseTests(unittest.TestCase):
         self.assertEqual(self.coordinator.snapshot.state, PlaybackState.ERROR)
         _speech, pauses = _speech_and_pause_appends(self.output.events)
         self.assertEqual(pauses, [])
+
+    def test_a_paragraph_is_read_one_sentence_at_a_time_with_a_rest_between(self):
+        book = _structured_book()
+        segment = book.chapters[0].segments[1]
+        self.coordinator.play(
+            book,
+            segment.id,
+            "Adam",
+            speech_text_by_segment={
+                segment.id: "Câu thứ nhất. Câu thứ hai. Câu thứ ba."
+            },
+        )
+        self.scheduler.run_next()
+
+        self.assertEqual(
+            [call[0] for call in self.engine.calls],
+            ["Câu thứ nhất.", "Câu thứ hai.", "Câu thứ ba."],
+        )
+        _speech, pauses = _speech_and_pause_appends(self.output.events)
+        # Two rests inside the paragraph; the pause that follows the segment
+        # itself is only added once its audio has drained.
+        self.assertEqual(pauses[:2], [SENTENCE_PAUSE_MS, SENTENCE_PAUSE_MS])
+
+    def test_a_rest_between_sentences_cannot_stand_in_for_missing_audio(self):
+        """A silent engine must still be reported, even though the reading
+        itself contributes audible chunks between the sentences."""
+        book = _structured_book()
+        segment = book.chapters[0].segments[1]
+        self.engine.silent = True
+        self.coordinator.play(
+            book,
+            segment.id,
+            "Adam",
+            speech_text_by_segment={segment.id: "Câu một. Câu hai."},
+        )
+        self.scheduler.run_all()
+
+        self.assertEqual(self.coordinator.snapshot.state, PlaybackState.ERROR)
+
+    def test_the_cached_audio_is_keyed_to_how_the_text_is_read(self):
+        """Audio recorded before sentences were read apart must not be served
+        for the same paragraph now that the reading has changed."""
+        from vieneu_reader.domain.prosody import READING_REVISION
+        from vieneu_reader.speech.cache import audio_cache_key
+        from vieneu_reader.speech.contracts import SynthesisSettings
+
+        settings = SynthesisSettings()
+        older = audio_cache_key("Một câu.", "Adam", "v", "r", settings)
+        current = audio_cache_key(
+            "Một câu.", "Adam", "v", "r", settings, READING_REVISION
+        )
+
+        self.assertNotEqual(older, current)
 
     def test_selection_parts_pause_by_paragraph_and_line(self):
         self.coordinator.play_selection(

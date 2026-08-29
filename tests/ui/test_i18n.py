@@ -38,6 +38,11 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
             "Xin chào. ReadEase đang kiểm tra giọng đọc tiếng Việt.",
         ),
         ("ui/controller.py", "Mời bạn xem Hình "),
+        # Abbreviations the sentence splitter matches against. They are data
+        # for a matcher, never text anyone reads, so there is nothing to
+        # translate; an English build must still not split "ĐH. Bách Khoa".
+        ("domain/prosody.py", "đh"),
+        ("domain/prosody.py", "cđ"),
     }
 )
 
