@@ -247,9 +247,19 @@ class ReaderWindow(QMainWindow):
         self.feature_navigation = QTabBar()
         self.feature_navigation.setObjectName("featureNavigation")
         self.feature_navigation.setExpanding(False)
+        # A tab bar draws a base to join itself to the framed page beneath it.
+        # This one sits above a plain stacked widget with no frame, so the base
+        # rendered as a stray rounded edge attached to nothing.
+        self.feature_navigation.setDrawBase(False)
         for _index in range(4):
             self.feature_navigation.addTab("")
-        root.addWidget(self.feature_navigation)
+        # Left-aligned under the app title rather than floating in the middle of
+        # the window, so the tabs read as belonging to the content below them.
+        navigation_row = QHBoxLayout()
+        navigation_row.setContentsMargins(0, 0, 0, 0)
+        navigation_row.addWidget(self.feature_navigation)
+        navigation_row.addStretch(1)
+        root.addLayout(navigation_row)
 
         self.feature_stack = QStackedWidget()
         self.feature_stack.setObjectName("featureStack")

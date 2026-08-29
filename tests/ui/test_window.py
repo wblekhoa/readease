@@ -1675,3 +1675,28 @@ class HeadingHierarchyTests(unittest.TestCase):
                 heading = view.title_label.font()
                 self.assertTrue(heading.bold())
                 self.assertGreater(heading.pointSize(), body.font().pointSize())
+
+    def test_the_tabs_sit_at_the_left_not_adrift_in_the_middle(self) -> None:
+        """macOS centres a tab bar inside whatever width it is given.
+
+        Handed the full window it floated in the middle, detached from the
+        content it switches. Given only the width it needs, it stays under the
+        app title. Measured, because the macOS style paints nothing offscreen -
+        only the geometry is observable from here.
+        """
+
+        self.window.resize(1180, 620)
+        self.window.show()
+        self.application.processEvents()
+        bar = self.window.feature_navigation
+        self.assertLess(bar.geometry().x(), 40, "tab bar drifted right")
+        self.assertLess(
+            bar.width(),
+            self.window.width() // 2,
+            "tab bar was handed the whole window and will centre inside it",
+        )
+
+    def test_the_tab_bar_draws_no_frame_of_its_own(self) -> None:
+        """It sits above an unframed stack; its base joined nothing."""
+
+        self.assertFalse(self.window.feature_navigation.drawBase())
