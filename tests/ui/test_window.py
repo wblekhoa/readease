@@ -1617,3 +1617,61 @@ class ReaderWindowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeadingHierarchyTests(unittest.TestCase):
+    """One heading per view, and status text that does not impersonate it.
+
+    A rendered audit found the Read books tab opening with two bold lines
+    stacked - its title and its status - so neither read as the heading. Every
+    other view in the app leads with exactly one.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.temporary_directory = TemporaryDirectory()
+        root = Path(self.temporary_directory.name)
+        self.paths = AppPaths.create(root / "app-data")
+        self.repository = LibraryRepository(self.paths.database)
+        self.service = LibraryService(self.paths, self.repository)
+        self.controller = ReaderController(
+            self.repository,
+            self.service,
+            FakePlayback(self.repository),
+            dispatch=lambda action: action(),
+        )
+        self.window = ReaderWindow(
+            self.controller,
+            FakeModelSetup(ready=True),
+            apple_books=_FakeAppleBooks(root=root),
+        )
+
+    def tearDown(self) -> None:
+        self.window.close()
+        self.application.processEvents()
+        self.repository.close()
+        self.temporary_directory.cleanup()
+
+    def test_the_read_books_status_does_not_compete_with_its_title(self) -> None:
+        view = self.window.external_reading_view
+        title = view.title_label.font()
+        status = view.status_label.font()
+        self.assertTrue(title.bold(), "the title must still be the heading")
+        self.assertFalse(status.bold(), "status text is dressed as a heading")
+        self.assertLess(status.pointSize(), title.pointSize())
+
+    def test_every_view_leads_with_a_heading_larger_than_its_body(self) -> None:
+        for view, body in (
+            (self.window.transfer_notes_view, self.window.transfer_notes_view.description),
+            (
+                self.window.external_reading_view,
+                self.window.external_reading_view.description_label,
+            ),
+        ):
+            with self.subTest(view=view.objectName()):
+                heading = view.title_label.font()
+                self.assertTrue(heading.bold())
+                self.assertGreater(heading.pointSize(), body.font().pointSize())

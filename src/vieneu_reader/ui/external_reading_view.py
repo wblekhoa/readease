@@ -65,9 +65,8 @@ class ExternalReadingView(QWidget):
         self.status_label = QLabel()
         self.status_label.setObjectName("externalReadingStatus")
         self.status_label.setWordWrap(True)
-        status_font = QFont(self.status_label.font())
-        status_font.setBold(True)
-        self.status_label.setFont(status_font)
+        # Body weight on purpose. Bold, directly under a bold heading, made two
+        # lines compete for the same role and neither read as the title.
         layout.addWidget(self.status_label)
 
         self.detail_label = QLabel()
@@ -91,6 +90,9 @@ class ExternalReadingView(QWidget):
         guide.addWidget(self.steps_label)
 
         self.shortcut_caption = QLabel()
+        # A section label, and the right column's own label is emphasised the
+        # same way. Dropping it here left a bare line dangling between two
+        # paragraphs and made the two columns disagree.
         caption_font = QFont(self.shortcut_caption.font())
         caption_font.setBold(True)
         self.shortcut_caption.setFont(caption_font)
