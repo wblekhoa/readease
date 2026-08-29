@@ -1,13 +1,16 @@
-"""Preview which Apple Books notes could move from one copy of a book to another.
+"""Preview which Apple Books notes could move from one copy of a book to another,
+and move the ones that can.
 
-This surface only ever reads. It shows what a transfer would mean and stops there,
-because writing into Apple Books' own database is unsupported by Apple and would put
-every book's annotations at risk for the sake of a few.
+The view owns one rule: nothing is written except what a preview of this exact
+pair of books vouched for. Everything the copy refuses - a chapter that differs,
+a note already over there - stays listed and labelled rather than disappearing,
+so the person can see why it was left behind.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -51,6 +54,12 @@ class TransferNotesView(QWidget):
 
         self.title_label = QLabel()
         self.title_label.setObjectName("transferNotesTitle")
+        # The same heading treatment the other three views already use; without
+        # it this tab's title rendered at body size and read as another sentence.
+        title_font = QFont(self.title_label.font())
+        title_font.setPointSize(title_font.pointSize() + 4)
+        title_font.setBold(True)
+        self.title_label.setFont(title_font)
         self.description = QLabel()
         self.description.setWordWrap(True)
         layout.addWidget(self.title_label)
@@ -94,7 +103,13 @@ class TransferNotesView(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self._table_row = layout.count()
         layout.addWidget(self.plan_table, 1)
+        # Surplus height has to go somewhere. With the table hidden it would
+        # otherwise be shared out between the labels, drifting them apart down
+        # an empty view; this collects it at the bottom instead.
+        self._filler_row = layout.count()
+        layout.addStretch(0)
 
         self.source_selector.currentIndexChanged.connect(self._selection_changed)
         self.target_selector.currentIndexChanged.connect(self._selection_changed)
@@ -109,6 +124,7 @@ class TransferNotesView(QWidget):
         self.retranslate()
         # A QPushButton starts enabled; nothing is selected yet, so it must not.
         self._refresh_buttons()
+        self._show_table_only_when_it_has_rows()
 
     # -- language -----------------------------------------------------------
 
@@ -148,6 +164,7 @@ class TransferNotesView(QWidget):
             selector.setCurrentIndex(-1)
             selector.blockSignals(False)
         self.plan_table.setRowCount(0)
+        self._show_table_only_when_it_has_rows()
         self.summary_label.setText(self._localizer.text("transfer.pick_two"))
         self._refresh_buttons()
 
@@ -171,6 +188,7 @@ class TransferNotesView(QWidget):
                 cell.setToolTip(value)
                 cell.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
                 self.plan_table.setItem(row, column, cell)
+        self._show_table_only_when_it_has_rows()
         self.summary_label.setText(self._summary(plan, shown=len(rows)))
         self._refresh_buttons()
 
@@ -180,6 +198,7 @@ class TransferNotesView(QWidget):
         self._unavailable = self.source_selector.count() == 0
         self._forget_preview()
         self.plan_table.setRowCount(0)
+        self._show_table_only_when_it_has_rows()
         self.summary_label.setText(message)
         self._refresh_buttons()
 
@@ -256,6 +275,20 @@ class TransferNotesView(QWidget):
             self.source_selector.currentData(),
             self.target_selector.currentData(),
         )
+
+    def _show_table_only_when_it_has_rows(self) -> None:
+        """An empty grid of column headers says nothing and fills the view.
+
+        The summary line already carries the message for every empty case - no
+        books picked, nothing to copy, a library that would not load - so the
+        table stays out of the way until there is something in it.
+        """
+
+        has_rows = self.plan_table.rowCount() > 0
+        self.plan_table.setVisible(has_rows)
+        layout = self.layout()
+        layout.setStretch(self._table_row, 1 if has_rows else 0)
+        layout.setStretch(self._filler_row, 0 if has_rows else 1)
 
     def _forget_preview(self) -> None:
         self._previewed = None

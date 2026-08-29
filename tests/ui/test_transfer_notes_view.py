@@ -419,3 +419,77 @@ class AlreadyThereTests(unittest.TestCase):
         verdicts = [view.plan_table.item(row, 2).text() for row in range(3)]
         self.assertEqual(verdicts.count("Đã có ở cuốn kia"), 2, verdicts)
         self.assertEqual(verdicts.count("Chuyển được nguyên vẹn"), 1, verdicts)
+
+
+class PresentationTests(unittest.TestCase):
+    """What the tab looks like before anything has been chosen.
+
+    An audit of the rendered window found this tab was the only one of four
+    whose title carried no heading font, and that its empty table filled the
+    view with column headers and nothing else.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def _view(self) -> TransferNotesView:
+        view = TransferNotesView(localizer=Localizer("vi"))
+        self.addCleanup(view.deleteLater)
+        return view
+
+    def test_the_title_reads_as_a_heading_not_another_sentence(self) -> None:
+        view = self._view()
+        title = view.title_label.font()
+        body = view.description.font()
+        self.assertGreater(title.pointSize(), body.pointSize(), "title is body size")
+        self.assertTrue(title.bold(), "title is not bold")
+
+    def test_an_empty_table_is_not_shown_at_all(self) -> None:
+        view = self._view()
+        self.assertEqual(view.plan_table.rowCount(), 0)
+        # isVisible() is False for any widget whose window was never shown, so
+        # it passes whether or not the code hides anything. isVisibleTo asks the
+        # question that matters: hidden relative to the view it sits in.
+        self.assertFalse(
+            view.plan_table.isVisibleTo(view), "an empty grid fills the view"
+        )
+
+    def test_the_table_appears_once_there_is_something_in_it(self) -> None:
+        view = self._view()
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.show_plan(_plan(3))
+        self.assertEqual(view.plan_table.rowCount(), 3)
+        self.assertTrue(view.plan_table.isVisibleTo(view), "rows exist but stay hidden")
+
+    def test_the_table_goes_away_again_when_the_books_change(self) -> None:
+        view = self._view()
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.show_plan(_plan(3))
+        view.set_books((SOURCE, TARGET))
+        self.assertFalse(view.plan_table.isVisibleTo(view))
+
+    def test_a_failed_preview_leaves_no_empty_grid_behind(self) -> None:
+        view = self._view()
+        view.set_books((SOURCE, TARGET))
+        view.source_selector.setCurrentIndex(0)
+        view.target_selector.setCurrentIndex(1)
+        view.show_plan(_plan(3))
+        view.show_unavailable("không đọc được")
+        self.assertFalse(view.plan_table.isVisibleTo(view))
+        self.assertIn("không đọc được", view.summary_label.text())
+
+    def test_the_description_stays_short_enough_to_read(self) -> None:
+        """It was 260 characters - more than double every other tab's."""
+
+        from vieneu_reader.ui.i18n import _TEXT
+
+        others = [
+            len(_TEXT[key][0])
+            for key in ("library.description", "paste.description", "external.description")
+        ]
+        self.assertLessEqual(len(_TEXT["transfer.description"][0]), max(others))

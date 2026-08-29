@@ -101,15 +101,10 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Preview your notes, then move them to the other copy",
     ),
     "transfer.description": (
-        "ReadEase đọc thư viện Apple Books để xem ghi chú và đoạn bôi màu của bạn, "
-        "rồi cho biết những gì chuyển được sang bản kia. Xem trước xong, bạn có thể "
-        "bấm Chép sang để chuyển thật; ReadEase sao lưu dữ liệu Apple Books trước khi "
-        "ghi, và không sửa gì ở cuốn nguồn.",
-        "ReadEase reads your Apple Books library to see your notes and highlights, "
-        "then shows which of them would carry over to the other copy. Once you have "
-        "previewed them you can press Copy across to move them for real; ReadEase "
-        "backs up your Apple Books data first, and never alters the book they came "
-        "from.",
+        "Chọn hai bản của cùng một cuốn sách. ReadEase sao lưu trước khi ghi và "
+        "không đụng tới cuốn nguồn.",
+        "Pick two copies of the same book. ReadEase backs up before writing and "
+        "never touches the book they came from.",
     ),
     "transfer.source": ("Lấy ghi chú từ", "Take notes from"),
     "transfer.target": ("Chuyển sang", "Move them to"),
