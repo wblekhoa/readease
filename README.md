@@ -55,7 +55,7 @@ Nếu máy chưa có công cụ của Apple, macOS sẽ tự hiện cửa sổ c
 
 4. Installer liệt kê **trước** mọi thứ nó sẽ cài, thay, đóng và dọn, rồi hỏi **đúng một câu**. Đồng ý xong là nó chạy một mạch, không hỏi thêm gì nữa.
 5. Chờ khoảng 10–25 phút. Installer in rõ từng bước (`READEASE_STEP 1/5` → `5/5`), cho biết máy đã có bản ReadEase nào chưa, có bản cũ nào sẽ được gỡ, rồi cài vào `~/Applications/ReadEase.app` và tự mở app.
-6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**: mặc định là *Tiêu chuẩn* (158 MB); chọn *Cao nhất* thì tải 453 MB, đọc chậm hơn khoảng 11%.
+6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**. App **chỉ tải bản bạn chọn**, không tải cả hai: *Tiêu chuẩn* (mặc định) tốn khoảng 330 MB tổng cộng, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Nếu sau này bạn đổi bản, app sẽ báo bản cũ đang chiếm bao nhiêu và cho xoá bằng một nút.
 
 Muốn kiểm tra máy trước mà chưa cài, mở Terminal tại thư mục source và chạy:
 

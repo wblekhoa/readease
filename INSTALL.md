@@ -93,7 +93,9 @@ READEASE_SOURCE_INSTALL PASS target=.../Applications/ReadEase.app
 
 Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu. Sau khi hoàn tất, việc đọc diễn ra cục bộ và có thể dùng offline.
 
-Ô **Chất lượng giọng đọc** ngay phía trên chọn bản mô hình: *Tiêu chuẩn* (tải 158 MB) là mặc định, *Cao nhất* tải 453 MB và đọc chậm hơn khoảng 11%. Đổi lựa chọn có hiệu lực ở lần mở app kế tiếp; bản chưa tải sẽ được tải khi đó.
+Ô **Chất lượng giọng đọc** ngay phía trên chọn bản mô hình. App **chỉ tải đúng bản bạn chọn**: *Tiêu chuẩn* (mặc định) tổng cộng khoảng 330 MB, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Đổi lựa chọn có hiệu lực ở lần mở app kế tiếp, và bản chưa tải sẽ được tải khi đó.
+
+Giữ hai bản cùng lúc là không cần thiết: khi phát hiện có bản đã tải mà không dùng tới, app hiện một dòng cho biết nó chiếm bao nhiêu kèm nút xoá. Bản đang dùng thì không bao giờ bị xoá.
 
 ## Kiểm tra máy mà chưa cài
 

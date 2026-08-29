@@ -32,6 +32,28 @@ class ModelSetupCoordinator(QObject):
     def is_ready(self) -> bool:
         return bool(self._engine.is_model_ready)
 
+    def unused_build(self) -> tuple[str, int] | None:
+        """The downloaded build this app is not reading with, and its size."""
+
+        try:
+            in_use = self._engine.precision
+            sizes = self._engine.installed_builds()
+        except AttributeError:
+            return None
+        for precision, size in sizes.items():
+            if precision != in_use and size > 0:
+                return precision, size
+        return None
+
+    def remove_unused_build(self) -> bool:
+        spare = self.unused_build()
+        if spare is None:
+            return False
+        try:
+            return bool(self._engine.remove_build(spare[0]))
+        except (AttributeError, ValueError):
+            return False
+
     def start(self) -> None:
         with self._lock:
             if self._closed or (self._worker is not None and self._worker.is_alive()):

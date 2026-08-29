@@ -94,7 +94,9 @@ READEASE_SOURCE_INSTALL PASS target=.../Applications/ReadEase.app
 
 In ReadEase, choose `🇬🇧 English` from the language selector if needed, then click **Set up voice**. The app downloads about 330 MB of Vietnamese voice data the first time. Reading is local and can work offline afterward.
 
-**Voice quality**, just above that button, chooses the model build: *Standard* (158 MB download) by default, or *Highest* (453 MB), which reads about 11% slower. A change takes effect the next time the app opens, and a build that is not downloaded yet is fetched then.
+**Voice quality**, just above that button, chooses the model build. Only the build you choose is downloaded: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower. A change takes effect the next time the app opens, and a build that is not downloaded yet is fetched then.
+
+There is no need to keep both. When a downloaded build is not the one in use, the app says how much it is taking and offers to remove it; the build in use is never removed.
 
 ## Check compatibility without installing
 

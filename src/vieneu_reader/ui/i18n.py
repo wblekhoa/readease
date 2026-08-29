@@ -34,6 +34,16 @@ _TEXT: dict[str, tuple[str, str]] = {
     "model.ready_to_download": ("Sẵn sàng tải giọng đọc.", "Ready to download voice data."),
     "model.quality": ("Chất lượng giọng đọc", "Voice quality"),
     "player.quality": ("Chất lượng", "Quality"),
+    "model.spare_build": (
+        "Bản {name} đã tải nhưng không dùng tới, đang chiếm {size}.",
+        "The {name} build is downloaded but unused, taking {size}.",
+    ),
+    "model.spare_remove": ("Xoá để lấy lại dung lượng", "Remove it to reclaim the space"),
+    "model.spare_removed": ("Đã xoá, lấy lại {size}.", "Removed; {size} reclaimed."),
+    "model.spare_failed": (
+        "Không xoá được. Bạn có thể xoá thủ công thư mục mô hình không dùng.",
+        "It could not be removed. The unused model folder can be deleted by hand.",
+    ),
     "model.quality_accessible": (
         "Chọn bản mô hình đọc",
         "Choose which build of the reading model to use",

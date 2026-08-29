@@ -308,6 +308,20 @@ class ReaderWindow(QMainWindow):
             self.feature_stack.addWidget(feature_view)
         root.addWidget(self.feature_stack, 1)
 
+        spare_row = QHBoxLayout()
+        spare_row.addStretch(1)
+        self.spare_build_label = QLabel()
+        self.spare_build_label.setWordWrap(True)
+        spare_row.addWidget(self.spare_build_label)
+        self.spare_build_button = QPushButton()
+        self.spare_build_button.setObjectName("removeSpareBuildButton")
+        spare_row.addWidget(self.spare_build_button)
+        spare_row.addStretch(1)
+        self.spare_build_row = QWidget()
+        self.spare_build_row.setLayout(spare_row)
+        self.spare_build_row.hide()
+        root.addWidget(self.spare_build_row)
+
         player = QFrame()
         player.setFrameShape(QFrame.Shape.StyledPanel)
         player_layout = QHBoxLayout(player)
@@ -567,6 +581,7 @@ class ReaderWindow(QMainWindow):
 
     def _connect_actions(self) -> None:
         self.prepare_model_button.clicked.connect(self._start_model_setup)
+        self.spare_build_button.clicked.connect(self._remove_spare_build)
         for combo in (self.setup_quality_combo, self.quality_combo):
             combo.currentIndexChanged.connect(self._quality_changed)
         self.cancel_model_button.clicked.connect(self._cancel_model_setup)
@@ -671,6 +686,7 @@ class ReaderWindow(QMainWindow):
         self.quality_label.setText(text("player.quality"))
         self._sync_quality_controls()
         self.quality_restart_note.setText(text("model.quality_restart"))
+        self._refresh_spare_build()
         prepare_key = "model.retry" if self._model_setup_failed else "model.prepare"
         self.prepare_model_button.setText(text(prepare_key))
         self.prepare_model_button.setAccessibleName(
@@ -993,6 +1009,46 @@ class ReaderWindow(QMainWindow):
                 combo.setCurrentIndex(position)
             del blocker
 
+    @staticmethod
+    def _readable_size(byte_count: int) -> str:
+        if byte_count >= 1024 * 1024 * 1024:
+            return f"{byte_count / 1024 / 1024 / 1024:.1f} GB"
+        return f"{round(byte_count / 1024 / 1024)} MB"
+
+    def _refresh_spare_build(self) -> None:
+        spare = None
+        if hasattr(self._model_setup, "unused_build"):
+            spare = self._model_setup.unused_build()
+        if spare is None:
+            self.spare_build_row.hide()
+            return
+        precision, size = spare
+        text = self._localizer.text
+        suffix = "standard" if precision == DEFAULT_PRECISION else "maximum"
+        self.spare_build_label.setText(
+            text(
+                "model.spare_build",
+                name=text(f"model.quality_{suffix}").split("·")[0].strip(),
+                size=self._readable_size(size),
+            )
+        )
+        self.spare_build_button.setText(text("model.spare_remove"))
+        self.spare_build_row.show()
+
+    def _remove_spare_build(self) -> None:
+        spare = self._model_setup.unused_build()
+        if spare is None:
+            self.spare_build_row.hide()
+            return
+        reclaimed = self._readable_size(spare[1])
+        if self._model_setup.remove_unused_build():
+            self._set_model_status(
+                self._localizer.text("model.spare_removed", size=reclaimed)
+            )
+        else:
+            self._set_model_status(self._localizer.text("model.spare_failed"))
+        self._refresh_spare_build()
+
     def _quality_changed(self, index: int) -> None:
         combo = self.sender()
         if self._rendering or index < 0 or self._voice_quality_store is None:
@@ -1003,6 +1059,7 @@ class ReaderWindow(QMainWindow):
         if not precision or precision == self._voice_quality_store.load():
             return
         self._voice_quality_store.save(str(precision))
+        self._refresh_spare_build()
         # Both controls show the same choice, wherever it was made.
         self._sync_quality_controls()
         # The engine is built once at startup, so the change lands on reopen.

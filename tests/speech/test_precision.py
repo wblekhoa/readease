@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -15,7 +16,9 @@ from vieneu_reader.speech.preferences import (
     VoiceQualityPreferenceStore,
 )
 from vieneu_reader.speech.vieneu import (
+    CODEC_DIRECTORY,
     CODEC_REVISION,
+    MODEL_DIRECTORY,
     DEFAULT_PRECISION,
     MODEL_REVISION,
     PRECISIONS,
@@ -140,6 +143,78 @@ class ExistingInstallTests(unittest.TestCase):
 
     def test_but_it_does_not_vouch_for_a_build_it_never_saw(self):
         self.assertFalse(self.engine("fp32")._marker_matches())
+
+
+class RemovingAnUnusedBuildTests(unittest.TestCase):
+    """One build is downloaded at a time; the other must not be stuck there."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.models = Path(self.temp_dir.name) / "Models"
+        self.root = self.models / MODEL_DIRECTORY
+        for subfolder, size in (("onnx_int8", 1200), ("onnx_update", 3400)):
+            (self.root / subfolder).mkdir(parents=True)
+            (self.root / subfolder / "vieneu_backbone_shared.data").write_bytes(
+                b"x" * size
+            )
+        self.codec = self.models / CODEC_DIRECTORY
+        self.codec.mkdir(parents=True)
+        (self.codec / "keep-me").write_bytes(b"codec")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def engine(self, precision):
+        return VieNeuSpeechEngine(
+            self.models, sdk_factory=lambda **kwargs: None, precision=precision
+        )
+
+    def test_it_reports_what_each_build_is_taking_up(self):
+        sizes = self.engine("int8").installed_builds()
+
+        self.assertEqual(sizes["int8"], 1200)
+        self.assertEqual(sizes["fp32"], 3400)
+
+    def test_a_build_that_was_never_downloaded_reads_as_nothing(self):
+        shutil.rmtree(self.root / "onnx_update")
+
+        self.assertEqual(self.engine("int8").installed_builds()["fp32"], 0)
+
+    def test_the_build_not_in_use_can_be_removed(self):
+        removed = self.engine("fp32").remove_build("int8")
+
+        self.assertTrue(removed)
+        self.assertFalse((self.root / "onnx_int8").exists())
+        # And nothing else went with it.
+        self.assertTrue((self.root / "onnx_update").exists())
+        self.assertTrue((self.codec / "keep-me").exists())
+
+    def test_the_build_in_use_is_refused(self):
+        """Removing what the app is reading with would break a working install."""
+        with self.assertRaises(ValueError):
+            self.engine("fp32").remove_build("fp32")
+
+        self.assertTrue((self.root / "onnx_update").exists())
+
+    def test_a_build_this_version_does_not_know_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.engine("int8").remove_build("fp16")
+
+    def test_removing_it_also_drops_its_readiness_record(self):
+        engine = self.engine("int8")
+        engine._write_ready_marker()
+        marker = engine._ready_marker
+        self.assertTrue(marker.exists())
+
+        self.engine("fp32").remove_build("int8")
+
+        self.assertFalse(marker.exists())
+
+    def test_removing_one_that_is_already_gone_says_so_without_raising(self):
+        engine = self.engine("fp32")
+        engine.remove_build("int8")
+
+        self.assertFalse(engine.remove_build("int8"))
 
 
 class VoiceQualityPreferenceStoreTests(unittest.TestCase):

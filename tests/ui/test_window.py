@@ -85,6 +85,20 @@ class FakeModelSetup(QObject):
         self.cancel_count += 1
         self.cancelled.emit()
 
+    spare: tuple[str, int] | None = None
+    removal_succeeds = True
+    removed = 0
+
+    def unused_build(self) -> tuple[str, int] | None:
+        return self.spare
+
+    def remove_unused_build(self) -> bool:
+        self.removed += 1
+        if not self.removal_succeeds:
+            return False
+        self.spare = None
+        return True
+
 
 class _FakeAppleBooks:
     """Two copies of one edition, five annotations on the first."""
@@ -152,6 +166,79 @@ class _FakeAppleBooks:
         if "DST" in found:
             found["DST"] = tuple(note("DST", index) for index in self.carried)
         return found
+
+
+class SpareModelBuildTests(unittest.TestCase):
+    """Only one build is ever downloaded; the other must not be stuck on disk."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.temporary_directory = TemporaryDirectory()
+        root = Path(self.temporary_directory.name)
+        self.paths = AppPaths.create(root / "app-data")
+        self.repository = LibraryRepository(self.paths.database)
+        self.service = LibraryService(self.paths, self.repository)
+        self.playback = FakePlayback(self.repository)
+        self.windows: list[ReaderWindow] = []
+
+    def tearDown(self) -> None:
+        for window in self.windows:
+            window.close()
+        self.application.processEvents()
+        self.repository.close()
+        self.temporary_directory.cleanup()
+
+    def make_window(self, model_setup) -> ReaderWindow:
+        window = ReaderWindow(
+            ReaderController(
+                self.repository,
+                self.service,
+                self.playback,
+                dispatch=lambda action: action(),
+            ),
+            model_setup,
+        )
+        self.windows.append(window)
+        return window
+
+    def test_nothing_is_shown_when_only_one_build_is_downloaded(self):
+        window = self.make_window(FakeModelSetup(ready=True))
+
+        self.assertFalse(window.spare_build_row.isVisibleTo(window))
+
+    def test_the_unused_build_is_named_with_what_it_costs(self):
+        setup = FakeModelSetup(ready=True)
+        setup.spare = ("fp32", 453 * 1024 * 1024)
+
+        window = self.make_window(setup)
+
+        self.assertTrue(window.spare_build_row.isVisibleTo(window))
+        self.assertIn("453 MB", window.spare_build_label.text())
+
+    def test_removing_it_reports_the_space_and_takes_the_offer_away(self):
+        setup = FakeModelSetup(ready=True)
+        setup.spare = ("int8", 158 * 1024 * 1024)
+        window = self.make_window(setup)
+
+        window.spare_build_button.click()
+
+        self.assertEqual(setup.removed, 1)
+        self.assertFalse(window.spare_build_row.isVisibleTo(window))
+        self.assertIn("158 MB", window.model_status.text())
+
+    def test_a_removal_that_fails_says_so_and_keeps_the_offer(self):
+        setup = FakeModelSetup(ready=True)
+        setup.spare = ("int8", 158 * 1024 * 1024)
+        setup.removal_succeeds = False
+        window = self.make_window(setup)
+
+        window.spare_build_button.click()
+
+        self.assertTrue(window.spare_build_row.isVisibleTo(window))
+        self.assertNotIn("158 MB", window.model_status.text())
 
 
 class VoiceQualityChoiceTests(unittest.TestCase):

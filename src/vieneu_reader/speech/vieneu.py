@@ -6,6 +6,7 @@ import errno
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import tempfile
 from contextlib import contextmanager
@@ -286,6 +287,52 @@ class VieNeuSpeechEngine:
                 temporary_path.unlink()
             except FileNotFoundError:
                 pass
+
+    def installed_builds(self) -> dict[str, int]:
+        """How much room each build of the model takes, or 0 if absent."""
+
+        sizes: dict[str, int] = {}
+        for precision, subfolder in PRECISIONS.items():
+            directory = self._model_root / subfolder
+            total = 0
+            try:
+                for path in directory.iterdir():
+                    if path.is_file() and not path.is_symlink():
+                        total += path.stat().st_size
+            except OSError:
+                total = 0
+            sizes[precision] = total
+        return sizes
+
+    def remove_build(self, precision: str) -> bool:
+        """Delete a downloaded build that is not the one in use.
+
+        Deleting model files has broken a working install here before, so this
+        refuses everything except one known folder of one known other build,
+        and never the one this engine reads from.
+        """
+
+        if precision not in PRECISIONS:
+            raise ValueError(f"unknown precision: {precision!r}")
+        if precision == self._precision:
+            raise ValueError("refusing to remove the build in use")
+        directory = self._model_root / PRECISIONS[precision]
+        # Belt and braces: the path must be exactly where that build lives.
+        if directory.parent != self._model_root or directory.is_symlink():
+            raise ValueError("refusing to remove an unexpected path")
+        with self._lock:
+            try:
+                shutil.rmtree(directory)
+            except FileNotFoundError:
+                return False
+            except OSError:
+                return False
+            marker = self._models_path / _READY_MARKER.format(precision=precision)
+            try:
+                marker.unlink()
+            except OSError:
+                pass
+        return True
 
     def _configure_huggingface_environment(self, *, offline: bool = False) -> None:
         os.environ["HF_HOME"] = str(self._models_path)

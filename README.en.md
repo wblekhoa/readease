@@ -32,7 +32,7 @@ You do not need an API key, Homebrew, Python, `uv` or programming knowledge. The
 3. If Gatekeeper blocks it, click **Done**, then use **System Settings → Privacy & Security → Security → Open Anyway**.
 4. The installer lists everything it will install, replace, close and remove **before** it starts, then asks **one** question. After you agree it runs start to finish without asking anything else.
 5. Wait about 10–25 minutes. ReadEase is built and checked locally, installed at `~/Applications/ReadEase.app` and opened automatically.
-6. In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build: *Standard* (158 MB) by default, or *Highest* (453 MB), which reads about 11% slower.
+6. In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build. Only the build you pick is downloaded, never both: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower. If you change build later, the app says what the old one is taking and offers to remove it.
 
 See [INSTALL.en.md](INSTALL.en.md) for screenshots-message wording, Gatekeeper details, compatibility checks and troubleshooting.
 
