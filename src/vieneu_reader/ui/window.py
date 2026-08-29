@@ -48,6 +48,8 @@ from vieneu_reader.integrations.selection_shortcut import (
     ShortcutPreferenceStore,
 )
 from vieneu_reader.playback.coordinator import PlaybackState
+from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
+from vieneu_reader.speech.vieneu import DEFAULT_PRECISION, PRECISIONS
 
 from .controller import ReaderController, ReaderViewState
 from .external_reading_view import ExternalReadingView
@@ -98,6 +100,7 @@ class ReaderWindow(QMainWindow):
         shortcut_store: ShortcutPreferenceStore | None = None,
         read_on_copy: bool = False,
         read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
+        voice_quality_store: VoiceQualityPreferenceStore | None = None,
         apple_books: AppleBooksLibrary | None = None,
         backup_root: Path | None = None,
         confirm_transfer: Callable[[str, str], bool] | None = None,
@@ -113,6 +116,7 @@ class ReaderWindow(QMainWindow):
         self._language_store = language_store
         self._shortcut_store = shortcut_store
         self._read_on_copy_store = read_on_copy_store
+        self._voice_quality_store = voice_quality_store
         self._selection_shortcut = selection_shortcut or DEFAULT_SHORTCUT
         self._read_on_copy = bool(read_on_copy)
         self._localizer = localizer or Localizer(
@@ -188,6 +192,30 @@ class ReaderWindow(QMainWindow):
         language_row.addWidget(self.setup_language_combo)
         language_row.addStretch(1)
         layout.addLayout(language_row)
+
+        quality_row = QHBoxLayout()
+        quality_row.addStretch(1)
+        self.setup_quality_label = QLabel()
+        quality_row.addWidget(self.setup_quality_label)
+        self.setup_quality_combo = QComboBox()
+        self.setup_quality_combo.setObjectName("setupQualityCombo")
+        for precision in PRECISIONS:
+            self.setup_quality_combo.addItem("", precision)
+        quality_row.addWidget(self.setup_quality_combo)
+        quality_row.addStretch(1)
+        layout.addLayout(quality_row)
+
+        # Shown only once the choice actually changes, so the screen stays calm
+        # for the many people who never touch it.
+        self.quality_restart_note = QLabel()
+        self.quality_restart_note.setWordWrap(True)
+        self.quality_restart_note.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.quality_restart_note.setMaximumWidth(620)
+        self.quality_restart_note.hide()
+        layout.addWidget(
+            self.quality_restart_note,
+            alignment=Qt.AlignmentFlag.AlignHCenter,
+        )
 
         self.model_progress = QProgressBar()
         self.model_progress.setObjectName("modelProgress")
@@ -317,8 +345,17 @@ class ReaderWindow(QMainWindow):
         player_layout.addWidget(self.voice_combo)
         self.rate_label = QLabel()
         player_layout.addWidget(self.rate_label)
+        self.quality_label = QLabel()
+        player_layout.addWidget(self.quality_label)
+        self.quality_combo = QComboBox()
+        self.quality_combo.setObjectName("qualityCombo")
+        for precision in PRECISIONS:
+            self.quality_combo.addItem("", precision)
+        player_layout.addWidget(self.quality_combo)
         self.rate_combo = QComboBox()
-        for rate in (0.5, 0.75, 1.0, 1.25, 1.5, 2.0):
+        # Finer steps where reading actually happens: the jump from 1.0 to
+        # 1.25 skipped the speeds this reader uses most.
+        for rate in (0.5, 0.75, 1.0, 1.15, 1.2, 1.25, 1.5, 2.0):
             self.rate_combo.addItem(f"{rate:g}×", rate)
         player_layout.addWidget(self.rate_combo)
         root.addWidget(player)
@@ -530,6 +567,8 @@ class ReaderWindow(QMainWindow):
 
     def _connect_actions(self) -> None:
         self.prepare_model_button.clicked.connect(self._start_model_setup)
+        for combo in (self.setup_quality_combo, self.quality_combo):
+            combo.currentIndexChanged.connect(self._quality_changed)
         self.cancel_model_button.clicked.connect(self._cancel_model_setup)
         self.toolbar_open_button.clicked.connect(self.open_book_dialog)
         self.toolbar_paste_button.clicked.connect(self.show_paste_view)
@@ -628,6 +667,10 @@ class ReaderWindow(QMainWindow):
             combo.setAccessibleName(text("language.accessible"))
         self.model_setup_title.setText(text("model.title"))
         self.model_setup_description.setText(text("model.description"))
+        self.setup_quality_label.setText(text("model.quality"))
+        self.quality_label.setText(text("player.quality"))
+        self._sync_quality_controls()
+        self.quality_restart_note.setText(text("model.quality_restart"))
         prepare_key = "model.retry" if self._model_setup_failed else "model.prepare"
         self.prepare_model_button.setText(text(prepare_key))
         self.prepare_model_button.setAccessibleName(
@@ -700,6 +743,9 @@ class ReaderWindow(QMainWindow):
         self._model_ready = True
         self._model_setup_failed = False
         self._available_voices = tuple(voices)
+        self._controller.reconcile_voice(
+            tuple(voice.id for voice in self._available_voices)
+        )
         self._populate_voice_combo()
         self.root_stack.setCurrentWidget(self.reader_page)
         self._render_state(self._controller.state)
@@ -927,6 +973,41 @@ class ReaderWindow(QMainWindow):
     def _show_feature(self, index: int) -> None:
         self.feature_navigation.setCurrentIndex(index)
         self.feature_stack.setCurrentIndex(index)
+
+    def _sync_quality_controls(self) -> None:
+        text = self._localizer.text
+        chosen = (
+            self._voice_quality_store.load()
+            if self._voice_quality_store is not None
+            else DEFAULT_PRECISION
+        )
+        for combo in (self.setup_quality_combo, self.quality_combo):
+            blocker = QSignalBlocker(combo)
+            combo.setAccessibleName(text("model.quality_accessible"))
+            for index in range(combo.count()):
+                precision = combo.itemData(index)
+                suffix = "standard" if precision == DEFAULT_PRECISION else "maximum"
+                combo.setItemText(index, text(f"model.quality_{suffix}"))
+            position = combo.findData(chosen)
+            if position >= 0:
+                combo.setCurrentIndex(position)
+            del blocker
+
+    def _quality_changed(self, index: int) -> None:
+        combo = self.sender()
+        if self._rendering or index < 0 or self._voice_quality_store is None:
+            return
+        if not isinstance(combo, QComboBox):
+            return
+        precision = combo.itemData(index)
+        if not precision or precision == self._voice_quality_store.load():
+            return
+        self._voice_quality_store.save(str(precision))
+        # Both controls show the same choice, wherever it was made.
+        self._sync_quality_controls()
+        # The engine is built once at startup, so the change lands on reopen.
+        self.quality_restart_note.show()
+        self._set_model_status(self._localizer.text("model.quality_restart"))
 
     def _voice_changed(self, index: int) -> None:
         if not self._rendering and index >= 0:

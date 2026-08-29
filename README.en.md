@@ -19,9 +19,9 @@ This link downloads the latest source from `main`. ReadEase is currently distrib
 | --- | --- |
 | Mac | Apple Silicon: M1, M2, M3, M4 or newer |
 | macOS | macOS 15 or newer |
-| Free disk space | At least 6 GB during the build and installation |
+| Free disk space | At least 6 GB **while** it builds. What stays is about 324 MB for the app plus a one-time 331 MB of voice data; the rest is a temporary build environment that is deleted as soon as the install succeeds. |
 | Internet | Required for the first build and first voice-model download |
-| Apple tools | Xcode Command Line Tools |
+| Apple tools | Xcode Command Line Tools - the installer opens Apple's own installer for you if they are missing |
 
 You do not need an API key, Homebrew, Python, `uv` or programming knowledge. The installer downloads its checksum-pinned build environment, does not use `sudo`, does not modify your shell profile and removes temporary build files after a successful installation.
 
@@ -30,9 +30,9 @@ You do not need an API key, Homebrew, Python, `uv` or programming knowledge. The
 1. [Download the Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip) and extract it.
 2. Open `readease-main` and double-click **Install ReadEase.command**.
 3. If Gatekeeper blocks it, click **Done**, then use **System Settings → Privacy & Security → Security → Open Anyway**.
-4. If the installer reports missing Apple developer tools, run `xcode-select --install`, complete Apple’s installer and open **Install ReadEase.command** again.
+4. The installer lists everything it will install, replace, close and remove **before** it starts, then asks **one** question. After you agree it runs start to finish without asking anything else.
 5. Wait about 10–25 minutes. ReadEase is built and checked locally, installed at `~/Applications/ReadEase.app` and opened automatically.
-6. In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data.
+6. In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build: *Standard* (158 MB) by default, or *Highest* (453 MB), which reads about 11% slower.
 
 See [INSTALL.en.md](INSTALL.en.md) for screenshots-message wording, Gatekeeper details, compatibility checks and troubleshooting.
 

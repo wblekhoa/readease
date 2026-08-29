@@ -94,8 +94,10 @@ cannot be confirmed, ReadEase does not read the selection. Clipboard managers
 or Universal Clipboard may still observe this brief copy transaction.
 
 The shortcut itself can be changed in the Read books view. The chosen key and
-modifiers are stored in `settings.json` beside the language preference; nothing
-about your keyboard is recorded anywhere else.
+modifiers are stored in `settings.json`, beside the other preferences kept there
+- the interface language, the voice and reading speed the app starts with, and
+  which build of the reading model it uses;
+nothing about your keyboard is recorded anywhere else.
 
 ### Read on copy
 

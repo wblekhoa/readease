@@ -14,6 +14,11 @@ from vieneu_reader.domain.segmenter import prepare_pasted_text
 from vieneu_reader.importers.errors import BookImportError
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
+from vieneu_reader.playback.preferences import (
+    DEFAULT_RATE,
+    DEFAULT_VOICE_ID,
+    VoicePreferenceStore,
+)
 from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.storage.errors import RepositoryError
 from vieneu_reader.storage.repository import LibraryRepository
@@ -88,8 +93,8 @@ class ReaderViewState:
     segments: tuple[SegmentItem, ...] = ()
     figures: tuple[FigureItem, ...] = ()
     active_segment_id: str | None = None
-    voice_id: str = "Adam"
-    rate: float = 1.0
+    voice_id: str = DEFAULT_VOICE_ID
+    rate: float = DEFAULT_RATE
     playback_state: PlaybackState = PlaybackState.IDLE
     is_selection_playback: bool = False
     status: str = "Mở sách hoặc dán nội dung để bắt đầu."
@@ -178,6 +183,7 @@ class ReaderController:
         playback: PlaybackPort,
         *,
         dispatch: Callable[[Callable[[], None]], None],
+        voice_store: VoicePreferenceStore | None = None,
     ):
         self._repository = repository
         self._library_service = library_service
@@ -195,7 +201,15 @@ class ReaderController:
         self._status_before_external_failure: str | None = None
         self._next_session_reading_id = 1
         self._settings = SynthesisSettings()
-        self._state = ReaderViewState()
+        self._voice_store = voice_store
+        self._state = (
+            ReaderViewState()
+            if voice_store is None
+            else ReaderViewState(
+                voice_id=voice_store.load_voice(),
+                rate=voice_store.load_rate(),
+            )
+        )
         self._listeners = []
         self._last_playback_order = (-1, -1)
         self._playback.add_listener(self._dispatch_playback)
@@ -299,8 +313,8 @@ class ReaderController:
         segment_id = progress.segment_id if progress else segments[0].id
         if all(segment.id != segment_id for segment in segments):
             segment_id = segments[0].id
-        voice_id = progress.voice_id if progress else "Adam"
-        rate = progress.playback_rate if progress else 1.0
+        voice_id = progress.voice_id if progress else self._state.voice_id
+        rate = progress.playback_rate if progress else self._state.rate
         presentation = self._library_service.presentation_for(book, stored.managed_path)
         speech_text_by_segment = self._speech_projection(book, presentation)
         self._repository.save_active_book_id(book.id)
@@ -462,6 +476,25 @@ class ReaderController:
         self._set_state(voice_id=voice_id)
         self._save_active_preferences()
 
+    def reconcile_voice(self, available_voice_ids) -> None:
+        """Keep the voice on screen and the voice actually read the same one.
+
+        A voice remembered from an earlier run - or carried in a book's saved
+        position - can be missing from the model now. The dropdown would fall
+        back to its first entry while synthesis was still asked for the one
+        that is gone, so the person would see one voice and hear an error.
+
+        The stored preference is deliberately left alone: if the voice comes
+        back, so does their choice.
+        """
+
+        available = tuple(available_voice_ids)
+        if not available or self._state.voice_id in available:
+            return
+        self._set_state(
+            voice_id=DEFAULT_VOICE_ID if DEFAULT_VOICE_ID in available else available[0]
+        )
+
     def set_rate(self, rate: float) -> None:
         if not 0.5 <= rate <= 2.0:
             raise ValueError("playback rate must be between 0.5 and 2.0")
@@ -488,6 +521,10 @@ class ReaderController:
             return False
 
     def _save_active_preferences(self) -> bool:
+        if self._voice_store is not None:
+            # Reading text from another app has no book to remember the choice,
+            # so without this the voice picked there dies with the session.
+            self._voice_store.save(self._state.voice_id, self._state.rate)
         if self._book is None or self._state.active_segment_id is None:
             return True
         try:

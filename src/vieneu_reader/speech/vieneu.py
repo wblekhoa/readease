@@ -22,7 +22,12 @@ ENGINE_VERSION = "3.3.0"
 MODEL_REVISION = "2da0efab622a1722125991736524f080b751ef5b"
 MODEL_REPO = "pnnbao-ump/VieNeu-TTS-v3-Turbo"
 MODEL_DIRECTORY = "vieneu-v3-turbo"
-MODEL_SUBFOLDER = "onnx_int8"
+# Both precisions live in the same repo revision, so the revision alone cannot
+# tell them apart - see `model_revision` below, which is what keeps the audio
+# cache and the ready marker from confusing one for the other.
+PRECISIONS = {"int8": "onnx_int8", "fp32": "onnx_update"}
+DEFAULT_PRECISION = "int8"
+MODEL_SUBFOLDER = PRECISIONS[DEFAULT_PRECISION]
 MODEL_FILES = (
     "vieneu_prefill.onnx",
     "vieneu_decode_step.onnx",
@@ -43,7 +48,9 @@ CODEC_FILES = (
     "moss_audio_tokenizer_encode.onnx",
     "moss_audio_tokenizer_encode.data",
 )
-_READY_MARKER = ".vieneu-ready.json"
+_READY_MARKER = ".vieneu-ready-{precision}.json"
+# What installs made before the model build became a choice wrote.
+_LEGACY_READY_MARKER = ".vieneu-ready.json"
 _SDK_LOAD_LOCK = RLock()
 
 
@@ -124,7 +131,11 @@ class VieNeuSpeechEngine:
         models_path: Path,
         sdk_factory: Callable[..., Any] | None = None,
         model_downloader: Callable[..., str] | None = None,
+        precision: str = DEFAULT_PRECISION,
     ):
+        if precision not in PRECISIONS:
+            raise ValueError(f"unknown precision: {precision!r}")
+        self._precision = precision
         self._models_path = Path(models_path)
         self._models_path.mkdir(parents=True, exist_ok=True, mode=0o700)
         self._models_path.chmod(0o700)
@@ -140,16 +151,27 @@ class VieNeuSpeechEngine:
         return ENGINE_VERSION
 
     @property
+    def precision(self) -> str:
+        return self._precision
+
+    @property
     def model_revision(self) -> str:
-        return MODEL_REVISION
+        # The precision belongs in here: the two builds share a repo revision
+        # but do not produce the same audio, and this string is what the audio
+        # cache and the ready marker are keyed on.
+        return f"{MODEL_REVISION}+{self._precision}"
 
     @property
     def _model_root(self) -> Path:
         return self._models_path / MODEL_DIRECTORY
 
     @property
+    def _onnx_subfolder(self) -> str:
+        return PRECISIONS[self._precision]
+
+    @property
     def _onnx_directory(self) -> Path:
-        return self._model_root / MODEL_SUBFOLDER
+        return self._model_root / self._onnx_subfolder
 
     @property
     def _codec_root(self) -> Path:
@@ -157,7 +179,9 @@ class VieNeuSpeechEngine:
 
     @property
     def _ready_marker(self) -> Path:
-        return self._models_path / _READY_MARKER
+        # One marker per precision, so switching back to a build that is
+        # already downloaded is instant rather than a fresh download.
+        return self._models_path / _READY_MARKER.format(precision=self._precision)
 
     def _assets_present(self) -> bool:
         model_present = all(
@@ -172,13 +196,13 @@ class VieNeuSpeechEngine:
         )
         return model_present and codec_present
 
-    def _marker_matches(self) -> bool:
+    def _read_marker(self, path: Path) -> Any:
         flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
         flags |= getattr(os, "O_NOFOLLOW", 0)
         try:
-            descriptor = os.open(self._ready_marker, flags)
+            descriptor = os.open(path, flags)
         except OSError:
-            return False
+            return None
         try:
             metadata = os.fstat(descriptor)
             if (
@@ -186,19 +210,33 @@ class VieNeuSpeechEngine:
                 or metadata.st_uid != os.getuid()
                 or metadata.st_size > 4096
             ):
-                return False
+                return None
             payload = os.read(descriptor, 4097)
         finally:
             os.close(descriptor)
         try:
-            marker = json.loads(payload.decode("utf-8"))
+            return json.loads(payload.decode("utf-8"))
         except (UnicodeError, json.JSONDecodeError):
-            return False
-        return marker == {
+            return None
+
+    def _expected_marker(self, model_revision: str) -> dict[str, str]:
+        return {
             "codec_revision": CODEC_REVISION,
             "engine_version": ENGINE_VERSION,
-            "model_revision": MODEL_REVISION,
+            "model_revision": model_revision,
         }
+
+    def _marker_matches(self) -> bool:
+        if self._read_marker(self._ready_marker) == self._expected_marker(
+            self.model_revision
+        ):
+            return True
+        # An install from before this choice existed recorded readiness without
+        # naming the build. It is on the default one; do not send it back to
+        # download 158 MB it already has on disk.
+        return self._precision == DEFAULT_PRECISION and self._read_marker(
+            self._models_path / _LEGACY_READY_MARKER
+        ) == self._expected_marker(MODEL_REVISION)
 
     @property
     def is_model_ready(self) -> bool:
@@ -211,7 +249,7 @@ class VieNeuSpeechEngine:
         arguments: dict[str, Any] = {
             "mode": "v3turbo",
             "backend": "onnx",
-            "precision": "int8",
+            "precision": self._precision,
         }
         if prepared:
             arguments.update(
@@ -231,11 +269,7 @@ class VieNeuSpeechEngine:
         try:
             os.fchmod(descriptor, 0o600)
             payload = json.dumps(
-                {
-                    "codec_revision": CODEC_REVISION,
-                    "engine_version": ENGINE_VERSION,
-                    "model_revision": MODEL_REVISION,
-                },
+                self._expected_marker(self.model_revision),
                 sort_keys=True,
             ).encode("utf-8")
             marker_file = os.fdopen(descriptor, "wb")
@@ -277,7 +311,7 @@ class VieNeuSpeechEngine:
                     repo_id=MODEL_REPO,
                     revision=MODEL_REVISION,
                     local_dir=str(self._model_root),
-                    allow_patterns=[f"{MODEL_SUBFOLDER}/*"],
+                    allow_patterns=[f"{self._onnx_subfolder}/*"],
                 )
                 progress_callback(0.55, "Đang tải bộ giải mã âm thanh…")
                 self._model_downloader(

@@ -11,12 +11,16 @@ from typing import Callable, Protocol
 from vieneu_reader.config import AppPaths, default_app_root
 from vieneu_reader.domain.models import AudioChunk, Voice
 
+from .preferences import VoiceQualityPreferenceStore
 from .vieneu import VieNeuSpeechEngine
 
 
 class _SelfCheckEngine(Protocol):
     @property
     def is_model_ready(self) -> bool: ...
+
+    @property
+    def precision(self) -> str: ...
 
     def voices(self) -> tuple[Voice, ...]: ...
 
@@ -26,12 +30,15 @@ class _SelfCheckEngine(Protocol):
 def run_tts_self_check(
     app_data_root: Path | None = None,
     *,
-    engine_factory: Callable[[Path], _SelfCheckEngine] = VieNeuSpeechEngine,
+    engine_factory: Callable[..., _SelfCheckEngine] = VieNeuSpeechEngine,
 ) -> int:
     """Synthesize a short preset-voice sample without downloading assets."""
 
     paths = AppPaths.create(app_data_root or default_app_root())
-    engine = engine_factory(paths.models)
+    # Probe the build this Mac will actually read with, not whichever one
+    # happens to be the default.
+    precision = VoiceQualityPreferenceStore(paths.root / "settings.json").load()
+    engine = engine_factory(paths.models, precision=precision)
     if not engine.is_model_ready:
         raise RuntimeError("VieNeu model is not prepared; self-check will not download it")
 
@@ -63,6 +70,7 @@ def run_tts_self_check(
 
     print(
         "TTS_SELF_CHECK PASS "
+        f"precision={getattr(engine, 'precision', 'unknown')} "
         f"sample_rate={sample_rate} samples={len(samples)} peak={peak:.6f}"
     )
     return 0

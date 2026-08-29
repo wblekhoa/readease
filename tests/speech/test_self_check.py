@@ -13,8 +13,9 @@ from vieneu_reader.speech.self_check import run_tts_self_check
 class _ReadyEngine:
     is_model_ready = True
 
-    def __init__(self, models_path: Path):
+    def __init__(self, models_path: Path, *, precision: str = "int8"):
         self.models_path = models_path
+        self.precision = precision
 
     def voices(self) -> tuple[Voice, ...]:
         return (Voice(id="preset", label="Preset voice"),)

@@ -32,6 +32,20 @@ _TEXT: dict[str, tuple[str, str]] = {
         "ReadEase downloads about 330 MB of Vietnamese voice data the first time. After that, you can read fully offline without an API key.",
     ),
     "model.ready_to_download": ("Sẵn sàng tải giọng đọc.", "Ready to download voice data."),
+    "model.quality": ("Chất lượng giọng đọc", "Voice quality"),
+    "player.quality": ("Chất lượng", "Quality"),
+    "model.quality_accessible": (
+        "Chọn bản mô hình đọc",
+        "Choose which build of the reading model to use",
+    ),
+    "model.quality_standard": ("Tiêu chuẩn · tải 158 MB", "Standard · 158 MB download"),
+    "model.quality_maximum": ("Cao nhất · tải 453 MB", "Highest · 453 MB download"),
+    "model.quality_restart": (
+        "Đổi chất lượng sẽ có hiệu lực khi mở lại ứng dụng. "
+        "Bản chưa tải sẽ được tải ở lần mở đó.",
+        "A change takes effect the next time the app opens. "
+        "A build that is not downloaded yet is fetched then.",
+    ),
     "model.prepare": ("Chuẩn bị giọng đọc", "Set up voice"),
     "model.prepare_accessible": (
         "Chuẩn bị giọng đọc tiếng Việt",

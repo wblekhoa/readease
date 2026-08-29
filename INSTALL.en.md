@@ -19,7 +19,7 @@ Proceed only with source downloaded from the official repository:
 | --- | --- |
 | Mac | Apple Silicon: M1, M2, M3, M4 or newer |
 | macOS | macOS 15 or newer |
-| Free disk space | At least 6 GB during the build and installation |
+| Free disk space | At least 6 GB **while** it builds. What stays is ~324 MB for the app plus a one-time ~331 MB of voice data; most of the 6 GB is Python, the libraries and the compiler's intermediate files, deleted as soon as the install succeeds. |
 | Internet | Required for the first build and first voice-model download |
 | Apple tools | Xcode Command Line Tools |
 
@@ -69,6 +69,9 @@ If the installer reports `missing_xcode_tools`, open Terminal and run:
 xcode-select --install
 ```
 
+You normally do not need to run this yourself: when the tools are missing the
+installer says so in its plan, then opens Apple's installer for you and waits.
+
 Complete Apple’s installer, then open **Install ReadEase.command** again. The full Xcode application is not required.
 
 ### Step 5 — Wait for the local build
@@ -90,6 +93,8 @@ READEASE_SOURCE_INSTALL PASS target=.../Applications/ReadEase.app
 ### Step 6 — Set up the Vietnamese voice
 
 In ReadEase, choose `🇬🇧 English` from the language selector if needed, then click **Set up voice**. The app downloads about 330 MB of Vietnamese voice data the first time. Reading is local and can work offline afterward.
+
+**Voice quality**, just above that button, chooses the model build: *Standard* (158 MB download) by default, or *Highest* (453 MB), which reads about 11% slower. A change takes effect the next time the app opens, and a build that is not downloaded yet is fetched then.
 
 ## Check compatibility without installing
 

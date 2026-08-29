@@ -40,6 +40,8 @@ from vieneu_reader.integrations.selection_shortcut import (
     Shortcut,
 )
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
+from vieneu_reader.playback.preferences import VoicePreferenceStore
+from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
 from vieneu_reader.storage.repository import LibraryRepository
 from vieneu_reader.ui.controller import ExternalReadingState, ReaderController
 from vieneu_reader.ui.i18n import Language, LanguagePreferenceStore
@@ -150,6 +152,219 @@ class _FakeAppleBooks:
         if "DST" in found:
             found["DST"] = tuple(note("DST", index) for index in self.carried)
         return found
+
+
+class VoiceQualityChoiceTests(unittest.TestCase):
+    """Both builds ship, so the choice has to be visible and it has to stick."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.temporary_directory = TemporaryDirectory()
+        root = Path(self.temporary_directory.name)
+        self.paths = AppPaths.create(root / "app-data")
+        self.repository = LibraryRepository(self.paths.database)
+        self.service = LibraryService(self.paths, self.repository)
+        self.playback = FakePlayback(self.repository)
+        self.settings_path = self.paths.root / "settings.json"
+        self.windows: list[ReaderWindow] = []
+
+    def tearDown(self) -> None:
+        for window in self.windows:
+            window.close()
+        self.application.processEvents()
+        self.repository.close()
+        self.temporary_directory.cleanup()
+
+    def make_window(self) -> ReaderWindow:
+        window = ReaderWindow(
+            ReaderController(
+                self.repository,
+                self.service,
+                self.playback,
+                dispatch=lambda action: action(),
+            ),
+            FakeModelSetup(ready=False, complete_on_start=False),
+            voice_quality_store=VoiceQualityPreferenceStore(self.settings_path),
+        )
+        self.windows.append(window)
+        return window
+
+    def test_both_builds_are_offered_with_what_they_cost(self):
+        window = self.make_window()
+
+        offered = [
+            window.setup_quality_combo.itemData(index)
+            for index in range(window.setup_quality_combo.count())
+        ]
+        labels = " ".join(
+            window.setup_quality_combo.itemText(index)
+            for index in range(window.setup_quality_combo.count())
+        )
+
+        self.assertEqual(sorted(offered), ["fp32", "int8"])
+        # The download size is the whole trade-off; it must be on the control.
+        self.assertIn("158 MB", labels)
+        self.assertIn("453 MB", labels)
+
+    def test_the_saved_choice_is_the_one_selected(self):
+        VoiceQualityPreferenceStore(self.settings_path).save("fp32")
+
+        window = self.make_window()
+
+        self.assertEqual(window.setup_quality_combo.currentData(), "fp32")
+
+    def test_choosing_the_other_build_is_saved_and_explained(self):
+        window = self.make_window()
+        self.assertFalse(window.quality_restart_note.isVisibleTo(window))
+
+        index = window.setup_quality_combo.findData("fp32")
+        window.setup_quality_combo.setCurrentIndex(index)
+
+        self.assertEqual(
+            VoiceQualityPreferenceStore(self.settings_path).load(), "fp32"
+        )
+        # It only takes effect on reopen, so saying nothing would be a lie.
+        self.assertTrue(window.quality_restart_note.isVisibleTo(window))
+
+    def test_the_default_is_the_small_build(self):
+        window = self.make_window()
+
+        self.assertEqual(window.setup_quality_combo.currentData(), "int8")
+
+    def test_the_choice_is_reachable_once_the_model_is_ready(self):
+        """The setup screen is never shown again after the first download, so a
+        control that only lives there cannot be used by anyone who has one."""
+        window = ReaderWindow(
+            ReaderController(
+                self.repository,
+                self.service,
+                self.playback,
+                dispatch=lambda action: action(),
+            ),
+            FakeModelSetup(ready=True),
+            voice_quality_store=VoiceQualityPreferenceStore(self.settings_path),
+        )
+        self.windows.append(window)
+
+        self.assertIs(window.root_stack.currentWidget(), window.reader_page)
+        self.assertTrue(window.quality_combo.isVisibleTo(window.reader_page))
+        self.assertEqual(
+            sorted(
+                window.quality_combo.itemData(i)
+                for i in range(window.quality_combo.count())
+            ),
+            ["fp32", "int8"],
+        )
+
+    def test_changing_it_anywhere_updates_both_controls(self):
+        """Two controls, one choice - either one must move the other."""
+        for source, mirror in (
+            ("quality_combo", "setup_quality_combo"),
+            ("setup_quality_combo", "quality_combo"),
+        ):
+            with self.subTest(changed=source):
+                window = self.make_window()
+                changed = getattr(window, source)
+                other = getattr(window, mirror)
+
+                changed.setCurrentIndex(changed.findData("fp32"))
+
+                self.assertEqual(changed.currentData(), "fp32")
+                self.assertEqual(other.currentData(), "fp32")
+                self.assertEqual(
+                    VoiceQualityPreferenceStore(self.settings_path).load(), "fp32"
+                )
+                VoiceQualityPreferenceStore(self.settings_path).save("int8")
+
+    def test_a_saved_choice_shows_on_both_controls_at_startup(self):
+        VoiceQualityPreferenceStore(self.settings_path).save("fp32")
+
+        window = self.make_window()
+
+        self.assertEqual(window.setup_quality_combo.currentData(), "fp32")
+        self.assertEqual(window.quality_combo.currentData(), "fp32")
+
+
+class RestoredVoiceIsShownTests(unittest.TestCase):
+    """What the person sees must agree with what the app will actually read."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.temporary_directory = TemporaryDirectory()
+        root = Path(self.temporary_directory.name)
+        self.paths = AppPaths.create(root / "app-data")
+        self.repository = LibraryRepository(self.paths.database)
+        self.service = LibraryService(self.paths, self.repository)
+        self.playback = FakePlayback(self.repository)
+        self.settings_path = self.paths.root / "settings.json"
+        self.windows: list[ReaderWindow] = []
+
+    def tearDown(self) -> None:
+        for window in self.windows:
+            window.close()
+        self.application.processEvents()
+        self.repository.close()
+        self.temporary_directory.cleanup()
+
+    def test_the_remembered_voice_and_speed_are_the_ones_on_screen(self):
+        VoicePreferenceStore(self.settings_path).save("Trúc Ly", 1.25)
+        controller = ReaderController(
+            self.repository,
+            self.service,
+            self.playback,
+            dispatch=lambda action: action(),
+            voice_store=VoicePreferenceStore(self.settings_path),
+        )
+
+        window = ReaderWindow(controller, FakeModelSetup(ready=True))
+        self.windows.append(window)
+
+        self.assertEqual(window.voice_combo.currentData(), "Trúc Ly")
+        self.assertEqual(window.rate_combo.currentData(), 1.25)
+
+    def test_the_speeds_offered_cover_the_range_reading_happens_in(self):
+        window = ReaderWindow(
+            ReaderController(
+                self.repository,
+                self.service,
+                self.playback,
+                dispatch=lambda action: action(),
+            ),
+            FakeModelSetup(ready=True),
+        )
+        self.windows.append(window)
+
+        offered = [
+            window.rate_combo.itemData(index)
+            for index in range(window.rate_combo.count())
+        ]
+
+        self.assertEqual(offered, sorted(offered))
+        for wanted in (1.15, 1.2, 1.25):
+            self.assertIn(wanted, offered)
+
+    def test_a_voice_the_model_dropped_never_reaches_playback(self):
+        VoicePreferenceStore(self.settings_path).save("Giọng đã biến mất", 1.0)
+        controller = ReaderController(
+            self.repository,
+            self.service,
+            self.playback,
+            dispatch=lambda action: action(),
+            voice_store=VoicePreferenceStore(self.settings_path),
+        )
+
+        window = ReaderWindow(controller, FakeModelSetup(ready=True))
+        self.windows.append(window)
+        controller.read_external_selection("Xin chào.")
+
+        self.assertEqual(window.voice_combo.currentData(), controller.state.voice_id)
+        self.assertEqual(self.playback.selection_calls[-1][1], "Adam")
 
 
 class ReaderWindowTests(unittest.TestCase):

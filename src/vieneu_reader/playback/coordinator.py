@@ -12,6 +12,7 @@ from typing import Mapping, Protocol
 
 from vieneu_reader.domain.models import AudioChunk, BookDocument, Segment
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_transient_text
+from vieneu_reader.playback.preferences import DEFAULT_RATE, DEFAULT_VOICE_ID
 from vieneu_reader.speech.cache import AudioCache, audio_cache_key
 from vieneu_reader.speech.contracts import SpeechEngine, SynthesisSettings
 from vieneu_reader.storage.repository import Progress
@@ -106,8 +107,8 @@ class PlaybackCoordinator:
         self._selection_parts: tuple[str, ...] = ()
         self._selection_index: int | None = None
         self._speech_text_by_segment: dict[str, str] = {}
-        self._voice_id = "Adam"
-        self._rate = 1.0
+        self._voice_id = DEFAULT_VOICE_ID
+        self._rate = DEFAULT_RATE
         self._settings = SynthesisSettings()
         self._snapshot = PlaybackSnapshot()
         self._listeners: list[Callable[[PlaybackSnapshot], None]] = []

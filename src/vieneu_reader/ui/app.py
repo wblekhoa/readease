@@ -20,8 +20,10 @@ from vieneu_reader.integrations.selection_shortcut import (
     ShortcutPreferenceStore,
 )
 from vieneu_reader.playback.coordinator import PlaybackCoordinator
+from vieneu_reader.playback.preferences import VoicePreferenceStore
 from vieneu_reader.playback.qt_audio import QtAudioOutput
 from vieneu_reader.speech.cache import AudioCache
+from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
 from vieneu_reader.speech.vieneu import VieNeuSpeechEngine
 from vieneu_reader.storage.repository import LibraryRepository
 
@@ -89,7 +91,12 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
     paths = AppPaths.create(app_data_root or default_app_root())
     repository = LibraryRepository(paths.database)
     library_service = LibraryService(paths, repository)
-    engine = VieNeuSpeechEngine(paths.models)
+    settings_path = paths.root / "settings.json"
+    voice_quality_store = VoiceQualityPreferenceStore(settings_path)
+    engine = VieNeuSpeechEngine(
+        paths.models,
+        precision=voice_quality_store.load(),
+    )
     cache = AudioCache(paths.cache / "Audio")
     audio_output = QtAudioOutput()
     playback = PlaybackCoordinator(
@@ -99,14 +106,15 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         output=audio_output,
     )
     dispatcher = QtDispatcher()
+    voice_store = VoicePreferenceStore(settings_path)
     controller = ReaderController(
         repository,
         library_service,
         playback,
         dispatch=dispatcher,
+        voice_store=voice_store,
     )
     model_setup = ModelSetupCoordinator(engine)
-    settings_path = paths.root / "settings.json"
     language_store = LanguagePreferenceStore(settings_path)
     shortcut_store = ShortcutPreferenceStore(settings_path)
     read_on_copy_store = ReadOnCopyPreferenceStore(settings_path)
@@ -131,6 +139,7 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
         shortcut_store=shortcut_store,
         read_on_copy=read_on_copy_store.load(),
         read_on_copy_store=read_on_copy_store,
+        voice_quality_store=voice_quality_store,
         # Holds no path and touches no disk until the tab that needs it is
         # opened; a person who never opens it never has their Books folder read.
         apple_books=AppleBooksLibrary(),

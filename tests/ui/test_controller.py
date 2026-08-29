@@ -8,6 +8,7 @@ from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.segmenter import MAX_PASTED_TEXT_CHARS
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
+from vieneu_reader.playback.preferences import VoicePreferenceStore
 from vieneu_reader.storage.errors import RepositoryError
 from vieneu_reader.storage.repository import LibraryRepository, Progress
 from vieneu_reader.ui.controller import ExternalReadingState, ReaderController
@@ -924,3 +925,192 @@ class ReaderControllerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AppLevelVoicePreferenceTests(unittest.TestCase):
+    """The choice made with no book open is the one nothing used to remember."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        root = Path(self.temp_dir.name)
+        self.paths = AppPaths.create(root / "app-data")
+        self.repository = LibraryRepository(self.paths.database)
+        self.service = LibraryService(self.paths, self.repository)
+        self.playback = FakePlayback(self.repository)
+        self.sources = root / "sources"
+        self.sources.mkdir()
+        # The real document on disk, shared with the language and shortcut
+        # stores - not a double, which could not show the loss this fixes.
+        self.settings_path = self.paths.root / "settings.json"
+
+    def tearDown(self):
+        self.repository.close()
+        self.temp_dir.cleanup()
+
+    def make_controller(self, playback=None):
+        return ReaderController(
+            self.repository,
+            self.service,
+            playback or self.playback,
+            dispatch=lambda action: action(),
+            voice_store=VoicePreferenceStore(self.settings_path),
+        )
+
+    def relaunch(self):
+        return self.make_controller(playback=FakePlayback(self.repository))
+
+    def test_a_voice_chosen_with_no_book_open_survives_a_relaunch(self):
+        controller = self.make_controller()
+        self.assertIsNone(controller.state.active_book_id)
+
+        controller.set_voice("Trúc Ly")
+
+        self.assertEqual(self.relaunch().state.voice_id, "Trúc Ly")
+
+    def test_a_speed_chosen_with_no_book_open_survives_a_relaunch(self):
+        controller = self.make_controller()
+        self.assertIsNone(controller.state.active_book_id)
+
+        controller.set_rate(1.25)
+
+        self.assertEqual(self.relaunch().state.rate, 1.25)
+
+    def test_the_choice_reaches_text_read_from_another_app(self):
+        controller = self.make_controller()
+        controller.set_voice("Ngọc Linh")
+        controller.set_rate(1.5)
+
+        restored = self.relaunch()
+        restored.read_external_selection("Xin chào thế giới.")
+
+        self.assertEqual(
+            restored._playback.selection_calls[-1][1:3],
+            ("Ngọc Linh", 1.5),
+        )
+
+    def test_a_book_with_its_own_saved_voice_still_wins(self):
+        controller = self.make_controller()
+        controller.import_book(make_epub(self.sources))
+        stored = self.repository.get_book(controller.state.active_book_id)
+        target = stored.book.chapters[1].segments[0]
+        self.repository.save_progress(
+            Progress(stored.book.id, target.id, 1.3, "Thái Sơn")
+        )
+        VoicePreferenceStore(self.settings_path).save("Trúc Ly", 0.75)
+
+        restored = self.relaunch()
+
+        self.assertEqual(restored.state.voice_id, "Thái Sơn")
+        self.assertEqual(restored.state.rate, 1.3)
+
+    def test_a_book_never_opened_starts_from_the_saved_choice(self):
+        controller = self.make_controller()
+        controller.set_voice("Quỳnh Anh")
+        controller.set_rate(1.25)
+
+        restored = self.relaunch()
+        restored.import_book(make_epub(self.sources))
+
+        self.assertEqual(restored.state.voice_id, "Quỳnh Anh")
+        self.assertEqual(restored.state.rate, 1.25)
+
+    def test_the_last_voice_used_anywhere_becomes_the_one_the_app_starts_with(self):
+        """Deliberate: the most recent choice wins, wherever it was made.
+
+        Changing the voice while a book is open also moves what text read from
+        another app will use. The alternative - only remember a choice made
+        with no book open - is one condition in _save_active_preferences.
+        This test is the pin: flip it if the other reading is wanted.
+        """
+        VoicePreferenceStore(self.settings_path).save("Kim Thanh", 1.0)
+        controller = self.make_controller()
+        controller.import_book(make_epub(self.sources))
+
+        controller.set_voice("Thái Sơn")
+
+        self.assertEqual(
+            VoicePreferenceStore(self.settings_path).load_voice(), "Thái Sơn"
+        )
+
+    def test_a_voice_the_model_no_longer_offers_is_replaced_on_screen(self):
+        VoicePreferenceStore(self.settings_path).save("Giọng đã biến mất", 1.25)
+        controller = self.make_controller()
+        self.assertEqual(controller.state.voice_id, "Giọng đã biến mất")
+
+        controller.reconcile_voice(("Adam", "Trúc Ly"))
+
+        self.assertEqual(controller.state.voice_id, "Adam")
+
+    def test_a_missing_voice_leaves_the_saved_choice_on_disk(self):
+        # The model may offer it again later; correcting the screen must not be
+        # what throws the choice away.
+        VoicePreferenceStore(self.settings_path).save("Giọng đã biến mất", 1.25)
+        controller = self.make_controller()
+
+        controller.reconcile_voice(("Adam", "Trúc Ly"))
+
+        self.assertEqual(
+            VoicePreferenceStore(self.settings_path).load_voice(),
+            "Giọng đã biến mất",
+        )
+
+    def test_a_voice_the_model_still_offers_is_left_alone(self):
+        VoicePreferenceStore(self.settings_path).save("Trúc Ly", 1.0)
+        controller = self.make_controller()
+
+        controller.reconcile_voice(("Adam", "Trúc Ly"))
+
+        self.assertEqual(controller.state.voice_id, "Trúc Ly")
+
+    def test_the_shipped_default_is_chosen_even_when_it_is_not_first(self):
+        # In the real catalogue Adam is last of twenty, so falling back to
+        # whatever happens to be first would hand over a different voice.
+        VoicePreferenceStore(self.settings_path).save("Giọng đã biến mất", 1.0)
+        controller = self.make_controller()
+
+        controller.reconcile_voice(("Minh Đức", "Trúc Ly", "Adam"))
+
+        self.assertEqual(controller.state.voice_id, "Adam")
+
+    def test_without_the_shipped_default_the_first_offered_voice_is_used(self):
+        VoicePreferenceStore(self.settings_path).save("Giọng đã biến mất", 1.0)
+        controller = self.make_controller()
+
+        controller.reconcile_voice(("Ngọc Linh", "Trúc Ly"))
+
+        self.assertEqual(controller.state.voice_id, "Ngọc Linh")
+
+    def test_an_empty_catalog_changes_nothing(self):
+        VoicePreferenceStore(self.settings_path).save("Trúc Ly", 1.0)
+        controller = self.make_controller()
+
+        controller.reconcile_voice(())
+
+        self.assertEqual(controller.state.voice_id, "Trúc Ly")
+
+    def test_a_book_carrying_a_missing_voice_is_corrected_too(self):
+        controller = self.make_controller()
+        controller.import_book(make_epub(self.sources))
+        stored = self.repository.get_book(controller.state.active_book_id)
+        self.repository.save_progress(
+            Progress(stored.book.id, stored.book.chapters[0].segments[0].id,
+                     1.0, "Giọng đã biến mất")
+        )
+        restored = self.relaunch()
+
+        restored.reconcile_voice(("Adam", "Trúc Ly"))
+
+        self.assertEqual(restored.state.voice_id, "Adam")
+
+    def test_without_a_store_nothing_is_written_and_the_defaults_hold(self):
+        controller = ReaderController(
+            self.repository,
+            self.service,
+            self.playback,
+            dispatch=lambda action: action(),
+        )
+
+        controller.set_voice("Trúc Ly")
+
+        self.assertEqual(controller.state.voice_id, "Trúc Ly")
+        self.assertFalse(self.settings_path.exists())

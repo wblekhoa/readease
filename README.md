@@ -19,9 +19,9 @@ Liên kết trên tải trực tiếp bản mới nhất từ nhánh `main`. Đ�
 | --- | --- |
 | Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn |
 | macOS | macOS 15 trở lên |
-| Dung lượng trống | Tối thiểu 6 GB trong lúc cài đặt |
+| Dung lượng trống | Tối thiểu 6 GB **trong lúc** cài đặt. Cài xong app chỉ chiếm ~324 MB, cộng ~331 MB giọng đọc tải một lần; phần còn lại là môi trường build tạm và bị xoá ngay sau khi cài xong. |
 | Kết nối mạng | Cần ở lần cài đầu và lần tải giọng đọc đầu tiên |
-| Công cụ của Apple | Xcode Command Line Tools; installer sẽ báo nếu máy còn thiếu |
+| Công cụ của Apple | Xcode Command Line Tools; máy chưa có thì installer tự mở trình cài của Apple giúp bạn |
 
 Bạn **không cần** API key, Homebrew, Python, `uv` hay kiến thức lập trình. Installer tự tải môi trường build đã khóa phiên bản và checksum, sau đó dọn môi trường tạm khi cài thành công.
 
@@ -53,9 +53,9 @@ Nếu máy chưa có công cụ của Apple, macOS sẽ tự hiện cửa sổ c
 
 #### Sau đó, cả hai cách đều giống nhau
 
-4. Nếu installer báo thiếu công cụ của Apple, mở Terminal, chạy `xcode-select --install`, hoàn tất rồi chạy lại.
+4. Installer liệt kê **trước** mọi thứ nó sẽ cài, thay, đóng và dọn, rồi hỏi **đúng một câu**. Đồng ý xong là nó chạy một mạch, không hỏi thêm gì nữa.
 5. Chờ khoảng 10–25 phút. Installer in rõ từng bước (`READEASE_STEP 1/5` → `5/5`), cho biết máy đã có bản ReadEase nào chưa, có bản cũ nào sẽ được gỡ, rồi cài vào `~/Applications/ReadEase.app` và tự mở app.
-6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline.
+6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**: mặc định là *Tiêu chuẩn* (158 MB); chọn *Cao nhất* thì tải 453 MB, đọc chậm hơn khoảng 11%.
 
 Muốn kiểm tra máy trước mà chưa cài, mở Terminal tại thư mục source và chạy:
 
@@ -183,7 +183,7 @@ Requirements:
 - macOS 15 or newer
 - At least 6 GB of free disk space during installation
 - Internet access for the first build and first voice-model download
-- Xcode Command Line Tools (`xcode-select --install` if the installer reports they are missing)
+- Xcode Command Line Tools (the installer opens Apple's own installer for you if they are missing)
 
 You do **not** need an API key, Homebrew, Python or `uv`. Extract the ZIP, open the `readease-main` folder and double-click **Install ReadEase.command**. If Gatekeeper blocks it, follow the **Open Anyway** steps above. The first build usually takes 10–25 minutes and installs the app at `~/Applications/ReadEase.app`. In the app, click **Chuẩn bị giọng đọc** once to download about 330 MB of voice data.
 

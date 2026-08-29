@@ -19,7 +19,7 @@ Chỉ tiếp tục nếu bạn tải source từ repository chính thức:
 | --- | --- |
 | Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn |
 | macOS | macOS 15 trở lên |
-| Dung lượng trống | Tối thiểu 6 GB trong lúc build và cài đặt |
+| Dung lượng trống | Tối thiểu 6 GB **trong lúc** build. Cài xong chỉ còn ~324 MB cho app + ~331 MB giọng đọc tải một lần; phần lớn 6 GB kia là Python, thư viện và mã trung gian của trình biên dịch, xoá ngay khi cài xong. |
 | Kết nối mạng | Cần cho lần build đầu và lần tải giọng đọc đầu tiên |
 | Công cụ của Apple | Xcode Command Line Tools |
 
@@ -61,15 +61,17 @@ Nếu bạn đã bấm **Move to Trash**, hãy khôi phục file/thư mục từ
 
 Apple mô tả cùng quy trình tại [Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/mh40616/mac). Chỉ dùng **Open Anyway** cho source bạn tin tưởng; thao tác này tạo ngoại lệ cho đúng file, không yêu cầu tắt Gatekeeper toàn hệ thống.
 
-### Bước 4 — Cài công cụ của Apple nếu còn thiếu
+### Bước 4 — Đọc bản kê rồi đồng ý một lần
 
-Nếu installer báo `missing_xcode_tools`, mở Terminal và chạy:
+Installer in ra một bảng liệt kê **trước khi động vào bất cứ thứ gì**: sẽ cài gì, thay gì, đóng gì, dọn gì, và những thứ nó **không bao giờ** đụng tới (sudo, mật khẩu, shell profile, sách và tiến độ đọc của bạn). Đọc xong bấm Enter là nó chạy một mạch tới cuối, không hỏi thêm câu nào.
+
+Nếu máy chưa có Xcode Command Line Tools, bản kê sẽ ghi rõ điều đó ở dòng đầu. Sau khi bạn đồng ý, installer tự mở cửa sổ cài của Apple và **chờ** bạn bấm Install xong mới đi tiếp — bạn không phải tự chạy lệnh rồi khởi động lại installer. Bạn không cần cài toàn bộ ứng dụng Xcode.
+
+Muốn xem trước bản kê mà chưa cài gì:
 
 ```bash
-xcode-select --install
+./scripts/install-from-source.sh --check
 ```
-
-Hoàn tất cửa sổ cài đặt của Apple, sau đó bấm lại **Install ReadEase.command**. Bạn không cần cài toàn bộ ứng dụng Xcode.
 
 ### Bước 5 — Chờ app được build và cài
 
@@ -90,6 +92,8 @@ READEASE_SOURCE_INSTALL PASS target=.../Applications/ReadEase.app
 ### Bước 6 — Chuẩn bị giọng đọc
 
 Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu. Sau khi hoàn tất, việc đọc diễn ra cục bộ và có thể dùng offline.
+
+Ô **Chất lượng giọng đọc** ngay phía trên chọn bản mô hình: *Tiêu chuẩn* (tải 158 MB) là mặc định, *Cao nhất* tải 453 MB và đọc chậm hơn khoảng 11%. Đổi lựa chọn có hiệu lực ở lần mở app kế tiếp; bản chưa tải sẽ được tải khi đó.
 
 ## Kiểm tra máy mà chưa cài
 
@@ -180,7 +184,7 @@ No API key, Homebrew, Python or `uv` installation is required.
 3. If macOS shows **“Install ReadEase.command” Not Opened**, click **Done**, not **Move to Trash**.
 4. Open **System Settings → Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the blocked installer message.
 5. Authenticate with Touch ID or your Mac password, then click **Open** when prompted again.
-6. If the installer reports missing Xcode Command Line Tools, run `xcode-select --install`, finish Apple’s installer and open **Install ReadEase.command** again.
+6. Read the plan the installer prints and answer its single question. If Xcode Command Line Tools are missing, it opens Apple’s installer for you and waits for it to finish.
 7. Wait about 10–25 minutes. ReadEase will be built, checked, installed at `~/Applications/ReadEase.app` and opened automatically.
 8. In ReadEase, click **Chuẩn bị giọng đọc** once to download about 330 MB of voice data.
 
