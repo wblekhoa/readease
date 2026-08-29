@@ -7,7 +7,9 @@ install_root="${READEASE_INSTALL_ROOT:-$HOME/Applications}"
 target="$install_root/ReadEase.app"
 legacy_target="$install_root/VieNeu Reader.app"
 
+echo "INSTALL_APP phase=verifying-the-built-app"
 "$project_root/scripts/verify-app.sh" "$bundle"
+echo "INSTALL_APP phase=copying-into-place"
 mkdir -p "$install_root"
 
 rollback_root="$(mktemp -d "$install_root/.readease-install-rollback.XXXXXX")"

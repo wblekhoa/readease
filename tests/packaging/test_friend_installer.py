@@ -77,6 +77,10 @@ class _InstallerHarness:
         macos: str = "15.4",
         available_kib: int = 8 * 1024 * 1024,
         xcode_ready: bool = True,
+        xcode_installs_on_demand: bool = False,
+        build_fails: bool = False,
+        build_hangs: bool = False,
+        receipts: bool = False,
         include_uv: bool = True,
         curl_succeeds: bool = False,
         existing_version: str | None = None,
@@ -153,10 +157,26 @@ for name in ('build-app.sh', 'install-app.sh'):
                 ("build-app.sh", "build"),
                 ("install-app.sh", "install"),
             ):
-                _write_executable(
-                    scripts / name,
-                    f'#!/bin/sh\nprintf "{marker}\\n" >> "$READEASE_TEST_LOG"\n',
-                )
+                body = f'#!/bin/sh\nprintf "{marker}\\n" >> "$READEASE_TEST_LOG"\n'
+                if receipts:
+                    marker_name = "BUILD_APP" if name == "build-app.sh" else "INSTALL_APP"
+                    body += (
+                        'for i in 1 2 3; do echo "noise line $i"; done\n'
+                        f'echo "{marker_name} PASS target=/somewhere"\n'
+                    )
+                if build_hangs and name == "build-app.sh":
+                    body += (
+                        'echo "compiling something"\n'
+                        'exec sleep 600 # readease-installer-hang-probe\n'
+                    )
+                if build_fails and name == "build-app.sh":
+                    # What a real compile failure looks like: noise, then a reason.
+                    body += (
+                        'for i in 1 2 3 4 5; do echo "noise line $i"; done\n'
+                        'echo "Nuitka: FATAL could not compile app_main.py" >&2\n'
+                        'exit 3\n'
+                    )
+                _write_executable(scripts / name, body)
 
             _write_executable(
                 fake_bin / "uname",
@@ -185,11 +205,26 @@ printf 'fixture 99999999 1 %s 1%% /\\n' "$READEASE_FAKE_AVAILABLE_KIB"
             _write_executable(
                 fake_bin / "xcrun",
                 """#!/bin/sh
+if [ -n "$READEASE_FAKE_XCODE_STATE" ]; then
+  [ -f "$READEASE_FAKE_XCODE_STATE" ] || exit 1
+  printf '/usr/bin/clang\\n'
+  exit 0
+fi
 if [ "$READEASE_FAKE_XCODE" = "1" ]; then
   printf '/usr/bin/clang\\n'
   exit 0
 fi
 exit 1
+""",
+            )
+            _write_executable(
+                fake_bin / "xcode-select",
+                """#!/bin/sh
+[ "$1" = "--install" ] || exit 2
+printf 'xcode-select --install\\n' >> "$READEASE_TEST_LOG"
+# Apple's window takes a person a while; the tools appear only afterwards.
+( sleep 6; : > "$READEASE_FAKE_XCODE_STATE" ) &
+exit 0
 """,
             )
             _write_executable(
@@ -245,11 +280,15 @@ exit 2
                 "READEASE_FAKE_MACOS": macos,
                 "READEASE_FAKE_AVAILABLE_KIB": str(available_kib),
                 "READEASE_FAKE_XCODE": "1" if xcode_ready else "0",
+                "READEASE_FAKE_XCODE_STATE": (
+                    str(temp / "xcode-installed") if xcode_installs_on_demand else ""
+                ),
                 "READEASE_FAKE_CURL": "1" if curl_succeeds else "0",
                 "READEASE_FAKE_APP_RUNNING": "1" if app_running else "0",
                 "READEASE_FAKE_APP_PID": str(stand_in.pid) if stand_in else "0",
                 "READEASE_TEST_LOG": str(action_log),
                 "READEASE_INSTALL_ROOT": str(install_root),
+                **({"READEASE_STEP_TIMEOUT": "4"} if build_hangs else {}),
                 "TMPDIR": str(temp),
             }
             if tty_answers is None:
@@ -269,6 +308,9 @@ exit 2
                     answers=tty_answers,
                 )
             if stand_in is not None:
+                # Whether the app really survived, not merely whether the
+                # installer said so - a message is not an effect.
+                self.app_survived = stand_in.poll() is None
                 stand_in.kill()
                 stand_in.wait()
             actions = action_log.read_text(encoding="utf-8") if action_log.exists() else ""
@@ -307,8 +349,38 @@ class FriendInstallerTests(_InstallerHarness, unittest.TestCase):
         self.assertIn("insufficient_disk", completed.stderr)
         self.assertEqual(actions, "")
 
-    def test_preflight_explains_missing_xcode_command_line_tools(self) -> None:
+    def test_check_says_the_apple_tools_will_be_installed_for_you(self) -> None:
         completed, actions = self._run_harness("--check", xcode_ready=False)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("xcode=will-be-installed", completed.stdout)
+        self.assertIn("Xcode Command Line Tools", completed.stdout)
+        self.assertEqual(actions, "")
+
+    def test_apples_installer_is_opened_and_waited_for_then_the_build_goes_on(
+        self,
+    ) -> None:
+        """The whole point: one yes, and the missing Apple tools are handled."""
+        completed, actions = self._run_harness(
+            xcode_ready=False,
+            xcode_installs_on_demand=True,
+            tty_answers="y\n",
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        # It asked Apple to install, then waited instead of failing.
+        self.assertEqual(actions, "xcode-select --install\nbuild\ninstall\n")
+        self.assertIn("READEASE_XCODE_TOOLS installing", completed.stdout)
+        self.assertIn("READEASE_XCODE_TOOLS ready", completed.stdout)
+        # And it was announced before the person agreed, not sprung on them.
+        plan = completed.stdout.split("READEASE_PLAN", 1)[1].split("Go ahead?", 1)[0]
+        self.assertIn("Xcode Command Line Tools", plan)
+
+    def test_a_run_with_nobody_watching_cannot_click_through_apples_window(
+        self,
+    ) -> None:
+        """Installing them needs a person; a pipe or CI must say so, not hang."""
+        completed, actions = self._run_harness(xcode_ready=False)
 
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("missing_xcode_tools", completed.stderr)
@@ -404,14 +476,48 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("READEASE_QUARANTINE none", completed.stdout)
 
-    def test_a_brand_new_machine_installs_without_asking_anything(self) -> None:
-        """Nothing installed, nothing stale: never interrupt the person."""
-        completed, actions = self._run_harness(tty_answers="")
+    def test_everything_is_listed_first_and_agreed_to_exactly_once(self) -> None:
+        """One plan, one question, then unattended - never a quiz mid-build."""
+        completed, actions = self._run_harness(
+            existing_version="0.1.0",
+            legacy_app=True,
+            quarantined=True,
+            tty_answers="y\n",
+        )
 
         self.assertEqual(completed.returncode, 0, completed.stdout)
         self.assertEqual(actions, "build\ninstall\n")
-        self.assertNotIn("[Y/n]", completed.stdout)
-        self.assertNotIn("[y/N]", completed.stdout)
+        prompts = completed.stdout.count("[Y/n]") + completed.stdout.count("[y/N]")
+        self.assertEqual(prompts, 1, completed.stdout)
+
+        plan = completed.stdout.split("READEASE_PLAN", 1)[1]
+        plan = plan.split("Go ahead?", 1)[0]
+        # Everything the run will do has to be visible before the yes.
+        self.assertIn("ReadEase 0.1.0", plan)
+        self.assertIn("VieNeu Reader", plan)
+        self.assertIn("Gatekeeper", plan)
+        self.assertIn("uv 0.9.13", plan)
+        self.assertIn("sudo", plan)
+
+    def test_the_plan_comes_before_the_question_not_after(self) -> None:
+        completed, _ = self._run_harness(tty_answers="y\n")
+
+        self.assertLess(
+            completed.stdout.index("READEASE_PLAN"),
+            completed.stdout.index("Go ahead?"),
+            completed.stdout,
+        )
+
+    def test_the_long_steps_report_progress_instead_of_going_silent(self) -> None:
+        """A terminal silent for five minutes reads as a hang, not as work."""
+        completed, _ = self._run_harness()
+
+        for label in ("compiling", "verifying and installing"):
+            self.assertRegex(
+                completed.stdout,
+                rf"ok  {label}  \(\d+:\d\d\)",
+                completed.stdout,
+            )
 
     def test_an_existing_install_is_confirmed_on_a_terminal(self) -> None:
         completed, actions = self._run_harness(
@@ -470,15 +576,21 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("READEASE_RUNNING none", completed.stdout)
 
-    def test_declining_to_close_the_app_stops_before_building(self) -> None:
+    def test_declining_the_plan_leaves_the_running_app_alone(self) -> None:
+        """Saying no must change nothing at all - not even close the app."""
         completed, actions = self._run_harness(
             app_running=True,
             existing_version="0.1.0",
-            tty_answers="y\nn\n",
+            tty_answers="n\n",
         )
 
         self.assertEqual(completed.returncode, 0, completed.stdout)
-        self.assertIn("READEASE_SOURCE_INSTALL CANCELLED reason=app-running", completed.stdout)
+        self.assertIn(
+            "READEASE_SOURCE_INSTALL CANCELLED reason=user-declined",
+            completed.stdout,
+        )
+        self.assertNotIn("READEASE_RUNNING closed", completed.stdout)
+        self.assertTrue(self.app_survived, "the declined run killed the app anyway")
         self.assertEqual(actions, "")
 
     def test_a_non_interactive_run_closes_the_app_and_continues(self) -> None:
@@ -523,6 +635,40 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
             if line.startswith("READEASE_STEP ")
         ]
         self.assertEqual(steps, ["1/5", "2/5", "3/5", "4/5", "5/5"])
+
+    def test_the_receipts_each_stage_prints_survive_the_tidier_output(self) -> None:
+        """Hiding the noise must not hide the proof that a stage really ran."""
+        completed, _ = self._run_harness(receipts=True)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("BUILD_APP PASS", completed.stdout)
+        self.assertIn("INSTALL_APP PASS", completed.stdout)
+        self.assertNotIn("noise line", completed.stdout)
+
+    def test_a_step_that_stops_making_progress_is_never_waited_on_forever(
+        self,
+    ) -> None:
+        """A friend's install sat at step 5 with no output and no end."""
+        completed, _ = self._run_harness(build_hangs=True)
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("compiling gave up after", completed.stderr)
+        # And it says what it was doing when it gave up.
+        self.assertIn("compiling something", completed.stderr)
+        survivors = subprocess.run(
+            ["pgrep", "-f", "readease-installer-hang-probe"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(survivors.stdout.strip(), "", "the stuck step was left running")
+
+    def test_a_failed_step_shows_why_instead_of_swallowing_its_output(self) -> None:
+        """Output is hidden while things go well; a failure must hand it back."""
+        completed, _ = self._run_harness(build_fails=True)
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("compiling failed", completed.stderr)
+        self.assertIn("Nuitka: FATAL could not compile app_main.py", completed.stderr)
+        self.assertIn("build.log", completed.stderr)
 
     def test_failed_install_explains_how_to_reclaim_the_preserved_workspace(self) -> None:
         completed, _ = self._run_harness(include_uv=False)

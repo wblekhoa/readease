@@ -160,7 +160,12 @@ class PackagePreparationTests(unittest.TestCase):
         self.assertIn('rm -R -- "$data_root"', verifier)
         self.assertIn('rm -f -- "$crash_marker"', verifier)
         self.assertNotIn('wait "$app_pid"\ntrap - EXIT', verifier)
-        self.assertIn('wait "$app_pid"\napp_pid=""', verifier)
+        # The app is reaped and the pid cleared, so cleanup does not try again.
+        self.assertRegex(verifier, r'wait "\$app_pid"(?: \|\| true)?\napp_pid=""')
+        # And the reap is bounded: an app that never quits used to hang here
+        # forever, with no output, which is how a friend's install froze.
+        self.assertIn("READEASE_BUNDLE_LAUNCH_TIMEOUT", verifier)
+        self.assertIn("did not quit within", verifier)
 
     def test_installer_process_matcher_runs_on_macos_awk(self) -> None:
         installer = (ROOT / "scripts" / "install-app.sh").read_text(
