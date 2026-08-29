@@ -13,6 +13,9 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
   "vieneu==3.3.0",
   "PySide6>=6.8,<7",
+  # Already in the bundle by way of vieneu; named here because playback now
+  # uses it directly, and depending on a transitive package is a trap.
+  "numpy>=2,<3",
 ]
 
 [project.scripts]

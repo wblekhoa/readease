@@ -6,22 +6,37 @@ from collections.abc import Callable
 from threading import Condition, RLock
 from typing import Any
 
+import numpy as np
 from PySide6.QtCore import QIODevice, QObject, Signal, Slot
 from PySide6.QtMultimedia import QAudioFormat, QAudioSink, QtAudio
 
 from vieneu_reader.domain.models import AudioChunk
 
+from .time_stretch import SAMPLE_RATE, TimeStretcher
+
+
+def _to_bytes(samples: np.ndarray) -> bytes:
+    if samples.size == 0:
+        return b""
+    return np.clip(samples, -1.0, 1.0).astype("<f4").tobytes()
+
 
 class _BoundedAudioDevice(QIODevice):
     sourceDrained = Signal(int)
 
-    def __init__(self, generation: int, capacity_bytes: int):
+    def __init__(self, generation: int, capacity_bytes: int, rate: float = 1.0):
         super().__init__()
         if capacity_bytes < 4:
             raise ValueError("audio buffer capacity must be at least four bytes")
         self._generation = generation
         self._capacity = capacity_bytes
         self._payload = bytearray()
+        # Speed is applied here, on the way out, not on the way in: whatever is
+        # still queued has not been committed to a speed yet, so changing it is
+        # heard at once rather than after the queue drains.
+        self._stretcher = TimeStretcher()
+        self._ready = bytearray()
+        self._drained_tail = False
         self._finished = False
         self._condition = Condition(RLock())
         self.open(QIODevice.OpenModeFlag.ReadOnly)
@@ -29,22 +44,49 @@ class _BoundedAudioDevice(QIODevice):
     def isSequential(self) -> bool:  # noqa: N802 - Qt virtual method
         return True
 
+    def set_rate(self, rate: float) -> None:
+        with self._condition:
+            self._stretcher.set_rate(rate)
+
     def bytesAvailable(self) -> int:  # noqa: N802 - Qt virtual method
         with self._condition:
-            return len(self._payload) + super().bytesAvailable()
+            return len(self._ready) + len(self._payload) + super().bytesAvailable()
 
     def atEnd(self) -> bool:  # noqa: N802 - Qt virtual method
         with self._condition:
-            return self._finished and not self._payload
+            return self._finished and not self._payload and not self._ready
+
+    def _fill_ready(self, wanted: int) -> None:
+        """Stretch queued audio until enough is ready, or the queue is empty."""
+
+        while len(self._ready) < wanted and self._payload:
+            # Whole samples only: half a float32 is not a number.
+            take = min(len(self._payload) - len(self._payload) % 4, 64 * 1024)
+            if take <= 0:
+                break
+            block = np.frombuffer(bytes(self._payload[:take]), dtype="<f4")
+            del self._payload[:take]
+            self._condition.notify_all()
+            self._ready.extend(_to_bytes(self._stretcher.feed(block)))
+        if (
+            len(self._ready) < wanted
+            and self._finished
+            and not self._payload
+            and not self._drained_tail
+        ):
+            self._drained_tail = True
+            self._ready.extend(_to_bytes(self._stretcher.drain()))
 
     def readData(self, max_length: int) -> bytes:  # noqa: N802 - Qt virtual method
         with self._condition:
-            count = min(max(max_length, 0), len(self._payload))
-            data = bytes(self._payload[:count])
+            wanted = max(max_length, 0)
+            self._fill_ready(wanted)
+            count = min(wanted, len(self._ready))
+            data = bytes(self._ready[:count])
             if count:
-                del self._payload[:count]
+                del self._ready[:count]
                 self._condition.notify_all()
-            drained = self._finished and not self._payload
+            drained = self._finished and not self._payload and not self._ready
             generation = self._generation
         if drained:
             self.sourceDrained.emit(generation)
@@ -73,7 +115,7 @@ class _BoundedAudioDevice(QIODevice):
             if generation != self._generation:
                 return
             self._finished = True
-            drained = not self._payload
+            drained = not self._payload and not self._ready
             self._condition.notify_all()
         if drained:
             self.sourceDrained.emit(generation)
@@ -83,6 +125,9 @@ class _BoundedAudioDevice(QIODevice):
             self._generation = next_generation
             self._finished = True
             self._payload.clear()
+            self._ready.clear()
+            self._drained_tail = False
+            self._stretcher.reset(self._stretcher.rate)
             self._condition.notify_all()
 
     def finished_and_empty(self, generation: int) -> bool:
@@ -91,6 +136,7 @@ class _BoundedAudioDevice(QIODevice):
                 generation == self._generation
                 and self._finished
                 and not self._payload
+                and not self._ready
             )
 
 
@@ -101,7 +147,6 @@ class QtAudioOutput(QObject):
     _stopRequested = Signal(int)
     _pauseRequested = Signal(int)
     _resumeRequested = Signal(int)
-    _rateRequested = Signal(int, float)
 
     def __init__(
         self,
@@ -127,12 +172,14 @@ class QtAudioOutput(QObject):
         self._stopRequested.connect(self._stop_on_qt)
         self._pauseRequested.connect(self._pause_on_qt)
         self._resumeRequested.connect(self._resume_on_qt)
-        self._rateRequested.connect(self._set_rate_on_qt)
 
     @staticmethod
-    def _format(rate: float) -> QAudioFormat:
+    def _format() -> QAudioFormat:
+        # Fixed: speed is a change to the samples now, not to how fast the
+        # device consumes them. That is what keeps the pitch where it was, and
+        # it means a speed change no longer restarts the audio device.
         audio_format = QAudioFormat()
-        audio_format.setSampleRate(round(48_000 * rate))
+        audio_format.setSampleRate(SAMPLE_RATE)
         audio_format.setChannelCount(1)
         audio_format.setSampleFormat(QAudioFormat.SampleFormat.Float)
         return audio_format
@@ -145,7 +192,8 @@ class QtAudioOutput(QObject):
     ) -> None:
         if not 0.5 <= rate <= 2.0:
             raise ValueError("playback rate must be between 0.5 and 2.0")
-        buffer = _BoundedAudioDevice(generation, self._capacity_bytes)
+        buffer = _BoundedAudioDevice(generation, self._capacity_bytes, rate)
+        buffer.set_rate(rate)
         buffer.moveToThread(self.thread())
         buffer.sourceDrained.connect(self._source_drained)
         with self._lock:
@@ -217,12 +265,13 @@ class QtAudioOutput(QObject):
             if generation != self._generation:
                 return
             self._rate = rate
-        self._rateRequested.emit(generation, rate)
+            buffer = self._buffer
+        if buffer is not None:
+            buffer.set_rate(rate)
 
     def _replace_sink(
         self,
         generation: int,
-        rate: float,
         buffer: _BoundedAudioDevice,
     ) -> None:
         with self._lock:
@@ -233,7 +282,7 @@ class QtAudioOutput(QObject):
         if previous_sink is not None:
             previous_sink.stop()
             previous_sink.deleteLater()
-        sink = self._sink_factory(self._format(rate))
+        sink = self._sink_factory(self._format())
         def state_changed() -> None:
             self._sink_state_changed(
                 generation,
@@ -260,7 +309,7 @@ class QtAudioOutput(QObject):
         rate: float,
         buffer: _BoundedAudioDevice,
     ) -> None:
-        self._replace_sink(generation, rate, buffer)
+        self._replace_sink(generation, buffer)
 
     @Slot(int)
     def _stop_on_qt(self, generation: int) -> None:
@@ -286,13 +335,6 @@ class QtAudioOutput(QObject):
             sink = self._sink if generation == self._generation else None
         if sink is not None:
             sink.resume()
-
-    @Slot(int, float)
-    def _set_rate_on_qt(self, generation: int, rate: float) -> None:
-        with self._lock:
-            buffer = self._buffer if generation == self._generation else None
-        if buffer is not None:
-            self._replace_sink(generation, rate, buffer)
 
     @Slot(int)
     def _source_drained(self, generation: int) -> None:

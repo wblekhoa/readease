@@ -18,11 +18,16 @@ class ProjectContractTests(unittest.TestCase):
             project = tomllib.load(pyproject_file)["project"]
 
         self.assertEqual(project["requires-python"], ">=3.13,<3.14")
+        # This list is spelled out so a dependency cannot arrive unnoticed.
+        # numpy was added deliberately when playback started stretching audio
+        # to change speed without changing pitch; vieneu already brought it,
+        # so the bundle did not grow - only the declaration is new.
         self.assertEqual(
             project["dependencies"],
             [
                 "vieneu==3.3.0",
                 "PySide6>=6.8,<7",
+                "numpy>=2,<3",
             ],
         )
         self.assertEqual(

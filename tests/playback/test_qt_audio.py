@@ -115,26 +115,76 @@ class QtAudioOutputTests(unittest.TestCase):
         self.assertEqual(sink.device.bytesAvailable(), 0)
         self.assertFalse(self.drained.is_set())
 
-    def test_pause_resume_and_rate_restart_the_current_sink(self) -> None:
+    def test_pause_and_resume_act_on_the_current_sink(self) -> None:
         first_sink = self.factory.created[-1]
 
         self.output.pause(1)
         self.output.resume(1)
-        self.output.set_rate(1, 1.25)
 
         self.assertIn("suspend", first_sink.events)
         self.assertIn("resume", first_sink.events)
-        self.assertEqual(len(self.factory.created), 2)
-        self.assertEqual(self.factory.created[-1].audio_format.sampleRate(), 60_000)
 
-    def test_changing_rate_while_paused_keeps_the_replacement_sink_paused(self) -> None:
+    def test_changing_speed_does_not_restart_the_audio_device(self) -> None:
+        """Speed is applied to the samples now, so the device keeps running -
+        no gap in the middle of a sentence, and no change of pitch."""
+        before = len(self.factory.created)
+
+        self.output.set_rate(1, 1.25)
+
+        self.assertEqual(len(self.factory.created), before)
+        # 60_000 was the old mechanism: play 48 kHz samples faster and the
+        # voice rises with them. The device stays at 48 kHz now.
+        self.assertEqual(self.factory.created[-1].audio_format.sampleRate(), 48_000)
+
+    def _drain_device(self, device) -> bytes:
+        collected = bytearray()
+        while True:
+            block = device.readData(8192)
+            if not block:
+                break
+            collected.extend(block)
+        return bytes(collected)
+
+    def test_audio_already_queued_is_heard_at_the_new_speed(self) -> None:
+        """Speed is applied on the way out, so a change is heard at once.
+
+        Applying it on the way in would commit whatever is queued - up to
+        several seconds of it - to the old speed before the change took effect.
+        """
+        import math
+
+        # The shared harness uses a 16-byte buffer to exercise backpressure;
+        # this needs a real one, because the whole point is audio sitting in it.
+        factory = SinkFactory()
+        output = QtAudioOutput(sink_factory=factory, capacity_bytes=4 * 1024 * 1024)
+        self.addCleanup(output.stop, 100)
+        output.stop(1)
+        output.begin(1, 1.0, lambda: None)
+
+        seconds = 1.0
+        source = b"".join(
+            struct.pack("<f", 0.4 * math.sin(2 * math.pi * 150 * index / 48_000))
+            for index in range(int(48_000 * seconds))
+        )
+
+        output.append(1, AudioChunk(source))
+        # Nothing has been read yet: it is all still queued.
+        output.set_rate(1, 2.0)
+        output.end(1)
+        produced = self._drain_device(factory.created[-1].device)
+
+        heard = len(produced) / 4 / 48_000
+        self.assertAlmostEqual(heard, seconds / 2.0, delta=0.05)
+
+    def test_changing_speed_while_paused_leaves_it_paused(self) -> None:
         self.output.pause(1)
 
         self.output.set_rate(1, 1.25)
 
-        replacement = self.factory.created[-1]
-        self.assertEqual(replacement.state(), QtAudio.State.SuspendedState)
-        self.assertEqual(replacement.events[-1], "suspend")
+        sink = self.factory.created[-1]
+        self.assertEqual(sink.state(), QtAudio.State.SuspendedState)
+        # And it was never resumed on the way: no sink was swapped underneath.
+        self.assertEqual(sink.events[-1], "suspend")
 
     def test_stop_unblocks_a_backpressured_append_and_discards_old_audio(self) -> None:
         payload = struct.pack("<8f", *([0.25] * 8))
