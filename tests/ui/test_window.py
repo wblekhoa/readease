@@ -371,6 +371,18 @@ class VoiceQualityChoiceTests(unittest.TestCase):
                 )
                 VoiceQualityPreferenceStore(self.settings_path).save("int8")
 
+    def test_the_promised_download_matches_the_selected_build(self):
+        window = self.make_window()
+
+        self.assertIn("330 MB", window.model_setup_description.text())
+
+        window.setup_quality_combo.setCurrentIndex(
+            window.setup_quality_combo.findData("fp32")
+        )
+
+        self.assertIn("625 MB", window.model_setup_description.text())
+        self.assertNotIn("330 MB", window.model_setup_description.text())
+
     def test_the_player_bar_names_the_builds_without_their_sizes(self):
         window = self.make_window()
 

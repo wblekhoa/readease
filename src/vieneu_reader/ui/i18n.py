@@ -28,8 +28,8 @@ _TEXT: dict[str, tuple[str, str]] = {
     "language.accessible": ("Chọn ngôn ngữ ứng dụng", "Choose app language"),
     "model.title": ("Chuẩn bị giọng đọc tiếng Việt", "Set up Vietnamese voice"),
     "model.description": (
-        "ReadEase cần tải khoảng 330 MB dữ liệu giọng đọc ở lần đầu. Sau đó bạn có thể đọc sách hoàn toàn offline và không cần API key.",
-        "ReadEase downloads about 330 MB of Vietnamese voice data the first time. After that, you can read fully offline without an API key.",
+        "ReadEase cần tải khoảng {size} dữ liệu giọng đọc ở lần đầu. Sau đó bạn có thể đọc sách hoàn toàn offline và không cần API key.",
+        "ReadEase downloads about {size} of Vietnamese voice data the first time. After that, you can read fully offline without an API key.",
     ),
     "model.ready_to_download": ("Sẵn sàng tải giọng đọc.", "Ready to download voice data."),
     "model.quality": ("Chất lượng giọng đọc", "Voice quality"),

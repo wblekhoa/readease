@@ -17,6 +17,11 @@ ENVIRONMENT_KEY = "READEASE_PRECISION"
 # a bare technical word. Measured on an Apple Silicon Mac, 2026-08-29.
 DOWNLOAD_MEGABYTES = {"int8": 158, "fp32": 453}
 
+# What the first-time download comes to once the shared audio codec and the
+# fetch cache are counted, which is the number the setup screen promises.
+# Measured on an Apple Silicon Mac, 2026-08-29: codec 86 MB, caches ~87 MB.
+TOTAL_DOWNLOAD_MEGABYTES = {"int8": 330, "fp32": 625}
+
 
 class VoiceQualityPreferenceStore:
     """Persist the chosen model build beside the other local preferences."""
