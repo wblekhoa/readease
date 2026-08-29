@@ -15,6 +15,25 @@ from vieneu_reader.speech.contracts import SynthesisSettings
 from tests.domain.book_fixture import sample_book
 
 
+def _speech_and_pause_appends(events):
+    """Split append events into spoken chunks and injected pause chunks.
+
+    Injected pauses are all-zero blocks of at least 50 ms; the fake engines
+    emit tiny chunks, so length alone separates the two reliably.
+    """
+
+    speech, pauses = [], []
+    for event in events:
+        if event[0] != "append":
+            continue
+        payload = event[1]
+        if len(payload) >= 4 * 48 * 50 and not any(payload):
+            pauses.append(len(payload) // (4 * 48))
+        else:
+            speech.append(payload)
+    return speech, pauses
+
+
 class ManualScheduler:
     def __init__(self):
         self.tasks: list[Callable[[], None]] = []
@@ -371,8 +390,9 @@ class PlaybackCoordinatorTests(unittest.TestCase):
             (self.first.text, "Adam"),
             (self.second.text, "Adam"),
         ])
-        append_count = sum(event[0] == "append" for event in self.output.events)
-        self.assertEqual(append_count, 1)
+        speech, pauses = _speech_and_pause_appends(self.output.events)
+        self.assertEqual(len(speech), 1)
+        self.assertEqual(pauses, [450])
 
         self.output.complete()
         self.scheduler.run_next()
@@ -735,10 +755,9 @@ class PlaybackCoordinatorTests(unittest.TestCase):
 
                 self.assertEqual(coordinator.snapshot.state, PlaybackState.PLAYING)
                 self.assertIsNone(coordinator.snapshot.error)
-                self.assertEqual(
-                    sum(event[0] == "append" for event in output.events),
-                    3,
-                )
+                speech, pauses = _speech_and_pause_appends(output.events)
+                self.assertEqual(len(speech), 3)
+                self.assertEqual(pauses, [450])
                 self.assertIn(("end",), output.events)
 
                 output.complete()
@@ -990,3 +1009,127 @@ class PlaybackCoordinatorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _structured_book() -> "BookDocument":
+    from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
+
+    source_hash = stable_id("source", "structured")
+    book_id = stable_id(source_hash, "epub")
+    first_chapter = stable_id(book_id, "chapter", "0")
+    second_chapter = stable_id(book_id, "chapter", "1")
+
+    def segment(chapter_id, ordinal, text, kind="paragraph", joint="block"):
+        return Segment(
+            id=stable_id(chapter_id, "segment", str(ordinal)),
+            chapter_id=chapter_id,
+            ordinal=ordinal,
+            text=text,
+            kind=kind,
+            joint=joint,
+        )
+
+    return BookDocument(
+        id=book_id,
+        title="Sách có cấu trúc",
+        source_format="epub",
+        source_hash=source_hash,
+        chapters=(
+            Chapter(
+                first_chapter,
+                "Chương một",
+                0,
+                (
+                    segment(first_chapter, 0, "Chương một", kind="heading"),
+                    segment(first_chapter, 1, "Mùa thu đến rất nhẹ,"),
+                    segment(first_chapter, 2, "và lá bắt đầu rơi.", joint="split"),
+                    segment(first_chapter, 3, "Gió cũng đổi mùa.", joint="split"),
+                    segment(first_chapter, 4, "Táo chín đỏ.", kind="list_item"),
+                    segment(first_chapter, 5, "Cam vàng ươm.", kind="list_item"),
+                ),
+            ),
+            Chapter(
+                second_chapter,
+                "Chương hai",
+                1,
+                (segment(second_chapter, 0, "Sang chương mới."),),
+            ),
+        ),
+    )
+
+
+class StructurePauseTests(unittest.TestCase):
+    """The injected silence between segments follows the document structure."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.cache = AudioCache(Path(self.temp_dir.name) / "cache")
+        self.engine = FakeSpeechEngine()
+        self.output = FakeAudioOutput()
+        self.progress = FakeProgressRepository()
+        self.scheduler = ManualScheduler()
+        self.coordinator = PlaybackCoordinator(
+            engine=self.engine,
+            cache=self.cache,
+            progress_repository=self.progress,
+            output=self.output,
+            scheduler=self.scheduler,
+        )
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _play_to_the_end(self, book) -> None:
+        first = book.chapters[0].segments[0]
+        self.coordinator.play(book, first.id, "Adam")
+        for _ in range(sum(len(c.segments) for c in book.chapters)):
+            self.scheduler.run_all()
+            self.output.complete()
+        self.scheduler.run_all()
+
+    def test_each_boundary_gets_the_pause_its_structure_asks_for(self):
+        book = _structured_book()
+        self._play_to_the_end(book)
+
+        speech, pauses = _speech_and_pause_appends(self.output.events)
+        self.assertEqual(len(speech), 7)
+        # Seven segments have six boundaries; the split that interrupts an
+        # open sentence injects nothing at all, so only five pauses appear.
+        self.assertEqual(
+            pauses,
+            [
+                700,   # heading -> paragraph
+                150,   # split at a finished sentence
+                450,   # paragraph block -> list
+                300,   # one list item to the next
+                1200,  # chapter change
+            ],
+        )
+
+    def test_a_failed_segment_injects_no_pause(self):
+        book = _structured_book()
+        self.engine.failure_text = book.chapters[0].segments[0].text
+        self.coordinator.play(book, book.chapters[0].segments[0].id, "Adam")
+
+        self.scheduler.run_all()
+
+        self.assertEqual(self.coordinator.snapshot.state, PlaybackState.ERROR)
+        _speech, pauses = _speech_and_pause_appends(self.output.events)
+        self.assertEqual(pauses, [])
+
+    def test_selection_parts_pause_by_paragraph_and_line(self):
+        self.coordinator.play_selection(
+            "• Táo đỏ.\n\nDòng thơ A\nDòng thơ B",
+            "Adam",
+        )
+        for _ in range(3):
+            self.scheduler.run_all()
+            self.output.complete()
+
+        self.assertEqual(
+            [call[0] for call in self.engine.calls],
+            ["Táo đỏ.", "Dòng thơ A", "Dòng thơ B"],
+        )
+        _speech, pauses = _speech_and_pause_appends(self.output.events)
+        self.assertEqual(pauses, [450, 250])
+        self.assertEqual(self.coordinator.snapshot.state, PlaybackState.IDLE)

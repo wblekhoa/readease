@@ -10,6 +10,7 @@ from typing import Mapping, Protocol
 
 from vieneu_reader.domain.models import BookDocument, Chapter, Segment
 from vieneu_reader.domain.presentation import BookPresentation, FigureRef
+from vieneu_reader.domain.prosody import speakable_text
 from vieneu_reader.domain.segmenter import prepare_pasted_text
 from vieneu_reader.importers.errors import BookImportError
 from vieneu_reader.importers.service import LibraryService
@@ -374,7 +375,8 @@ class ReaderController:
         projection: dict[str, str] = {}
         for chapter in book.chapters:
             for segment in chapter.segments:
-                pieces = (*before.get(segment.id, ()), segment.text, *after.get(segment.id, ()))
+                shaped = speakable_text(segment.text, segment.kind)
+                pieces = (*before.get(segment.id, ()), shaped, *after.get(segment.id, ()))
                 spoken = " ".join(pieces)
                 if spoken != segment.text:
                     projection[segment.id] = spoken
@@ -564,14 +566,14 @@ class ReaderController:
 
     def read_pasted_text(self, text: str) -> None:
         try:
-            prepared = prepare_pasted_text(text)
+            prepare_pasted_text(text)
         except ValueError:
             self._set_state(
                 error="Nội dung dán vượt quá giới hạn 100.000 ký tự."
             )
             return
         self._read_text(
-            prepared,
+            text,
             empty_error="Hãy dán nội dung trước khi bấm đọc.",
             source="paste",
         )
@@ -579,7 +581,7 @@ class ReaderController:
     def read_external_selection(self, text: str) -> None:
         self._set_state(error=None)
         try:
-            prepared = prepare_pasted_text(text)
+            prepare_pasted_text(text)
         except ValueError:
             self._set_state(
                 error="Phần đã chọn vượt quá giới hạn 100.000 ký tự.",
@@ -588,7 +590,7 @@ class ReaderController:
             )
             return
         self._read_text(
-            prepared,
+            text,
             empty_error="Không tìm thấy nội dung đang chọn trong Apple Books.",
             source="apple_books",
         )
@@ -671,8 +673,11 @@ class ReaderController:
                 changes["external_reading_state"] = ExternalReadingState.FAILED
             self._set_state(**changes)
             return False
+        # The raw text still carries its authored line breaks; the playback
+        # splitter turns them into short pauses, while the session history
+        # below keeps remembering the normalized form it always showed.
         self._playback.play_selection(
-            prepared,
+            text,
             self._state.voice_id,
             rate=self._state.rate,
             settings=self._settings,

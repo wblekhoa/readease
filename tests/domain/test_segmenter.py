@@ -5,9 +5,11 @@ from unittest.mock import patch
 from vieneu_reader.domain.models import Segment, stable_id
 from vieneu_reader.domain.segmenter import (
     MAX_PASTED_TEXT_CHARS,
+    TransientPart,
     normalize_paragraph,
     prepare_pasted_text,
     split_paragraph,
+    split_transient_parts,
     split_transient_text,
 )
 
@@ -123,6 +125,66 @@ class StableDomainIdentityTests(unittest.TestCase):
 
         with self.assertRaises(dataclasses.FrozenInstanceError):
             segment.text = "Đã đổi"
+
+
+class TransientPartTests(unittest.TestCase):
+    """One-off text keeps its authored line structure for the voice."""
+
+    def test_paragraphs_lines_and_wrapped_lines_get_their_joints(self):
+        parts = split_transient_parts(
+            "Đoạn văn đầu tiên.\n\n"
+            "Dòng thơ thứ nhất\n"
+            "Dòng thơ thứ hai\n"
+            "và một mẩu nối tiếp thường"
+        )
+
+        self.assertEqual(
+            parts,
+            (
+                TransientPart("Đoạn văn đầu tiên.", "block"),
+                TransientPart("Dòng thơ thứ nhất", "block"),
+                # The lowercase continuation folds back into the line above
+                # because that line never finished its sentence.
+                TransientPart("Dòng thơ thứ hai và một mẩu nối tiếp thường", "line"),
+            ),
+        )
+
+    def test_hard_wrapped_prose_folds_back_into_one_part(self):
+        parts = split_transient_parts(
+            "dòng một chưa trọn câu\nnên vẫn nói tiếp ở đây."
+        )
+
+        self.assertEqual(
+            parts,
+            (TransientPart("dòng một chưa trọn câu nên vẫn nói tiếp ở đây.", "block"),),
+        )
+
+    def test_a_new_line_after_a_finished_sentence_keeps_its_break(self):
+        parts = split_transient_parts("Câu trước đã trọn.\nxuống dòng vẫn giữ")
+
+        self.assertEqual(
+            [part.joint for part in parts],
+            ["block", "line"],
+        )
+
+    def test_a_long_line_still_splits_with_split_joints(self):
+        long_line = "Một câu khá dài được lặp lại để vượt qua cửa sổ đọc. " * 6
+        parts = split_transient_parts(long_line)
+
+        self.assertGreater(len(parts), 1)
+        self.assertEqual(parts[0].joint, "block")
+        self.assertEqual({part.joint for part in parts[1:]}, {"split"})
+
+    def test_split_transient_text_returns_the_same_texts(self):
+        text = "Đoạn một.\n\nDòng A\nDòng B"
+        self.assertEqual(
+            split_transient_text(text),
+            tuple(part.text for part in split_transient_parts(text)),
+        )
+
+    def test_transient_parts_enforce_the_pasted_size_limit(self):
+        with self.assertRaises(ValueError):
+            split_transient_parts("a" * (MAX_PASTED_TEXT_CHARS + 1))
 
 
 if __name__ == "__main__":

@@ -11,7 +11,12 @@ from threading import RLock
 from typing import Mapping, Protocol
 
 from vieneu_reader.domain.models import AudioChunk, BookDocument, Segment
-from vieneu_reader.domain.segmenter import normalize_paragraph, split_transient_text
+from vieneu_reader.domain.prosody import (
+    pause_after_ms,
+    selection_pause_ms,
+    speakable_text,
+)
+from vieneu_reader.domain.segmenter import normalize_paragraph, split_transient_parts
 from vieneu_reader.playback.preferences import DEFAULT_RATE, DEFAULT_VOICE_ID
 from vieneu_reader.speech.cache import AudioCache, audio_cache_key
 from vieneu_reader.speech.contracts import SpeechEngine, SynthesisSettings
@@ -81,6 +86,13 @@ class _CancelledPlayback(Exception):
     pass
 
 
+_SILENCE_SAMPLES_PER_MS = 48  # mono float32 at 48 kHz
+
+
+def _silence_chunk(milliseconds: int) -> AudioChunk:
+    return AudioChunk(pcm=b"\x00" * (4 * _SILENCE_SAMPLES_PER_MS * milliseconds))
+
+
 class PlaybackCoordinator:
     def __init__(
         self,
@@ -105,6 +117,7 @@ class PlaybackCoordinator:
         self._segments: tuple[Segment, ...] = ()
         self._index: int | None = None
         self._selection_parts: tuple[str, ...] = ()
+        self._selection_pauses: tuple[int, ...] = ()
         self._selection_index: int | None = None
         self._speech_text_by_segment: dict[str, str] = {}
         self._voice_id = DEFAULT_VOICE_ID
@@ -167,6 +180,7 @@ class PlaybackCoordinator:
             self._generation += 1
             token = self._generation
             self._selection_parts = ()
+            self._selection_pauses = ()
             self._selection_index = None
         self._engine.cancel()
         self._output.stop(token)
@@ -331,16 +345,24 @@ class PlaybackCoordinator:
         settings: SynthesisSettings = SynthesisSettings(),
     ) -> None:
         with self._command_lock:
-            parts = split_transient_text(text, settings.max_chars)
+            parts = split_transient_parts(text, settings.max_chars)
             if not parts:
                 raise ValueError("selection text cannot be empty")
+            spoken = tuple(speakable_text(part.text) for part in parts)
+            pauses = tuple(
+                selection_pause_ms(spoken[index], parts[index + 1].joint)
+                if index + 1 < len(parts)
+                else 0
+                for index in range(len(parts))
+            )
             self._validate_rate(rate)
             token = self._invalidate_output()
             with self._lock:
                 self._voice_id = voice_id
                 self._rate = rate
                 self._settings = settings
-                self._selection_parts = parts
+                self._selection_parts = spoken
+                self._selection_pauses = pauses
                 self._selection_index = 0
             self._publish(
                 PlaybackState.LOADING,
@@ -348,7 +370,7 @@ class PlaybackCoordinator:
                 generation=token,
             )
             self._scheduler.submit(
-                lambda: self._render_text(token, parts[0], 0, is_selection=True)
+                lambda: self._render_text(token, spoken[0], 0, is_selection=True)
             )
 
     def _schedule_segment(self, token: int, index: int) -> None:
@@ -467,6 +489,14 @@ class PlaybackCoordinator:
                     # tell whether the app is working, stuck or done.
                     raise RuntimeError("synthesis produced no audio")
             self._guard(token)
+            pause_milliseconds = self._pause_after_ms(index, is_selection=is_selection)
+            if pause_milliseconds:
+                self._call_output(
+                    token,
+                    lambda: self._output.append(
+                        token, _silence_chunk(pause_milliseconds)
+                    ),
+                )
             self._call_output(token, lambda: self._output.end(token))
             if not is_selection and index is not None and index + 1 < len(self._segments):
                 self._scheduler.submit(lambda: self._prefetch(token, index + 1))
@@ -484,6 +514,24 @@ class PlaybackCoordinator:
                     error="Không thể tạo giọng đọc cho đoạn này.",
                     generation=token,
                 )
+
+    def _pause_after_ms(self, index: int | None, *, is_selection: bool) -> int:
+        if index is None:
+            return 0
+        with self._lock:
+            if is_selection:
+                if index >= len(self._selection_pauses):
+                    return 0
+                return self._selection_pauses[index]
+            if not 0 <= index < len(self._segments):
+                return 0
+            current = self._segments[index]
+            following = (
+                self._segments[index + 1]
+                if index + 1 < len(self._segments)
+                else None
+            )
+        return pause_after_ms(current, following)
 
     def _prefetch(self, token: int, index: int) -> None:
         try:

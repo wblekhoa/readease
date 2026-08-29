@@ -30,7 +30,6 @@ from PySide6.QtWidgets import (
 
 from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.models import Voice
-from vieneu_reader.domain.segmenter import prepare_pasted_text
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.integrations.selection_shortcut import (
     CMD_KEY,
@@ -1406,7 +1405,7 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertTrue(self.playback.selection_calls)
         self.assertEqual(
             self.playback.selection_calls[-1][0],
-            "Nội dung dán để ReadEase đọc.",
+            "  Nội dung dán để ReadEase đọc.  ",
         )
         self.assertEqual(self.repository.list_books(), ())
 
@@ -1777,10 +1776,7 @@ class ReaderWindowTests(unittest.TestCase):
         selected = cursor.selectedText()
         reader.read_selection_button.click()
 
-        self.assertEqual(
-            self.playback.selection_calls[-1][0],
-            prepare_pasted_text(selected),
-        )
+        self.assertEqual(self.playback.selection_calls[-1][0], selected)
 
     def test_reader_renders_numbered_epub_image_without_polluting_selection(self) -> None:
         chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>

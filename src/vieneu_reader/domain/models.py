@@ -14,12 +14,25 @@ def stable_id(*parts: str) -> str:
     return sha256(payload).hexdigest()
 
 
+SegmentKind = Literal[
+    "paragraph", "heading", "list_item", "quote", "caption", "preformatted"
+]
+"""What the source document says this block of text is."""
+
+SegmentJoint = Literal["block", "line", "split"]
+"""How a segment attaches to the one before it inside the same chapter:
+a new source block, a new visual line, or a length-bounded split of the
+same block."""
+
+
 @dataclass(frozen=True, slots=True)
 class Segment:
     id: str
     chapter_id: str
     ordinal: int
     text: str
+    kind: SegmentKind = "paragraph"
+    joint: SegmentJoint = "block"
 
 
 @dataclass(frozen=True, slots=True)

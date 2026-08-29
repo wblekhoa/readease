@@ -12,7 +12,13 @@ from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile, ZipInfo
 import zlib
 
-from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
+from vieneu_reader.domain.models import (
+    BookDocument,
+    Chapter,
+    Segment,
+    SegmentKind,
+    stable_id,
+)
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_paragraph
 
 from .errors import CorruptBookError
@@ -35,6 +41,13 @@ _READING_TAGS = frozenset(
     {"h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "blockquote", "pre", "figcaption"}
 )
 _HEADING_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
+_TAG_KINDS: dict[str, SegmentKind] = {
+    **{tag: "heading" for tag in _HEADING_TAGS},
+    "li": "list_item",
+    "blockquote": "quote",
+    "figcaption": "caption",
+    "pre": "preformatted",
+}
 _EOCD_SIGNATURE = b"PK\x05\x06"
 _EOCD_BYTES = 22
 _MAX_ZIP_COMMENT_BYTES = 65_535
@@ -432,8 +445,8 @@ def import_epub(path: Path) -> BookDocument:
                 if len(title) > MAX_TITLE_CHARS:
                     raise CorruptBookError("EPUB có tiêu đề quá dài.")
                 segments: list[Segment] = []
-                for _tag, _paragraph, speech_parts in prepared:
-                    for speech_text in speech_parts:
+                for tag, _paragraph, speech_parts in prepared:
+                    for part_index, speech_text in enumerate(speech_parts):
                         segment_ordinal = len(segments)
                         segments.append(
                             Segment(
@@ -445,6 +458,8 @@ def import_epub(path: Path) -> BookDocument:
                                 chapter_id=chapter_id,
                                 ordinal=segment_ordinal,
                                 text=speech_text,
+                                kind=_TAG_KINDS.get(tag, "paragraph"),
+                                joint="block" if part_index == 0 else "split",
                             )
                         )
                 generated_segments += prepared_segments

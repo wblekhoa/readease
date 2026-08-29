@@ -240,11 +240,13 @@ def import_pdf(path: Path) -> BookDocument:
         chapters: list[Chapter] = []
         for title, paragraphs in _chapter_specs(document, pages):
             speech_parts = tuple(
-                part
+                (part, "block" if part_index == 0 else "split")
                 for paragraph in paragraphs
-                for part in split_paragraph(
-                    paragraph,
-                    max_chars=SPEECH_SEGMENT_MAX_CHARS,
+                for part_index, part in enumerate(
+                    split_paragraph(
+                        paragraph,
+                        max_chars=SPEECH_SEGMENT_MAX_CHARS,
+                    )
                 )
             )
             if not speech_parts:
@@ -257,8 +259,9 @@ def import_pdf(path: Path) -> BookDocument:
                     chapter_id=chapter_id,
                     ordinal=segment_ordinal,
                     text=text,
+                    joint=joint,
                 )
-                for segment_ordinal, text in enumerate(speech_parts)
+                for segment_ordinal, (text, joint) in enumerate(speech_parts)
             )
             chapters.append(
                 Chapter(

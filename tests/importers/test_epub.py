@@ -25,6 +25,41 @@ class EpubImportTests(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    def test_import_records_what_each_block_is_and_how_it_was_cut(self):
+        long_paragraph = "Câu văn này khá dài và được lặp lại nhiều lần để vượt cửa sổ đọc. " * 5
+        chapter = f"""<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Chương mở đầu</h1>
+        <p>{long_paragraph}</p>
+        <ul><li>Táo chín.</li><li>Cam ngọt.</li></ul>
+        <blockquote>Lời trích dẫn xưa.</blockquote>
+        <figure><figcaption>Chú thích một tấm hình.</figcaption></figure>
+        </body></html>"""
+        path = make_epub(
+            self.root,
+            spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+        )
+
+        book = import_epub(path)
+
+        segments = book.chapters[0].segments
+        self.assertEqual(
+            [segment.kind for segment in segments],
+            [
+                "heading",
+                "paragraph",
+                "paragraph",
+                "list_item",
+                "list_item",
+                "quote",
+                "caption",
+            ],
+        )
+        self.assertEqual(
+            [segment.joint for segment in segments],
+            ["block", "block", "split", "block", "block", "block", "block"],
+        )
+
     def test_import_follows_spine_and_excludes_nonreading_content(self):
         path = make_epub(self.root, spine=("chapter-2", "chapter-1"))
 

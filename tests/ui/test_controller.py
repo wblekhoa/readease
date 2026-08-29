@@ -139,7 +139,8 @@ class ReaderControllerTests(unittest.TestCase):
         controller.read_pasted_text("  Xin chào.\n\nĐây là nội dung được dán.  ")
 
         text, voice_id, rate, _settings = self.playback.selection_calls[-1]
-        self.assertEqual(text, "Xin chào.\n\nĐây là nội dung được dán.")
+        # The raw paste goes through so the splitter can hear its line breaks.
+        self.assertEqual(text, "  Xin chào.\n\nĐây là nội dung được dán.  ")
         self.assertEqual((voice_id, rate), ("Trúc Ly", 1.25))
         self.assertEqual(self.repository.list_books(), ())
 
@@ -153,7 +154,7 @@ class ReaderControllerTests(unittest.TestCase):
         command("  Nội dung từ Apple Books.  ")
 
         text, voice_id, rate, _settings = self.playback.selection_calls[-1]
-        self.assertEqual(text, "Nội dung từ Apple Books.")
+        self.assertEqual(text, "  Nội dung từ Apple Books.  ")
         self.assertEqual((voice_id, rate), ("Trúc Ly", 1.25))
         self.assertEqual(self.repository.list_books(), ())
 
@@ -480,6 +481,32 @@ class ReaderControllerTests(unittest.TestCase):
 
         self.assertEqual(self.playback.play_projections[-1], projected)
 
+    def test_headings_and_bullets_are_reshaped_for_the_voice_only(self):
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Chương không dấu cuối</h1>
+        <p>• Táo giòn ngọt.</p>
+        <p>Đoạn văn bình thường.</p>
+        </body></html>"""
+        controller = self.make_controller()
+        controller.import_book(
+            make_epub(
+                self.sources,
+                spine=("chapter-1",),
+                chapter_overrides={"chapter-1": chapter},
+            )
+        )
+
+        book = self.repository.list_books()[0].book
+        heading, bullet, plain = book.chapters[0].segments
+        projected = self.playback.activation_projections[-1]
+
+        self.assertEqual(projected[heading.id], "Chương không dấu cuối.")
+        self.assertEqual(projected[bullet.id], "Táo giòn ngọt.")
+        # The displayed text keeps what the author wrote.
+        self.assertEqual(heading.text, "Chương không dấu cuối")
+        self.assertEqual(bullet.text, "• Táo giòn ngọt.")
+        self.assertNotIn(plain.id, projected)
+
     def test_reselecting_active_book_is_a_true_noop_during_playback(self):
         controller = self.make_controller()
         controller.import_book(make_epub(self.sources))
@@ -566,7 +593,7 @@ class ReaderControllerTests(unittest.TestCase):
         self.assertEqual(self.playback.play_calls[0][1], controller.state.active_segment_id)
         self.assertEqual(self.playback.play_calls[0][2:4], ("Trúc Ly", 1.2))
         self.assertEqual(self.playback.selection_calls[0][0:3], (
-            "Chỉ đọc phần này.",
+            "  Chỉ đọc phần này.  ",
             "Trúc Ly",
             1.2,
         ))

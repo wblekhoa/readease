@@ -17,6 +17,7 @@ from tests.importers.pdf_fixture import (
     make_blank_pdf,
     make_encrypted_pdf,
     make_short_pdf,
+    make_pdf,
     make_text_pdf,
 )
 
@@ -44,6 +45,25 @@ class PdfImporterTests(unittest.TestCase):
                 "Noi dung cua trang hai du dai.",
             ],
         )
+
+    def test_split_parts_remember_they_continue_their_paragraph(self) -> None:
+        long_paragraph = "Cau van kha dai va duoc lap lai nhieu lan de vuot qua cua so doc. " * 5
+        path = make_pdf(
+            self.directory / "dai.pdf",
+            pages=(
+                (
+                    (50, 720, long_paragraph.strip()),
+                    (50, 662, "Doan van moi."),
+                ),
+            ),
+        )
+
+        book = import_pdf(path)
+
+        segments = book.chapters[0].segments
+        self.assertEqual(len(segments), 3)
+        self.assertEqual([segment.joint for segment in segments], ["block", "split", "block"])
+        self.assertEqual({segment.kind for segment in segments}, {"paragraph"})
 
     def test_wrapped_lines_merge_but_large_gaps_and_column_resets_split(self) -> None:
         lines = (

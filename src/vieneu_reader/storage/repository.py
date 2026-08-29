@@ -11,6 +11,7 @@ from threading import RLock
 from typing import Any
 
 from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
+from vieneu_reader.domain.prosody import ends_sentence
 
 from .errors import RepositoryCorruptionError, RepositoryError
 
@@ -61,6 +62,8 @@ def _document_payload(book: BookDocument) -> str:
                         "chapter_id": segment.chapter_id,
                         "ordinal": segment.ordinal,
                         "text": segment.text,
+                        "kind": segment.kind,
+                        "joint": segment.joint,
                     }
                     for segment in chapter.segments
                 ],
@@ -69,6 +72,34 @@ def _document_payload(book: BookDocument) -> str:
         ],
     }
     return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+_SEGMENT_KINDS = frozenset(
+    {"paragraph", "heading", "list_item", "quote", "caption", "preformatted"}
+)
+_SEGMENT_JOINTS = frozenset({"block", "line", "split"})
+
+
+def _segment_kind(raw_segment: Any) -> str:
+    kind = raw_segment.get("kind", "paragraph")
+    if kind not in _SEGMENT_KINDS:
+        raise ValueError("segment kind is invalid")
+    return kind
+
+
+def _segment_joint(raw_segment: Any, previous_text: str | None) -> str:
+    joint = raw_segment.get("joint")
+    if joint is None:
+        # Books stored before segments carried structure: a previous segment
+        # that never closed its sentence means this one continues the same
+        # source block, and a paragraph-sized pause there would land in the
+        # middle of a sentence.
+        if previous_text is None or ends_sentence(previous_text):
+            return "block"
+        return "split"
+    if joint not in _SEGMENT_JOINTS:
+        raise ValueError("segment joint is invalid")
+    return joint
 
 
 def _required_text(container: Any, key: str) -> str:
@@ -136,6 +167,11 @@ def _document_from_payload(payload: str) -> BookDocument:
                         chapter_id=segment_chapter_id,
                         ordinal=segment_ordinal,
                         text=segment_text,
+                        kind=_segment_kind(raw_segment),
+                        joint=_segment_joint(
+                            raw_segment,
+                            segments[-1].text if segments else None,
+                        ),
                     )
                 )
             chapters.append(

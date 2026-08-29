@@ -118,10 +118,18 @@ class TimeStretcherTests(unittest.TestCase):
         total = len(first) + len(second)
         self.assertAlmostEqual(total / len(source), 0.75, delta=0.05)
 
-    def test_silence_in_gives_silence_out(self):
-        produced = stretch_all(np.zeros(SAMPLE_RATE), 1.25)
+    def test_silence_in_gives_silence_out_at_every_rate(self):
+        # Structure pauses are injected as pure-silence blocks, so the
+        # stretcher must keep them silent, finite and correctly scaled.
+        for rate in (0.5, 1.25, 2.0):
+            with self.subTest(rate=rate):
+                produced = stretch_all(np.zeros(SAMPLE_RATE), rate)
 
-        self.assertTrue(np.all(np.abs(produced) < 1e-9))
+                self.assertTrue(np.all(np.isfinite(produced)))
+                self.assertTrue(np.all(np.abs(produced) < 1e-9))
+                self.assertAlmostEqual(
+                    len(produced) / (SAMPLE_RATE / rate), 1.0, delta=0.03
+                )
 
 
 if __name__ == "__main__":
