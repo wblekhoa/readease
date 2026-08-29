@@ -1084,7 +1084,7 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertIsNotNone(toggle)
         self.assertFalse(toggle.isChecked())
         self.assertFalse(store.load())
-        self.assertEqual(toggle.text(), "Đọc ngay khi sao chép trong Apple Books")
+        self.assertEqual(toggle.text(), "Đọc ngay khi sao chép, ở mọi ứng dụng")
 
         changes: list[bool] = []
         window.readOnCopyChanged.connect(changes.append)
@@ -1113,7 +1113,7 @@ class ReaderWindowTests(unittest.TestCase):
         )
         self.application.processEvents()
 
-        self.assertEqual(toggle.text(), "Read as soon as you copy in Apple Books")
+        self.assertEqual(toggle.text(), "Read as soon as you copy, in any app")
         # Switching language must not switch the feature on or off.
         self.assertEqual(changes, [True, False, True])
         self.assertTrue(toggle.isChecked())

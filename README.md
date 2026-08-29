@@ -108,7 +108,7 @@ Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo sách mớ
 
 Trong mỗi lần dùng phím tắt, ReadEase giữ bản sao clipboard trong bộ nhớ, gửi lệnh sao chép tới ứng dụng đang ở trước rồi khôi phục từng item/type/byte trước khi đọc. Nếu không xác nhận được việc khôi phục, app dừng trước khi đọc. App không theo dõi màn hình ở chế độ nền. Vì phím tắt dùng được ở mọi ứng dụng, app đọc **đúng thứ bạn đang bôi đen** — nó không phân biệt được đâu là nội dung nhạy cảm; phần nào được đánh dấu bí mật thì bị từ chối, còn lại thì không.
 
-Chế độ **đọc-khi-sao-chép** thì vẫn chỉ giới hạn trong Apple Books, cố ý như vậy: bấm phím tắt là bạn chủ động từng lần, còn tự-đọc-khi-copy mà mở rộng ra mọi ứng dụng thì app sẽ đọc to cả những thứ bạn copy vì mục đích khác. Mặc định ReadEase cũng **không** xem clipboard: chỉ khi bạn tự bật **Đọc ngay khi sao chép trong Apple Books** trong màn hình **Quét đọc**, app mới kiểm tra bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc nội dung vừa sao chép **khi Apple Books đang ở phía trước**. ReadEase chỉ đọc khi Apple Books ở phía trước ở cả hai lần kiểm tra liên tiếp, và bỏ qua mục được đánh dấu ẩn (trình quản lý mật khẩu dùng dấu này). macOS không ghi lại ứng dụng nào đã sao chép, nên vẫn còn khe hở: sao chép ở app khác rồi chuyển sang Apple Books trong cùng một phần giây thì nội dung đó có thể bị đọc. Tắt công tắc là app ngừng xem clipboard. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+Mặc định ReadEase **không** xem clipboard. Chỉ khi bạn tự bật **Đọc ngay khi sao chép, ở mọi ứng dụng** trong màn hình **Quét đọc**, app mới kiểm tra bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc lên nội dung bạn vừa sao chép — **ở bất kỳ ứng dụng nào**. Nghĩa là mọi thứ bạn Command-C đều được đọc, kể cả khi bạn copy để dán chứ không phải để nghe. App bỏ qua mục được đánh dấu ẩn (trình quản lý mật khẩu dùng dấu này), nhưng **không nhận ra** mật khẩu hay thông tin riêng tư nằm trong văn bản thường. Muốn chủ động từng lần thì tắt công tắc và dùng phím tắt. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ### 4. Nghe lại nội dung gần đây
 
@@ -134,7 +134,7 @@ Tên thư mục cũ được giữ để người dùng nâng cấp không mất
 - PDF scan chỉ chứa ảnh cần OCR trước khi nhập; ReadEase chưa tích hợp OCR.
 - Chưa hỗ trợ PDF đặt mật khẩu, EPUB có DRM hoặc tệp bị hỏng.
 - Trình đọc EPUB chưa tái tạo toàn bộ CSS/layout của sách, fixed-layout, SVG tương tác, bảng phức tạp hoặc mô tả ảnh bằng AI.
-- Chế độ đọc-khi-sao-chép hiện chỉ dành cho Apple Books; phím tắt quét đọc thì dùng được ở mọi ứng dụng.
+- Chế độ đọc-khi-sao-chép đọc mọi thứ bạn sao chép, không phân biệt được nội dung nhạy cảm nằm trong văn bản thường; mặc định tắt.
 - Bản source này được build và ký ad-hoc trên máy của bạn; chưa phải binary có Developer ID và notarization để phát hành đại trà.
 
 ## Chạy local để phát triển

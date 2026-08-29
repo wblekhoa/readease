@@ -118,22 +118,24 @@ frontmost app, ReadEase reads the newly copied text aloud. In this mode it only
 reads the clipboard, never writes to it, and it needs no Accessibility
 permission.
 
-macOS does not record which app wrote to the clipboard, so ReadEase cannot know
-who copied. What it can check is which app is in front, and it applies that
-check twice: the copy is only read if Apple Books was frontmost both at the
-check that noticed the new text and at the check before it, roughly a quarter of
-a second earlier. Text that appears while another app is in front is marked as
-already seen, so returning to Apple Books afterwards does not read it late.
-ReadEase also skips any clipboard item marked with the concealed type, which is
-how password managers ask clipboard tools to leave their entries alone.
+While the switch is on, a copy made in any app is read. There is no check on
+which program you copied from, because macOS does not record which app wrote to
+the clipboard and there is nothing honest to check. In practice that means
+everything you press Command-C on is spoken aloud - including copies you made in
+order to paste, not to hear.
 
-Those checks narrow the gap; they do not close it. If you copy in another app
-and switch to Apple Books within that quarter-second window, and the item is not
-marked concealed, ReadEase can still read it. Universal Clipboard content that
-arrives from another device while Apple Books is in front is likewise treated as
-copied from Apple Books. If that residual risk matters to you, leave read-on-copy
-off and use the shortcut, which reads only what you had selected at the moment
-you pressed it, in whichever app you pressed it over.
+One kind of item is refused: anything carrying the concealed type, which is how
+password managers ask clipboard tools to leave their entries alone. That covers
+a password copied from a password manager. It does not cover a password, a
+recovery code or a private note living in ordinary text, in a document or a web
+form; ReadEase cannot tell those from prose, and will read them.
+
+Universal Clipboard content arriving from another device is an ordinary
+clipboard change here, so it is read like anything else.
+
+If that is more than you want, leave read-on-copy off and use the shortcut,
+which reads only what you had selected at the moment you pressed it, in
+whichever app you pressed it over.
 
 Switching it off stops the checking. Text read this way is transient like the
 rest: it is not added to the library or the persistent audio cache, and it

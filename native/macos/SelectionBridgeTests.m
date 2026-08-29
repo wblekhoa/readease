@@ -41,10 +41,7 @@ static void RDXAssert(BOOL condition, NSString *message) {
 
 int main(void) {
     @autoreleasepool {
-        // Read-on-copy still watches Apple Books and nothing else.
-        RDXAssert(RDXIsBooksBundleIdentifier(@"com.apple.iBooksX"), @"Books must be recognised");
-        RDXAssert(!RDXIsBooksBundleIdentifier(@"com.apple.TextEdit"), @"read-on-copy must stay in Books");
-        // The shortcut reads a selection anywhere, except where it must not.
+        // A selection is read wherever it was made, except where it must not be.
         RDXAssert(RDXCanReadSelectionFrom(@"com.apple.Safari"), @"a browser selection must be readable");
         RDXAssert(RDXCanReadSelectionFrom(@"com.apple.TextEdit"), @"any ordinary app must be readable");
         RDXAssert(!RDXCanReadSelectionFrom(@"vn.dolenglish.vieneureader"), @"ReadEase must not copy from itself");
@@ -136,13 +133,6 @@ int main(void) {
             @"ordinary text must still come through");
         RDXAssert(!concealed, @"ordinary text must not be reported as concealed");
 
-        // Read-on-copy stays inside Apple Books even with the switch on.
-        RDXAssert(RDXCopyWatchDecision(@"com.apple.iBooksX") == 0,
-            @"Books is what read-on-copy watches");
-        RDXAssert(RDXCopyWatchDecision(@"com.apple.Safari") != 0,
-            @"read-on-copy must refuse a browser");
-        RDXAssert(RDXCopyWatchDecision(@"") != 0,
-            @"read-on-copy must fail closed");
 
         RDXRetryPasteboard *retryPasteboard = [[RDXRetryPasteboard alloc] init];
         retryPasteboard.pasteboardItems = @[];
@@ -153,6 +143,6 @@ int main(void) {
         RDXAssert(retryPasteboard.writeAttempts == 2, @"restore retried exactly once");
         RDXAssert(retryPasteboard.sawFreshRetryItem, @"retry used a fresh pasteboard item");
     }
-    puts("NATIVE_SELECTION_BRIDGE_TEST PASS books_watch=1 readable_source=1 frame=1 restore=1 retry_fresh_items=1 hotkey_arguments=1 concealed=1");
+    puts("NATIVE_SELECTION_BRIDGE_TEST PASS readable_source=1 frame=1 restore=1 retry_fresh_items=1 hotkey_arguments=1 concealed=1");
     return 0;
 }

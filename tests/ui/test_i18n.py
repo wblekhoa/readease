@@ -174,22 +174,27 @@ class LocalizerTests(unittest.TestCase):
         )
 
     def test_read_on_copy_note_claims_no_more_than_the_code_can_do(self) -> None:
-        # The Apple Books check is "which app is in front", sampled a few times
-        # a second, so a copy made elsewhere and followed by a fast switch can
-        # still be read. The note must not promise otherwise in either
-        # language.
-        for language, forbidden in (
-            (Language.VIETNAMESE, ("không bao giờ",)),
-            (Language.ENGLISH, ("never", "always", "cannot be read")),
+        # Read-on-copy now speaks whatever was copied, in any app. The only
+        # thing it refuses is what a password manager marked as its own, and
+        # it cannot tell a password typed into ordinary text from prose. The
+        # note has to say both, in either language, and promise nothing more.
+        for language, forbidden, required in (
+            (
+                Language.VIETNAMESE,
+                ("không bao giờ", "chỉ đọc khi"),
+                ("bất kỳ ứng dụng nào", "không nhận ra"),
+            ),
+            (
+                Language.ENGLISH,
+                ("never", "always", "cannot be read"),
+                ("any app", "cannot recognise"),
+            ),
         ):
-            note = Localizer(language).text("external.privacy_note_on")
+            note = Localizer(language).text("external.privacy_note_on").lower()
             for claim in forbidden:
-                self.assertNotIn(claim, note.lower(), f"{language}: {claim}")
-            self.assertIn(
-                "macos",
-                note.lower(),
-                "the note has to say why the check is imperfect",
-            )
+                self.assertNotIn(claim, note, f"{language}: {claim}")
+            for admission in required:
+                self.assertIn(admission, note, f"{language}: {admission}")
 
     def test_language_store_defaults_safely_and_persists_supported_language(self) -> None:
         with TemporaryDirectory() as directory:

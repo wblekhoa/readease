@@ -1,4 +1,4 @@
-"""Qt lifecycle wrapper for the native Apple Books selection helper."""
+"""Qt lifecycle wrapper for the native text-selection helper."""
 
 from __future__ import annotations
 
@@ -175,12 +175,11 @@ class MacOSSelectionAcquirer:
 
 class ClipboardReadingSource(Protocol):
     def change_count(self) -> int: ...
-    def books_is_frontmost(self) -> bool: ...
     def copied_text(self) -> SelectionEvent: ...
 
 
 class MacOSClipboardReadingSource:
-    """Read copied Apple Books text without ever writing to the clipboard."""
+    """Read newly copied text without ever writing to the clipboard."""
 
     _RESULT_KINDS = {
         2: SelectionEventKind.NO_SELECTION,
@@ -198,27 +197,22 @@ class MacOSClipboardReadingSource:
         self._library = library if library is not None else ctypes.CDLL(str(path))
         self._library.RDXClipboardChangeCount.argtypes = []
         self._library.RDXClipboardChangeCount.restype = ctypes.c_longlong
-        self._library.RDXClipboardBooksIsFrontmost.argtypes = []
-        self._library.RDXClipboardBooksIsFrontmost.restype = ctypes.c_int
-        self._library.RDXClipboardCopyBooksText.argtypes = [
+        self._library.RDXClipboardCopiedText.argtypes = [
             ctypes.POINTER(ctypes.c_void_p),
             ctypes.POINTER(ctypes.c_size_t),
         ]
-        self._library.RDXClipboardCopyBooksText.restype = ctypes.c_int
+        self._library.RDXClipboardCopiedText.restype = ctypes.c_int
         self._library.RDXSelectionFree.argtypes = [ctypes.c_void_p]
         self._library.RDXSelectionFree.restype = None
 
     def change_count(self) -> int:
         return int(self._library.RDXClipboardChangeCount())
 
-    def books_is_frontmost(self) -> bool:
-        return int(self._library.RDXClipboardBooksIsFrontmost()) == 1
-
     def copied_text(self) -> SelectionEvent:
         output = ctypes.c_void_p()
         length = ctypes.c_size_t()
         result = int(
-            self._library.RDXClipboardCopyBooksText(
+            self._library.RDXClipboardCopiedText(
                 ctypes.byref(output),
                 ctypes.byref(length),
             )
@@ -244,7 +238,7 @@ class MacOSClipboardReadingSource:
 
 
 class ClipboardReadingWatcher(QObject):
-    """Read newly copied Apple Books text, but only while switched on."""
+    """Read newly copied text from any app, but only while switched on."""
 
     selectionReceived = Signal(str)
     statusReceived = Signal(str)
@@ -260,7 +254,6 @@ class ClipboardReadingWatcher(QObject):
         self._source = source
         self._enabled = False
         self._change_count: int | None = None
-        self._books_was_frontmost = False
         self._timer = QTimer(self)
         self._timer.setInterval(interval_ms)
         self._timer.timeout.connect(self.poll)
@@ -296,7 +289,6 @@ class ClipboardReadingWatcher(QObject):
         """Treat the current clipboard as already seen."""
 
         source = self._resolve_source()
-        self._books_was_frontmost = False
         self._change_count = None if source is None else source.change_count()
 
     @Slot()
@@ -306,24 +298,15 @@ class ClipboardReadingWatcher(QObject):
         source = self._resolve_source()
         if source is None:
             return
-        books_is_frontmost = source.books_is_frontmost()
-        books_was_frontmost = self._books_was_frontmost
-        self._books_was_frontmost = books_is_frontmost
         change_count = source.change_count()
         if change_count == self._change_count:
             return
-        # Whatever this copy was, it has now been seen; a later switch back to
-        # Apple Books must not make ReadEase read it belatedly.
+        # Seen once, whatever it was: a copy is never read twice.
         self._change_count = change_count
-        # macOS does not record who wrote to the clipboard, so the closest
-        # honest question is whether Apple Books was in front for the whole
-        # stretch this copy could have happened in. If it was not, do not even
-        # ask the native side for the text.
-        if not (books_is_frontmost and books_was_frontmost):
-            return
         event = source.copied_text()
-        # Copying in any other app is silence, not an error to dismiss: the
-        # person did not ask ReadEase to read their password manager.
+        # Anything the native side refuses - an item a password manager marked
+        # as its own, a copy with no text in it - is silence rather than an
+        # error to dismiss, because the person was copying, not asking.
         if event.kind is SelectionEventKind.TEXT and event.text:
             self.selectionReceived.emit(event.text)
 

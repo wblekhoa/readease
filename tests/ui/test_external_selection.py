@@ -18,18 +18,15 @@ from PySide6.QtWidgets import QApplication
 class FakeClipboardSource:
     """Stand in for the native pasteboard without touching the real one."""
 
-    def __init__(self, *, count: int, text: str | None, books_frontmost: bool = True):
+    def __init__(self, *, count: int, text: str | None):
         self.count = count
         self.text = text
-        self.books_frontmost = books_frontmost
         self.result_kind = None
+        self.refused_text = None
         self.text_reads = 0
 
     def change_count(self) -> int:
         return self.count
-
-    def books_is_frontmost(self) -> bool:
-        return self.books_frontmost
 
     def copied_text(self):
         from vieneu_reader.integrations.macos_selection import (
@@ -39,7 +36,7 @@ class FakeClipboardSource:
 
         self.text_reads += 1
         if self.result_kind is not None:
-            return SelectionEvent(self.result_kind)
+            return SelectionEvent(self.result_kind, self.refused_text)
         if self.text is None:
             return SelectionEvent(SelectionEventKind.NO_SELECTION)
         return SelectionEvent(SelectionEventKind.TEXT, self.text)
@@ -420,9 +417,13 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         self.assertEqual(selections, ["Đoạn vừa sao chép"])
         watcher.close()
 
-    def test_read_on_copy_stays_silent_for_anything_but_apple_books(self) -> None:
+    def test_a_refused_copy_is_silence_rather_than_an_error(self) -> None:
+        """The native side still refuses what a password manager marked. The
+        watcher must swallow that quietly - the person was copying, not asking
+        ReadEase for anything."""
         module = self._module()
-        source = FakeClipboardSource(count=1, text=None)
+        source = FakeClipboardSource(count=1, text="mật khẩu bí mật")
+        source.result_kind = module.SelectionEventKind.CONCEALED_SOURCE
         watcher = module.ClipboardReadingWatcher(source=source)
         selections = []
         statuses = []
@@ -431,14 +432,10 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         watcher.set_enabled(True)
 
         source.count = 2
-        source.result_kind = module.SelectionEventKind.UNSUPPORTED_SOURCE
         watcher.poll()
 
-        # Copying a password somewhere else must be silent, not an error the
-        # person has to dismiss.
         self.assertEqual(selections, [])
         self.assertEqual(statuses, [])
-        watcher.close()
 
     def test_restoring_the_clipboard_after_a_hotkey_is_not_a_new_copy(self) -> None:
         module = self._module()
@@ -517,61 +514,75 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         finally:
             bridge.close()
 
-    def test_copy_made_while_another_app_was_in_front_is_not_read(self) -> None:
+    def test_a_refusal_is_obeyed_even_if_it_arrives_with_text(self) -> None:
+        """The refusal is the verdict, not the emptiness of the payload. If the
+        native side ever answers 'concealed' while still carrying the string,
+        speaking it because a string is there would read the very thing that
+        was refused."""
         module = self._module()
-        source = FakeClipboardSource(count=1, text="mật khẩu bí mật")
+        source = FakeClipboardSource(count=1, text=None)
+        source.result_kind = module.SelectionEventKind.CONCEALED_SOURCE
+        source.refused_text = "mật khẩu ngân hàng"
         watcher = module.ClipboardReadingWatcher(source=source)
         selections = []
         watcher.selectionReceived.connect(selections.append)
         watcher.set_enabled(True)
 
-        # Settle into reading a book: two consecutive samples with Books up.
-        watcher.poll()
+        source.count = 2
         watcher.poll()
 
-        # The person switches away, copies a password, and switches back
-        # before the next tick. Apple Books is in front by the time ReadEase
-        # looks, but it was not in front at the check before, so the copy is
-        # not attributed to Apple Books and must not be read.
-        source.books_frontmost = False
+        self.assertEqual(selections, [])
+
+    def test_a_copy_made_in_any_app_is_read(self) -> None:
+        """Read-on-copy follows the copy wherever it was made, so text copied
+        in a browser reaches the voice exactly like text copied in a book."""
+        module = self._module()
+        source = FakeClipboardSource(count=1, text="Đoạn copy ở trình duyệt")
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        watcher.selectionReceived.connect(selections.append)
+        watcher.set_enabled(True)
+
         watcher.poll()
+        self.assertEqual(selections, [])
+
         source.count = 2
-        source.books_frontmost = True
+        watcher.poll()
+
+        self.assertEqual(selections, ["Đoạn copy ở trình duyệt"])
+
+        # The same copy is never read a second time.
+        watcher.poll()
+        self.assertEqual(selections, ["Đoạn copy ở trình duyệt"])
+
+    def test_a_copy_made_while_the_switch_was_off_is_not_read_later(self) -> None:
+        """Switching off must mean off. A copy made in that gap is history by
+        the time the switch comes back, and speaking it then would surprise
+        the person who deliberately turned the feature off."""
+        module = self._module()
+        source = FakeClipboardSource(count=1, text="nội dung copy lúc đang tắt")
+        watcher = module.ClipboardReadingWatcher(source=source)
+        selections = []
+        watcher.selectionReceived.connect(selections.append)
+        watcher.set_enabled(True)
+        watcher.poll()
+
+        watcher.set_enabled(False)
+        source.count = 2
+        watcher.poll()
+        self.assertEqual(selections, [])
+
+        watcher.set_enabled(True)
+        watcher.poll()
         watcher.poll()
 
         self.assertEqual(selections, [])
         self.assertEqual(source.text_reads, 0)
 
-        # A copy that really is made in Apple Books still reads.
+        # A copy made after it is back on still reads.
         source.count = 3
         watcher.poll()
-
-        self.assertEqual(selections, ["mật khẩu bí mật"])
-        watcher.close()
-
-    def test_a_copy_seen_while_away_is_not_read_when_books_returns(self) -> None:
-        module = self._module()
-        source = FakeClipboardSource(count=1, text="nội dung của app khác")
-        watcher = module.ClipboardReadingWatcher(source=source)
-        selections = []
-        watcher.selectionReceived.connect(selections.append)
-        watcher.set_enabled(True)
-        watcher.poll()
-        watcher.poll()
-
-        # Clipboard moves while another app is clearly in front.
-        source.books_frontmost = False
-        source.count = 2
-        watcher.poll()
-        self.assertEqual(selections, [])
-
-        # Coming back to Apple Books must not read that earlier copy.
-        source.books_frontmost = True
-        watcher.poll()
-        watcher.poll()
-
-        self.assertEqual(selections, [])
-        self.assertEqual(source.text_reads, 0)
+        self.assertEqual(selections, ["nội dung copy lúc đang tắt"])
         watcher.close()
 
     def test_two_refused_shortcuts_stop_instead_of_relaunching_forever(self) -> None:

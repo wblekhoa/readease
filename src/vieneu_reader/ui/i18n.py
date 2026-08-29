@@ -336,20 +336,20 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Open macOS Accessibility settings for ReadEase",
     ),
     "external.read_on_copy": (
-        "Đọc ngay khi sao chép trong Apple Books",
-        "Read as soon as you copy in Apple Books",
+        "Đọc ngay khi sao chép, ở mọi ứng dụng",
+        "Read as soon as you copy, in any app",
     ),
     "external.read_on_copy_accessible": (
-        "Bật hoặc tắt việc đọc ngay khi bạn sao chép trong Apple Books",
-        "Turn reading on copy in Apple Books on or off",
+        "Bật hoặc tắt việc đọc ngay khi bạn sao chép ở bất kỳ ứng dụng nào",
+        "Turn reading on copy in any app on or off",
     ),
     "external.privacy_note": (
         "ReadEase chỉ xử lý khi bạn bấm phím tắt: lúc đó nó gửi lệnh sao chép vào ứng dụng đang ở trước, đọc phần bạn vừa bôi đen, rồi trả clipboard về nguyên trạng. Nội dung này không được lưu vào thư viện và không rời khỏi máy. Vì phím tắt dùng được ở mọi ứng dụng, hãy chắc chắn phần đang bôi đen đúng là thứ bạn muốn nghe. Mục đọc-khi-sao-chép đang tắt, nên ReadEase không xem clipboard và không theo dõi màn hình ở chế độ nền.",
         "ReadEase acts only when you press the shortcut: it sends a copy command to whichever app is in front, reads what you had selected, then puts your clipboard back. That text is never added to the library and never leaves this Mac. Because the shortcut works in every app, make sure what you have selected is what you want read aloud. Read-on-copy is off, so ReadEase does not look at your clipboard and does not monitor your screen in the background.",
     ),
     "external.privacy_note_on": (
-        "Mục đọc-khi-sao-chép đang bật: ReadEase xem bộ đếm thay đổi của clipboard vài lần mỗi giây, chỉ đọc khi Apple Books ở phía trước cả ở lần kiểm tra thấy nội dung mới lẫn lần kiểm tra ngay trước đó, và bỏ qua mục được đánh dấu là ẩn — cách trình quản lý mật khẩu yêu cầu công cụ clipboard đừng đụng tới. macOS không ghi lại ứng dụng nào đã sao chép, nên nếu bạn sao chép ở ứng dụng khác rồi chuyển sang Apple Books trong cùng một phần giây, nội dung đó vẫn có thể bị đọc. Tắt công tắc này để ReadEase ngừng xem clipboard.",
-        "Read-on-copy is on: ReadEase checks the clipboard's change counter a few times a second, reads only when Apple Books is in front both at the check that notices new text and at the check before it, and skips items marked concealed — how password managers ask clipboard tools to leave them alone. macOS does not record which app did the copying, so text you copy elsewhere and follow with a switch to Apple Books inside the same fraction of a second could still be read. Turn this switch off and ReadEase stops looking at the clipboard.",
+        "Mục đọc-khi-sao-chép đang bật: ReadEase xem bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc nội dung bạn vừa sao chép, ở bất kỳ ứng dụng nào. Nghĩa là mọi thứ bạn Command-C đều được đọc lên, kể cả khi bạn sao chép để dán chứ không phải để nghe. ReadEase bỏ qua mục được đánh dấu là ẩn — cách trình quản lý mật khẩu yêu cầu công cụ clipboard đừng đụng tới — nhưng nó không nhận ra được mật khẩu hay thông tin riêng tư nằm trong văn bản thường. Nếu điều đó không ổn với bạn, hãy tắt công tắc này và dùng phím tắt để chủ động chọn từng lần.",
+        "Read-on-copy is on: ReadEase checks the clipboard's change counter a few times a second and reads whatever you just copied, in any app. That means everything you press Command-C on is spoken, including copies you made to paste rather than to hear. ReadEase skips items marked concealed — how password managers ask clipboard tools to leave them alone — but it cannot recognise a password or anything private inside ordinary text. If that is not what you want, turn this switch off and use the shortcut, which asks you each time.",
     ),
     "external.recent_title": (
         "Đã quét đọc trong phiên",
