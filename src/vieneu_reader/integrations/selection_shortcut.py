@@ -90,6 +90,16 @@ class Shortcut:
 
 DEFAULT_SHORTCUT = Shortcut(
     key_code=KEY_CODES["R"],
+    modifiers=OPTION_KEY | CMD_KEY,
+)
+
+# The first default asked for three modifiers at once, which is a lot of hand
+# for something meant to be pressed mid-sentence. Anyone still on it never
+# chose it - the app saved it for them the first time it registered - so they
+# are moved to the shorter one. A combination someone picked themselves is
+# never touched.
+LEGACY_DEFAULT_SHORTCUT = Shortcut(
+    key_code=KEY_CODES["R"],
     modifiers=CONTROL_KEY | OPTION_KEY | CMD_KEY,
 )
 
@@ -106,7 +116,9 @@ class ShortcutPreferenceStore:
 
     def load(self) -> Shortcut:
         stored = Shortcut.from_payload(load_settings(self.path).get(SETTINGS_KEY))
-        return stored if stored is not None else DEFAULT_SHORTCUT
+        if stored is None or stored == LEGACY_DEFAULT_SHORTCUT:
+            return DEFAULT_SHORTCUT
+        return stored
 
     def save(self, shortcut: Shortcut) -> bool:
         return update_settings(self.path, {SETTINGS_KEY: shortcut.to_payload()})

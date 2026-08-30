@@ -8,7 +8,9 @@
 
 enum {
     RDXDefaultHotKeyCode = kVK_ANSI_R,
-    RDXDefaultHotKeyModifiers = controlKey | optionKey | cmdKey,
+    // Matches DEFAULT_SHORTCUT on the Python side; only used when the helper
+    // is started by hand, since the app always passes the chosen combination.
+    RDXDefaultHotKeyModifiers = optionKey | cmdKey,
     RDXSupportedHotKeyModifiers = controlKey | optionKey | shiftKey | cmdKey,
     // Shift alone still leaves an ordinary typing key, and a global hotkey on
     // one would swallow that key in every app.

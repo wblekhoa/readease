@@ -55,7 +55,7 @@ int main(void) {
         // ReadEase pins the same two numbers on the Python side, so both
         // layers describe one shortcut contract independently.
         RDXAssert(defaults.keyCode == 15, @"default key code is kVK_ANSI_R");
-        RDXAssert(defaults.modifiers == 6400, @"default mask is control+option+command");
+        RDXAssert(defaults.modifiers == 2304, @"default mask is option+command");
 
         const char *chosen[] = {"bridge", "38", "4352"};
         RDXHotKeyConfiguration parsed = RDXParseHotKeyArguments(3, chosen);

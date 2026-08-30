@@ -32,13 +32,21 @@ from vieneu_reader.ui.shortcut_recorder import (
 
 
 class ShortcutValueTests(unittest.TestCase):
-    def test_default_matches_the_native_helper_contract(self) -> None:
-        # The native helper compiles kVK_ANSI_R and controlKey|optionKey|cmdKey
-        # into these exact numbers; both layers pin them independently.
-        self.assertEqual(DEFAULT_SHORTCUT.key_code, 15)
-        self.assertEqual(DEFAULT_SHORTCUT.modifiers, 6400)
+    def test_modifier_values_match_the_native_helper_contract(self) -> None:
+        # The helper is handed these numbers and passes them to Carbon, so the
+        # two layers have to agree on what each modifier is worth. This is
+        # about the constants, not about which of them the default happens to
+        # use.
+        self.assertEqual(CONTROL_KEY, 0x1000)
+        self.assertEqual(OPTION_KEY, 0x0800)
+        self.assertEqual(CMD_KEY, 0x0100)
         self.assertEqual(CONTROL_KEY | OPTION_KEY | CMD_KEY, 6400)
-        self.assertEqual(DEFAULT_SHORTCUT.label, "Control + Option + Command + R")
+
+    def test_the_default_asks_for_two_modifiers_not_three(self) -> None:
+        """Three modifiers is a lot of hand for something pressed mid-read."""
+        self.assertEqual(DEFAULT_SHORTCUT.key_code, 15)
+        self.assertEqual(DEFAULT_SHORTCUT.modifiers, OPTION_KEY | CMD_KEY)
+        self.assertEqual(DEFAULT_SHORTCUT.label, "Option + Command + R")
 
     def test_labels_read_in_the_macos_order(self) -> None:
         shortcut = Shortcut(
@@ -94,6 +102,39 @@ class ShortcutPreferenceStoreTests(unittest.TestCase):
                 },
             )
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_the_old_three_modifier_default_is_moved_to_the_short_one(self) -> None:
+        """The app saved the first default into settings the moment it
+        registered it, so nobody on it ever chose it. Leaving it there would
+        mean the shorter default only ever reached fresh installs."""
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            store = ShortcutPreferenceStore(path)
+            path.write_text(
+                '{"selection_shortcut": {"key_code": 15, "modifiers": 6400}}',
+                encoding="utf-8",
+            )
+
+            self.assertEqual(store.load(), DEFAULT_SHORTCUT)
+            self.assertEqual(store.load().label, "Option + Command + R")
+
+    def test_a_combination_someone_chose_is_never_moved(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            store = ShortcutPreferenceStore(path)
+            for chosen in (
+                Shortcut(key_code=38, modifiers=CONTROL_KEY | CMD_KEY),
+                # Same three modifiers as the old default, but a different key:
+                # a real choice, and it has to survive.
+                Shortcut(
+                    key_code=38,
+                    modifiers=CONTROL_KEY | OPTION_KEY | CMD_KEY,
+                ),
+            ):
+                with self.subTest(chosen=chosen.label):
+                    self.assertTrue(store.save(chosen))
+
+                    self.assertEqual(store.load(), chosen)
 
     def test_unusable_stored_shortcut_falls_back_to_the_default(self) -> None:
         with TemporaryDirectory() as directory:

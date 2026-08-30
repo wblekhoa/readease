@@ -32,50 +32,70 @@ class _InstallerHarness:
     """Runs the real installer against faked system tools."""
 
     @staticmethod
-    def _group_still_holds_someone(group: int) -> bool:
-        """Is anything from the run still in its process group?
+    def _session_members(session: int) -> list[int]:
+        """Every process still in the run's session, whatever its group.
 
-        The installer signals the group microseconds before it exits, and the
-        last of them is not reaped the instant it does - so give them a moment
-        before calling it a leak. Half a second cannot hide a ten-minute one.
+        The installer gives each watched step a process group of its own, so
+        its own group no longer sees them; the session is the one boundary a
+        step it started cannot get out of.
+        """
+        listing = subprocess.run(
+            ["ps", "-axo", "pid="],
+            capture_output=True, text=True, check=False,
+        )
+        alive: list[int] = []
+        for entry in listing.stdout.split():
+            try:
+                pid = int(entry)
+                if os.getsid(pid) == session:
+                    alive.append(pid)
+            except (ValueError, ProcessLookupError, PermissionError):
+                continue
+        return alive
+
+    def _members_persist(self, session: int) -> bool:
+        """Did anything the installer started outlive the installer?
+
+        It signals a step microseconds before it exits, and the last of them
+        is not reaped the instant it does - so give them a moment before
+        calling it a leak. Half a second cannot hide a ten-minute one.
         """
         deadline = time.monotonic() + 0.5
-        while True:
-            try:
-                os.killpg(group, 0)
-            except ProcessLookupError:
-                return False
+        while self._session_members(session):
             if time.monotonic() >= deadline:
                 return True
             time.sleep(0.02)
+        return False
 
-    def _reap_installer_group(self, process: subprocess.Popen) -> None:
+    def _reap_installer_session(self, process: subprocess.Popen) -> None:
         """Leave nothing of the installer alive once the run is over.
 
         A step that is given up on keeps whatever it started, so each run gets
-        a process group of its own and the whole tree is swept from here -
-        without the sweep ever reaching the test runner. But tidying up here
-        would also hide whether the installer had already done it, so take
-        that reading first: the leader is reaped by now, and anything still
-        answering in the group is something the installer left behind.
+        a session of its own and the whole tree is swept from here - without
+        the sweep ever reaching the test runner. Sweeping would also hide
+        whether the installer had already done it, so take that reading first:
+        the leader is reaped by now, and anything still answering inside the
+        session is something the installer left behind.
         """
-        group = process.pid  # start_new_session makes the child its own leader
+        session = process.pid  # start_new_session makes the child the leader
         self.installer_left_survivors = (
-            process.poll() is not None and self._group_still_holds_someone(group)
+            process.poll() is not None and self._members_persist(session)
         )
-        try:
-            os.killpg(group, signal.SIGKILL)
-        except (PermissionError, ProcessLookupError):
-            pass
-        process.wait()  # reap the leader, or the group outlives every member
+        if process.poll() is None:  # the run was abandoned rather than finished
+            process.kill()
+        process.wait()  # reap the leader, or its own ghost haunts the sweep
         for _ in range(100):
-            try:
-                os.killpg(group, 0)
-            except ProcessLookupError:
-                self.installer_group_emptied = True
+            survivors = self._session_members(session)
+            if not survivors:
+                self.installer_session_emptied = True
                 return
+            for pid in survivors:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except (PermissionError, ProcessLookupError):
+                    pass
             time.sleep(0.05)
-        self.installer_group_emptied = False
+        self.installer_session_emptied = False
 
     def _run_detached(
         self,
@@ -97,7 +117,7 @@ class _InstallerHarness:
         try:
             stdout, stderr = process.communicate()
         finally:
-            self._reap_installer_group(process)
+            self._reap_installer_session(process)
         return subprocess.CompletedProcess(
             command,
             process.returncode,
@@ -149,7 +169,7 @@ class _InstallerHarness:
             returncode = process.wait(timeout=60)
         finally:
             os.close(master)
-            self._reap_installer_group(process)
+            self._reap_installer_session(process)
         return subprocess.CompletedProcess(
             command,
             returncode,
@@ -819,7 +839,7 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertEqual(survivors.stdout.strip(), "", "the stuck step was left running")
         # pgrep can only see the stub; the shells around it carry no marker.
         self.assertTrue(
-            self.installer_group_emptied,
+            self.installer_session_emptied,
             "the installer left processes of its own behind",
         )
 

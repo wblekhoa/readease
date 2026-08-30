@@ -986,7 +986,7 @@ class ReaderWindowTests(unittest.TestCase):
             "externalReadingShortcut",
         )
         self.assertIsNotNone(shortcut)
-        self.assertEqual(shortcut.text(), "Control + Option + Command + R")
+        self.assertEqual(shortcut.text(), "Option + Command + R")
         self.assertTrue(window.feature_navigation.isTabEnabled(2))
         self.assertFalse(window.paste_text_view.read_button.isEnabled())
 
@@ -1052,10 +1052,10 @@ class ReaderWindowTests(unittest.TestCase):
         )
         self.application.processEvents()
 
-        self.assertEqual(label.text(), "Control + Option + Command + R")
+        self.assertEqual(label.text(), "Option + Command + R")
         self.assertEqual(
             label.accessibleName(),
-            "Read-selection shortcut: Control + Option + Command + R",
+            "Read-selection shortcut: Option + Command + R",
         )
         self.assertEqual(recorder.text(), "Change shortcut")
 
