@@ -131,9 +131,6 @@ class ExternalReadingView(QWidget):
         guide.addLayout(permission_row)
 
 
-        self.privacy_note = QLabel()
-        self.privacy_note.setWordWrap(True)
-        guide.addWidget(self.privacy_note)
         guide.addStretch(1)
 
         recent = QVBoxLayout()
@@ -253,7 +250,6 @@ class ExternalReadingView(QWidget):
         self.permission_button.setAccessibleName(
             self._localizer.text("external.open_settings_accessible")
         )
-        self.privacy_note.setText(self._localizer.text("external.privacy_note"))
         self.recent_title.setText(self._localizer.text("external.recent_title"))
         self.history_empty.setText(self._localizer.text("external.history_empty"))
         self.history_list.setAccessibleName(

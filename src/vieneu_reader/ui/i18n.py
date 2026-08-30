@@ -339,10 +339,6 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Mở cài đặt quyền Trợ năng của macOS cho ReadEase",
         "Open macOS Accessibility settings for ReadEase",
     ),
-    "external.privacy_note": (
-        "ReadEase chỉ đọc khi bạn bấm phím tắt — không xem clipboard của bạn.",
-        "ReadEase reads only when you press the shortcut - it is not watching your clipboard.",
-    ),
     "external.recent_title": (
         "Đã quét đọc trong phiên",
         "Read from a selection this session",
