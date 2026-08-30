@@ -29,6 +29,7 @@ step() {
     if [[ "$index" -le "$1" ]]; then filled+="#"; else empty+="."; fi
   done
   printf '\n  [%s%s]  step %s of %s\n' "$filled" "$empty" "$1" "$TOTAL_STEPS"
+  printf '  %s\n' "$2"
 }
 
 # Only ask when a person is actually watching. A double-click gets a terminal;
@@ -61,26 +62,44 @@ elapsed_label() {
 # for five minutes reads as a hang, not as work - so keep the full output in a
 # log, show a clock and the latest line, and print the log if the step fails.
 run_watched() {
-  local label="$1" log="$2" limit="$3"
+  local label="$1" log="$2" limit="$3" expected="${4:-}"
   shift 3
+  [[ "$#" -gt 0 ]] && shift
+  # Minutes of a spinner with no idea how many are left is what makes a long
+  # step feel broken, so the clock says what it is counting towards.
+  local clock_suffix=""
+  [[ -n "$expected" ]] && clock_suffix=" of ~$expected"
+  local report_every="${READEASE_PROGRESS_INTERVAL:-30}"
   # A step that cannot finish must not wait forever in silence: that is
   # exactly how an install appears to freeze with nothing to act on.
   limit="${READEASE_STEP_TIMEOUT:-$limit}"
   local worker start waited status=0 spin=0 tail_line last_report=0
   local frames='|/-\'
 
-  "$@" >"$log" 2>&1 &
+  # Job control for the launch alone, so the step is its own process group.
+  # Two of the three steps are shell functions, so "$!" is a subshell and the
+  # real work - the compiler and everything it starts - runs underneath it;
+  # signalling that one pid leaves all of them running. Job control also stops
+  # handing an async job /dev/null for stdin, so do that by hand: the steps
+  # have always read EOF, and one inheriting the terminal would be stopped.
+  set -m
+  "$@" </dev/null >"$log" 2>&1 &
   worker=$!
-  trap 'kill "$worker" 2>/dev/null || true' INT TERM
+  set +m
+  # "-$worker" is the group, not the leader, and the signal has to be named:
+  # "kill -$worker" would read the pid as a signal number.
+  trap 'kill -TERM -"$worker" 2>/dev/null || true' INT TERM
   start="$(date +%s)"
 
   while kill -0 "$worker" 2>/dev/null; do
     waited=$(( $(date +%s) - start ))
     if [[ "$waited" -ge "$limit" ]]; then
-      kill "$worker" 2>/dev/null || true
-      sleep 2
-      kill -9 "$worker" 2>/dev/null || true
-      wait "$worker" 2>/dev/null || true
+      # Everything the step started, or a compile that stopped making
+      # progress keeps burning a friend's machine after this says it stopped.
+      # Grouped and quietened because the shell announces a signalled job by
+      # itself, and that notice would land inside the explanation below.
+      { kill -TERM -"$worker"; sleep 2; kill -KILL -"$worker"; wait "$worker"; } \
+        2>/dev/null || true
       trap - INT TERM
       [[ "$INTERACTIVE" -eq 1 ]] && printf '\r%*s\r' 80 ''
       printf '  x  %s gave up after %s\n' "$label" "$(elapsed_label "$waited")" >&2
@@ -91,15 +110,18 @@ run_watched() {
     fi
     if [[ "$INTERACTIVE" -eq 1 ]]; then
       tail_line="$(tail -n 1 "$log" 2>/dev/null | tr -d '\r' | cut -c1-46)"
-      printf '\r  %s  %s  %s  %-46s' \
-        "${frames:$spin:1}" "$(elapsed_label "$waited")" "$label" "$tail_line"
+      printf '\r  %s  %s%s  %s  %-46s' \
+        "${frames:$spin:1}" "$(elapsed_label "$waited")" "$clock_suffix" \
+        "$label" "$tail_line"
       spin=$(( (spin + 1) % 4 ))
       sleep 0.5
     else
       # No terminal to redraw: a periodic line still proves it is alive.
-      if [[ $(( waited - last_report )) -ge 30 ]]; then
+      if [[ $(( waited - last_report )) -ge "$report_every" ]]; then
         last_report="$waited"
-        printf '  ... %s still running, %s elapsed\n' "$label" "$(elapsed_label "$waited")"
+        printf '  ... %s still running, %s elapsed%s\n' \
+          "$label" "$(elapsed_label "$waited")" \
+          "${expected:+ of ~$expected}"
       fi
       sleep 1
     fi
@@ -512,7 +534,7 @@ fi
 step 3 "Creating a clean source export"
 
 export_root="$work_root/ReadEase-source"
-run_watched "exporting a clean copy of the source" "$work_root/export.log" 600 \
+run_watched "exporting a clean copy of the source" "$work_root/export.log" 600 "1 min" \
   "$uv_bin" run \
   --isolated \
   --no-project \
@@ -528,10 +550,10 @@ build_in_export() { ( cd "$export_root" && ./scripts/build-app.sh ); }
 install_in_export() { ( cd "$export_root" && ./scripts/install-app.sh ); }
 
 step 4 "Compiling the app - the longest step, usually 10-20 minutes"
-run_watched "compiling" "$work_root/build.log" 5400 build_in_export
+run_watched "compiling" "$work_root/build.log" 5400 "10-20 min" build_in_export
 
 step 5 "Verifying and installing into $install_root - runs the full test suite, 3-5 minutes"
-run_watched "verifying and installing" "$work_root/install.log" 2700 install_in_export
+run_watched "verifying and installing" "$work_root/install.log" 2700 "3-5 min" install_in_export
 
 completed=1
 printf 'READEASE_SOURCE_INSTALL PASS target=%s/ReadEase.app\n' "$install_root"

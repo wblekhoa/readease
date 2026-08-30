@@ -5,15 +5,22 @@ import pty
 from pathlib import Path
 import select
 import shutil
+import signal
 import stat
 import subprocess
 from tempfile import TemporaryDirectory
+import time
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "scripts" / "install-from-source.sh"
 DOUBLE_CLICK_INSTALLER = ROOT / "Install ReadEase.command"
+
+# The stub that pretends to hang has to be findable by name once the run is
+# over, and `exec` erases a shell comment - so the marker has to live in the
+# process's own argv. The pid keeps two suites at once off each other's probe.
+HANG_PROBE = f"readease-installer-hang-probe-{os.getpid()}"
 
 
 def _write_executable(path: Path, content: str) -> None:
@@ -25,7 +32,81 @@ class _InstallerHarness:
     """Runs the real installer against faked system tools."""
 
     @staticmethod
+    def _group_still_holds_someone(group: int) -> bool:
+        """Is anything from the run still in its process group?
+
+        The installer signals the group microseconds before it exits, and the
+        last of them is not reaped the instant it does - so give them a moment
+        before calling it a leak. Half a second cannot hide a ten-minute one.
+        """
+        deadline = time.monotonic() + 0.5
+        while True:
+            try:
+                os.killpg(group, 0)
+            except ProcessLookupError:
+                return False
+            if time.monotonic() >= deadline:
+                return True
+            time.sleep(0.02)
+
+    def _reap_installer_group(self, process: subprocess.Popen) -> None:
+        """Leave nothing of the installer alive once the run is over.
+
+        A step that is given up on keeps whatever it started, so each run gets
+        a process group of its own and the whole tree is swept from here -
+        without the sweep ever reaching the test runner. But tidying up here
+        would also hide whether the installer had already done it, so take
+        that reading first: the leader is reaped by now, and anything still
+        answering in the group is something the installer left behind.
+        """
+        group = process.pid  # start_new_session makes the child its own leader
+        self.installer_left_survivors = (
+            process.poll() is not None and self._group_still_holds_someone(group)
+        )
+        try:
+            os.killpg(group, signal.SIGKILL)
+        except (PermissionError, ProcessLookupError):
+            pass
+        process.wait()  # reap the leader, or the group outlives every member
+        for _ in range(100):
+            try:
+                os.killpg(group, 0)
+            except ProcessLookupError:
+                self.installer_group_emptied = True
+                return
+            time.sleep(0.05)
+        self.installer_group_emptied = False
+
+    def _run_detached(
+        self,
+        command: list[str],
+        *,
+        cwd: Path,
+        env: dict[str, str],
+    ) -> subprocess.CompletedProcess[str]:
+        """Run the installer in a process group of its own, then empty it."""
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = process.communicate()
+        finally:
+            self._reap_installer_group(process)
+        return subprocess.CompletedProcess(
+            command,
+            process.returncode,
+            stdout,
+            stderr,
+        )
+
     def _run_on_a_terminal(
+        self,
         command: list[str],
         *,
         cwd: Path,
@@ -45,24 +126,30 @@ class _InstallerHarness:
             stdout=slave,
             stderr=slave,
             close_fds=True,
+            # `-t 0` only asks whether stdin is a tty, which a session of its
+            # own does not change - and the group is what makes the sweep safe.
+            start_new_session=True,
         )
         os.close(slave)
-        if answers:
-            os.write(master, answers.encode("utf-8"))
-        chunks: list[bytes] = []
-        while True:
-            readable, _, _ = select.select([master], [], [], 60)
-            if not readable:
-                break
-            try:
-                piece = os.read(master, 4096)
-            except OSError:
-                break
-            if not piece:
-                break
-            chunks.append(piece)
-        returncode = process.wait(timeout=60)
-        os.close(master)
+        try:
+            if answers:
+                os.write(master, answers.encode("utf-8"))
+            chunks: list[bytes] = []
+            while True:
+                readable, _, _ = select.select([master], [], [], 60)
+                if not readable:
+                    break
+                try:
+                    piece = os.read(master, 4096)
+                except OSError:
+                    break
+                if not piece:
+                    break
+                chunks.append(piece)
+            returncode = process.wait(timeout=60)
+        finally:
+            os.close(master)
+            self._reap_installer_group(process)
         return subprocess.CompletedProcess(
             command,
             returncode,
@@ -89,6 +176,7 @@ class _InstallerHarness:
         quarantined: bool = False,
         tty_answers: str | None = None,
         app_running: bool = False,
+        slow_steps: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], str]:
         with TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -158,6 +246,9 @@ for name in ('build-app.sh', 'install-app.sh'):
                 ("install-app.sh", "install"),
             ):
                 body = f'#!/bin/sh\nprintf "{marker}\\n" >> "$READEASE_TEST_LOG"\n'
+                if slow_steps and name in ("build-app.sh", "install-app.sh"):
+                    # Long enough for the keep-alive tick to be observed.
+                    body += "sleep 1\n"
                 if receipts:
                     marker_name = "BUILD_APP" if name == "build-app.sh" else "INSTALL_APP"
                     body += (
@@ -165,9 +256,13 @@ for name in ('build-app.sh', 'install-app.sh'):
                         f'echo "{marker_name} PASS target=/somewhere"\n'
                     )
                 if build_hangs and name == "build-app.sh":
+                    # A symlink, so the marker is argv[0] of the real
+                    # /bin/sleep: a copy of that binary is killed on sight.
+                    probe = fake_bin / HANG_PROBE
+                    probe.symlink_to("/bin/sleep")
                     body += (
                         'echo "compiling something"\n'
-                        'exec sleep 600 # readease-installer-hang-probe\n'
+                        f'exec "{probe}" 600\n'
                     )
                 if build_fails and name == "build-app.sh":
                     # What a real compile failure looks like: noise, then a reason.
@@ -289,30 +384,32 @@ exit 2
                 "READEASE_TEST_LOG": str(action_log),
                 "READEASE_INSTALL_ROOT": str(install_root),
                 **({"READEASE_STEP_TIMEOUT": "4"} if build_hangs else {}),
+                **({"READEASE_PROGRESS_INTERVAL": "0"} if slow_steps else {}),
                 "TMPDIR": str(temp),
             }
-            if tty_answers is None:
-                completed = subprocess.run(
-                    [scripts / INSTALLER.name, *arguments],
-                    cwd=project,
-                    env=environment,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-            else:
-                completed = self._run_on_a_terminal(
-                    [str(scripts / INSTALLER.name), *arguments],
-                    cwd=project,
-                    env=environment,
-                    answers=tty_answers,
-                )
-            if stand_in is not None:
-                # Whether the app really survived, not merely whether the
-                # installer said so - a message is not an effect.
-                self.app_survived = stand_in.poll() is None
-                stand_in.kill()
-                stand_in.wait()
+            try:
+                if tty_answers is None:
+                    completed = self._run_detached(
+                        [str(scripts / INSTALLER.name), *arguments],
+                        cwd=project,
+                        env=environment,
+                    )
+                else:
+                    completed = self._run_on_a_terminal(
+                        [str(scripts / INSTALLER.name), *arguments],
+                        cwd=project,
+                        env=environment,
+                        answers=tty_answers,
+                    )
+            finally:
+                # A failed assertion must not strand it either, so this runs
+                # whatever the run did.
+                if stand_in is not None:
+                    # Whether the app really survived, not merely whether the
+                    # installer said so - a message is not an effect.
+                    self.app_survived = stand_in.poll() is None
+                    stand_in.kill()
+                    stand_in.wait()
             actions = action_log.read_text(encoding="utf-8") if action_log.exists() else ""
             return completed, actions
 
@@ -519,6 +616,60 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
                 completed.stdout,
             )
 
+    def test_a_long_step_says_how_long_it_should_take(self) -> None:
+        """Ten minutes of a spinner with no idea how many are left is what
+        makes a healthy compile read as a hang. The estimate is printed once
+        with the step banner, which scrolls away; the clock has to carry it."""
+        completed, _ = self._run_harness(slow_steps=True)
+
+        # The words have to survive BELOW the bar: the marker line above it is
+        # for logs, and splitting there would find the description either way.
+        after_the_bar = completed.stdout.split("[####.]  step 4 of 5")[-1]
+        self.assertTrue(
+            after_the_bar.lstrip().startswith(
+                "Compiling the app - the longest step, usually 10-20 minutes"
+            ),
+            completed.stdout,
+        )
+        # Every long step declares its own estimate at the real call site.
+        for label, expected in (
+            ("compiling", "10-20 min"),
+            ("verifying and installing", "3-5 min"),
+        ):
+            self.assertRegex(
+                completed.stdout,
+                rf"{label} still running, \d+:\d\d elapsed of ~{expected}",
+                completed.stdout,
+            )
+    def test_the_running_clock_says_what_it_is_counting_towards(self) -> None:
+        """The banner scrolls away within seconds; the spinner is what someone
+        stares at for ten minutes, so the estimate has to live on that line."""
+        source = INSTALLER.read_text(encoding="utf-8")
+        functions = []
+        for name in ("run_watched", "elapsed_label"):
+            start = source.index(f"{name}() {{")
+            functions.append(source[start : source.index("\n}\n", start) + 3])
+        with TemporaryDirectory() as directory:
+            harness = Path(directory) / "clock.sh"
+            harness.write_text(
+                "INTERACTIVE=1\n"
+                + "\n".join(functions)
+                + '\nbriefly() { sleep 1; }\n'
+                + 'run_watched "compiling" "%s" 30 "10-20 min" briefly\n'
+                % (Path(directory) / "worker.log"),
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                ["bash", str(harness)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("of ~10-20 min", completed.stdout, completed.stdout)
+        self.assertRegex(completed.stdout, r"\d+:\d\d of ~10-20 min  compiling")
+
     def test_an_existing_install_is_confirmed_on_a_terminal(self) -> None:
         completed, actions = self._run_harness(
             existing_version="0.1.0",
@@ -655,11 +806,22 @@ class InstallerClarityTests(_InstallerHarness, unittest.TestCase):
         self.assertIn("compiling gave up after", completed.stderr)
         # And it says what it was doing when it gave up.
         self.assertIn("compiling something", completed.stderr)
+        # Read before the harness swept up: the installer has to be the one
+        # that stopped the stuck step, not the test cleaning up after it.
+        self.assertFalse(
+            self.installer_left_survivors,
+            "the installer exited with processes of its own still running",
+        )
         survivors = subprocess.run(
-            ["pgrep", "-f", "readease-installer-hang-probe"],
+            ["pgrep", "-f", HANG_PROBE],
             capture_output=True, text=True, check=False,
         )
         self.assertEqual(survivors.stdout.strip(), "", "the stuck step was left running")
+        # pgrep can only see the stub; the shells around it carry no marker.
+        self.assertTrue(
+            self.installer_group_emptied,
+            "the installer left processes of its own behind",
+        )
 
     def test_a_failed_step_shows_why_instead_of_swallowing_its_output(self) -> None:
         """Output is hidden while things go well; a failure must hand it back."""

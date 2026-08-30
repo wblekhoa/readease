@@ -26,21 +26,26 @@ temp_root="${temp_root%/}"
 data_root="$(mktemp -d -t vieneu-reader-bundle-smoke)"
 crash_marker="$(mktemp -t vieneu-reader-crash-marker)"
 
+# Job control puts the app in a process group of its own, so stopping it can
+# take its children with it. ReadEase starts a selection helper; killing only
+# the app would leave that helper behind on every run of this gate.
+set -m
 VIENEU_READER_DATA_ROOT="$data_root" \
 VIENEU_READER_SMOKE_QUIT_MS=1500 \
 "$executable" >/tmp/vieneu-reader-bundle-smoke.log 2>&1 &
 app_pid=$!
+set +m
 
 cleanup_smoke() {
   local exit_code=$?
   trap - EXIT
   if [[ -n "${app_pid:-}" ]] && kill -0 "$app_pid" 2>/dev/null; then
-    kill "$app_pid" 2>/dev/null || true
+    kill -- "-$app_pid" 2>/dev/null || kill "$app_pid" 2>/dev/null || true
     for _stop_attempt in $(seq 1 50); do
       kill -0 "$app_pid" 2>/dev/null || break
       sleep 0.1
     done
-    kill -9 "$app_pid" 2>/dev/null || true
+    kill -9 -- "-$app_pid" 2>/dev/null || kill -9 "$app_pid" 2>/dev/null || true
     wait "$app_pid" || true
   fi
   case "$data_root" in

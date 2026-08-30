@@ -8,11 +8,14 @@ waiting forever with nothing on screen.
 """
 
 import os
+import time
 from pathlib import Path
 import stat
 import subprocess
 from tempfile import TemporaryDirectory
 import unittest
+
+ORPHAN_PROBE = f"bundle-gate-orphan-probe-{os.getpid()}"
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +45,12 @@ class BundleGateNeverHangsTests(unittest.TestCase):
             # The three checks before the launch are covered by their own tests;
             # here they only have to be out of the way.
             _executable(fake_bin / "uv", "#!/bin/sh\nexit 0\n")
+            # A helper named after this test run: grepping for a bare "sleep"
+            # would also see one another test legitimately owns right then.
+            helper = fake_bin / ORPHAN_PROBE
+            helper.write_text("#!/bin/sh\nexec sleep \"$1\"\n", encoding="utf-8")
+            helper.chmod(0o755)
+            app_body = app_body.replace("__HELPER__", str(helper))
 
             bundle = temp / "ReadEase.app"
             (bundle / "Contents" / "MacOS").mkdir(parents=True)
@@ -63,6 +72,29 @@ class BundleGateNeverHangsTests(unittest.TestCase):
                     # path outside TMPDIR, so leave the real one in place.
                 },
             )
+
+    def test_nothing_the_app_started_is_left_running(self) -> None:
+        """The gate stops the app, and the app is not always the only process:
+        ReadEase starts a selection helper. Killing just the one this script
+        launched would strand the rest on every run."""
+        # A helper the app starts, then the app's own wait: the gate has to
+        # stop both, not only the process it launched.
+        completed = self._run("#!/bin/sh\n__HELPER__ 600 &\nsleep 600\n", "3")
+
+        self.assertNotEqual(completed.returncode, 0)
+        # Give the group kill a moment to land before looking.
+        time.sleep(1)
+        survivors = subprocess.run(
+            ["pgrep", "-f", ORPHAN_PROBE],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            survivors.stdout.strip(),
+            "",
+            "the gate left a process behind: " + survivors.stdout,
+        )
 
     def test_an_app_that_never_quits_is_stopped_and_reported(self) -> None:
         completed = self._run("#!/bin/sh\nsleep 600\n", "3")
