@@ -1853,6 +1853,35 @@ class ReaderWindowTests(unittest.TestCase):
         )
         self.assertFalse(window.play_button.isEnabled())
 
+    def test_the_menu_bar_glyph_fills_its_square_at_every_screen_scale(self) -> None:
+        """It sits beside other apps' icons, so a glyph adrift in a mostly
+        empty square reads as smaller than theirs - and one pixmap at a single
+        resolution is what makes it soft on a Retina display as well."""
+        from vieneu_reader.ui.window import _reading_icon, _reading_pixmap
+
+        icon = _reading_icon()
+
+        self.assertTrue(icon.isMask())
+        self.assertGreaterEqual(len(icon.availableSizes()), 2)
+
+        for ratio in (1, 2, 3):
+            with self.subTest(ratio=ratio):
+                pixmap = _reading_pixmap(ratio)
+                self.assertEqual(pixmap.devicePixelRatio(), ratio)
+                image = pixmap.toImage()
+                drawn = [
+                    (x, y)
+                    for y in range(image.height())
+                    for x in range(image.width())
+                    if image.pixelColor(x, y).alpha() > 0
+                ]
+
+                self.assertTrue(drawn, "the glyph is empty")
+                width = max(x for x, _ in drawn) - min(x for x, _ in drawn) + 1
+                height = max(y for _, y in drawn) - min(y for _, y in drawn) + 1
+                self.assertGreater(width / image.width(), 0.65)
+                self.assertGreater(height / image.height(), 0.7)
+
     def test_the_menu_bar_shows_a_way_to_stop_only_while_reading(self) -> None:
         """Reading happens with another app in front, so the stop has to be
         reachable from there - and has to disappear when there is nothing to

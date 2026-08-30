@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QMimeData, QPointF, QSignalBlocker, Qt, Signal
+from PySide6.QtCore import QMimeData, QPointF, QRectF, QSignalBlocker, Qt, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -93,29 +93,49 @@ def _backup_stamp() -> str:
     return datetime.now().strftime("%Y-%m-%d-%H%M%S")
 
 
-def _reading_icon() -> QIcon:
-    """A small filled speaker, drawn as a mask so macOS tints it itself."""
+# What macOS asks a menu bar template to be, in points.
+_MENU_BAR_POINTS = 18
 
-    pixmap = QPixmap(22, 22)
+
+def _reading_pixmap(ratio: int) -> QPixmap:
+    """The speaker at one screen scale, drawn to fill the square it is given."""
+
+    pixels = _MENU_BAR_POINTS * ratio
+    pixmap = QPixmap(pixels, pixels)
+    pixmap.setDevicePixelRatio(ratio)
     pixmap.fill(QColor(0, 0, 0, 0))
     painter = QPainter(pixmap)
     try:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        # The pixmap carries its own scale, so the painter is already working
+        # in the 18-unit square; scaling again would draw off the edge.
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(0, 0, 0))
-        painter.drawRoundedRect(5, 8, 5, 6, 1.0, 1.0)
+        painter.drawRoundedRect(QRectF(2.0, 6.5, 5.5, 5.0), 1.0, 1.0)
         painter.drawPolygon(
             QPolygonF(
                 [
-                    QPointF(10, 13),
-                    QPointF(15, 5),
-                    QPointF(15, 17),
+                    QPointF(7.5, 9.0),
+                    QPointF(15.5, 1.5),
+                    QPointF(15.5, 16.5),
                 ]
             )
         )
     finally:
         painter.end()
-    icon = QIcon(pixmap)
+    return pixmap
+
+
+def _reading_icon() -> QIcon:
+    """A filled speaker, as a mask so macOS tints it for the menu bar itself.
+
+    Carried at every screen scale: a single low-resolution pixmap is what
+    makes a menu bar item look both small and soft on a Retina display.
+    """
+
+    icon = QIcon()
+    for ratio in (1, 2, 3):
+        icon.addPixmap(_reading_pixmap(ratio))
     icon.setIsMask(True)
     return icon
 
