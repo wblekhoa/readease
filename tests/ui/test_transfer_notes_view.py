@@ -490,6 +490,6 @@ class PresentationTests(unittest.TestCase):
 
         others = [
             len(_TEXT[key][0])
-            for key in ("library.description", "paste.description", "external.description")
+            for key in ("library.description", "paste.description")
         ]
         self.assertLessEqual(len(_TEXT["transfer.description"][0]), max(others))

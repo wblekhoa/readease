@@ -297,8 +297,8 @@ class VoiceQualityChoiceTests(unittest.TestCase):
 
         self.assertEqual(sorted(offered), ["fp32", "int8"])
         # The download size is the whole trade-off; it must be on the control.
-        self.assertIn("158 MB", labels)
-        self.assertIn("453 MB", labels)
+        self.assertIn("330 MB", labels)
+        self.assertIn("625 MB", labels)
 
     def test_the_saved_choice_is_the_one_selected(self):
         VoiceQualityPreferenceStore(self.settings_path).save("fp32")
@@ -373,14 +373,12 @@ class VoiceQualityChoiceTests(unittest.TestCase):
     def test_the_promised_download_matches_the_selected_build(self):
         window = self.make_window()
 
-        self.assertIn("330 MB", window.model_setup_description.text())
-
-        window.setup_quality_combo.setCurrentIndex(
-            window.setup_quality_combo.findData("fp32")
-        )
-
-        self.assertIn("625 MB", window.model_setup_description.text())
-        self.assertNotIn("330 MB", window.model_setup_description.text())
+        combo = window.setup_quality_combo
+        self.assertIn("330 MB", combo.itemText(combo.findData("int8")))
+        self.assertIn("625 MB", combo.itemText(combo.findData("fp32")))
+        # One number on the screen: the sentence above no longer quotes a
+        # second, smaller one for the same download.
+        self.assertNotIn("MB", window.model_setup_description.text())
 
     def test_the_player_bar_names_the_builds_without_their_sizes(self):
         window = self.make_window()
@@ -398,7 +396,7 @@ class VoiceQualityChoiceTests(unittest.TestCase):
         self.assertIn("Tiêu chuẩn", player_labels)
         self.assertIn("Cao nhất", player_labels)
         # The size stays where a download is about to start.
-        self.assertIn("158 MB", setup_labels)
+        self.assertIn("330 MB", setup_labels)
 
     def test_switching_from_the_player_bar_asks_first_and_names_the_download(self):
         """Its note lives on the setup page, which is gone by then, so without
@@ -892,7 +890,7 @@ class ReaderWindowTests(unittest.TestCase):
 
         self.assertEqual(stack.currentWidget().objectName(), "modelSetupPage")
         self.assertEqual(model_setup.start_count, 0)
-        self.assertIn("330 MB", window.model_setup_description.text())
+        self.assertIn("330 MB", window.setup_quality_combo.currentText())
 
         prepare.click()
         self.application.processEvents()
@@ -2076,7 +2074,7 @@ class HeadingHierarchyTests(unittest.TestCase):
             (self.window.transfer_notes_view, self.window.transfer_notes_view.description),
             (
                 self.window.external_reading_view,
-                self.window.external_reading_view.description_label,
+                self.window.external_reading_view.steps_label,
             ),
         ):
             with self.subTest(view=view.objectName()):

@@ -76,9 +76,6 @@ class ExternalReadingView(QWidget):
         guide = QVBoxLayout()
         guide.setSpacing(10)
 
-        self.description_label = QLabel()
-        self.description_label.setWordWrap(True)
-        guide.addWidget(self.description_label)
 
         self.steps_label = QLabel()
         self.steps_label.setObjectName("externalReadingSteps")
@@ -227,7 +224,6 @@ class ExternalReadingView(QWidget):
         self.detail_label.setAccessibleName(
             self._localizer.text("external.detail_accessible")
         )
-        self.description_label.setText(self._localizer.text("external.description"))
         self.steps_label.setText(self._localizer.text("external.steps"))
         self.steps_label.setAccessibleName(
             self._localizer.text("external.steps_accessible")

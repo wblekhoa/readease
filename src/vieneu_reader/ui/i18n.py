@@ -28,8 +28,8 @@ _TEXT: dict[str, tuple[str, str]] = {
     "language.accessible": ("Chọn ngôn ngữ ứng dụng", "Choose app language"),
     "model.title": ("Chuẩn bị giọng đọc tiếng Việt", "Set up Vietnamese voice"),
     "model.description": (
-        "ReadEase cần tải khoảng {size} dữ liệu giọng đọc ở lần đầu. Sau đó bạn có thể đọc sách hoàn toàn offline và không cần API key.",
-        "ReadEase downloads about {size} of Vietnamese voice data the first time. After that, you can read fully offline without an API key.",
+        "Tải một lần, sau đó đọc hoàn toàn offline.",
+        "Downloaded once, then everything is read offline.",
     ),
     "model.ready_to_download": ("Sẵn sàng tải giọng đọc.", "Ready to download voice data."),
     "model.quality": ("Chất lượng giọng đọc", "Voice quality"),
@@ -52,8 +52,8 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Chọn bản mô hình đọc",
         "Choose which build of the reading model to use",
     ),
-    "model.quality_standard": ("Tiêu chuẩn · tải 158 MB", "Standard · 158 MB download"),
-    "model.quality_maximum": ("Cao nhất · tải 453 MB", "Highest · 453 MB download"),
+    "model.quality_standard": ("Tiêu chuẩn · 330 MB", "Standard · 330 MB"),
+    "model.quality_maximum": ("Cao nhất · 625 MB", "Highest · 625 MB"),
     # The player bar names the builds without their sizes: the download only
     # matters at the moment someone actually switches, and it is spelled out
     # there instead.
@@ -109,8 +109,8 @@ _TEXT: dict[str, tuple[str, str]] = {
     "nav.external": ("Quét đọc", "Read a selection"),
     "library.title": ("Thư viện sách", "Book library"),
     "library.description": (
-        "Mở sách EPUB hoặc PDF có lớp văn bản. Sách được giữ cục bộ để bạn có thể tiếp tục từ vị trí đang đọc.",
-        "Open an EPUB or a PDF with a text layer. Books stay on this Mac so you can continue from your saved position.",
+        "PDF phải có lớp văn bản — sách scan chưa đọc được.",
+        "A PDF needs a text layer - a scanned book cannot be read yet.",
     ),
     "library.list_accessible": ("Danh sách sách trong thư viện", "Books in your library"),
     "library.open_accessible": ("Mở sách PDF hoặc EPUB", "Open a PDF or EPUB book"),
@@ -148,10 +148,8 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Preview your notes, then move them to the other copy",
     ),
     "transfer.description": (
-        "Chọn hai bản của cùng một cuốn sách. ReadEase sao lưu trước khi ghi và "
-        "không đụng tới cuốn nguồn.",
-        "Pick two copies of the same book. ReadEase backs up before writing and "
-        "never touches the book they came from.",
+        "Sao lưu trước khi ghi; không đụng cuốn nguồn.",
+        "Backed up before writing; the source book is untouched.",
     ),
     "transfer.source": ("Lấy ghi chú từ", "Take notes from"),
     "transfer.target": ("Chuyển sang", "Move them to"),
@@ -248,8 +246,8 @@ _TEXT: dict[str, tuple[str, str]] = {
     ),
     "paste.title": ("Dán nội dung để đọc", "Paste text to read"),
     "paste.description": (
-        "Dán đoạn văn hoặc bài viết vào đây. Nội dung chỉ dùng trong phiên đọc này: không thêm vào thư viện và không được lưu vào cache.",
-        "Paste a passage or article here. It is used only for this session, is not added to your library and is not stored in the audio cache.",
+        "Chỉ dùng cho phiên này — không lưu vào thư viện.",
+        "For this session only - nothing is added to your library.",
     ),
     "paste.editor_accessible": ("Nội dung cần đọc", "Text to read"),
     "paste.placeholder": ("Dán nội dung tiếng Việt vào đây…", "Paste text here…"),
@@ -300,10 +298,6 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Chi tiết trạng thái quét đọc",
         "Read-selection status details",
     ),
-    "external.description": (
-        "Giữ ReadEase đang chạy, bôi đen đoạn chữ ở bất kỳ ứng dụng nào — trang web, PDF, thư, ghi chú — rồi dùng phím tắt bên dưới để nghe bằng giọng Việt cục bộ.",
-        "Keep ReadEase running, select text in any app — a web page, a PDF, an email, a note — then use the shortcut below to hear it with the local Vietnamese voice.",
-    ),
     "external.steps": (
         "1. Mở ứng dụng có phần chữ bạn muốn nghe.\n2. Bôi đen đúng phần đó.\n3. Nhấn phím tắt; ReadEase sẽ đọc mà không đưa cửa sổ này lên trước.",
         "1. Open whatever app has the text you want to hear.\n2. Select exactly that text.\n3. Press the shortcut; ReadEase reads it without bringing this window forward.",
@@ -331,8 +325,8 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Hold at least one of Control, Option or Command, then press a key. Press Esc to keep the current shortcut.",
     ),
     "external.permission_note": (
-        "Lần đầu sử dụng, macOS cần cho phép ReadEase điều khiển thao tác sao chép trong ứng dụng bạn đang dùng. Bạn có thể mở đúng mục Trợ năng tại đây.",
-        "The first time you use this feature, macOS must allow ReadEase to issue the copy command in the app you are using. Open the correct Accessibility settings here.",
+        "Lần đầu, macOS cần cho phép ReadEase gửi lệnh sao chép trong ứng dụng bạn đang dùng.",
+        "The first time, macOS must let ReadEase send the copy command in the app you are using.",
     ),
     "external.open_settings": ("Mở Cài đặt quyền", "Open permission settings"),
     "external.open_settings_accessible": (
@@ -344,8 +338,8 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Read from a selection this session",
     ),
     "external.history_empty": (
-        "Chưa có đoạn nào. Phần bạn đọc bằng phím tắt sẽ xuất hiện ở đây và tự mất khi đóng ReadEase.",
-        "Nothing here yet. Text read with the shortcut appears here and disappears when ReadEase closes.",
+        "Chưa có gì. Danh sách này mất khi đóng ReadEase.",
+        "Nothing yet. This list is gone when ReadEase closes.",
     ),
     "external.history_accessible": (
         "Các phần đã quét đọc trong phiên",

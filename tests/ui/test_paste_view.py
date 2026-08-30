@@ -22,7 +22,7 @@ class PasteTextViewTests(unittest.TestCase):
 
         self.assertFalse(view.read_button.isEnabled())
         self.assertEqual(view.counter_label.text(), "0 / 100.000 ký tự")
-        self.assertIn("không được lưu vào cache", view.description.text())
+        self.assertIn("không lưu vào thư viện", view.description.text())
 
         view.text_edit.setPlainText(" \n\t ")
         self.application.processEvents()

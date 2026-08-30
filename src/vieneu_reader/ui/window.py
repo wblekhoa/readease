@@ -55,7 +55,6 @@ from vieneu_reader.integrations.selection_shortcut import (
 from vieneu_reader.playback.coordinator import PlaybackState
 from vieneu_reader.speech.preferences import (
     DOWNLOAD_MEGABYTES,
-    TOTAL_DOWNLOAD_MEGABYTES,
     VoiceQualityPreferenceStore,
 )
 from vieneu_reader.speech.vieneu import DEFAULT_PRECISION, PRECISIONS
@@ -1048,12 +1047,7 @@ class ReaderWindow(QMainWindow):
         )
         # The promise above the control has to match the control: quoting the
         # standard build's size while Highest is selected is simply wrong.
-        self.model_setup_description.setText(
-            text(
-                "model.description",
-                size=f"{TOTAL_DOWNLOAD_MEGABYTES.get(chosen, 330)} MB",
-            )
-        )
+        self.model_setup_description.setText(text("model.description"))
         # The setup page is where a download is about to start, so it names the
         # sizes; the player bar only names the builds.
         for combo, domain in (
