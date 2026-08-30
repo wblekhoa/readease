@@ -34,6 +34,10 @@ _TEXT: dict[str, tuple[str, str]] = {
     "model.ready_to_download": ("Sẵn sàng tải giọng đọc.", "Ready to download voice data."),
     "model.quality": ("Chất lượng giọng đọc", "Voice quality"),
     "player.quality": ("Chất lượng", "Quality"),
+    "player.stop_from_menu_bar": (
+        "ReadEase đang đọc — bấm để dừng",
+        "ReadEase is reading — click to stop",
+    ),
     "model.spare_build": (
         "Bản {name} đã tải nhưng không dùng tới, đang chiếm {size}.",
         "The {name} build is downloaded but unused, taking {size}.",

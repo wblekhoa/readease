@@ -118,7 +118,13 @@ def build_runtime(app_data_root: Path | None = None) -> AppRuntime:
     language_store = LanguagePreferenceStore(settings_path)
     shortcut_store = ShortcutPreferenceStore(settings_path)
     read_on_copy_store = ReadOnCopyPreferenceStore(settings_path)
-    selection_shortcut = SelectionShortcutBridge(shortcut=shortcut_store.load())
+    selection_shortcut = SelectionShortcutBridge(
+        shortcut=shortcut_store.load(),
+        # Pressed again while a reading is under way, the shortcut stops it,
+        # so there is a way out without leaving the app being read.
+        is_reading=lambda: controller.is_reading,
+    )
+    selection_shortcut.stopRequested.connect(controller.stop)
     selection_shortcut.selectionReceived.connect(
         controller.read_external_selection
     )

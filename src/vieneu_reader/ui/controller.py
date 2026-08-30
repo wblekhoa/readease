@@ -834,5 +834,14 @@ class ReaderController:
     def resume(self) -> None:
         self._playback.resume()
 
+    @property
+    def is_reading(self) -> bool:
+        """Whether a reading is under way, so the shortcut can stop it."""
+
+        return self._state.playback_state in (
+            PlaybackState.LOADING,
+            PlaybackState.PLAYING,
+        )
+
     def stop(self) -> None:
         self._playback.stop()

@@ -75,6 +75,7 @@ Muốn nhờ AI cài giúp, mở thư mục source trong công cụ AI và gửi
 - **Hình trong EPUB:** đặt hình có ý nghĩa theo thứ tự đọc, đánh số **Hình 1, Hình 2…** và nhắc “Mời bạn xem Hình …” ở đúng vị trí.
 - **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
 - **Quét đọc ở mọi ứng dụng:** bôi đen chữ ở bất kỳ đâu — trang web, PDF, thư, ghi chú, Apple Books — rồi nhấn phím tắt đọc (mặc định **Option-Command-R**, đổi được trong màn hình **Quét đọc**) để nghe mà không cần chuyển cửa sổ. Phần được trình quản lý mật khẩu đánh dấu bí mật thì app từ chối đọc.
+- **Dừng mà không phải rời chỗ đang đọc:** nhấn lại chính phím tắt đó là dừng. Trong lúc đang đọc, ReadEase cũng hiện một biểu tượng nhỏ trên thanh menu — bấm vào là dừng, và nó biến mất khi đọc xong.
 - **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ sách, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
 - **Riêng tư và local-first:** sách, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
 - **Giao diện song ngữ:** chuyển tức thời giữa `🇻🇳 Tiếng Việt` và `🇬🇧 English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
@@ -197,6 +198,7 @@ This is a local source build, not a notarized `.dmg` or public binary release.
 - Preserve local library progress and show meaningful EPUB images in reading order.
 - Read pasted text and automatically segment long passages.
 - Read selected text from any app with a configurable shortcut (**Option-Command-R** by default) after granting Accessibility permission.
+- Stop without leaving what you are reading: press the same shortcut again, or click the menu bar item that appears while a reading is under way.
 - Replay up to 10 recent items during the current session.
 - Keep books, model data, progress and audio cache on the Mac; no API key, telemetry or background server.
 

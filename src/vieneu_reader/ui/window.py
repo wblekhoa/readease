@@ -7,15 +7,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QMimeData, QSignalBlocker, Qt, Signal
+from PySide6.QtCore import QMimeData, QPointF, QSignalBlocker, Qt, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
+    QColor,
     QDragEnterEvent,
     QDropEvent,
     QFont,
+    QIcon,
     QKeySequence,
+    QPainter,
     QPalette,
+    QPixmap,
+    QPolygonF,
 )
 from PySide6.QtWidgets import (
     QComboBox,
@@ -30,6 +35,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QStackedWidget,
+    QSystemTrayIcon,
     QTabBar,
     QToolButton,
     QVBoxLayout,
@@ -87,6 +93,33 @@ def _backup_stamp() -> str:
     return datetime.now().strftime("%Y-%m-%d-%H%M%S")
 
 
+def _reading_icon() -> QIcon:
+    """A small filled speaker, drawn as a mask so macOS tints it itself."""
+
+    pixmap = QPixmap(22, 22)
+    pixmap.fill(QColor(0, 0, 0, 0))
+    painter = QPainter(pixmap)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(0, 0, 0))
+        painter.drawRoundedRect(5, 8, 5, 6, 1.0, 1.0)
+        painter.drawPolygon(
+            QPolygonF(
+                [
+                    QPointF(10, 13),
+                    QPointF(15, 5),
+                    QPointF(15, 17),
+                ]
+            )
+        )
+    finally:
+        painter.end()
+    icon = QIcon(pixmap)
+    icon.setIsMask(True)
+    return icon
+
+
 class ReaderWindow(QMainWindow):
     selectionShortcutChanged = Signal(object)
     readOnCopyChanged = Signal(bool)
@@ -109,6 +142,7 @@ class ReaderWindow(QMainWindow):
         backup_root: Path | None = None,
         confirm_transfer: Callable[[str, str], bool] | None = None,
         confirm_quality: Callable[[str, str], bool] | None = None,
+        reading_indicator: object | None = None,
         books_is_running: Callable[[], bool] = apple_books_is_running,
     ):
         super().__init__(parent)
@@ -118,6 +152,14 @@ class ReaderWindow(QMainWindow):
         self._backup_root = backup_root
         self._confirm_transfer_with = confirm_transfer
         self._confirm_quality_with = confirm_quality
+        # Reading happens with another app in front, so the way to stop has to
+        # live outside this window. A menu bar item is the one surface macOS
+        # keeps reachable without taking focus from what is being read.
+        self._reading_indicator = (
+            reading_indicator
+            if reading_indicator is not None
+            else self._build_reading_indicator()
+        )
         self._books_is_running = books_is_running
         self._language_store = language_store
         self._shortcut_store = shortcut_store
@@ -844,6 +886,7 @@ class ReaderWindow(QMainWindow):
             self._render_reading_location(state)
             self.error_label.setText(self._localizer.runtime(state.error))
             self._render_contextual_status(state)
+            self._render_reading_indicator(state)
         finally:
             self._rendering = False
 
@@ -1090,6 +1133,24 @@ class ReaderWindow(QMainWindow):
         # The engine is built once at startup, so the change lands on reopen.
         self.quality_restart_note.show()
         self._set_model_status(self._localizer.text("model.quality_restart"))
+
+    def _build_reading_indicator(self) -> QSystemTrayIcon | None:
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return None
+        indicator = QSystemTrayIcon(self)
+        indicator.setIcon(_reading_icon())
+        indicator.activated.connect(lambda _reason: self._controller.stop())
+        return indicator
+
+    def _render_reading_indicator(self, state: ReaderViewState) -> None:
+        indicator = self._reading_indicator
+        if indicator is None:
+            return
+        if state.playback_state in (PlaybackState.LOADING, PlaybackState.PLAYING):
+            indicator.setToolTip(self._localizer.text("player.stop_from_menu_bar"))
+            indicator.show()
+        else:
+            indicator.hide()
 
     def _quality_name(self, precision: str) -> str:
         suffix = "standard" if precision == DEFAULT_PRECISION else "maximum"

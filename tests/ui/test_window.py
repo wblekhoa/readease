@@ -582,10 +582,12 @@ class ReaderWindowTests(unittest.TestCase):
         backup_root: Path | None = None,
         confirm_transfer=None,
         books_is_running=lambda: False,
+        reading_indicator=None,
     ) -> ReaderWindow:
         window = ReaderWindow(
             self.controller,
             model_setup,
+            reading_indicator=reading_indicator,
             language_store=language_store,
             selection_shortcut=selection_shortcut,
             read_on_copy=(
@@ -1850,6 +1852,47 @@ class ReaderWindowTests(unittest.TestCase):
             "libraryShelfView",
         )
         self.assertFalse(window.play_button.isEnabled())
+
+    def test_the_menu_bar_shows_a_way_to_stop_only_while_reading(self) -> None:
+        """Reading happens with another app in front, so the stop has to be
+        reachable from there - and has to disappear when there is nothing to
+        stop, rather than sitting in the menu bar forever."""
+
+        class FakeIndicator:
+            def __init__(self) -> None:
+                self.visible = False
+                self.tooltip = ""
+
+            def show(self) -> None:
+                self.visible = True
+
+            def hide(self) -> None:
+                self.visible = False
+
+            def setToolTip(self, text: str) -> None:
+                self.tooltip = text
+
+        indicator = FakeIndicator()
+        window = self.make_window(
+            FakeModelSetup(ready=True), reading_indicator=indicator
+        )
+        del window
+
+        self.assertFalse(indicator.visible)
+
+        for state, expected in (
+            (PlaybackState.LOADING, True),
+            (PlaybackState.PLAYING, True),
+            (PlaybackState.PAUSED, False),
+            (PlaybackState.IDLE, False),
+        ):
+            with self.subTest(state=state):
+                self.playback.emit(PlaybackSnapshot(state=state))
+                self.application.processEvents()
+
+                self.assertEqual(indicator.visible, expected)
+                if expected:
+                    self.assertIn("dừng", indicator.tooltip.lower())
 
     def test_session_history_does_not_still_name_one_app(self) -> None:
         """The shortcut reads from anywhere now, so a row that says the text

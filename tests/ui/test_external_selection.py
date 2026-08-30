@@ -242,6 +242,44 @@ class ExternalSelectionBridgeTests(unittest.TestCase):
         self.assertEqual(event.text, "Đọc từ process chính")
         self.assertEqual(library.freed, [ctypes.addressof(library.buffer)])
 
+    def test_the_same_key_stops_a_reading_instead_of_starting_another(self) -> None:
+        """Reading happens with another app in front, so the way out has to be
+        reachable from there: the key that started it stops it."""
+        module = self._module()
+        acquired = []
+
+        class Acquirer:
+            def acquire(self):
+                acquired.append(1)
+                return module.SelectionEvent(
+                    module.SelectionEventKind.TEXT, "đoạn mới"
+                )
+
+        reading = False
+        bridge = module.SelectionShortcutBridge(
+            command=("/bin/echo",),
+            acquirer=Acquirer(),
+            is_reading=lambda: reading,
+        )
+        stops = []
+        selections = []
+        bridge.stopRequested.connect(lambda: stops.append(1))
+        bridge.selectionReceived.connect(selections.append)
+        try:
+            bridge._handle_hotkey()
+            self.assertEqual((selections, stops), (["đoạn mới"], []))
+
+            reading = True
+            bridge._handle_hotkey()
+
+            self.assertEqual(stops, [1])
+            # Nothing new was read, and the clipboard was never touched for a
+            # selection ReadEase was not going to speak.
+            self.assertEqual(selections, ["đoạn mới"])
+            self.assertEqual(len(acquired), 1)
+        finally:
+            bridge.close()
+
     def test_a_concealed_selection_is_reported_rather_than_read(self) -> None:
         """Now that any window can be the source, a password manager can be
         one. The native side refuses what it marks; the wrapper must carry

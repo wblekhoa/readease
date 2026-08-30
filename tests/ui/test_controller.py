@@ -158,6 +158,27 @@ class ReaderControllerTests(unittest.TestCase):
         self.assertEqual((voice_id, rate), ("Trúc Ly", 1.25))
         self.assertEqual(self.repository.list_books(), ())
 
+    def test_the_controller_knows_when_a_reading_is_under_way(self):
+        """What the shortcut asks before deciding whether a press means stop.
+        Loading counts: the voice has been asked for and audio is coming."""
+        controller = self.make_controller()
+
+        self.assertFalse(controller.is_reading)
+
+        for state, expected in (
+            (PlaybackState.LOADING, True),
+            (PlaybackState.PLAYING, True),
+            (PlaybackState.PAUSED, False),
+            (PlaybackState.IDLE, False),
+            (PlaybackState.ERROR, False),
+        ):
+            with self.subTest(state=state):
+                self.playback.emit(
+                    PlaybackSnapshot(state=state, is_selection=True)
+                )
+
+                self.assertEqual(controller.is_reading, expected)
+
     def test_each_selection_failure_says_something_a_person_can_act_on(self):
         controller = self.make_controller()
 

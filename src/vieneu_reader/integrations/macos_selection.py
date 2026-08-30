@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import struct
 import sys
+from collections.abc import Callable
 from typing import Protocol
 
 from PySide6.QtCore import QObject, QProcess, QTimer, Signal, Slot
@@ -332,6 +333,7 @@ class SelectionShortcutBridge(QObject):
     shortcutAccepted = Signal(object)
     shortcutRejected = Signal(object)
     clipboardTouched = Signal()
+    stopRequested = Signal()
 
     # A refused combination is worth one fallback. Beyond that the machine is
     # telling us both are taken, and relaunching only burns processes.
@@ -343,9 +345,11 @@ class SelectionShortcutBridge(QObject):
         command: tuple[str, ...] | None = None,
         acquirer: SelectionAcquirer | None = None,
         shortcut: Shortcut | None = None,
+        is_reading: Callable[[], bool] | None = None,
         parent: QObject | None = None,
     ):
         super().__init__(parent)
+        self._is_reading = is_reading
         self._command = command or default_helper_command()
         if not self._command:
             raise ValueError("helper command cannot be empty")
@@ -469,6 +473,12 @@ class SelectionShortcutBridge(QObject):
             )
 
     def _handle_hotkey(self) -> None:
+        # Pressed while something is already being read, the same key means
+        # stop. Deciding here, before the copy, keeps ReadEase from touching
+        # the clipboard for a selection it is not going to read.
+        if self._is_reading is not None and self._is_reading():
+            self.stopRequested.emit()
+            return
         if self._acquirer is None:
             try:
                 self._acquirer = MacOSSelectionAcquirer()
