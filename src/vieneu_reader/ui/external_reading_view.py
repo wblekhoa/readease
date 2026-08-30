@@ -6,7 +6,6 @@ from PySide6.QtCore import QSignalBlocker, Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QCheckBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -32,7 +31,6 @@ class ExternalReadingView(QWidget):
     openAccessibilitySettingsRequested = Signal()
     replayRequested = Signal(str)
     shortcutRecorded = Signal(object)
-    readOnCopyChanged = Signal(bool)
 
     def __init__(
         self,
@@ -40,12 +38,10 @@ class ExternalReadingView(QWidget):
         *,
         localizer: Localizer | None = None,
         shortcut: Shortcut | None = None,
-        read_on_copy: bool = False,
     ):
         super().__init__(parent)
         self._localizer = localizer or Localizer()
         self._shortcut = shortcut or DEFAULT_SHORTCUT
-        self._read_on_copy = bool(read_on_copy)
         self._rendered_state = ExternalReadingState.STARTING
         self._rendered_history: tuple[SessionReadingItem, ...] = ()
         self._rendered_error: str | None = None
@@ -134,10 +130,6 @@ class ExternalReadingView(QWidget):
         permission_row.addStretch(1)
         guide.addLayout(permission_row)
 
-        self.read_on_copy_toggle = QCheckBox()
-        self.read_on_copy_toggle.setObjectName("externalReadingReadOnCopy")
-        self.read_on_copy_toggle.setChecked(self._read_on_copy)
-        guide.addWidget(self.read_on_copy_toggle)
 
         self.privacy_note = QLabel()
         self.privacy_note.setWordWrap(True)
@@ -206,27 +198,7 @@ class ExternalReadingView(QWidget):
         self.shortcut_recorder.shortcutRecorded.connect(
             self.shortcutRecorded.emit
         )
-        self.read_on_copy_toggle.toggled.connect(self._read_on_copy_toggled)
         self.retranslate()
-
-    def set_read_on_copy(self, enabled: bool) -> None:
-        """Show the switch, and the promise that matches it, as they are."""
-
-        self._read_on_copy = bool(enabled)
-        blocker = QSignalBlocker(self.read_on_copy_toggle)
-        self.read_on_copy_toggle.setChecked(self._read_on_copy)
-        del blocker
-        self.privacy_note.setText(
-            self._localizer.text(
-                "external.privacy_note_on"
-                if self._read_on_copy
-                else "external.privacy_note"
-            )
-        )
-
-    def _read_on_copy_toggled(self, enabled: bool) -> None:
-        self.set_read_on_copy(enabled)
-        self.readOnCopyChanged.emit(self._read_on_copy)
 
     def set_shortcut(self, shortcut: Shortcut) -> None:
         """Show the combination the helper has actually registered."""
@@ -281,13 +253,7 @@ class ExternalReadingView(QWidget):
         self.permission_button.setAccessibleName(
             self._localizer.text("external.open_settings_accessible")
         )
-        self.read_on_copy_toggle.setText(
-            self._localizer.text("external.read_on_copy")
-        )
-        self.read_on_copy_toggle.setAccessibleName(
-            self._localizer.text("external.read_on_copy_accessible")
-        )
-        self.set_read_on_copy(self._read_on_copy)
+        self.privacy_note.setText(self._localizer.text("external.privacy_note"))
         self.recent_title.setText(self._localizer.text("external.recent_title"))
         self.history_empty.setText(self._localizer.text("external.history_empty"))
         self.history_list.setAccessibleName(

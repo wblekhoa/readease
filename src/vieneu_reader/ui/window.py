@@ -49,7 +49,6 @@ from vieneu_reader.integrations.macos_settings import (
 )
 from vieneu_reader.integrations.selection_shortcut import (
     DEFAULT_SHORTCUT,
-    ReadOnCopyPreferenceStore,
     Shortcut,
     ShortcutPreferenceStore,
 )
@@ -142,7 +141,6 @@ def _reading_icon() -> QIcon:
 
 class ReaderWindow(QMainWindow):
     selectionShortcutChanged = Signal(object)
-    readOnCopyChanged = Signal(bool)
 
     def __init__(
         self,
@@ -155,8 +153,6 @@ class ReaderWindow(QMainWindow):
         language_store: LanguagePreferenceStore | None = None,
         selection_shortcut: Shortcut | None = None,
         shortcut_store: ShortcutPreferenceStore | None = None,
-        read_on_copy: bool = False,
-        read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
         voice_quality_store: VoiceQualityPreferenceStore | None = None,
         apple_books: AppleBooksLibrary | None = None,
         backup_root: Path | None = None,
@@ -183,10 +179,8 @@ class ReaderWindow(QMainWindow):
         self._books_is_running = books_is_running
         self._language_store = language_store
         self._shortcut_store = shortcut_store
-        self._read_on_copy_store = read_on_copy_store
         self._voice_quality_store = voice_quality_store
         self._selection_shortcut = selection_shortcut or DEFAULT_SHORTCUT
-        self._read_on_copy = bool(read_on_copy)
         self._localizer = localizer or Localizer(
             language_store.load() if language_store is not None else Language.VIETNAMESE
         )
@@ -364,7 +358,6 @@ class ReaderWindow(QMainWindow):
         self.external_reading_view = ExternalReadingView(
             localizer=self._localizer,
             shortcut=self._selection_shortcut,
-            read_on_copy=self._read_on_copy,
         )
         self.transfer_notes_view = TransferNotesView(localizer=self._localizer)
         for feature_view in (
@@ -681,9 +674,6 @@ class ReaderWindow(QMainWindow):
         )
         self.transfer_notes_view.previewRequested.connect(self._preview_transfer)
         self.transfer_notes_view.transferRequested.connect(self._transfer_notes)
-        self.external_reading_view.readOnCopyChanged.connect(
-            self._read_on_copy_changed
-        )
         self.play_button.clicked.connect(self._toggle_playback)
         self.stop_button.clicked.connect(self._controller.stop)
         self.previous_button.clicked.connect(self._controller.previous)
@@ -710,15 +700,6 @@ class ReaderWindow(QMainWindow):
         self.external_reading_view.set_shortcut(shortcut)
         if self._shortcut_store is not None:
             self._shortcut_store.save(shortcut)
-
-    def _read_on_copy_changed(self, enabled: bool) -> None:
-        enabled = bool(enabled)
-        if enabled == self._read_on_copy:
-            return
-        self._read_on_copy = enabled
-        if self._read_on_copy_store is not None:
-            self._read_on_copy_store.save(enabled)
-        self.readOnCopyChanged.emit(enabled)
 
     def _language_changed(self, index: int) -> None:
         combo = self.sender()

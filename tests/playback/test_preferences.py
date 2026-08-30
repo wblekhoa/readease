@@ -3,10 +3,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from vieneu_reader.integrations.selection_shortcut import (
-    ReadOnCopyPreferenceStore,
-    ShortcutPreferenceStore,
-)
+from vieneu_reader.integrations.selection_shortcut import ShortcutPreferenceStore
+from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
 from vieneu_reader.playback.preferences import (
     DEFAULT_RATE,
     DEFAULT_VOICE_ID,
@@ -40,14 +38,14 @@ class VoicePreferenceStoreTests(unittest.TestCase):
         LanguagePreferenceStore(self.path).save(Language.ENGLISH)
         shortcut = ShortcutPreferenceStore(self.path)
         shortcut.save(shortcut.load())
-        ReadOnCopyPreferenceStore(self.path).save(True)
+        VoiceQualityPreferenceStore(self.path).save("fp32")
 
         self.store.save("Ngọc Linh", 1.5)
 
         stored = json.loads(self.path.read_text(encoding="utf-8"))
         self.assertEqual(stored["language"], "en")
         self.assertIn("selection_shortcut", stored)
-        self.assertIs(stored["read_on_copy"], True)
+        self.assertEqual(stored["voice_quality"], "fp32")
         self.assertEqual(stored["voice"], "Ngọc Linh")
 
     def test_a_speed_outside_the_supported_range_is_not_handed_on(self):

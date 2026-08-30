@@ -109,7 +109,7 @@ Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo sách mớ
 
 Trong mỗi lần dùng phím tắt, ReadEase giữ bản sao clipboard trong bộ nhớ, gửi lệnh sao chép tới ứng dụng đang ở trước rồi khôi phục từng item/type/byte trước khi đọc. Nếu không xác nhận được việc khôi phục, app dừng trước khi đọc. App không theo dõi màn hình ở chế độ nền. Vì phím tắt dùng được ở mọi ứng dụng, app đọc **đúng thứ bạn đang bôi đen** — nó không phân biệt được đâu là nội dung nhạy cảm; phần nào được đánh dấu bí mật thì bị từ chối, còn lại thì không.
 
-Mặc định ReadEase **không** xem clipboard. Chỉ khi bạn tự bật **Đọc ngay khi sao chép, ở mọi ứng dụng** trong màn hình **Quét đọc**, app mới kiểm tra bộ đếm thay đổi của clipboard vài lần mỗi giây và đọc lên nội dung bạn vừa sao chép — **ở bất kỳ ứng dụng nào**. Nghĩa là mọi thứ bạn Command-C đều được đọc, kể cả khi bạn copy để dán chứ không phải để nghe. App bỏ qua mục được đánh dấu ẩn (trình quản lý mật khẩu dùng dấu này), nhưng **không nhận ra** mật khẩu hay thông tin riêng tư nằm trong văn bản thường. Muốn chủ động từng lần thì tắt công tắc và dùng phím tắt. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+ReadEase **không bao giờ** tự xem clipboard. App chỉ đọc đúng lúc bạn bấm phím tắt, và chỉ đọc phần bạn đang bôi đen lúc đó. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ### 4. Nghe lại nội dung gần đây
 
@@ -135,7 +135,6 @@ Tên thư mục cũ được giữ để người dùng nâng cấp không mất
 - PDF scan chỉ chứa ảnh cần OCR trước khi nhập; ReadEase chưa tích hợp OCR.
 - Chưa hỗ trợ PDF đặt mật khẩu, EPUB có DRM hoặc tệp bị hỏng.
 - Trình đọc EPUB chưa tái tạo toàn bộ CSS/layout của sách, fixed-layout, SVG tương tác, bảng phức tạp hoặc mô tả ảnh bằng AI.
-- Chế độ đọc-khi-sao-chép đọc mọi thứ bạn sao chép, không phân biệt được nội dung nhạy cảm nằm trong văn bản thường; mặc định tắt.
 - Bản source này được build và ký ad-hoc trên máy của bạn; chưa phải binary có Developer ID và notarization để phát hành đại trà.
 
 ## Chạy local để phát triển

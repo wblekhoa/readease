@@ -20,7 +20,6 @@ from vieneu_reader.integrations.selection_shortcut import (
     OPTION_KEY,
     SHIFT_KEY,
     InvalidShortcutError,
-    ReadOnCopyPreferenceStore,
     Shortcut,
     ShortcutPreferenceStore,
 )
@@ -149,36 +148,6 @@ class ShortcutPreferenceStoreTests(unittest.TestCase):
             self.assertEqual(store.load(), DEFAULT_SHORTCUT)
 
 
-class ReadOnCopyPreferenceStoreTests(unittest.TestCase):
-    def test_read_on_copy_is_off_unless_it_was_deliberately_turned_on(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "settings.json"
-            store = ReadOnCopyPreferenceStore(path)
-
-            self.assertFalse(store.load())
-
-            for payload in (
-                '{"read_on_copy": "true"}',
-                '{"read_on_copy": 1}',
-                '{"read_on_copy": null}',
-                "not json at all",
-            ):
-                path.write_text(payload, encoding="utf-8")
-                self.assertFalse(store.load(), payload)
-
-            path.write_text('{"language": "en"}', encoding="utf-8")
-            self.assertTrue(store.save(True))
-
-            self.assertTrue(store.load())
-            self.assertEqual(
-                json.loads(path.read_text(encoding="utf-8")),
-                {"language": "en", "read_on_copy": True},
-            )
-
-            self.assertTrue(store.save(False))
-            self.assertFalse(store.load())
-
-
 class SettingsDocumentTests(unittest.TestCase):
     def test_a_damaged_file_is_kept_instead_of_being_written_over(self) -> None:
         with TemporaryDirectory() as directory:
@@ -205,12 +174,12 @@ class SettingsDocumentTests(unittest.TestCase):
             path = Path(directory) / "settings.json"
             path.write_text('{"language": "en"}', encoding="utf-8")
 
-            self.assertTrue(update_settings(path, {"read_on_copy": True}))
+            self.assertTrue(update_settings(path, {"voice": "Adam"}))
 
             self.assertFalse(path.with_name(path.name + ".damaged").exists())
             self.assertEqual(
                 json.loads(path.read_text(encoding="utf-8")),
-                {"language": "en", "read_on_copy": True},
+                {"language": "en", "voice": "Adam"},
             )
 
 

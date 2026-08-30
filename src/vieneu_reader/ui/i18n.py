@@ -339,21 +339,9 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Mở cài đặt quyền Trợ năng của macOS cho ReadEase",
         "Open macOS Accessibility settings for ReadEase",
     ),
-    "external.read_on_copy": (
-        "Đọc ngay khi sao chép, ở mọi ứng dụng",
-        "Read as soon as you copy, in any app",
-    ),
-    "external.read_on_copy_accessible": (
-        "Bật hoặc tắt việc đọc ngay khi bạn sao chép ở bất kỳ ứng dụng nào",
-        "Turn reading on copy in any app on or off",
-    ),
     "external.privacy_note": (
-        "ReadEase chỉ đọc khi bạn bấm phím tắt, và đọc đúng phần đang bôi đen. Nội dung đó không lưu vào thư viện và không rời khỏi máy. Đọc-khi-sao-chép đang tắt, nên app không xem clipboard của bạn.",
-        "ReadEase reads only when you press the shortcut, and reads exactly what you had selected. That text is not added to the library and never leaves this Mac. Read-on-copy is off, so the app is not looking at your clipboard.",
-    ),
-    "external.privacy_note_on": (
-        "Đang bật: ReadEase xem clipboard, nên mọi thứ bạn sao chép ở bất kỳ ứng dụng nào đều được đọc lên, kể cả khi bạn copy để dán. App bỏ qua mục mà trình quản lý mật khẩu đánh dấu, nhưng không nhận ra mật khẩu nằm trong văn bản thường. Muốn chủ động từng lần thì tắt công tắc và dùng phím tắt.",
-        "On: ReadEase watches the clipboard, so everything you copy, in any app, is read aloud - including copies you made to paste. The app skips what a password manager marks as its own, but cannot recognise a password sitting in ordinary text. To choose each time instead, turn this off and use the shortcut.",
+        "ReadEase chỉ đọc khi bạn bấm phím tắt — không xem clipboard của bạn.",
+        "ReadEase reads only when you press the shortcut - it is not watching your clipboard.",
     ),
     "external.recent_title": (
         "Đã quét đọc trong phiên",

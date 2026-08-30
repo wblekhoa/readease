@@ -35,7 +35,6 @@ from vieneu_reader.integrations.selection_shortcut import (
     CMD_KEY,
     CONTROL_KEY,
     OPTION_KEY,
-    ReadOnCopyPreferenceStore,
     Shortcut,
 )
 from vieneu_reader.playback.coordinator import PlaybackSnapshot, PlaybackState
@@ -577,7 +576,6 @@ class ReaderWindowTests(unittest.TestCase):
         *,
         language_store: LanguagePreferenceStore | None = None,
         selection_shortcut: Shortcut | None = None,
-        read_on_copy_store: ReadOnCopyPreferenceStore | None = None,
         apple_books=None,
         backup_root: Path | None = None,
         confirm_transfer=None,
@@ -590,10 +588,6 @@ class ReaderWindowTests(unittest.TestCase):
             reading_indicator=reading_indicator,
             language_store=language_store,
             selection_shortcut=selection_shortcut,
-            read_on_copy=(
-                read_on_copy_store.load() if read_on_copy_store is not None else False
-            ),
-            read_on_copy_store=read_on_copy_store,
             apple_books=apple_books,
             backup_root=backup_root,
             confirm_transfer=confirm_transfer,
@@ -1072,75 +1066,6 @@ class ReaderWindowTests(unittest.TestCase):
         self.assertTrue(detail.isVisible())
         self.assertIn("tổ hợp khác", detail.text())
         self.assertFalse(window.open_accessibility_settings_button.isVisible())
-
-    def test_read_on_copy_is_off_by_default_and_labelled_in_both_languages(
-        self,
-    ) -> None:
-        store = ReadOnCopyPreferenceStore(self.paths.root / "settings.json")
-        window = self.make_window(
-            FakeModelSetup(ready=True),
-            read_on_copy_store=store,
-        )
-        toggle = window.findChild(QCheckBox, "externalReadingReadOnCopy")
-
-        self.assertIsNotNone(toggle)
-        self.assertFalse(toggle.isChecked())
-        self.assertFalse(store.load())
-        self.assertEqual(toggle.text(), "Đọc ngay khi sao chép, ở mọi ứng dụng")
-
-        changes: list[bool] = []
-        window.readOnCopyChanged.connect(changes.append)
-        toggle.click()
-        self.application.processEvents()
-
-        self.assertEqual(changes, [True])
-        self.assertTrue(toggle.isChecked())
-        # The choice has to survive a restart, not just this window.
-        self.assertTrue(store.load())
-
-        toggle.click()
-        self.application.processEvents()
-
-        # Switching it back off has to be remembered just as faithfully.
-        self.assertEqual(changes, [True, False])
-        self.assertFalse(store.load())
-
-        toggle.click()
-        self.application.processEvents()
-        self.assertEqual(changes, [True, False, True])
-
-        language_combo = window.findChild(QComboBox, "languageCombo")
-        language_combo.setCurrentIndex(
-            language_combo.findData(Language.ENGLISH.value)
-        )
-        self.application.processEvents()
-
-        self.assertEqual(toggle.text(), "Read as soon as you copy, in any app")
-        # Switching language must not switch the feature on or off.
-        self.assertEqual(changes, [True, False, True])
-        self.assertTrue(toggle.isChecked())
-        self.assertTrue(store.load())
-
-    def test_privacy_note_describes_read_on_copy_in_both_languages(self) -> None:
-        window = self.make_window(FakeModelSetup(ready=True))
-        note = window.external_reading_view.privacy_note
-
-        vietnamese = note.text()
-        self.assertIn("tắt", vietnamese)
-        self.assertIn("clipboard", vietnamese.lower())
-
-        window.external_reading_view.set_read_on_copy(True)
-        self.assertNotEqual(note.text(), vietnamese)
-        self.assertIn("clipboard", note.text().lower())
-
-        language_combo = window.findChild(QComboBox, "languageCombo")
-        language_combo.setCurrentIndex(
-            language_combo.findData(Language.ENGLISH.value)
-        )
-        self.application.processEvents()
-
-        self.assertIn("clipboard", note.text().lower())
-        self.assertNotIn("does not monitor your screen or clipboard", note.text())
 
     def test_session_history_control_starts_disabled_and_accessible(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))

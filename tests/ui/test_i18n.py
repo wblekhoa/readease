@@ -173,29 +173,6 @@ class LocalizerTests(unittest.TestCase):
             "already using it. Choose a different combination.",
         )
 
-    def test_read_on_copy_note_claims_no_more_than_the_code_can_do(self) -> None:
-        # Read-on-copy now speaks whatever was copied, in any app. The only
-        # thing it refuses is what a password manager marked as its own, and
-        # it cannot tell a password typed into ordinary text from prose. The
-        # note has to say both, in either language, and promise nothing more.
-        for language, forbidden, required in (
-            (
-                Language.VIETNAMESE,
-                ("không bao giờ", "chỉ đọc khi"),
-                ("bất kỳ ứng dụng nào", "không nhận ra"),
-            ),
-            (
-                Language.ENGLISH,
-                ("never", "always", "cannot be read"),
-                ("any app", "cannot recognise"),
-            ),
-        ):
-            note = Localizer(language).text("external.privacy_note_on").lower()
-            for claim in forbidden:
-                self.assertNotIn(claim, note, f"{language}: {claim}")
-            for admission in required:
-                self.assertIn(admission, note, f"{language}: {admission}")
-
     def test_language_store_defaults_safely_and_persists_supported_language(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "settings.json"

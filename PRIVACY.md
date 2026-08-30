@@ -108,38 +108,10 @@ modifiers are stored in `settings.json`, beside the other preferences kept there
   which build of the reading model it uses;
 nothing about your keyboard is recorded anywhere else.
 
-### Read on copy
-
-"Read as soon as you copy in Apple Books" is off until you switch it on in the
-Read a selection view, and it is the only setting that makes ReadEase look at the
-clipboard on its own. While it is on, ReadEase checks the clipboard's change
-counter a few times a second; when that counter moves and Apple Books is the
-frontmost app, ReadEase reads the newly copied text aloud. In this mode it only
-reads the clipboard, never writes to it, and it needs no Accessibility
-permission.
-
-While the switch is on, a copy made in any app is read. There is no check on
-which program you copied from, because macOS does not record which app wrote to
-the clipboard and there is nothing honest to check. In practice that means
-everything you press Command-C on is spoken aloud - including copies you made in
-order to paste, not to hear.
-
-One kind of item is refused: anything carrying the concealed type, which is how
-password managers ask clipboard tools to leave their entries alone. That covers
-a password copied from a password manager. It does not cover a password, a
-recovery code or a private note living in ordinary text, in a document or a web
-form; ReadEase cannot tell those from prose, and will read them.
-
-Universal Clipboard content arriving from another device is an ordinary
-clipboard change here, so it is read like anything else.
-
-If that is more than you want, leave read-on-copy off and use the shortcut,
-which reads only what you had selected at the moment you pressed it, in
-whichever app you pressed it over.
-
-Switching it off stops the checking. Text read this way is transient like the
-rest: it is not added to the library or the persistent audio cache, and it
-never leaves this Mac.
+ReadEase never watches the clipboard on its own. It reads only at the moment
+you press the shortcut, and only what you had selected then; text read that way
+is transient like the rest, is not added to the library or the persistent audio
+cache, and never leaves this Mac.
 
 Deleting ReadEase does not automatically delete its Application Support data.
 Users can remove that folder separately after closing the app if they no longer

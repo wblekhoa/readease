@@ -231,49 +231,6 @@ int RDXSelectionAcquire(char **outputBytes, size_t *outputLength) {
 }
 
 __attribute__((visibility("default")))
-long long RDXClipboardChangeCount(void) {
-    @autoreleasepool {
-        return (long long)NSPasteboard.generalPasteboard.changeCount;
-    }
-}
-
-__attribute__((visibility("default")))
-int RDXClipboardCopiedText(char **outputBytes, size_t *outputLength) {
-    if (outputBytes == NULL || outputLength == NULL) {
-        return RDXSelectionUnavailable;
-    }
-    *outputBytes = NULL;
-    *outputLength = 0;
-    @autoreleasepool {
-        // Read-on-copy follows the copy wherever it was made, so the one thing
-        // still refused here is what a password manager marked as its own.
-        BOOL concealed = NO;
-        NSString *copiedText = RDXReadableStringFrom(
-            NSPasteboard.generalPasteboard, &concealed);
-        if (concealed) {
-            return RDXSelectionUnsupportedSource;
-        }
-        NSString *trimmed = [copiedText stringByTrimmingCharactersInSet:
-            NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        if (trimmed.length == 0) {
-            return RDXSelectionNoSelection;
-        }
-        NSData *payload = [copiedText dataUsingEncoding:NSUTF8StringEncoding];
-        if (payload == nil || payload.length == 0 || payload.length > 500000) {
-            return RDXSelectionUnavailable;
-        }
-        char *copy = malloc(payload.length);
-        if (copy == NULL) {
-            return RDXSelectionUnavailable;
-        }
-        memcpy(copy, payload.bytes, payload.length);
-        *outputBytes = copy;
-        *outputLength = payload.length;
-        return RDXSelectionSuccess;
-    }
-}
-
-__attribute__((visibility("default")))
 void RDXSelectionFree(void *bytes) {
     free(bytes);
 }
