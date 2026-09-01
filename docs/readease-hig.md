@@ -47,9 +47,10 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 - ✗ **viền disabled dùng `edge`.** Đo được `edge` **1.00:1** so với nền desk sáng — đúng bằng màu
   nền, tức vô hình; `edge-strong` cho 1.24 (sáng) / 1.76 (tối): vẫn im, nhưng còn thấy dáng nút.
 - ✗ **danger dùng bậc `primary`.** Đo 3.12:1 (sáng) và 3.72:1 (tối) — dưới AA cho chữ 14px. Đổi
-  sang `--text-color-danger-bold`: 4.06/5.14 (sáng: desk/giấy) · 5.14/4.56 (tối). Chỗ duy nhất
-  còn dưới 4.5 là dòng danger nằm thẳng trên desk sáng (4.06) — mọi bề mặt danger quan trọng
-  (xác nhận xoá, phán quyết chuyển ghi chú) đều nằm trên giấy.
+  sang `--text-color-danger-bold`. **Đo lại 01/09 sau khi desk chuyển sang trắng: 5.14:1 ở CẢ hai
+  theme** khi chữ danger nằm thẳng trên desk. Ghi chú cũ nói 4.06 (dưới AA) — con số đó đo trên
+  desk **xám n20** đã bị thay; nền trắng tự nâng tương phản, và ca dưới-AA đó không còn tồn tại.
+  *Bài học: số đo tương phản gắn với MỘT nền cụ thể — đổi nền là phải đo lại, đừng chép số cũ.*
 - Pressed **na10 không phải là re-litigate**: na10 bị bác với tư cách trọng lượng HOVER; ngón tay
   đang nhấn thì nặng hơn con trỏ lướt qua, và chỉ nặng trong lúc giữ.
 - **Ô nhập chữ và select đeo vòng focus cả khi bấm chuột** (nút thì không) — đó là hành vi của
@@ -102,6 +103,20 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   | Quét đọc | **không** | có | bắt đầu bằng phím tắt, không bằng nút; nhưng giọng/tốc độ áp cho phím tắt |
   | Chuyển ghi chú | không | không | không dính gì tới phát tiếng |
 
+- **Đang phát thì thanh dưới CHỈ là transport** (tối giản 01/09): 4 nút icon `⏮ ⏸/▶ ⏹ ⏭`, không
+  nhãn chữ — đây là ngôn ngữ ai cũng đọc được, và 4 nút chữ ăn ~300px trong khi 4 icon ăn ~128px.
+  Nút phát/tạm dừng sáng hơn (`text-ink`) vì nó là việc chính; ba nút kia `ink-mute`.
+- **Giọng/Tốc độ/Chất lượng BIẾN MẤT khi đang đọc** — không phải để cho gọn, mà vì chúng **không
+  ăn vào lượt đọc đang chạy**: `rate` và `voiceId` chỉ được truyền lúc gọi `read_text`/`read_book`,
+  đổi giữa chừng không đổi được thứ đang phát. Để chúng ở đó là hứa một điều app không làm.
+  Chúng trở lại ngay khi dừng, tức đúng lúc chúng có tác dụng cho lượt sau.
+- **Nút Dừng là ngoại lệ có nhãn + tone danger** (chủ chốt 01/09): ba nút kia là icon trần, riêng
+  Dừng mang cả icon lẫn chữ và màu `danger`, vì nó là hành động duy nhất KẾT THÚC lượt đọc — cái
+  không quay lại được bằng một cú bấm như tạm dừng. Đo: 5.14:1 trên desk ở cả hai theme.
+  Không đụng brand: brand đỏ là CTA "Đọc", mà CTA không hiện lúc đang đọc nên hai sắc đỏ không
+  bao giờ đứng cạnh nhau.
+- **Dòng trạng thái không được xuống dòng**: "Đang chuẩn bị giọng đọc…" từng vỡ thành 5 dòng dựng
+  đứng giữa thanh (chủ bắt 01/09) → `whitespace-nowrap` + truncate.
 - **Ẩn ≠ vô hiệu hoá**: ẩn khi màn **không bao giờ** cấp được hành động đó (Quét đọc, Chuyển ghi
   chú, thư viện chưa mở sách); **hiện-nhưng-mờ** khi đó là hành động chính của màn và chỉ đang
   chờ dữ liệu (ô dán còn trống) — ẩn kiểu này sẽ làm nút nhảy ra khi vừa gõ ký tự đầu.
@@ -112,7 +127,35 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   · ✗ **nút chính ăn state của màn KHÁC** — trên Quét đọc/Chuyển ghi chú, nút "Đọc nội dung"
   từng bật/tắt theo ô dán ở tab khác và bấm vào là đọc đúng nội dung vô hình đó (01/09).
 
-### 3.9 Reader — sidebar chương
+### 3.6 ConfirmInline · 3.7 PermissionCard · 3.8 Setup gate
+ConfirmInline: thay chỗ trailing, hành động huỷ = **danger** + "Giữ lại" trung tính; không modal
+cho việc một hàng. PermissionCard: Surface + note + hành động chính brand + đường "Cài đặt hệ
+thống"; nói rõ phải thoát-mở-lại (luật TCC). Setup gate: một cột giữa màn, field chung trục,
+một hành động brand; chặn TOÀN app cho tới khi model sẵn sàng.
+
+### 3.9 Reader - màn đọc sách
+Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật gốc: mọi pixel chrome phải trả
+được câu hỏi "nó giúp đọc hay xem hình chỗ nào".
+
+- **Hai vị trí, không phải một** (luật xương sống của màn này): **mắt** đang ở đâu (cuộn tới đâu)
+  và **giọng** đang ở đâu (segment đang phát) là HAI thứ khác nhau. Sidebar đánh dấu theo MẮT
+  (scroll-spy); nền `band` trong cột chữ đánh dấu theo GIỌNG.
+- **Tự cuộn theo giọng chỉ khi mắt còn ở đó**: đang phát mà người ta cuộn đi chỗ khác thì PHẢI
+  ngừng giật họ về, và hiện viên "Về chỗ đang đọc" để tự quay lại khi muốn. Không có luật này,
+  scroll-spy và auto-scroll đánh nhau: cứ mỗi đoạn là màn hình nhảy.
+- **Bấm chương = ĐI TỚI, không phải phát** (đổi ngữ nghĩa 01/09): cuộn tới chương đó; nếu đang
+  phát thì giọng đi theo, nếu đang dừng thì chỉ cuộn. Bấm vào một ĐOẠN mới là lệnh đọc từ đó.
+  Trước đây bấm chương là phát ngay - người chỉ muốn xem mục lục bị đọc vào mặt.
+- **Cỡ chữ nội dung KHÔNG thuộc thang 14px của chrome**: đó là thang cho UI, còn đây là bề mặt
+  nội dung - mặc định 16px, người đọc tự chỉnh được. Chỉnh bằng biến CSS trên gốc cột, không
+  bằng class (class-mỗi-cỡ là drift, và `text-[1?px]` bị cổng chặn).
+- **Anatomy**: header gọn một hàng (quay lại · tên sách · thu gọn mục lục · cỡ chữ) → mục lục hàng
+  dày đặc (`ListRow dense`) → cột chữ KHÔNG bọc thẻ: nội dung nằm thẳng trên trang, vì viền +
+  đệm của thẻ ăn mất bề ngang mà không nói thêm điều gì.
+- **Don't sống**: ✗ sidebar không dấu vị trí (audit 01/09) · ✗ đếm "Chương X/Y" cho PDF không có
+  mục lục (mỗi TRANG là một "chương") · ✗ hai hàng chrome chồng nhau trên đầu màn đọc.
+
+**Sidebar mục lục**
 - **Usage**: điều hướng trong sách đang mở; mỗi hàng nhảy tới đầu chương.
 - **Anatomy**: `ListRow` một dòng; **hàng của chương đang đọc mang nền `band`** — cùng token với
   dòng đang đọc trong cột chữ, nên "chỗ tôi đang ở" chỉ có một ngôn ngữ màu duy nhất.
@@ -122,11 +165,21 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   đâu (bắt trong vòng audit theo tính năng, 01/09) · ✗ đếm "Chương X/Y" cho PDF không có mục lục:
   ở đó mỗi TRANG là một "chương" tên "Trang 37", header nói "Chương 37/300" là tự mâu thuẫn.
 
-### 3.6 ConfirmInline · 3.7 PermissionCard · 3.8 Setup gate
-ConfirmInline: thay chỗ trailing, hành động huỷ = **danger** + "Giữ lại" trung tính; không modal
-cho việc một hàng. PermissionCard: Surface + note + hành động chính brand + đường "Cài đặt hệ
-thống"; nói rõ phải thoát-mở-lại (luật TCC). Setup gate: một cột giữa màn, field chung trục,
-một hành động brand; chặn TOÀN app cho tới khi model sẵn sàng.
+### 3.9c `Kbd` - hiển thị phím tắt
+- **Usage**: cho THẤY tổ hợp phím hiện hành. Đây là THÔNG TIN, không phải hành động.
+- **Anatomy**: mỗi phím một keycap rời (`Shift` `Command` `T`), nối bằng dấu `+` mờ. Nền `panel`
+  (lõm) chứ không phải `paper`, bo **8px** chứ không phải 12px của control, chữ **12px**, và
+  **viền dưới dày 2px** — thứ để bấm trên bàn phím, không phải trên màn hình.
+- **Don't sống**: ✗ một hộp bo tròn có viền trên nền `paper` ở đúng radius control — trong app này
+  đó CHÍNH LÀ hình dạng cái nút, và chủ đã nhầm nó với nút "Đổi phím tắt" đứng ngay cạnh (01/09).
+  Phải khác NHIỀU chiều cùng lúc (nền + bo + cỡ + số hộp) thì mắt mới phân loại lại được.
+- **Content**: lời nhắc lúc đang ghi phím ("Nhấn tổ hợp phím mới…") là CÂU, không nhét vào keycap.
+
+### 3.10 Lightbox ảnh
+- **Usage**: hình trong sách hiển thị vừa phải trong dòng chảy đọc; muốn xem kỹ thì mở lớn.
+- **Behavior**: bấm ảnh để mở · **Esc** hoặc bấm nền để đóng (listener gắn khi mở, gỡ khi đóng)
+  · nút đóng là `IconButton`, không phải chữ "✕" tự vẽ.
+- **Don't**: ✗ ảnh to hết cỡ ngay trong dòng đọc (đẩy chữ đi, mà vẫn không đủ to để xem chi tiết).
 
 ## 4. Hợp đồng bàn phím (vay Radix: bảng phím tường minh)
 
@@ -167,6 +220,18 @@ lệch 4px góc so với nút ngay bên nó. Nay mọi control đọc `--ctl-rad
 `<Cluster radius="control | pill | sharp">`, mặc định 12px, cụm điều hướng (tab + ngôn ngữ) =
 `pill`. Cổng `audit:ui` chặn `rounded-xl` viết tay trong màn để radius cứng không quay lại.
 
+**Số đo màn đọc (đo thật 01/09, sân giả lập engine)**
+- Cỡ chữ nội dung: 5 nấc **15 · 16 · 17 · 19 · 21** (mặc định 16), nhớ trong `localStorage`.
+- Bề rộng cột: **36em** → đo bằng `Range` được **72 ký tự/dòng** ở cỡ 16px, nằm trong dải dễ đọc
+  65-75. **Đừng dùng `ch`**: `70ch` của font này ra 804px ≈ 95 ký tự/dòng - đơn vị `ch` đo bề
+  rộng chữ "0", không phải chữ trung bình. `em` giữ số ký tự/dòng ổn định khi đổi cỡ chữ.
+- Nhịp: line-height **1.75** · đoạn cách 0.75rem · tiêu đề chương **1.35em** bold, cách trên 2.5rem.
+- Hàng mục lục `dense`: px 10 / py 4 - 26 chương lọt trong 820px so với 15 hàng thường.
+- Tương phản (đo cả hai theme): dải đang đọc/nền **1.12** (sáng) · **1.24** (tối); chữ trên dải
+  **11.71** (sáng) · **12.82** (tối) - dải đủ thấy mà không cướp mất chữ.
+- Radius nội dung KHÁC radius control: ảnh = bậc surface **2xl**, đoạn tô = **lg**. Cổng
+  `audit:ui` bắt đúng chỗ này khi màn đọc lỡ viết `rounded-xl` (01/09).
+
 ## 7. Nền và thang bề mặt
 
 Nền = neutral DS **nguyên bản, đục 100%**, bậc **n00 ở CẢ hai theme** — token tự lật nên sáng ra
@@ -181,7 +246,7 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 | desk (nền) | n00 trắng | n00 | `body` |
 | panel (nhóm lõm) | n10 | n05 | `GroupedSection` |
 | paper (mặt nổi) | n00 trắng | n10 | control, `Surface`, cột đọc |
-| rail (rãnh tab) | n20 | n05 | `AppTabs` |
+| rail (rãnh tab) | n10 | n05 | `AppTabs` |
 | band (dòng đang đọc) | n10 | n20 | highlight ở Reader |
 
 **Viền là PHƯƠNG ÁN DỰ PHÒNG, không phải trang trí** (chủ chốt 01/09: "case đã phân cấp bằng bg
@@ -204,8 +269,12 @@ Hai luật rút ra khi chuyển sang nền trắng:
   phải nhờ **viền `edge-strong`** mới đọc ra là thẻ (viền `edge` mảnh biến mất trên trắng). Tối
   vẫn đủ ba bậc desk→panel→giấy nên viền chỉ là nét trang trí. Đây chính là cách macOS làm:
   sáng = tấm giấy trắng có nét, tối = nhiều lớp xám chồng.
-- **Rãnh phải lùi dưới cái nổi trên nó.** Rãnh tab n10 trên nền trắng gần như tàng hình → n20;
-  ở tối rãnh từng là n10 **đúng bằng màu viên pill** (chỉ viền cứu) → n05.
+- **Rãnh phải lùi dưới cái nổi trên nó** — nhưng "lùi bao nhiêu" phụ thuộc viên pill có tự đứng
+  được không. Lúc pill CHƯA có viền, rãnh n10 trên nền trắng gần như tàng hình nên phải đẩy lên
+  n20; sau khi pill có viền `edge-strong` + shadow phân lớp, rãnh trả về **n10** cho nhẹ mắt
+  (chủ yêu cầu giảm một bậc 01/09) mà cụm vẫn đọc ra là segmented control: rãnh/nền 1.12,
+  pill/rãnh 1.12. Ở tối rãnh từng là n10 **đúng bằng màu viên pill** (chỉ viền cứu) → n05, và
+  giữ nguyên: thang tối không còn bậc nào để nhạt thêm mà không đụng desk.
 
 ## 8. Quy trình mở pattern mới
 
