@@ -1,0 +1,173 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource/be-vietnam-pro/400.css";
+@import "@fontsource/be-vietnam-pro/500.css";
+@import "@fontsource/be-vietnam-pro/600.css";
+@import "./styles/ds-tokens.css";
+
+/* DS switches dark via [data-theme="dark"]; Tailwind's dark: must follow the
+   same stamp, not its own media query, or the two halves disagree. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-display: "Plus Jakarta Sans Variable", system-ui, sans-serif;
+  --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
+  --color-brand-600: #D42525;
+  --color-brand-700: #B31F1F;
+}
+
+/* The token bridge: every colour a component may use, named by ROLE and
+   resolved through the DS custom properties - which already flip with
+   [data-theme="dark"]. A class like `bg-white` cannot follow the theme;
+   `bg-paper` always can. If a colour is not brand and not on this list,
+   it does not belong in a className. */
+/* App-level roles that need DIFFERENT ramp steps per theme - the same roles
+   the Qt theme measured out (desk n20/n00, reading band n10/n20). Measured,
+   not chosen by eye: --fill-neutral-tint composites to a mid-grey slab in
+   light and a near-white band under near-white text in dark - the exact
+   white-on-white bug the Qt round already caught once. */
+/* The desk is n00 in BOTH themes - the token flips on its own, so light gets
+   a white sheet and dark keeps its near-black. The owner asked for white on
+   2026-09-01 ("xám như vậy không đẹp"); the grey n20 desk it replaces was
+   carried over from the Qt shell. Light therefore goes flat-white with
+   hairlines while dark stays layered, which is how macOS itself behaves:
+   paper is white ON white in light, and a lighter slab in dark. */
+:root {
+  --app-ground: var(--neutral-n00);
+  --app-band: var(--neutral-n10);
+  /* The tab rail is a RECESSED track: it has to sit a step below the pill
+     riding on it, or the segmented control stops reading as one. On white
+     that means n20 (n10 all but vanished); in dark the pill is paper n10, so
+     the track drops to n05 - it used to be n10, exactly the pill's own
+     colour, and only the pill's border kept them apart. */
+  --app-rail: var(--neutral-n20);
+  --app-panel: var(--neutral-n10);
+  /* A field/card stroke is a FALLBACK, not decoration: it exists only where
+     the fill cannot separate the surface by itself. On the white desk, paper
+     IS the desk colour, so the line is all a text box has. In dark the ladder
+     already separates them, and the extra line is noise - owner's rule,
+     2026-09-01: "đã phân cấp bằng bg rồi thì không cần border nữa". */
+  --app-edge-field: var(--border-color-neutral-soft);
+  /* ONE radius for every control in a cluster - DS radius guideline §3.1: the
+     eye reads a row of controls as a single unit, so the cluster's tier beats
+     each element's own height-default. Set it here, override per cluster with
+     <Cluster>; never hand a control its own radius. */
+  --ctl-radius: 0.75rem;
+}
+[data-theme="dark"] {
+  --app-band: var(--neutral-n20);
+  --app-rail: var(--neutral-n05);
+  --app-edge-field: transparent;
+  /* Dark keeps a real ladder - desk n00, panel n05, paper n10 - so a grouped
+     panel recedes and the controls on it still come forward. Light cannot use
+     the same step (its paper IS the white desk), hence the per-theme role. */
+  --app-panel: var(--neutral-n05);
+}
+
+@theme inline {
+  --color-ground: var(--app-ground);
+  --color-paper: var(--fill-neutral-base);
+  /* Hover is a whisper, not a slab: na05 (5%) instead of the na10 wash the
+     owner flagged as too heavy - one change here quiets every hover. */
+  --color-wash: var(--neutral-alpha-na05);
+  /* Pressed is the next step up the same alpha ladder. na10 was rejected as a
+     HOVER weight, not as a weight: a finger down should read heavier than a
+     cursor passing over, and only while the button is held. */
+  --color-press: var(--neutral-alpha-na10);
+  --color-band: var(--app-band);
+  --color-rail: var(--app-rail);
+  /* A grouped panel: one step off the desk, so settings rows read as an inset
+     group instead of an outlined white box lost on a white page. */
+  --color-panel: var(--app-panel);
+  /* The DS's own layered lift, which flips with the theme: a wide soft pass
+     plus a tight contact pass. Tailwind's shadow-sm is a single hard offset -
+     next to this it reads as a printed line under the element. */
+  --shadow-raised: var(--shadow-neutral-to-bot-2);
+  --color-ink: var(--text-color-neutral-primary);
+  --color-ink-mute: var(--text-color-neutral-secondary);
+  --color-ink-faint: var(--text-color-neutral-disabled);
+  --color-edge: var(--border-color-neutral-primary);
+  /* edge-strong measures ~1.6:1 - below WCAG's 3:1 for a lone boundary, and
+     kept anyway: the DS itself draws slate-200-class hairlines, and controls
+     read as controls here by FILL (paper on ground), the border only trims.
+     Same accepted decision as the Qt theme round. */
+  --color-edge-strong: var(--border-color-neutral-soft);
+  --color-edge-field: var(--app-edge-field);
+  /* Destructive is its own hue: DOL's hard rule keeps brand red for identity
+     and the red ramp's semantic tokens for danger, and both flip with theme.
+     The BOLD tier, not primary: measured 2026-09-01, primary reads 3.12:1 on
+     the light desk and 3.72:1 on the dark one - under AA for 14px text in
+     both. bold lifts that to 4.06 / 5.14 on the desk and 5.14 / 4.56 on
+     paper. The one spot still under 4.5 is a danger line sitting straight on
+     the light desk; every danger surface that matters sits on paper. */
+  --color-danger: var(--text-color-danger-bold);
+  --color-danger-fill: var(--fill-danger-primary);
+  /* Focus is info-blue, per the DS registry's own ring - brand red was this
+     app's mistake, and the owner caught it. secondary (b60) is the soft
+     tier that reads on both themes without shouting. */
+  --color-focus: var(--border-color-info-secondary);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  /* The desk is the DS neutral, exactly - the whole-window material
+     diluted the ramp's tone however low the bleed, so it was retired (owner's call, 2026-09-01). Any future material lives in a bounded
+     region, never under the entire page. */
+  background: var(--app-ground, #FFFFFF);
+  color: var(--text-color-neutral-primary, #21262D);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+h1, h2, h3 { font-family: var(--font-display); }
+
+textarea, input { user-select: text; cursor: auto; }
+
+/* WKWebView draws native selects with their own chrome and IGNORES
+   border-radius until appearance is off - the classes were correct, the
+   engine refused them. Turning appearance off also removes the system
+   chevron, so one is drawn here (mid-grey #8A9099 reads on both themes'
+   paper). These rules are un-layered, so they outrank utility padding. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A9099' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/* Text entry matches :focus-visible on a plain click too, so this ring is on
+   screen the whole time someone is writing - the paste box is the first
+   screen. Drawn ON the field's own edge instead of floating a line outside
+   it: one crisp blue boundary, the way a focused macOS text field reads,
+   not a border plus a gap plus a ring. */
+textarea:focus-visible {
+  outline-offset: -1px;
+}
+
+::selection {
+  background: var(--color-brand-600);
+  color: #ffffff;
+}
+
+/* WKWebView scrollbars follow the page, not the OS: without this the reader
+   column shows a white scrollbar pill inside a dark page. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-color-neutral-soft);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-color-neutral-secondary); background-clip: content-box; }
