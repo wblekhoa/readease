@@ -4,9 +4,10 @@ import { listen } from "@tauri-apps/api/event";
 import { AppTabs } from "./ui/AppTabs";
 import { Toolbar } from "./ui/patterns";
 import { External, type ExternalEntry } from "./screens/External";
-import { Button, Field, Notice, SectionTitle, Select, Textarea } from "./ui/controls";
+import { Button, Field, IconButton, Notice, SectionTitle, Select, Textarea } from "./ui/controls";
 import { ModelPanel } from "./ui/ModelPanel";
 import { useShortcut } from "./ui/useShortcut";
+import { NextIcon, PauseIcon, PlayIcon, PreviousIcon, StopIcon } from "./ui/icons";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader } from "./screens/Reader";
 import { Setup } from "./screens/Setup";
@@ -282,6 +283,7 @@ export default function App() {
             <Reader
               bookId={openBook.id}
               currentSegment={position}
+              reading={reading !== "idle"}
               onBack={() => { setOpenBook(null); setSegments([]); }}
               onSegments={setSegments}
               onReadFrom={(segmentId) => { void readBookFrom(segmentId); }}
@@ -358,27 +360,47 @@ export default function App() {
               </Button>
             )
           ) : (
+            /* While something is playing the bar is a TRANSPORT and
+               nothing else: the media glyphs need no labels, and
+               voice/speed/quality are hidden because they cannot change what
+               is already being spoken - they are read once, at the start. */
             <>
-              <Button className="px-4" onClick={togglePause}>
-                {reading === "paused" ? text("player.resume") : text("player.pause")}
-              </Button>
-              <Button className="px-4" onClick={stopReading}>
+              {screen === "reader" && (
+                <IconButton
+                  onClick={() => { void readNeighbour(-1); }}
+                  aria-label={text("player.previous")}
+                  title={text("player.previous")}
+                >
+                  <PreviousIcon />
+                </IconButton>
+              )}
+              <IconButton
+                onClick={togglePause}
+                aria-label={reading === "paused" ? text("player.resume") : text("player.pause")}
+                title={reading === "paused" ? text("player.resume") : text("player.pause")}
+                className="text-ink"
+              >
+                {reading === "paused" ? <PlayIcon /> : <PauseIcon />}
+              </IconButton>
+              {/* Stop is the one transport action that ENDS the reading, so
+                  it is the one that gets a name and the danger tone. */}
+              <Button variant="danger" size="sm" onClick={stopReading}>
+                <StopIcon />
                 {text("player.stop")}
               </Button>
               {screen === "reader" && (
-                <>
-                  <Button className="px-3" onClick={() => { void readNeighbour(-1); }}>
-                    {text("player.previous")}
-                  </Button>
-                  <Button className="px-3" onClick={() => { void readNeighbour(1); }}>
-                    {text("player.next")}
-                  </Button>
-                </>
+                <IconButton
+                  onClick={() => { void readNeighbour(1); }}
+                  aria-label={text("player.next")}
+                  title={text("player.next")}
+                >
+                  <NextIcon />
+                </IconButton>
               )}
             </>
           )}
           {reading !== "idle" && warming && (
-            <Notice>{text("player.warming")}</Notice>
+            <Notice className="min-w-0 truncate whitespace-nowrap">{text("player.warming")}</Notice>
           )}
           {readError && (
             <Notice tone="error" className="min-w-0 truncate">
@@ -386,7 +408,7 @@ export default function App() {
             </Notice>
           )}
           <div className="flex-1" />
-          {speechSettings && modelPrecision && (
+          {reading === "idle" && speechSettings && modelPrecision && (
             <Field label={text("player.quality")}>
               <Button
                 className="px-3 font-normal"
@@ -399,7 +421,7 @@ export default function App() {
               </Button>
             </Field>
           )}
-          {speechSettings && (
+          {reading === "idle" && speechSettings && (
             <>
               <Field label={text("player.voice")}>
                 <Select

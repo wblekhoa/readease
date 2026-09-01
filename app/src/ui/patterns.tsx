@@ -69,6 +69,7 @@ export function ListRow({
   trailing,
   onPress,
   active = false,
+  dense = false,
 }: {
   leading?: ReactNode;
   title: ReactNode;
@@ -78,16 +79,22 @@ export function ListRow({
   /** "You are here" - painted in `band`, the same token the reading line
    * uses, so the app only ever has one colour for current position. */
   active?: boolean;
+  /** Navigation lists (a book's contents) trade padding for how many rows
+   * fit on screen; content lists keep the roomier default. */
+  dense?: boolean;
 }) {
+  const shape = dense
+    ? "rounded-[var(--ctl-radius)] px-2.5 py-1"
+    : "rounded-2xl px-3 py-2";
   return (
     <div
-      className={`group flex items-center rounded-2xl pr-1.5 transition-colors ${
-        active ? "bg-band" : "hover:bg-wash"
-      }`}
+      className={`group flex items-center ${
+        dense ? "rounded-[var(--ctl-radius)]" : "rounded-2xl pr-1.5"
+      } transition-colors ${active ? "bg-band" : "hover:bg-wash"}`}
     >
       <button
         onClick={onPress}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3 py-2 text-left"
+        className={`flex min-w-0 flex-1 items-center gap-3 text-left ${shape}`}
       >
         {leading && <span className="shrink-0 text-ink-mute">{leading}</span>}
         <span className="min-w-0 flex-1">

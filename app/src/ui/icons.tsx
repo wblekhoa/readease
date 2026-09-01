@@ -43,3 +43,74 @@ export function TrashIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M10 3.5 5.5 8l4.5 4.5" />
+    </svg>
+  );
+}
+
+/** Two panes, the left one filled: the contents list toggling in and out. */
+export function SidebarIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="2.2" y="3" width="11.6" height="10" rx="2" />
+      <path d="M6.4 3v10" />
+    </svg>
+  );
+}
+
+/* Media glyphs read better filled than stroked - the transport is the one
+ * place the app borrows a language everybody already knows. */
+const solid = {
+  width: 16,
+  height: 16,
+  viewBox: "0 0 16 16",
+  fill: "currentColor",
+  "aria-hidden": true,
+};
+
+export function PlayIcon() {
+  return (
+    <svg {...solid}>
+      <path d="M4.8 3.3c0-.6.7-1 1.2-.6l6 4.1c.5.3.5 1 0 1.3l-6 4.2c-.5.4-1.2 0-1.2-.6V3.3Z" />
+    </svg>
+  );
+}
+
+export function PauseIcon() {
+  return (
+    <svg {...solid}>
+      <rect x="4" y="3" width="3" height="10" rx="1.2" />
+      <rect x="9" y="3" width="3" height="10" rx="1.2" />
+    </svg>
+  );
+}
+
+export function StopIcon() {
+  return (
+    <svg {...solid}>
+      <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="2" />
+    </svg>
+  );
+}
+
+export function PreviousIcon() {
+  return (
+    <svg {...solid}>
+      <rect x="3" y="3.4" width="2.2" height="9.2" rx="1" />
+      <path d="M12.6 4.1c0-.6-.7-.9-1.1-.5L6.7 7.4a.8.8 0 0 0 0 1.2l4.8 3.8c.4.4 1.1 0 1.1-.5V4.1Z" />
+    </svg>
+  );
+}
+
+export function NextIcon() {
+  return (
+    <svg {...solid}>
+      <rect x="10.8" y="3.4" width="2.2" height="9.2" rx="1" />
+      <path d="M3.4 4.1c0-.6.7-.9 1.1-.5l4.8 3.8a.8.8 0 0 1 0 1.2l-4.8 3.8c-.4.4-1.1 0-1.1-.5V4.1Z" />
+    </svg>
+  );
+}
