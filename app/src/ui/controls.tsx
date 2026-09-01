@@ -183,11 +183,28 @@ export function Notice({
   );
 }
 
-export function Kbd({ children }: { children: ReactNode }) {
+/** A keyboard shortcut, drawn as separate KEYCAPS.
+ *
+ * It used to be one bordered box on paper at the control radius - which in
+ * this app is precisely the shape of a button, so it read as one (the owner
+ * mistook it for a button standing next to the real "Đổi phím tắt", 2026-09-01).
+ * Three things now say "not a button": several small caps instead of one box,
+ * the recessed `panel` fill instead of `paper`, and a heavier bottom edge -
+ * the thing you press on a keyboard, not on screen.
+ */
+export function Kbd({ children }: { children: string }) {
+  const keys = children.split(" + ");
   return (
-    <kbd className="rounded-[var(--ctl-radius)] border border-edge-strong bg-paper px-2.5 py-1 font-sans text-sm font-semibold">
-      {children}
-    </kbd>
+    <span className="inline-flex items-center gap-1">
+      {keys.map((key, index) => (
+        <span key={`${key}-${index}`} className="contents">
+          {index > 0 && <span className="px-0.5 text-xs text-ink-faint">+</span>}
+          <kbd className="rounded-lg border border-edge border-b-2 border-b-edge-strong bg-panel px-1.5 py-0.5 font-sans text-xs font-semibold text-ink">
+            {key}
+          </kbd>
+        </span>
+      ))}
+    </span>
   );
 }
 

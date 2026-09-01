@@ -96,9 +96,13 @@ export function External({
           <span className="text-sm font-semibold text-ink-mute">
             {text("external.shortcut")}
           </span>
-          <Kbd>
-            {recording ? text("external.shortcut_recording") : displayShortcut(shortcut)}
-          </Kbd>
+          {recording ? (
+            <span className="text-sm text-ink-mute">
+              {text("external.shortcut_recording")}
+            </span>
+          ) : (
+            <Kbd>{displayShortcut(shortcut)}</Kbd>
+          )}
           <Button size="sm" onClick={() => setRecording((value) => !value)}>
             {text("external.shortcut_change")}
           </Button>

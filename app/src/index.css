@@ -21,10 +21,9 @@
    [data-theme="dark"]. A class like `bg-white` cannot follow the theme;
    `bg-paper` always can. If a colour is not brand and not on this list,
    it does not belong in a className. */
-/* App-level roles that need DIFFERENT ramp steps per theme - the same roles
-   the Qt theme measured out (desk n20/n00, reading band n10/n20). Measured,
-   not chosen by eye: --fill-neutral-tint composites to a mid-grey slab in
-   light and a near-white band under near-white text in dark - the exact
+/* App-level roles that need DIFFERENT ramp steps per theme. Measured, not
+   chosen by eye: --fill-neutral-tint composites to a mid-grey slab in light
+   and a near-white band under near-white text in dark - the exact
    white-on-white bug the Qt round already caught once. */
 /* The desk is n00 in BOTH themes - the token flips on its own, so light gets
    a white sheet and dark keeps its near-black. The owner asked for white on
@@ -35,12 +34,15 @@
 :root {
   --app-ground: var(--neutral-n00);
   --app-band: var(--neutral-n10);
-  /* The tab rail is a RECESSED track: it has to sit a step below the pill
-     riding on it, or the segmented control stops reading as one. On white
-     that means n20 (n10 all but vanished); in dark the pill is paper n10, so
-     the track drops to n05 - it used to be n10, exactly the pill's own
-     colour, and only the pill's border kept them apart. */
-  --app-rail: var(--neutral-n20);
+  /* The tab rail is a RECESSED track: it sits a step below the pill riding on
+     it, or the segmented control stops reading as one. It was n20 while the
+     pill had no border of its own and the track had to carry the whole
+     contrast; now the pill has an edge-strong stroke AND the layered shadow,
+     so the track can step back to n10 - lighter, and still legible as a
+     track (owner asked for one step down, 2026-09-01). In dark the pill is
+     paper n10, so the track stays n05: one step below it, and dark's ramp
+     has no room to lighten further without meeting the desk. */
+  --app-rail: var(--neutral-n10);
   --app-panel: var(--neutral-n10);
   /* A field/card stroke is a FALLBACK, not decoration: it exists only where
      the fill cannot separate the surface by itself. On the white desk, paper
@@ -97,9 +99,9 @@
      and the red ramp's semantic tokens for danger, and both flip with theme.
      The BOLD tier, not primary: measured 2026-09-01, primary reads 3.12:1 on
      the light desk and 3.72:1 on the dark one - under AA for 14px text in
-     both. bold lifts that to 4.06 / 5.14 on the desk and 5.14 / 4.56 on
-     paper. The one spot still under 4.5 is a danger line sitting straight on
-     the light desk; every danger surface that matters sits on paper. */
+     both. bold measures 5.14:1 on the desk in BOTH themes (re-measured after
+     the desk turned white; the older 4.06 figure belonged to the grey n20
+     desk that is gone - a contrast number is only true of one background). */
   --color-danger: var(--text-color-danger-bold);
   --color-danger-fill: var(--fill-danger-primary);
   /* Focus is info-blue, per the DS registry's own ring - brand red was this
