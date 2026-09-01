@@ -9,7 +9,6 @@ from vieneu_reader.importers.errors import CorruptBookError
 from vieneu_reader.importers.pdf import (
     _VisualLine,
     _group_visual_lines,
-    _utf16_length,
     import_pdf,
 )
 
@@ -77,9 +76,6 @@ class PdfImporterTests(unittest.TestCase):
             _group_visual_lines(lines),
             ("Dòng đầu được xuống hàng", "Đoạn cách xa", "Cột mới"),
         )
-
-    def test_qt_selection_offsets_count_supplementary_unicode_as_surrogate_pairs(self) -> None:
-        self.assertEqual(_utf16_length("A𠀋B"), 4)
 
     def test_without_valid_outline_uses_one_chapter_per_page(self) -> None:
         path = make_text_pdf(self.directory, with_outline=False)

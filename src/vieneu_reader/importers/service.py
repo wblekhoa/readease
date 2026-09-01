@@ -123,6 +123,26 @@ class LibraryService:
                     "Không thể khóa thư viện cục bộ để nhập sách."
                 ) from error
 
+    def remove_book(self, book_id: str) -> bool:
+        """Remove one book: its rows always, its file only when the file is
+        the app's own managed copy inside the library folder. A source file
+        the user imported FROM is never the app's to delete."""
+        with self._import_lock:
+            stored = self._repository.get_book(book_id)
+            if stored is None:
+                return False
+            managed = stored.managed_path
+            removed = self._repository.delete_book(book_id)
+            if removed:
+                try:
+                    if managed.is_relative_to(self._paths.books):
+                        managed.unlink(missing_ok=True)
+                except OSError:
+                    # The record is gone either way; a stranded copy is
+                    # harmless and visible, a surprise deletion is not.
+                    pass
+            return removed
+
     def _remove_owned_managed_copy(
         self,
         book: BookDocument,

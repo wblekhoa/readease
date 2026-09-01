@@ -28,6 +28,10 @@ class ProjectContractTests(unittest.TestCase):
                 "vieneu==3.3.0",
                 "PySide6>=6.8,<7",
                 "numpy>=2,<3",
+                # pypdfium2 replaced QtPdf for PDF extraction so the headless
+                # sidecar can import books without a Qt runtime (Tauri plan,
+                # milestone B). PySide6 stays until the Qt shell retires.
+                "pypdfium2>=5.13.0",
             ],
         )
         self.assertEqual(

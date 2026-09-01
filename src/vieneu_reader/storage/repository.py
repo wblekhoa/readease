@@ -385,6 +385,29 @@ class LibraryRepository:
                 ).fetchall()
             return tuple(_stored_book_from_row(row) for row in rows)
 
+    def delete_book(self, book_id: str) -> bool:
+        """Forget one book and its reading position. Files are the service's
+        concern; this only ever touches rows."""
+        with _database_errors():
+            with self._lock:
+                removed = self._connection.execute(
+                    "DELETE FROM books WHERE id = ?", (book_id,)
+                ).rowcount
+                self._connection.execute(
+                    "DELETE FROM progress WHERE book_id = ?", (book_id,)
+                )
+                self._connection.commit()
+        return removed > 0
+
+    def imported_at(self, book_id: str) -> str | None:
+        """When this book entered the library, as stored by SQLite."""
+        with _database_errors():
+            with self._lock:
+                row = self._connection.execute(
+                    "SELECT created_at FROM books WHERE id = ?", (book_id,)
+                ).fetchone()
+        return str(row[0]) if row else None
+
     def save_active_book_id(self, book_id: str) -> None:
         if not _is_sha256(book_id):
             raise RepositoryError("Không thể lưu cuốn sách đang mở.")

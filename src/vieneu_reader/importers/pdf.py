@@ -1,4 +1,12 @@
-"""Bounded text-layer PDF import through the bundled QtPdf runtime."""
+"""Bounded text-layer PDF import through pdfium.
+
+This used to run on the bundled QtPdf. The engine now also lives as a headless
+sidecar with no Qt runtime, so extraction moved to pypdfium2 - same guards,
+same errors, same grouping behaviour. One difference matters: pdfium reports
+text rectangles in content-stream order, not layout order, so visual lines are
+explicitly sorted by position before grouping (a PDF may draw the right half
+of a line first).
+"""
 
 from __future__ import annotations
 
@@ -6,8 +14,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
-from PySide6.QtCore import QModelIndex
-from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument
+import pypdfium2 as pdfium
 
 from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_paragraph
@@ -30,6 +37,7 @@ class _VisualLine:
     text: str
     top: float | None
     bottom: float | None
+    left: float = 0.0
 
 
 def _file_hash(path: Path) -> str:
@@ -40,46 +48,47 @@ def _file_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _utf16_length(value: str) -> int:
-    """Return Qt's UTF-16 text-index length, including surrogate pairs."""
-
-    return len(value.encode("utf-16-le")) // 2
-
-
-def _document_title(document: QPdfDocument, fallback: str) -> str:
-    title = normalize_paragraph(
-        str(document.metaData(QPdfDocument.MetaDataField.Title) or "")
-    ) or fallback
+def _document_title(document: "pdfium.PdfDocument", fallback: str) -> str:
+    try:
+        raw_title = document.get_metadata_value("Title") or ""
+    except pdfium.PdfiumError:
+        raw_title = ""
+    title = normalize_paragraph(str(raw_title)) or fallback
     if len(title) > MAX_TITLE_CHARS:
         raise CorruptBookError("PDF có tiêu đề quá dài.")
     return title
 
 
-def _visual_lines(document: QPdfDocument, page_index: int) -> tuple[_VisualLine, ...]:
-    text = document.getAllText(page_index).text()
-    lines: list[_VisualLine] = []
-    offset = 0
-    for raw_line in text.splitlines(keepends=True):
-        line = raw_line.rstrip("\r\n")
-        paragraph = normalize_paragraph(line)
-        line_length = _utf16_length(line)
-        if not paragraph:
-            lines.append(_VisualLine("", None, None))
-        else:
-            selection = document.getSelectionAtIndex(page_index, offset, line_length)
-            rectangle = selection.boundingRectangle()
-            if selection.isValid() and not rectangle.isNull():
-                lines.append(
-                    _VisualLine(
-                        paragraph,
-                        top=float(rectangle.top()),
-                        bottom=float(rectangle.bottom()),
-                    )
+def _visual_lines(
+    document: "pdfium.PdfDocument", page_index: int
+) -> tuple[_VisualLine, ...]:
+    page = document[page_index]
+    text_page = page.get_textpage()
+    try:
+        _, page_height = page.get_size()
+        lines: list[_VisualLine] = []
+        for rect_index in range(text_page.count_rects()):
+            left, bottom, right, top = text_page.get_rect(rect_index)
+            paragraph = normalize_paragraph(
+                text_page.get_text_bounded(left, bottom, right, top)
+            )
+            if not paragraph:
+                continue
+            # PDF coordinates grow upward; the grouping logic thinks in
+            # screen coordinates where a smaller top is higher on the page.
+            lines.append(
+                _VisualLine(
+                    paragraph,
+                    top=float(page_height - top),
+                    bottom=float(page_height - bottom),
+                    left=float(left),
                 )
-            else:
-                lines.append(_VisualLine(paragraph, None, None))
-        offset += _utf16_length(raw_line)
-    return tuple(lines)
+            )
+        lines.sort(key=lambda line: (line.top, line.left))
+        return tuple(lines)
+    finally:
+        text_page.close()
+        page.close()
 
 
 def _group_visual_lines(lines: tuple[_VisualLine, ...]) -> tuple[str, ...]:
@@ -125,11 +134,11 @@ def _group_visual_lines(lines: tuple[_VisualLine, ...]) -> tuple[str, ...]:
     return tuple(paragraph for paragraph in paragraphs if paragraph)
 
 
-def _page_blocks(document: QPdfDocument) -> tuple[tuple[str, ...], ...]:
+def _page_blocks(document: "pdfium.PdfDocument") -> tuple[tuple[str, ...], ...]:
     pages: list[tuple[str, ...]] = []
     block_count = 0
     text_char_count = 0
-    for page_index in range(document.pageCount()):
+    for page_index in range(len(document)):
         paragraphs = _group_visual_lines(_visual_lines(document, page_index))
         for paragraph in paragraphs:
             block_count += 1
@@ -143,20 +152,15 @@ def _page_blocks(document: QPdfDocument) -> tuple[tuple[str, ...], ...]:
 
 
 def _valid_outline_ranges(
-    document: QPdfDocument,
+    document: "pdfium.PdfDocument",
     page_count: int,
 ) -> tuple[tuple[str, int, int], ...]:
     try:
-        model = QPdfBookmarkModel()
-        model.setDocument(document)
-        root = QModelIndex()
         entries: list[tuple[str, int]] = []
-        for row in range(model.rowCount(root)):
-            index = model.index(row, 0, root)
-            title = normalize_paragraph(
-                str(model.data(index, QPdfBookmarkModel.Role.Title) or "")
-            )
-            page_number = model.data(index, QPdfBookmarkModel.Role.Page)
+        for bookmark in document.get_toc(max_depth=1):
+            title = normalize_paragraph(str(bookmark.get_title() or ""))
+            destination = bookmark.get_dest()
+            page_number = destination.get_index() if destination else None
             if (
                 not title
                 or len(title) > MAX_TITLE_CHARS
@@ -169,7 +173,7 @@ def _valid_outline_ranges(
             if entries and page_number <= entries[-1][1]:
                 return ()
             entries.append((title, page_number))
-    except (RuntimeError, TypeError, ValueError):
+    except (pdfium.PdfiumError, RuntimeError, TypeError, ValueError):
         return ()
 
     if not entries or entries[0][1] != 0:
@@ -185,7 +189,7 @@ def _valid_outline_ranges(
 
 
 def _chapter_specs(
-    document: QPdfDocument,
+    document: "pdfium.PdfDocument",
     pages: tuple[tuple[str, ...], ...],
 ) -> tuple[tuple[str, tuple[str, ...]], ...]:
     ranges = _valid_outline_ranges(document, len(pages))
@@ -197,30 +201,26 @@ def _chapter_specs(
     return tuple((f"Trang {index + 1}", blocks) for index, blocks in enumerate(pages))
 
 
-def _open_document(source: Path) -> QPdfDocument:
-    document = QPdfDocument()
-    error = document.load(str(source))
-    if error in (
-        QPdfDocument.Error.IncorrectPassword,
-        QPdfDocument.Error.UnsupportedSecurityScheme,
-    ):
-        document.close()
-        raise CorruptBookError("PDF được bảo vệ bằng mật khẩu nên không thể đọc.")
-    if error != QPdfDocument.Error.None_:
-        document.close()
-        raise CorruptBookError("Không thể đọc tệp PDF bị hỏng.")
-    return document
+def _open_document(source: Path) -> "pdfium.PdfDocument":
+    try:
+        return pdfium.PdfDocument(str(source))
+    except pdfium.PdfiumError as error:
+        if "password" in str(error).lower():
+            raise CorruptBookError(
+                "PDF được bảo vệ bằng mật khẩu nên không thể đọc."
+            ) from error
+        raise CorruptBookError("Không thể đọc tệp PDF bị hỏng.") from error
 
 
 def import_pdf(path: Path) -> BookDocument:
     """Import text from a PDF, rejecting scans that require OCR."""
 
     source = Path(path)
-    document: QPdfDocument | None = None
+    document: "pdfium.PdfDocument | None" = None
     try:
         source_hash = _file_hash(source)
         document = _open_document(source)
-        if document.pageCount() < 1 or document.pageCount() > MAX_PAGES:
+        if len(document) < 1 or len(document) > MAX_PAGES:
             raise CorruptBookError("PDF có số trang không hợp lệ hoặc vượt giới hạn.")
 
         pages = _page_blocks(document)

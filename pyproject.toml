@@ -16,6 +16,7 @@ dependencies = [
   # Already in the bundle by way of vieneu; named here because playback now
   # uses it directly, and depending on a transitive package is a trap.
   "numpy>=2,<3",
+  "pypdfium2>=5.13.0",
 ]
 
 [project.scripts]
@@ -27,4 +28,5 @@ packages = ["src/vieneu_reader"]
 [dependency-groups]
 dev = [
     "nuitka==4.1.1",
+    "pyinstaller>=6.22.2",
 ]
