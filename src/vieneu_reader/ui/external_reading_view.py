@@ -164,7 +164,10 @@ class ExternalReadingView(QWidget):
         replay_row = QHBoxLayout()
         self.replay_button = QPushButton()
         self.replay_button.setObjectName("externalReadingReplayButton")
+        # Appears with something to replay, rather than sitting under an empty
+        # list greyed out.
         self.replay_button.setEnabled(False)
+        self.replay_button.hide()
         replay_row.addWidget(self.replay_button)
         replay_row.addStretch(1)
         recent.addLayout(replay_row)
@@ -178,9 +181,7 @@ class ExternalReadingView(QWidget):
             self.openAccessibilitySettingsRequested.emit
         )
         self.history_list.currentItemChanged.connect(
-            lambda current, _previous: self.replay_button.setEnabled(
-                current is not None
-            )
+            lambda current, _previous: self._show_replay(current is not None)
         )
         self.history_list.itemDoubleClicked.connect(
             lambda item: self.replayRequested.emit(
@@ -320,7 +321,11 @@ class ExternalReadingView(QWidget):
             )
             self.history_list.setCurrentRow(selected_row if selected_row >= 0 else 0)
         else:
-            self.replay_button.setEnabled(False)
+            self._show_replay(False)
+
+    def _show_replay(self, usable: bool) -> None:
+        self.replay_button.setEnabled(usable)
+        self.replay_button.setVisible(usable)
 
     def _replay_current(self) -> None:
         item = self.history_list.currentItem()

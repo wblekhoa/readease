@@ -17,6 +17,7 @@ from PySide6.QtGui import (
     QBrush,
     QColor,
     QFont,
+    QFontMetricsF,
     QImage,
     QImageReader,
     QPalette,
@@ -32,6 +33,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QFrame,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -49,6 +51,40 @@ _MAX_SOURCE_IMAGE_PIXELS = 40_000_000
 _MAX_CHAPTER_DECODE_BYTES = 64 * 1024 * 1024
 _MAX_RENDERED_IMAGE_WIDTH = 600
 _MAX_RENDERED_IMAGE_HEIGHT = 900
+
+
+class _MeasuredTextBrowser(QTextBrowser):
+    """Keeps the reading column at the canonical measure.
+
+    A paragraph that stretches with the window forces the eye to travel back
+    across the full width to find the next line. DS CORE.md §3.4 caps long-form
+    reading at 65ch; CSS defines 1ch as the advance of "0".
+    """
+
+    MEASURE_CHARACTERS = 65
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._gutter = -1
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt virtual method
+        super().resizeEvent(event)
+        self._apply_measure()
+
+    def _apply_measure(self) -> None:
+        metrics = QFontMetricsF(self.font())
+        measure = metrics.horizontalAdvance("0") * self.MEASURE_CHARACTERS
+        measure += self.document().documentMargin() * 2
+        available = self.width() - 2 * self.frameWidth()
+        gutter = max(0, int((available - measure) / 2))
+        if gutter == self._gutter:
+            return
+        self._gutter = gutter
+        self.setViewportMargins(gutter, 0, gutter, 0)
+
+    def reading_column_width(self) -> int:
+        """The width text is actually allowed to occupy, for tests."""
+        return self.viewport().width()
 
 
 class _SegmentBlockData(QTextBlockUserData):
@@ -105,13 +141,15 @@ class BookReaderView(QWidget):
         chapter_layout = QVBoxLayout(chapters)
         chapter_layout.setContentsMargins(0, 0, 8, 0)
         chapter_layout.setSpacing(8)
-        self.chapter_label = QLabel()
-        chapter_font = QFont(self.chapter_label.font())
-        chapter_font.setBold(True)
-        self.chapter_label.setFont(chapter_font)
-        chapter_layout.addWidget(self.chapter_label)
+        # No "Chương" heading above the list: it named a list of chapter titles
+        # in a reader, and it pushed this column's first row 24px below the top
+        # of the page beside it. The list keeps its accessible name, so nothing
+        # is lost for a screen reader (DS CORE.md §1.3).
         self.chapter_list = QListWidget()
         self.chapter_list.setObjectName("chapterList")
+        # Two panels side by side, each in its own box, read as two documents.
+        # Spacing separates them; a border is not needed (DS CORE.md §1.3).
+        self.chapter_list.setFrameShape(QFrame.Shape.NoFrame)
         self.chapter_list.setWordWrap(True)
         self.chapter_list.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.chapter_list.setHorizontalScrollBarPolicy(
@@ -125,9 +163,10 @@ class BookReaderView(QWidget):
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(8)
-        self.reader_text = QTextBrowser()
+        self.reader_text = _MeasuredTextBrowser()
         self.reader_text.setObjectName("readerText")
         self.reader_text.setReadOnly(True)
+        self.reader_text.setFrameShape(QFrame.Shape.NoFrame)
         self.reader_text.document().setDocumentMargin(24)
         self.reader_text.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
@@ -181,7 +220,6 @@ class BookReaderView(QWidget):
         self.active_book_title.setAccessibleName(
             self._localizer.text("reader.book_title_accessible")
         )
-        self.chapter_label.setText(self._localizer.text("reader.chapters"))
         self.chapter_list.setAccessibleName(
             self._localizer.text("reader.chapter_list_accessible")
         )
@@ -352,9 +390,13 @@ class BookReaderView(QWidget):
             self.segmentActivated.emit(data.segment_id)
 
     def _update_selection_action(self) -> None:
-        self.read_selection_button.setEnabled(
+        # It spent almost all of its life greyed out under the page. Now it
+        # arrives with the selection it acts on and leaves with it.
+        usable = (
             self._selection_allowed and self.reader_text.textCursor().hasSelection()
         )
+        self.read_selection_button.setEnabled(usable)
+        self.read_selection_button.setVisible(usable)
 
     def _emit_selection_request(self) -> None:
         self.readSelectionRequested.emit(

@@ -25,6 +25,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
+    QFormLayout,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -138,6 +139,17 @@ def _reading_icon() -> QIcon:
     return icon
 
 
+def _bound_width(combo: QComboBox, characters: int) -> None:
+    """Stop a dropdown from demanding room for its longest entry."""
+    combo.setMinimumContentsLength(characters)
+    combo.setSizeAdjustPolicy(
+        QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+    )
+
+
+SETUP_COLUMN_WIDTH = 460
+
+
 class ReaderWindow(QMainWindow):
     selectionShortcutChanged = Signal(object)
 
@@ -195,7 +207,13 @@ class ReaderWindow(QMainWindow):
         self._available_voices: tuple[Any, ...] = ()
 
         self.setWindowTitle(PRODUCT_DISPLAY_NAME)
-        self.setMinimumSize(900, 600)
+        # 960, not 900: the reading controls, the voice, the build and the
+        # speed genuinely need that much side by side once each control has
+        # real padding. Measured, not guessed - at 900 the row asked for 876px
+        # inside an 860px bar and the labels overlapped. Collapsing the voice
+        # settings into one control would win the width back; that is a design
+        # decision, not a layout fix.
+        self.setMinimumSize(960, 600)
         self.resize(1180, 760)
         self.setAcceptDrops(True)
 
@@ -223,74 +241,87 @@ class ReaderWindow(QMainWindow):
     def _build_model_setup_page(self) -> QWidget:
         page = QWidget()
         page.setObjectName("modelSetupPage")
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(80, 64, 80, 64)
-        layout.setSpacing(16)
-        layout.addStretch(1)
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(80, 64, 80, 64)
+        outer.addStretch(1)
+
+        # One column of a known width. Word-wrapped labels were being added
+        # with an alignment flag, which hands a label its sizeHint width rather
+        # than the layout's: "Tải một lần, sau đó đọc hoàn toàn offline." asked
+        # for 241px, was given 197px and a single line of height, and lost its
+        # last word. A fixed column lets every label wrap honestly.
+        column = QWidget()
+        column.setObjectName("setupColumn")
+        column.setFixedWidth(SETUP_COLUMN_WIDTH)
+        layout = QVBoxLayout(column)
+        layout.setContentsMargins(0, 0, 0, 0)
+        # One rhythm instead of one uniform gap: related things sit close, and
+        # the distance grows at each step down the hierarchy (DS CORE.md §4.1).
+        layout.setSpacing(8)
+        outer.addWidget(column, alignment=Qt.AlignmentFlag.AlignHCenter)
+        outer.addStretch(1)
 
         self.model_setup_title = QLabel()
         title_font = QFont(self.model_setup_title.font())
         title_font.setPointSize(title_font.pointSize() + 8)
         title_font.setBold(True)
         self.model_setup_title.setFont(title_font)
+        self.model_setup_title.setWordWrap(True)
         self.model_setup_title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.model_setup_title)
 
         self.model_setup_description = QLabel()
         self.model_setup_description.setWordWrap(True)
         self.model_setup_description.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.model_setup_description.setMaximumWidth(620)
-        layout.addWidget(
-            self.model_setup_description,
-            alignment=Qt.AlignmentFlag.AlignHCenter,
+        layout.addWidget(self.model_setup_description)
+        layout.addSpacing(24)
+
+        # Each row used to centre itself, so the two dropdowns started at
+        # different x and the screen read as ragged. One form, one column: the
+        # block is centred, the fields inside it line up (DS slop-05).
+        setup_form = QFormLayout()
+        setup_form.setContentsMargins(0, 0, 0, 0)
+        setup_form.setHorizontalSpacing(12)
+        setup_form.setVerticalSpacing(12)
+        setup_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        setup_form.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
         )
-
-        language_row = QHBoxLayout()
-        language_row.addStretch(1)
         self.setup_language_label = QLabel()
-        language_row.addWidget(self.setup_language_label)
         self.setup_language_combo = self._build_language_combo("setupLanguageCombo")
-        language_row.addWidget(self.setup_language_combo)
-        language_row.addStretch(1)
-        layout.addLayout(language_row)
-
-        quality_row = QHBoxLayout()
-        quality_row.addStretch(1)
+        self.setup_language_label.setBuddy(self.setup_language_combo)
+        setup_form.addRow(self.setup_language_label, self.setup_language_combo)
         self.setup_quality_label = QLabel()
-        quality_row.addWidget(self.setup_quality_label)
         self.setup_quality_combo = QComboBox()
         self.setup_quality_combo.setObjectName("setupQualityCombo")
         for precision in PRECISIONS:
             self.setup_quality_combo.addItem("", precision)
-        quality_row.addWidget(self.setup_quality_combo)
-        quality_row.addStretch(1)
-        layout.addLayout(quality_row)
+        self.setup_quality_label.setBuddy(self.setup_quality_combo)
+        setup_form.addRow(self.setup_quality_label, self.setup_quality_combo)
+        layout.addLayout(setup_form)
 
         # Shown only once the choice actually changes, so the screen stays calm
         # for the many people who never touch it.
         self.quality_restart_note = QLabel()
         self.quality_restart_note.setWordWrap(True)
         self.quality_restart_note.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.quality_restart_note.setMaximumWidth(620)
         self.quality_restart_note.hide()
-        layout.addWidget(
-            self.quality_restart_note,
-            alignment=Qt.AlignmentFlag.AlignHCenter,
-        )
+        layout.addWidget(self.quality_restart_note)
 
+        layout.addSpacing(16)
         self.model_progress = QProgressBar()
         self.model_progress.setObjectName("modelProgress")
         self.model_progress.setRange(0, 100)
         self.model_progress.setValue(0)
         self.model_progress.setTextVisible(True)
-        self.model_progress.setMaximumWidth(520)
-        layout.addWidget(self.model_progress, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(self.model_progress)
 
         self.model_status = QLabel()
         self.model_status.setWordWrap(True)
         self.model_status.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(self.model_status)
 
+        layout.addSpacing(16)
         actions = QHBoxLayout()
         actions.addStretch(1)
         self.prepare_model_button = QPushButton()
@@ -302,7 +333,6 @@ class ReaderWindow(QMainWindow):
         actions.addWidget(self.cancel_model_button)
         actions.addStretch(1)
         layout.addLayout(actions)
-        layout.addStretch(1)
         return page
 
     def _build_reader_page(self) -> QWidget:
@@ -311,27 +341,6 @@ class ReaderWindow(QMainWindow):
         root = QVBoxLayout(page)
         root.setContentsMargins(20, 16, 20, 16)
         root.setSpacing(12)
-
-        header = QHBoxLayout()
-        self.brand_title = QLabel(PRODUCT_DISPLAY_NAME)
-        self.brand_title.setObjectName("brandTitle")
-        title_font = QFont(self.brand_title.font())
-        title_font.setPointSize(title_font.pointSize() + 4)
-        title_font.setBold(True)
-        self.brand_title.setFont(title_font)
-        header.addWidget(self.brand_title)
-        header.addStretch(1)
-        self.toolbar_open_button = QPushButton()
-        self.toolbar_open_button.setObjectName("openBookButton")
-        header.addWidget(self.toolbar_open_button)
-        self.toolbar_paste_button = QPushButton()
-        self.toolbar_paste_button.setObjectName("pasteTextButton")
-        header.addWidget(self.toolbar_paste_button)
-        self.language_label = QLabel()
-        header.addWidget(self.language_label)
-        self.language_combo = self._build_language_combo("languageCombo")
-        header.addWidget(self.language_combo)
-        root.addLayout(header)
 
         self.feature_navigation = QTabBar()
         self.feature_navigation.setObjectName("featureNavigation")
@@ -344,10 +353,23 @@ class ReaderWindow(QMainWindow):
             self.feature_navigation.addTab("")
         # Left-aligned under the app title rather than floating in the middle of
         # the window, so the tabs read as belonging to the content below them.
+        # One row instead of two: where you are on the left, what you can bring
+        # in on the right. The app name is not repeated here because macOS
+        # already draws it in the title bar, and the paste button that used to
+        # sit here only switched to the tab standing beside it.
         navigation_row = QHBoxLayout()
         navigation_row.setContentsMargins(0, 0, 0, 0)
         navigation_row.addWidget(self.feature_navigation)
         navigation_row.addStretch(1)
+        self.toolbar_open_button = QPushButton()
+        self.toolbar_open_button.setObjectName("openBookButton")
+        navigation_row.addWidget(self.toolbar_open_button)
+        navigation_row.addSpacing(8)
+        self.language_label = QLabel()
+        navigation_row.addWidget(self.language_label)
+        self.language_combo = self._build_language_combo("languageCombo")
+        navigation_row.addWidget(self.language_combo)
+        self.language_label.setBuddy(self.language_combo)
         root.addLayout(navigation_row)
 
         self.feature_stack = QStackedWidget()
@@ -382,11 +404,22 @@ class ReaderWindow(QMainWindow):
         self.spare_build_row.hide()
         root.addWidget(self.spare_build_row)
 
+        # A toolbar does not need a box around it. One hairline says "controls
+        # below, content above" and leaves the page boundary-less
+        # (DS CORE.md §1.3 · §6.1).
+        player_rule = QFrame()
+        player_rule.setObjectName("playerRule")
+        player_rule.setFrameShape(QFrame.Shape.HLine)
+        player_rule.setFrameShadow(QFrame.Shadow.Plain)
+        player_rule.setFixedHeight(1)
+        root.addWidget(player_rule)
+
         player = QFrame()
-        player.setFrameShape(QFrame.Shape.StyledPanel)
+        player.setObjectName("playerBar")
+        player.setFrameShape(QFrame.Shape.NoFrame)
         player_layout = QHBoxLayout(player)
-        player_layout.setContentsMargins(12, 8, 12, 8)
-        player_layout.setSpacing(8)
+        player_layout.setContentsMargins(0, 8, 0, 0)
+        player_layout.setSpacing(6)
 
         self.previous_button = QToolButton()
         self.play_button = QPushButton()
@@ -415,23 +448,41 @@ class ReaderWindow(QMainWindow):
         self.voice_label = QLabel()
         player_layout.addWidget(self.voice_label)
         self.voice_combo = QComboBox()
-        self.voice_combo.setMinimumWidth(170)
-        player_layout.addWidget(self.voice_combo)
-        self.rate_label = QLabel()
-        player_layout.addWidget(self.rate_label)
+        # A dropdown asks for room enough to spell its longest entry, so this
+        # row grew with its content until it no longer fitted the smallest
+        # window and the controls overlapped. Bounding the ask by a character
+        # count lets the text elide instead; the stretch factor gives the name
+        # its full width back whenever the window has room.
+        _bound_width(self.voice_combo, 8)
+        player_layout.addWidget(self.voice_combo, 1)
+        # Every gap in this row used to be the same 8px, so nothing told the
+        # eye which control a label owned. Space between the groups, not
+        # inside them.
+        player_layout.addSpacing(8)
         self.quality_label = QLabel()
         player_layout.addWidget(self.quality_label)
         self.quality_combo = QComboBox()
         self.quality_combo.setObjectName("qualityCombo")
         for precision in PRECISIONS:
             self.quality_combo.addItem("", precision)
+        _bound_width(self.quality_combo, 8)
         player_layout.addWidget(self.quality_combo)
+        player_layout.addSpacing(8)
+        self.rate_label = QLabel()
+        player_layout.addWidget(self.rate_label)
         self.rate_combo = QComboBox()
         # Finer steps where reading actually happens: the jump from 1.0 to
         # 1.25 skipped the speeds this reader uses most.
         for rate in (0.5, 0.75, 1.0, 1.15, 1.2, 1.25, 1.5, 2.0):
             self.rate_combo.addItem(f"{rate:g}×", rate)
+        _bound_width(self.rate_combo, 3)
         player_layout.addWidget(self.rate_combo)
+        # Each label owns the control beside it, for the eye and for a screen
+        # reader. The speed label used to sit against the build picker, which
+        # spends 625 MB when it changes.
+        self.voice_label.setBuddy(self.voice_combo)
+        self.quality_label.setBuddy(self.quality_combo)
+        self.rate_label.setBuddy(self.rate_combo)
         root.addWidget(player)
 
         status_row = QHBoxLayout()
@@ -646,7 +697,6 @@ class ReaderWindow(QMainWindow):
             combo.currentIndexChanged.connect(self._quality_changed)
         self.cancel_model_button.clicked.connect(self._cancel_model_setup)
         self.toolbar_open_button.clicked.connect(self.open_book_dialog)
-        self.toolbar_paste_button.clicked.connect(self.show_paste_view)
         self.feature_navigation.currentChanged.connect(self._feature_changed)
         self.library_view.openRequested.connect(self.open_book_dialog)
         self.library_view.pasteRequested.connect(self.show_paste_view)
@@ -744,8 +794,6 @@ class ReaderWindow(QMainWindow):
         self._set_model_status(self._model_status_source)
         self.toolbar_open_button.setText(text("toolbar.open"))
         self.toolbar_open_button.setAccessibleName(text("toolbar.open_accessible"))
-        self.toolbar_paste_button.setText(text("toolbar.paste"))
-        self.toolbar_paste_button.setAccessibleName(text("toolbar.paste_accessible"))
         self.feature_navigation.setAccessibleName(text("nav.accessible"))
         for index, key in enumerate(
             ("nav.library", "nav.paste", "nav.external", "nav.transfer")
@@ -872,7 +920,6 @@ class ReaderWindow(QMainWindow):
                     self.library_view.show_library()
                 self._workspace_initialized = True
             self.toolbar_open_button.setVisible(bool(state.library))
-            self.toolbar_paste_button.setVisible(bool(state.library))
             self._render_playback_controls(state)
             self._render_session_history(state)
             self.external_reading_view.render(
@@ -914,7 +961,13 @@ class ReaderWindow(QMainWindow):
         )
         self.previous_button.setEnabled(can_navigate)
         self.next_button.setEnabled(can_navigate)
-        self.stop_button.setEnabled(state.playback_state is not PlaybackState.IDLE)
+        # Dead controls used to sit in the bar greyed out. A control that
+        # cannot do anything yet is not information, it is noise: it appears
+        # when it works. Stop stays visible while paused, because a paused
+        # reading cannot be ended from the menu bar icon or the shortcut.
+        can_stop = state.playback_state is not PlaybackState.IDLE
+        self.stop_button.setEnabled(can_stop)
+        self.stop_button.setVisible(can_stop)
         self.play_button.setText(
             self._localizer.text("player.pause")
             if state.playback_state is PlaybackState.PLAYING
@@ -949,7 +1002,9 @@ class ReaderWindow(QMainWindow):
 
     def _render_session_history(self, state: ReaderViewState) -> None:
         history = state.session_history
-        self.session_history_button.setEnabled(self._model_ready and bool(history))
+        has_history = self._model_ready and bool(history)
+        self.session_history_button.setEnabled(has_history)
+        self.session_history_button.setVisible(has_history)
         self.session_history_button.setToolTip(
             self._localizer.text("player.history_count", count=len(history))
             if history

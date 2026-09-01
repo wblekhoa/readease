@@ -35,8 +35,8 @@ _TEXT: dict[str, tuple[str, str]] = {
     "model.quality": ("Chất lượng giọng đọc", "Voice quality"),
     "player.quality": ("Chất lượng", "Quality"),
     "player.stop_from_menu_bar": (
-        "ReadEase đang đọc — bấm để dừng",
-        "ReadEase is reading — click to stop",
+        "ReadEase đang đọc - bấm để dừng",
+        "ReadEase is reading - click to stop",
     ),
     "model.spare_build": (
         "Bản {name} đã tải nhưng không dùng tới, đang chiếm {size}.",
@@ -102,14 +102,13 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Open another PDF or EPUB book",
     ),
     "toolbar.paste": ("Dán nội dung", "Paste text"),
-    "toolbar.paste_accessible": ("Dán nội dung để đọc", "Paste text to read"),
     "nav.accessible": ("Chọn tính năng ReadEase", "Choose a ReadEase feature"),
     "nav.library": ("Thư viện", "Library"),
     "nav.paste": ("Dán nội dung", "Paste text"),
     "nav.external": ("Quét đọc", "Read a selection"),
     "library.title": ("Thư viện sách", "Book library"),
     "library.description": (
-        "PDF phải có lớp văn bản — sách scan chưa đọc được.",
+        "PDF phải có lớp văn bản - sách scan chưa đọc được.",
         "A PDF needs a text layer - a scanned book cannot be read yet.",
     ),
     "library.list_accessible": ("Danh sách sách trong thư viện", "Books in your library"),
@@ -246,7 +245,7 @@ _TEXT: dict[str, tuple[str, str]] = {
     ),
     "paste.title": ("Dán nội dung để đọc", "Paste text to read"),
     "paste.description": (
-        "Chỉ dùng cho phiên này — không lưu vào thư viện.",
+        "Chỉ dùng cho phiên này - không lưu vào thư viện.",
         "For this session only - nothing is added to your library.",
     ),
     "paste.editor_accessible": ("Nội dung cần đọc", "Text to read"),

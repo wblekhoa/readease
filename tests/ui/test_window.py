@@ -10,13 +10,14 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
-from PySide6.QtGui import QAccessible, QTextCursor, QTextFormat
+from PySide6.QtCore import QObject, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import QAccessible, QFontMetrics, QTextCursor, QTextFormat
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QFrame,
     QLabel,
     QListWidget,
     QPlainTextEdit,
@@ -48,6 +49,7 @@ from vieneu_reader.integrations.apple_books import (
     AppleBooksUnavailable,
     Book as AppleBook,
 )
+from vieneu_reader.ui.theme import stylesheet
 from vieneu_reader.ui.window import ReaderWindow
 
 from tests.importers.epub_fixture import make_epub, make_png
@@ -397,6 +399,47 @@ class VoiceQualityChoiceTests(unittest.TestCase):
         self.assertIn("Cao nhất", player_labels)
         # The size stays where a download is about to start.
         self.assertIn("330 MB", setup_labels)
+
+    def test_each_player_label_sits_with_the_control_it_names(self):
+        """The bar read "Tốc độ  Chất lượng [build] [speed]": the speed label
+        pointed at the build picker, which spends 625 MB when it changes."""
+        window = self.make_window()
+
+        bar = window.voice_label.parentWidget().layout()
+        # Spacers count: a gap between a label and its control separates them
+        # for the eye even when both widgets are in the same layout.
+        order = [bar.itemAt(index).widget() for index in range(bar.count())]
+
+        for label, combo in (
+            (window.voice_label, window.voice_combo),
+            (window.quality_label, window.quality_combo),
+            (window.rate_label, window.rate_combo),
+        ):
+            following = order[order.index(label) + 1]
+            self.assertIs(
+                following,
+                combo,
+                f"{label.text()!r} does not sit next to the control it names",
+            )
+            # A screen reader has to hear the pairing the eye is shown.
+            self.assertIs(label.buddy(), combo)
+
+        # Correct order is not enough: with one uniform gap the eye still has
+        # no cue which control a label owns, so the groups must be spaced
+        # further apart than the label sits from its own control.
+        window.root_stack.setCurrentWidget(window.reader_page)
+        window.show()
+        bar.activate()
+        span = {
+            name: getattr(window, name).geometry()
+            for name in ("voice_combo", "quality_label", "quality_combo", "rate_label")
+        }
+        inside_a_pair = span["quality_combo"].left() - span["quality_label"].right()
+        between_pairs = min(
+            span["quality_label"].left() - span["voice_combo"].right(),
+            span["rate_label"].left() - span["quality_combo"].right(),
+        )
+        self.assertGreater(between_pairs, inside_a_pair)
 
     def test_switching_from_the_player_bar_asks_first_and_names_the_download(self):
         """Its note lives on the setup page, which is gone by then, so without
@@ -919,14 +962,99 @@ class ReaderWindowTests(unittest.TestCase):
     def test_ready_empty_library_offers_book_and_pasted_text_actions(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))
 
+        # The name is asserted where macOS actually draws it. The window used
+        # to repeat it in a label four pixels below its own title bar.
         self.assertEqual(window.windowTitle(), "ReadEase — Thư Âm")
-        self.assertEqual(window.brand_title.text(), "ReadEase — Thư Âm")
         self.assertTrue(window.library_view.open_button.isVisible())
         self.assertTrue(window.library_view.paste_button.isVisible())
         self.assertFalse(window.toolbar_open_button.isVisible())
-        self.assertFalse(window.toolbar_paste_button.isVisible())
         self.assertFalse(window.play_button.isEnabled())
         self.assertEqual(window.library_view.library_list.count(), 0)
+
+    def test_no_first_run_label_loses_its_last_words(self) -> None:
+        """A word-wrapped QLabel added with an alignment flag is handed its
+        sizeHint width, not the layout's. "Tải một lần, sau đó đọc hoàn toàn
+        offline." asked for 241px, was given 197px and one line of height, and
+        the first screen every new user sees ended mid-sentence."""
+        window = self.make_window(FakeModelSetup(ready=False))
+        window.show()
+        QApplication.processEvents()
+
+        checked = 0
+        for label in window.model_setup_page.findChildren(QLabel):
+            if label.isHidden() or not label.text():
+                continue
+            needed = QFontMetrics(label.font()).boundingRect(
+                QRect(0, 0, label.width(), 10_000),
+                int(label.alignment()) | int(Qt.TextFlag.TextWordWrap),
+                label.text(),
+            )
+            checked += 1
+            with self.subTest(text=label.text()):
+                self.assertLessEqual(needed.height(), label.height())
+                self.assertLessEqual(needed.width(), label.width())
+        self.assertGreater(checked, 0, "no visible label was checked")
+
+    def test_the_reading_surfaces_stay_boundary_less_and_measured(self) -> None:
+        """One page used to draw four boxes inside itself, and the paragraph
+        stretched to whatever width the window had. DS CORE.md §6.1 keeps a page
+        boundary-less; §3.4 caps long-form reading at 65 characters."""
+        window = self.make_window(FakeModelSetup(ready=True))
+        window.show()
+
+        reader = window.library_view.book_reader_view
+        for widget in (
+            reader.reader_text,
+            reader.chapter_list,
+            window.library_view.library_list,
+            window.findChild(QFrame, "playerBar"),
+        ):
+            with self.subTest(widget=widget.objectName()):
+                self.assertEqual(widget.frameShape(), QFrame.Shape.NoFrame)
+        # The toolbar keeps one hairline instead of a box around it.
+        self.assertIsNotNone(window.findChild(QFrame, "playerRule"))
+
+        reader.reader_text.resize(1600, 400)
+        QApplication.processEvents()
+        self.assertLess(reader.reader_text.reading_column_width(), 1600)
+
+    def test_an_empty_library_puts_the_way_in_where_the_books_will_be(self) -> None:
+        """It used to render an empty list box with the two ways in parked
+        underneath it."""
+        window = self.make_window(FakeModelSetup(ready=True))
+
+        shelf = window.library_view
+        self.assertIs(shelf.shelf_stack.currentWidget(), shelf.empty_state)
+        self.assertIs(shelf.open_button.parentWidget(), shelf.empty_state)
+        self.assertIs(shelf.description_label.parentWidget(), shelf.empty_state)
+
+    def test_the_player_bar_fits_the_smallest_window(self) -> None:
+        """Styling gave every control padding and a 30px height. Together with
+        the voice box's hardcoded 170px minimum the row demanded 935px inside
+        an 860px bar, and at the minimum window size the controls overlapped:
+        "Nam Bộ" sat on top of "Chất lượng" and "Tiêu chuẩn" lost its last
+        letter."""
+        application = QApplication.instance()
+        previous = application.styleSheet()
+        self.addCleanup(application.setStyleSheet, previous)
+        application.setStyleSheet(stylesheet("light"))
+
+        window = self.make_window(FakeModelSetup(ready=True))
+        window.resize(window.minimumWidth(), window.minimumHeight())
+        window.show()
+        # Stop and the session menu only appear once they can act, so measure
+        # the busiest bar rather than the quiet one this window happens to be in.
+        window.stop_button.setVisible(True)
+        window.session_history_button.setVisible(True)
+        application.processEvents()
+
+        bar = window.voice_label.parentWidget()
+        bar.layout().activate()
+        self.assertLessEqual(
+            bar.layout().minimumSize().width(),
+            bar.width(),
+            "the player bar does not fit the smallest window it allows",
+        )
 
     def test_ready_workspace_has_four_persistent_feature_views(self) -> None:
         window = self.make_window(FakeModelSetup(ready=True))
@@ -1655,7 +1783,9 @@ class ReaderWindowTests(unittest.TestCase):
         )
         self.assertTrue(window.play_button.isEnabled())
         self.assertTrue(window.toolbar_open_button.isVisible())
-        self.assertTrue(window.toolbar_paste_button.isVisible())
+        # The header no longer carries a paste button: it only switched to the
+        # tab that is standing right there, so the tab is the affordance now.
+        self.assertEqual(window.feature_navigation.tabText(1), "Dán nội dung")
         self.assertFalse(window.library_view.open_button.isVisible())
         self.assertFalse(window.library_view.paste_button.isVisible())
         for control in (

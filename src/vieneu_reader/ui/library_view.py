@@ -7,6 +7,7 @@ from PySide6.QtGui import QFont, QKeyEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QFrame,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -70,25 +71,46 @@ class LibraryView(QWidget):
         self.title_label.setFont(title_font)
         shelf_layout.addWidget(self.title_label)
 
-        self.description_label = QLabel()
-        self.description_label.setWordWrap(True)
-        shelf_layout.addWidget(self.description_label)
-
         self.library_list = _KeyboardActivatingListWidget()
         self.library_list.setObjectName("libraryList")
+        self.library_list.setFrameShape(QFrame.Shape.NoFrame)
         self.library_list.setAlternatingRowColors(True)
-        shelf_layout.addWidget(self.library_list, 1)
+
+        # An empty library used to render as an empty box with the two ways in
+        # parked underneath it. Nothing to list means the invitation is the
+        # content, so it stands where the books will be.
+        self.empty_state = QWidget()
+        self.empty_state.setObjectName("libraryEmptyState")
+        empty_layout = QVBoxLayout(self.empty_state)
+        empty_layout.setContentsMargins(0, 0, 0, 0)
+        empty_layout.setSpacing(12)
+        empty_layout.addStretch(1)
 
         actions = QHBoxLayout()
+        actions.setSpacing(8)
+        actions.addStretch(1)
         self.open_button = QPushButton()
         self.open_button.setObjectName("emptyOpenButton")
         actions.addWidget(self.open_button)
-
         self.paste_button = QPushButton()
         self.paste_button.setObjectName("emptyPasteTextButton")
         actions.addWidget(self.paste_button)
         actions.addStretch(1)
-        shelf_layout.addLayout(actions)
+        empty_layout.addLayout(actions)
+
+        # The constraint belongs next to the choice it constrains, not at the
+        # top of a screen someone has not acted on yet.
+        self.description_label = QLabel()
+        self.description_label.setWordWrap(True)
+        self.description_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        empty_layout.addWidget(self.description_label)
+        empty_layout.addStretch(1)
+
+        self.shelf_stack = QStackedWidget()
+        self.shelf_stack.setObjectName("libraryShelfStack")
+        self.shelf_stack.addWidget(self.empty_state)
+        self.shelf_stack.addWidget(self.library_list)
+        shelf_layout.addWidget(self.shelf_stack, 1)
 
         self.book_reader_view = BookReaderView(localizer=self._localizer)
         self.surface_stack.addWidget(self.library_page)
@@ -146,6 +168,9 @@ class LibraryView(QWidget):
                 row.setData(Qt.ItemDataRole.UserRole, item.id)
                 self.library_list.addItem(row)
             self._signature = signature
+        self.shelf_stack.setCurrentWidget(
+            self.library_list if items else self.empty_state
+        )
         self._select_book(active_book_id)
         del blocker
 
