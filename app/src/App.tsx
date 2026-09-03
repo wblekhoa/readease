@@ -2,10 +2,19 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSS
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AppTabs } from "./ui/AppTabs";
-import { GradientBlur, Toolbar } from "./ui/patterns";
+import { GradientBlur, MenuButton, Toolbar } from "./ui/patterns";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SectionTitle, Select, Surface, Textarea } from "./ui/controls";
 import { SettingsPanel } from "./ui/SettingsPanel";
+import { VoicesPanel } from "./ui/VoicesPanel";
+import {
+  initialShortlist,
+  offeredVoices,
+  serializeShortlist,
+  toggleShortlist,
+  voiceName,
+  type Voice,
+} from "./ui/voiceShortlist";
 import { useShortcut } from "./ui/useShortcut";
 import {
   ChevronLeftIcon,
@@ -23,8 +32,10 @@ import {
   MoonIcon,
   BookIcon,
   ClipboardIcon,
+  NoteIcon,
   CursorTextIcon,
   TransferIcon,
+  SpeakerIcon,
 } from "./ui/icons";
 import { IDLE, playback } from "./ui/playback";
 import {
@@ -43,7 +54,6 @@ import { currentLanguage, setLanguage, text, type Language } from "./i18n";
 const PASTE_LIMIT = 100_000;
 const RATES = [0.5, 0.75, 1.0, 1.15, 1.2, 1.25, 1.5, 2.0];
 
-type Voice = { id: string; label: string };
 type ModelGate = "checking" | "setup" | "ready";
 
 /** Light or dark onto the DS token switch: the reader's own choice when
@@ -78,6 +88,12 @@ export default function App() {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voiceId, setVoiceId] = useState<string>("");
   const [rate, setRate] = useState(1.0);
+  /** The voices worth offering mid-reading, in the person's own words:
+   * twenty is a catalogue, this is the handful they switch between. */
+  const [shortlist, setShortlist] = useState<string[]>([]);
+  const [voicesOpen, setVoicesOpen] = useState(false);
+  /** The voice whose sample is speaking, so the row can offer Stop. */
+  const [previewing, setPreviewing] = useState<string | null>(null);
   // One reducer owns every transition of the transport. Five hand-written
   // setReading calls used to; two of them forgot the warming notice.
   const [player, onPlayer] = useReducer(playback, IDLE);
@@ -108,6 +124,21 @@ export default function App() {
   const [openBook, setOpenBook] = useState<LibraryBook | null>(null);
   const [segments, setSegments] = useState<string[]>([]);
   const [position, setPosition] = useState<string | null>(null);
+  /* What is being read RIGHT NOW, and how to ask for it again.
+   *
+   * Not `origin`: that answers "where do I go back to" and deliberately says
+   * "book" for a selection read inside a book. Changing the voice has to
+   * re-issue the actual request, so it needs the actual request. A preview
+   * records nothing - switching voices mid-preview would be a loop. */
+  const current = useRef<
+    | { kind: "book"; bookId: string }
+    | { kind: "text"; text: string }
+    | { kind: "preview" }
+    | null
+  >(null);
+  /* Where the voice is, readable from a callback without making every
+   * callback depend on it - the same reason `speech` is a ref. */
+  const where = useRef<string | null>(null);
   const [figureCue, setFigureCue] = useState<string | null>(null);
   const [externalHistory, setExternalHistory] = useState<ExternalEntry[]>([]);
   const [externalStatus, setExternalStatus] = useState<string | null>(null);
@@ -119,7 +150,9 @@ export default function App() {
     if (!selection) return;
     onPlayer({ type: "start" });
     if (openBook) setOrigin({ kind: "book", book: openBook });
-    void invoke("read_selection_text", { text: selection, voiceId, rate })
+    current.current = { kind: "text", text: selection };
+    setPosition(null);
+    void invoke("read_selection_text", { text: selection, segmentId: null, voiceId, rate })
       .catch((error) => onPlayer({ type: "failed", error: String(error) }));
     window.getSelection()?.removeAllRanges();
     setSelection("");
@@ -136,6 +169,9 @@ export default function App() {
   // The contents are a popover in both modes and start closed - open, they
   // would cover the book they point into (owner, 02/09).
   const [showToc, setShowToc] = useState(false);
+  /* The notes panel and which note it should land on, when it was opened by
+   * pressing a note's own icon in the text. */
+  const [notes, setNotes] = useState<{ open: boolean; focus: string | null }>({ open: false, focus: null });
   const [readingSize, setReadingSize] = useState(storedReadingSize);
   const [readingMode, setReadingMode] = useState<ReadingMode>(storedReadingMode);
   const toggleReadingMode = useCallback(() => {
@@ -179,10 +215,17 @@ export default function App() {
     setRate(value);
     remember("rate", value);
   }, [remember]);
+  const rememberShortlist = useCallback((ids: string[]) => {
+    setShortlist(ids);
+    // config.* is answered between audio chunks, so this saves even while a
+    // chapter is being read - which is exactly when the list gets edited.
+    remember("voice_shortlist", serializeShortlist(ids));
+  }, [remember]);
 
   const { accelerator, change: changeShortcut } = useShortcut();
   const speech = useRef({ voiceId: "", rate: 1.0 });
   speech.current = { voiceId, rate };
+  where.current = position;
 
   useEffect(() => {
     // The Qt shell remembered the voice and the speed; losing that in the
@@ -196,6 +239,13 @@ export default function App() {
           "engine_request",
           { method: "config.get", params: { key: "voice" } },
         ).catch(() => null);
+        // Inside this chain because the starting five have to be filtered
+        // against the catalogue this build actually ships.
+        const kept = await invoke<{ result: { value: string | null } }>(
+          "engine_request",
+          { method: "config.get", params: { key: "voice_shortlist" } },
+        ).catch(() => null);
+        setShortlist(initialShortlist(kept?.result.value, list));
         const wanted = saved?.result.value;
         // A remembered voice that this build no longer ships must not leave
         // the picker empty - fall back to the first one, as the Qt shell did.
@@ -245,6 +295,10 @@ export default function App() {
           type: "done",
           error: event.payload.ok ? null : event.payload.error ?? null,
         });
+        // Whatever it was, it is over: the preview row goes back to offering
+        // Play, and nothing is left to restart in another voice.
+        setPreviewing(null);
+        current.current = null;
       },
     );
     const moved = listen<{ segment_id: string; figure_id?: string }>(
@@ -267,6 +321,8 @@ export default function App() {
       );
       onPlayer({ type: "start" });
       setOrigin({ kind: "external" });
+      current.current = { kind: "text", text: captured };
+      setPosition(null);
       invoke("read_selection_text", {
         text: captured,
         voiceId: speech.current.voiceId,
@@ -294,8 +350,10 @@ export default function App() {
     if (!content.trim() || !voiceId) return;
     onPlayer({ type: "start" });
     setOrigin({ kind: "paste" });
+    current.current = { kind: "text", text: content };
+    setPosition(null);
     try {
-      await invoke("read_text", { text: content, voiceId, rate });
+      await invoke("read_text", { text: content, segmentId: null, voiceId, rate });
     } catch (error) {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
@@ -306,6 +364,7 @@ export default function App() {
     if (!openBook || !voiceId) return;
     onPlayer({ type: "start" });
     setOrigin({ kind: "book", book: openBook });
+    current.current = { kind: "book", bookId: openBook.id };
     try {
       await invoke("read_book", {
         bookId: openBook.id, segmentId, voiceId, rate,
@@ -316,15 +375,87 @@ export default function App() {
     }
   }, [openBook, voiceId, rate]);
 
+  /** Change the voice, and carry on with it.
+   *
+   * The engine has no "swap the voice mid-sentence": a voice is chosen when a
+   * reading starts. So this restarts the SAME reading at the part the ear had
+   * reached - the paragraph in a book, the part of a pasted passage - which is
+   * why plain reads were given addressable parts. The seam is the start of the
+   * current paragraph, not the current word; anything finer would need the
+   * engine to know where in the audio it is.
+   *
+   * The new id is passed as an argument rather than read back from state:
+   * `setVoiceId` has not landed by the time this issues the request, and the
+   * closure would send the old voice - the shell's oldest trap.
+   */
+  const switchVoice = useCallback((id: string) => {
+    rememberVoice(id);
+    const live = current.current;
+    if (player.reading === "idle" || live === null || live.kind === "preview") return;
+    const at = where.current;
+    onPlayer({ type: "start" });
+    const request = live.kind === "book"
+      ? invoke("read_book", { bookId: live.bookId, segmentId: at, voiceId: id, rate })
+      : invoke("read_text", {
+        text: live.text,
+        // A book segment id left over from an earlier reading is not a part
+        // of THIS text; the engine would refuse it, so start from the top.
+        segmentId: at && at.startsWith("part-") ? at : null,
+        voiceId: id,
+        rate,
+      });
+    request.catch((error) => {
+      console.error(error);
+      onPlayer({ type: "failed", error: String(error) });
+    });
+  }, [player.reading, rate, rememberVoice]);
+
+  /** Speak one sentence in a voice, so a choice can be heard before it is made.
+   *
+   * Only when nothing is being read: the engine speaks one thing at a time, so
+   * a sample would cancel the chapter it was meant to help you choose for. The
+   * origin is cleared with it, or the footer would offer to take you "back" to
+   * a book that a preview interrupted.
+   */
+  const previewVoice = useCallback((id: string) => {
+    onPlayer({ type: "start" });
+    setOrigin(null);
+    current.current = { kind: "preview" };
+    setPreviewing(id);
+    setPosition(null);
+    invoke("read_text", {
+      text: text("voices.sample"),
+      segmentId: null,
+      voiceId: id,
+      rate,
+    }).catch((error) => {
+      console.error(error);
+      onPlayer({ type: "failed", error: String(error) });
+      setPreviewing(null);
+    });
+  }, [rate]);
+
   const readNeighbour = useCallback(async (step: number) => {
     const anchor = position ?? openBook?.segment_id ?? null;
     if (anchor === null) return;
-    const index = segments.indexOf(anchor) + step;
+    const here = segments.indexOf(anchor);
+    // A plain read (a selection, a pasted passage) reports "part-2", which is
+    // not in this book: indexOf gives -1, and -1 + 1 used to walk to the first
+    // segment of the book - a skip button that jumped somewhere else entirely.
+    if (here < 0) return;
+    const index = here + step;
     if (index < 0 || index >= segments.length) return;
     // No stop first: starting a reading cancels the one in flight, in the
     // one place that can do it without a race (the Rust client).
     await readBookFrom(segments[index]);
   }, [segments, position, openBook, readBookFrom]);
+
+  const stopPreview = useCallback(() => {
+    setPreviewing(null);
+    onPlayer({ type: "stop" });
+    current.current = null;
+    void invoke("stop_reading").catch(() => undefined);
+  }, []);
 
   const stopReading = useCallback(() => {
     // The transport answers the finger, not the engine: stopping takes a
@@ -452,13 +583,31 @@ export default function App() {
                 <ChevronLeftIcon />
               </IconButton>
               <IconButton
-                onClick={() => setShowToc((value) => !value)}
+                onClick={() => {
+                  setNotes({ open: false, focus: null });
+                  setShowToc((value) => !value);
+                }}
                 aria-label={showToc ? text("reader.toc_hide") : text("reader.toc_show")}
                 title={showToc ? text("reader.toc_hide") : text("reader.toc_show")}
                 className={showToc ? "text-ink" : ""}
               >
                 <SidebarIcon />
               </IconButton>
+              {/* Only when the book carries something: a button that opens
+                  an empty panel is a button that lies about the book. */}
+              {(pageInfo?.annotations ?? 0) > 0 && (
+                <IconButton
+                  onClick={() => {
+                    setShowToc(false);
+                    setNotes((value) => ({ open: !value.open, focus: null }));
+                  }}
+                  aria-label={text("notes.open")}
+                  title={text("notes.count", { count: pageInfo?.annotations ?? 0 })}
+                  className={notes.open ? "text-ink" : ""}
+                >
+                  <NoteIcon />
+                </IconButton>
+              )}
               <h2 className="m-0 min-w-0 flex-1 truncate px-1 text-base font-bold">
                 {openBook.title}
               </h2>
@@ -471,7 +620,17 @@ export default function App() {
                   </IconButton>
                   <Surface
                     edge="strong"
-                    className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 hidden -translate-x-1/2 whitespace-nowrap px-3 py-1.5 text-xs leading-relaxed shadow-lifted group-hover:flex group-focus-within:flex items-center gap-1.5"
+                    /* Pinned to the WINDOW's left inset, under the header -
+                       not to the icon. The icon drifts with the length of the
+                       book's title, so anchoring to it overflows one edge or
+                       the other depending on where it lands, and no static
+                       left/right choice is right for both (owner, 03/09: it
+                       ran off the edge). Fixed positioning plus a width cap
+                       is the only version that cannot leave the screen. The
+                       cost is that it no longer points at the icon; it reads
+                       as a status line under the bar instead, which is what
+                       it is. */
+                    className="pointer-events-none fixed left-6 top-[calc(var(--shell-top-h)-0.25rem)] z-30 hidden max-w-[calc(100vw-3rem)] whitespace-nowrap px-3 py-1.5 text-xs leading-relaxed shadow-lifted group-hover:flex group-focus-within:flex items-center gap-1.5"
                   >
                     {pageInfo.page !== undefined && pageInfo.pages !== undefined && (
                       <>
@@ -481,7 +640,9 @@ export default function App() {
                         <span className="text-ink-faint">·</span>
                       </>
                     )}
-                    <span className="max-w-[22em] truncate text-ink">{pageInfo.chapterTitle}</span>
+                    {/* The part that gives when there is no room: a chapter
+                        title can be a sentence, the page number cannot. */}
+                    <span className="min-w-0 max-w-[22em] truncate text-ink">{pageInfo.chapterTitle}</span>
                     <span className="text-ink-faint">·</span>
                     <span className="text-ink-mute">{text("library.progress", { percent: pageInfo.percent })}</span>
                   </Surface>
@@ -574,12 +735,21 @@ export default function App() {
           openBook ? (
             <Reader
               bookId={openBook.id}
-              currentSegment={position}
+              /* Only a BOOK position belongs to the book. A plain read
+                 reports "part-2", which matches no segment and would blank
+                 the highlight the eye is following. */
+              currentSegment={position && position.startsWith("part-") ? null : position}
               currentFigure={figureCue}
               reading={reading !== "idle"}
               mode={readingMode}
               showToc={showToc}
               onHideToc={() => setShowToc(false)}
+              showNotes={notes.open}
+              notesFocus={notes.focus}
+              onNotes={(open, focus = null) => {
+                if (open) setShowToc(false);
+                setNotes({ open, focus });
+              }}
               size={readingSize}
               onSegments={setSegments}
               onReadFrom={(segmentId) => { void readBookFrom(segmentId); }}
@@ -599,8 +769,11 @@ export default function App() {
             onReplay={(entry) => {
               onPlayer({ type: "start" });
               setOrigin({ kind: "external" });
+              current.current = { kind: "text", text: entry.text };
+              setPosition(null);
               void invoke("read_selection_text", {
                 text: entry.text,
+                segmentId: null,
                 voiceId,
                 rate,
               }).catch((error) => onPlayer({ type: "failed", error: String(error) }));
@@ -693,14 +866,14 @@ export default function App() {
                  one place (owner, 02/09: "cùng loại thì đi chung"). */
               <>
                 {selection && (
-                  <Button variant="primary" className="px-5" onClick={readSelection}>
+                  <Button variant="primary" onClick={readSelection}>
                     {text("reader.selection")}
                   </Button>
                 )}
                 {canStart && (
                   <Button
                     variant={selection ? "secondary" : "primary"}
-                    className="px-5"
+                   
                     disabled={startDisabled}
                     onClick={() => {
                       if (screen === "reader") void readBookFrom(null);
@@ -726,7 +899,14 @@ export default function App() {
                 {speechSettings && (
                   <Button
                     variant="ghost"
-                    onClick={() => setSettingsOpen((value) => !value)}
+                    onClick={() => {
+                      // One floating layer at a time: the voices sheet sits
+                      // above this panel, so opening settings under it would
+                      // put a panel where nobody can reach it.
+                      if (previewing !== null) stopPreview();
+                      setVoicesOpen(false);
+                      setSettingsOpen((value) => !value);
+                    }}
                     aria-label={text("player.settings_open")}
                     title={text("player.settings_open")}
                     className={settingsOpen ? "text-ink" : ""}
@@ -737,14 +917,33 @@ export default function App() {
                 )}
               </>
             ) : (
-              /* Playing: the bar is a TRANSPORT and nothing else, in the
-                 middle the way every player puts it. Voice/speed/quality are
-                 out of reach - they are read once, at the start. */
+              /* Playing: the bar is a TRANSPORT, in the middle the way every
+                 player puts it - plus the one setting that now means something
+                 mid-reading. The voice can be changed and the reading carries
+                 on (owner, 03/09); speed still cannot, so it stays out of
+                 reach rather than pretending. The menu offers the shortlist,
+                 not all twenty - the shortlist is defined as exactly this: the
+                 voices worth reaching for while listening. */
               <>
                 {selection && (
                   <Button variant="primary" size="sm" onClick={readSelection}>
                     {text("reader.selection")}
                   </Button>
+                )}
+                {speechSettings && previewing === null && (
+                  <MenuButton
+                    icon={<SpeakerIcon />}
+                    label={text("voices.switch")}
+                    align="left"
+                    items={[
+                      ...offeredVoices(voices, shortlist, voiceId).map((voice) => ({
+                        label: voiceName(voice.label) || voice.id,
+                        hint: voice.id === voiceId ? text("voices.in_use") : undefined,
+                        onSelect: () => switchVoice(voice.id),
+                      })),
+                      { label: text("voices.manage"), onSelect: () => setVoicesOpen(true) },
+                    ]}
+                  />
                 )}
                 {screen === "reader" && (
                   <IconButton
@@ -796,18 +995,39 @@ export default function App() {
       )}
       {settingsOpen && speechSettings && (
         <SettingsPanel
-          voices={voices}
+          /* Only the voices switched on (plus the one in use): the shortlist
+             is the person's list of voices, and it governs both the place a
+             voice is chosen and the menu that switches between them. */
+          voices={offeredVoices(voices, shortlist, voiceId)}
           voiceId={voiceId}
           rate={rate}
           rates={RATES}
           reading={reading !== "idle"}
-          onVoice={rememberVoice}
+          shortlisted={shortlist.length}
+          onVoice={switchVoice}
           onRate={rememberRate}
+          onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
           onClose={() => {
             setSettingsOpen(false);
             invoke<Voice[]>("engine_voices")
               .then(setVoices)
               .catch(() => undefined);
+          }}
+        />
+      )}
+      {voicesOpen && (
+        <VoicesPanel
+          voices={voices}
+          shortlist={shortlist}
+          voiceId={voiceId}
+          reading={reading !== "idle" && previewing === null}
+          previewing={previewing}
+          onToggle={(id) => rememberShortlist(toggleShortlist(shortlist, id))}
+          onPreview={previewVoice}
+          onStopPreview={stopPreview}
+          onClose={() => {
+            if (previewing !== null) stopPreview();
+            setVoicesOpen(false);
           }}
         />
       )}

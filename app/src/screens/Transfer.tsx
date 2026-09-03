@@ -198,7 +198,7 @@ export function Transfer() {
           )}
           <GroupedSection className="mt-2 min-h-0 flex-1 overflow-y-auto">
             {plan.items.map((item, index) => (
-              <div key={index} className="flex items-baseline gap-3 px-4 py-2.5">
+              <div key={index} className="flex items-baseline gap-3 py-2.5">
                 <span className="w-24 shrink-0 text-xs font-medium text-ink-mute">
                   {text(item.has_note ? "transfer.kind_note" : "transfer.kind_highlight")}
                 </span>

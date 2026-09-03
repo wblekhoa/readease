@@ -113,8 +113,15 @@ export function ListRow({
   );
 }
 
-/** Inset grouped section, the macOS Settings shape: an optional header
- * label, then rows on one paper surface separated by hairlines. */
+/** A list: an optional header label, then rows told apart by a dot rule.
+ *
+ * It used to be the macOS inset shape - rows on a grey card with hairlines
+ * between them. On a white sheet that reads as a box inside a box, which the
+ * DS forbids outright ("card treatment max depth = 1"), and the grey fought
+ * every panel it sat in. Now the rows sit on the paper they are already on,
+ * separated by the DS dot divider and their own breathing room, and the rows
+ * carry no side padding of their own - the panel around them already sets
+ * the margin (owner, 03/09, asked for this list everywhere it appears). */
 export function GroupedSection({
   title,
   children,
@@ -131,13 +138,11 @@ export function GroupedSection({
   return (
     <section className={className}>
       {title && (
-        <h3 className={`m-0 px-3 text-xs font-semibold uppercase tracking-wide text-ink-mute ${roomy ? "mb-2.5" : "mb-1.5"}`}>
+        <h3 className={`m-0 text-xs font-semibold uppercase tracking-wide text-ink-mute ${roomy ? "mb-2.5" : "mb-1.5"}`}>
           {title}
         </h3>
       )}
-      <div className="overflow-hidden rounded-2xl bg-panel [&>*+*]:border-t [&>*+*]:border-edge">
-        {children}
-      </div>
+      <div className="dot-divided flex flex-col">{children}</div>
     </section>
   );
 }
@@ -156,7 +161,7 @@ export function GroupedRow({
   roomy?: boolean;
 }) {
   return (
-    <div className={`flex items-center ${roomy ? "gap-4 px-5 py-3.5" : "gap-3 px-4 py-2.5"}`}>
+    <div className={`flex items-center ${roomy ? "gap-4 py-4" : "gap-3 py-3.5"}`}>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium">{title}</div>
         {subtitle && <div className={`text-xs text-ink-mute ${roomy ? "mt-1" : ""}`}>{subtitle}</div>}
@@ -445,7 +450,7 @@ export function MenuButton({
       {open && (
         <Surface
           edge="strong"
-          className={`absolute top-full z-40 mt-1 min-w-[15rem] p-1 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
+          className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div role="menu" className="flex flex-col">
             {items.map((item, index) => (

@@ -178,10 +178,66 @@ const COVERS: Record<string, string> = {
   "book-four": coverSvg("Team", "of One", "#1F3A5F", "#F4F1EA"),
 };
 
+/* The real catalogue, names and all: a panel that lists twenty voices cannot
+ * be judged against a fixture of two - the scroll, the switches and the
+ * shortlist only behave like themselves at full length. */
 const VOICES = [
   { id: "Minh Đức", label: "Minh Đức - Nam · Bắc · Phong cách tin tức" },
-  { id: "Thu Hà", label: "Thu Hà - Nữ · Bắc · Kể chuyện" },
+  { id: "Phạm Tuyên", label: "Phạm Tuyên - Nam · Bắc · Phong cách tự nhiên" },
+  { id: "Thái Sơn", label: "Thái Sơn - Nam · Nam · Phong cách kể chuyện" },
+  { id: "Xuân Vĩnh", label: "Xuân Vĩnh - Nam · Nam · Phong cách tự nhiên" },
+  { id: "Thanh Bình", label: "Thanh Bình - Nam · Bắc · Phong cách kể chuyện" },
+  { id: "Trúc Ly", label: "Trúc Ly - Nữ · Bắc · Phong cách tự nhiên" },
+  { id: "Ngọc Linh", label: "Ngọc Linh - Nữ · Bắc · Phong cách kể chuyện" },
+  { id: "Đoan Trang", label: "Đoan Trang - Nữ · Bắc · Phong cách tự nhiên" },
+  { id: "Mai Anh", label: "Mai Anh - Nữ · Bắc · Phong cách tin tức" },
+  { id: "Thục Đoan", label: "Thục Đoan - Nữ · Nam · Phong cách kể chuyện" },
+  { id: "Minh Triết", label: "Minh Triết - Nam · Nam · Phong cách tin tức" },
+  { id: "Thùy Dung", label: "Thùy Dung - Nữ · Nam · Phong cách tin tức" },
+  { id: "Quang Sơn", label: "Quang Sơn - Nam · Trung · Phong cách tự nhiên" },
+  { id: "Ngọc Trân", label: "Ngọc Trân - Nữ · Trung · Phong cách tự nhiên" },
+  { id: "Mỹ Duyên", label: "Mỹ Duyên - Nữ · Nam · Phong cách đọc truyện" },
+  { id: "Quỳnh Anh", label: "Quỳnh Anh - Nữ · Bắc · Phong cách đọc truyện" },
+  { id: "Đức Trí", label: "Đức Trí - Nam · Nam · Phong cách đọc truyện" },
+  { id: "Kim Thanh", label: "Kim Thanh - Nữ · Nam · Phong cách đọc truyện" },
+  { id: "Ngọc Huyền", label: "Ngọc Huyền - Nữ · Bắc · Giọng đọc tự nhiên" },
+  { id: "Adam", label: "Adam - Nam · Nam · Giọng đọc tự nhiên" },
 ];
+
+/* A reading that actually runs.
+ *
+ * The mock used to answer read_* with {} and emit nothing, so the transport
+ * sat in "warming" for ever and anything that depends on a reading being IN
+ * PROGRESS - changing the voice mid-chapter, above all - could not be looked
+ * at outside the app. This walks positions on a timer and can be stopped,
+ * which is as much of the engine as the shell can tell apart. */
+let readingTimers: number[] = [];
+function stopMockReading() {
+  for (const timer of readingTimers) clearTimeout(timer);
+  readingTimers = [];
+}
+function startMockReading(steps: string[]) {
+  stopMockReading();
+  readingTimers.push(setTimeout(() => emit("reading:started", {}), 120));
+  steps.forEach((id, index) => {
+    readingTimers.push(setTimeout(
+      () => emit("reading:position", { segment_id: id }),
+      150 + index * 1200,
+    ));
+  });
+  readingTimers.push(setTimeout(
+    () => emit("reading:done", { ok: true }),
+    150 + steps.length * 1200,
+  ));
+}
+
+/** Every segment of the fixture book, in reading order. */
+function bookSteps(from: string | null): string[] {
+  const all = BOOK.chapters.flatMap((chapter: { segments: { id: string }[] }) =>
+    chapter.segments.map((segment) => segment.id));
+  const start = from ? all.indexOf(from) : 0;
+  return all.slice(start < 0 ? 0 : start);
+}
 
 /** Stands in for settings.json - including the two keys carried over from the
  * Qt shell, so "it remembers my voice" can be looked at, not just believed. */
@@ -204,9 +260,17 @@ const APPLE_SHELF: Array<{ asset_id: string; title: string; status: string; book
   { asset_id: "ab-6", title: "The Ultimate Guide to iPhone Photography", status: "too_large", book_id: null, paired_title: null, highlights: 3 },
   { asset_id: "ab-7", title: "The Designer's Guide to Figma", status: "importable", book_id: null, paired_title: null, highlights: 0 },
 ];
+/* Enough of them, spread widely enough, to judge the notes panel at real
+ * density: three chapters, one paragraph carrying TWO highlights, one note
+ * long enough to wrap, and several highlights with no note at all - which is
+ * the common case and the one a list has to survive. */
 const ANNOTATIONS = [
   { id: "applebooks:1", segment_id: "ch-1-seg-1", selected_text: "những phương án đầu tiên của họ đều nhanh chóng chìm vào quên lãng", note: "Đúng với dự án năm ngoái.", style: 3 },
-  { id: "applebooks:2", segment_id: "ch-1-seg-3", selected_text: "số ứng dụng di động đã lên đến gần mười triệu", note: null, style: 1 },
+  { id: "applebooks:2", segment_id: "ch-1-seg-1", selected_text: "Chỉ khi học cách nhìn vấn đề từ một góc khác", note: null, style: 1 },
+  { id: "applebooks:3", segment_id: "ch-1-seg-3", selected_text: "số ứng dụng di động đã lên đến gần mười triệu", note: null, style: 1 },
+  { id: "applebooks:4", segment_id: "ch-1-seg-6", selected_text: "thao tác chụm hai ngón tay để thu phóng", note: "Chỗ này nên dẫn lại khi viết phần mở đầu: một thao tác nhỏ mà đổi hẳn cách người ta nghĩ về máy tính bỏ túi. Kiểm tra lại năm 2007 cho chắc.", style: 2 },
+  { id: "applebooks:5", segment_id: "ch-0-seg-2", selected_text: "sản phẩm phải hoạt động", note: "Câu để mở bài.", style: 3 },
+  { id: "applebooks:6", segment_id: "ch-3-seg-0", selected_text: "bỏ qua phần giá trị cộng thêm", note: null, style: 1 },
 ];
 
 function engineRequest(method: string, params: Record<string, unknown> = {}): unknown {
@@ -249,6 +313,11 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     case "config.set":
       SETTINGS[String(params.key)] = params.value as string | number;
       return { saved: true };
+    case "annotations.delete": {
+      const index = ANNOTATIONS.findIndex((item) => item.id === params.annotation_id);
+      if (index >= 0) ANNOTATIONS.splice(index, 1);
+      return { removed: index >= 0 };
+    }
     case "notes.books":
       return { books: [] };
     default:
@@ -269,6 +338,21 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   }
   if (command === "plugin:event|unlisten") return Promise.resolve();
   if (command === "engine_voices") return Promise.resolve(VOICES);
+  if (command === "read_book") {
+    startMockReading(bookSteps((args.segmentId as string | null) ?? null));
+    return Promise.resolve(null);
+  }
+  if (command === "read_text" || command === "read_selection_text") {
+    const from = (args.segmentId as string | null) ?? null;
+    const parts = ["part-0", "part-1", "part-2"];
+    const start = from ? parts.indexOf(from) : 0;
+    startMockReading(parts.slice(start < 0 ? 0 : start));
+    return Promise.resolve(null);
+  }
+  if (command === "stop_reading") {
+    stopMockReading();
+    return Promise.resolve(null);
+  }
   if (command === "engine_request") {
     return Promise.resolve({
       result: engineRequest(

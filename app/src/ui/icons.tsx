@@ -276,3 +276,26 @@ export function ChevronDownIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/** A speaker with one wave: hear this voice. */
+export function SpeakerIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M8.2 2.8 4.8 5.6H2.6v4.8h2.2l3.4 2.8z" />
+      <path d="M11 5.8a3.2 3.2 0 0 1 0 4.4" />
+    </svg>
+  );
+}
+
+/** Two lines of text with a marker stroke under them: a highlight with no
+ * note. Its pair is NoteIcon - together they say, at a glance down a list,
+ * which rows carry something to read and which are just a passage kept. */
+export function HighlightIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 4.2h10M3 7.4h6" />
+      <path d="M3.2 11.2h7.6" strokeWidth={3} />
+    </svg>
+  );
+}
+

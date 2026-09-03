@@ -12,6 +12,8 @@
  * `npm run audit:ui` fails the build if a raw control signature appears
  * outside this folder - the gate that keeps this the single source.
  */
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -21,6 +23,11 @@ import type {
 } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
+
+/** `--layer-gap` in pixels, for the layers positioned by measurement rather
+ * than by class. Kept in step with the token in index.css by hand: there is
+ * one relationship here, and it should not read as three. */
+export const LAYER_GAP = 8;
 type Size = "md" | "sm";
 
 /* Hover/press come from the `hover-wash` utility in index.css: a wash painted
@@ -76,15 +83,101 @@ export function Button({
   );
 }
 
-/** A circular icon-only action. Pass aria-label always. */
+/** A circular icon-only action. Pass aria-label always.
+ *
+ * A `title` becomes a real tooltip rather than the browser's: the native one
+ * waits about a second, is drawn by the OS in a style nothing else here
+ * shares, and cannot be seen at all on a touch screen. Every icon button in
+ * the product gets it from this one place (owner, 03/09), so no screen has
+ * to remember to add one.
+ *
+ * It is drawn through a PORTAL, and positioned from the button's measured
+ * rectangle: an icon button can sit inside the reader's transformed columns
+ * or a panel that clips, and `fixed` alone does not survive a transformed
+ * ancestor. Measured, then clamped, because a button at the edge of the
+ * window would otherwise centre its tooltip half off the screen.
+ */
 export function IconButton({
   className = "",
+  title,
+  onMouseEnter,
+  onMouseLeave,
+  onFocus,
+  onBlur,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  const [tip, setTip] = useState<{ centre: number; top: number } | null>(null);
+  const [box, setBox] = useState<{ left: number } | null>(null);
+  const bubble = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!tip || !bubble.current) { setBox(null); return; }
+    const width = bubble.current.offsetWidth;
+    const margin = 12;
+    setBox({
+      left: Math.min(
+        Math.max(tip.centre - width / 2, margin),
+        Math.max(margin, window.innerWidth - width - margin),
+      ),
+    });
+  }, [tip]);
+
+  const open = (element: HTMLElement) => {
+    if (!title) return;
+    const rect = element.getBoundingClientRect();
+    setTip({ centre: rect.left + rect.width / 2, top: rect.bottom + LAYER_GAP });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`flex h-8 w-8 items-center justify-center rounded-full text-ink-mute transition-colors hover-wash disabled:text-ink-faint ${className}`}
+        onMouseEnter={(event) => { open(event.currentTarget); onMouseEnter?.(event); }}
+        onMouseLeave={(event) => { setTip(null); onMouseLeave?.(event); }}
+        onFocus={(event) => { open(event.currentTarget); onFocus?.(event); }}
+        onBlur={(event) => { setTip(null); onBlur?.(event); }}
+        {...rest}
+      />
+      {tip && title && createPortal(
+        <div
+          ref={bubble}
+          role="tooltip"
+          className="pointer-events-none fixed z-50 w-max max-w-[16rem] rounded-lg border border-edge-strong bg-paper px-2 py-1 text-xs leading-snug text-ink shadow-lifted"
+          /* Hidden for the one frame before it has been measured, so it
+             never appears in the wrong place first. */
+          style={{ left: box?.left ?? 0, top: tip.top, visibility: box ? "visible" : "hidden" }}
+        >
+          {title}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/** A small control that lives INSIDE a line of text.
+ *
+ * The round `IconButton` is 32px - a third of a line's height again - and
+ * putting one mid-paragraph pushes the line apart. This one is sized to the
+ * text it sits in and adds no vertical rhythm of its own; the touch target
+ * stays honest through padding rather than height.
+ *
+ * It stops the click reaching the paragraph on purpose: a paragraph click
+ * means "read from here", and pressing a note icon means the opposite. */
+export function InlineIconButton({
+  className = "",
+  onClick,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       type="button"
-      className={`flex h-8 w-8 items-center justify-center rounded-full text-ink-mute transition-colors hover-wash disabled:text-ink-faint ${className}`}
+      className={`ml-0.5 inline-flex translate-y-[0.1em] items-center justify-center rounded p-0.5 align-baseline text-ink-mute transition-colors hover:text-ink ${className}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.(event);
+      }}
       {...rest}
     />
   );
@@ -239,6 +332,57 @@ export function Kbd({ children }: { children: string }) {
         </span>
       ))}
     </span>
+  );
+}
+
+/** An on/off switch: the control for "is this in the list or not".
+ *
+ * A checkbox would do the job, but this answers a different question - not
+ * "did you tick this row" but "is this voice one of the ones you switch
+ * between" - and the sliding thumb says on/off at a glance down a list of
+ * twenty. Native `<input type=checkbox>` keeps the keyboard and the
+ * accessibility tree honest; the box itself is drawn from the tokens.
+ */
+export function Switch({
+  checked,
+  onChange,
+  disabled = false,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <label className={`relative inline-flex h-[22px] w-[38px] shrink-0 items-center ${disabled ? "" : "cursor-pointer"}`}>
+      <input
+        data-raw
+        type="checkbox"
+        role="switch"
+        className="peer sr-only"
+        checked={checked}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span
+        aria-hidden
+        className={`h-full w-full rounded-full border transition-colors ${
+          disabled
+            ? "border-edge bg-band"
+            : checked
+              ? "border-brand-600 bg-brand-600"
+              : "border-edge-strong bg-band"
+        } peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600`}
+      />
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute left-[3px] h-4 w-4 rounded-full bg-paper shadow-raised transition-transform ${
+          checked ? "translate-x-4" : ""
+        } ${disabled ? "opacity-60" : ""}`}
+      />
+    </label>
   );
 }
 

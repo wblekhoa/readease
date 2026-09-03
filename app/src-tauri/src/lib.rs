@@ -57,11 +57,13 @@ fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String>
 fn read_text(
     engine: tauri::State<EngineSlot>,
     text: String,
+    segment_id: Option<String>,
     voice_id: String,
     rate: f64,
 ) -> Result<(), String> {
     client_of(&engine).fire("read", serde_json::json!({
-        "text": text, "voice_id": voice_id, "rate": rate,
+        "text": text, "segment_id": segment_id,
+        "voice_id": voice_id, "rate": rate,
     }))
 }
 
@@ -84,12 +86,14 @@ fn read_selection_text(
     app: tauri::AppHandle,
     engine: tauri::State<EngineSlot>,
     text: String,
+    segment_id: Option<String>,
     voice_id: String,
     rate: f64,
 ) -> Result<(), String> {
     let _ = app;
     client_of(&engine).fire("read", serde_json::json!({
-        "text": text, "voice_id": voice_id, "rate": rate,
+        "text": text, "segment_id": segment_id,
+        "voice_id": voice_id, "rate": rate,
     }))
 }
 

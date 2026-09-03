@@ -21,9 +21,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
-import { Button, IconButton, Surface } from "../ui/controls";
+import { Button, IconButton, InlineIconButton, LAYER_GAP, Surface } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
+import { NotesPanel } from "../ui/NotesPanel";
+import { noteCount } from "../ui/annotationsList";
 import { splitHighlight } from "../ui/highlight";
 import type { ReadingMode } from "../ui/readingMode";
 import { PageFlow, type PageReason, type PageTarget } from "./PageFlow";
@@ -36,6 +38,10 @@ export type PageInfo = {
   pages?: number;
   chapterTitle: string;
   percent: number;
+  /** What this book carries, so the toolbar can leave the notes button out
+   * entirely rather than opening an empty panel. */
+  annotations: number;
+  notes: number;
   /** The chapter a "read" would resume in - null when the book is untouched
    * and reading would start from the beginning. */
   resumeChapterTitle: string | null;
@@ -169,6 +175,9 @@ export function Reader({
   mode,
   showToc,
   onHideToc,
+  showNotes,
+  notesFocus,
+  onNotes,
   size,
   onSegments,
   onReadFrom,
@@ -185,6 +194,11 @@ export function Reader({
    * so the controls that drive this screen are rendered up there. */
   showToc: boolean;
   onHideToc: () => void;
+  showNotes: boolean;
+  /** The annotation whose icon opened the panel, if it was opened that way. */
+  notesFocus: string | null;
+  /** Open (with an optional annotation to focus) or close the notes panel. */
+  onNotes: (open: boolean, focusId?: string | null) => void;
   size: number;
   onSegments: (ids: string[]) => void;
   onReadFrom: (segmentId: string) => void;
@@ -197,6 +211,17 @@ export function Reader({
   const [seenChapter, setSeenChapter] = useState<string | null>(null);
   const [following, setFollowing] = useState(true);
   const [zoomed, setZoomed] = useState<{ source: string; alt: string } | null>(null);
+  /* A note read where it sits, without opening anything.
+   *
+   * The coordinates are computed from the icon and the bubble is drawn with
+   * `fixed` at the top of the reader, NOT inside the paragraph: in pages mode
+   * the text lives in CSS columns slid sideways by a transform, inside a
+   * frame that clips - a popover parented to the paragraph would be cut off
+   * or land somewhere else entirely. Fixed positioning is measured against
+   * the window, so neither the columns nor the transform can reach it. */
+  const [peek, setPeek] = useState<
+    { note: string; left?: number; right?: number; maxWidth: number; top?: number; bottom?: number } | null
+  >(null);
   const column = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const paged = mode === "pages";
@@ -286,6 +311,37 @@ export function Reader({
       ?.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
   }, []);
 
+  /** Put the bubble beside an icon: as wide as the note needs, never wider
+   *  than the room it has.
+   *
+   * The width is the note's own - a five-word note in a 20rem box is mostly
+   * empty box (owner, 03/09). What is computed here is the CEILING, and it
+   * is the real room to the right of the icon rather than a guess, because a
+   * note icon can sit anywhere on a line. When that room would leave a
+   * column of two words per line, the bubble stops following the icon and
+   * lines up with the window's right margin instead. Above the line when the
+   * icon is low, so a long note is not cut off by the bottom of the window.
+   */
+  const showPeek = useCallback((anchor: HTMLElement, note: string) => {
+    const rect = anchor.getBoundingClientRect();
+    const margin = 24;
+    /** Under this, following the icon makes a column, not a bubble. */
+    const narrowest = 260;
+    /** Past this a note stops being a glance and wants the panel. */
+    const widest = 448;
+    const room = window.innerWidth - rect.left - margin;
+    const low = rect.bottom > window.innerHeight * 0.6;
+    const across = room >= narrowest
+      ? { left: Math.max(margin, rect.left - 8), maxWidth: Math.min(widest, room + 8) }
+      : { right: margin, maxWidth: Math.min(widest, window.innerWidth - margin * 2) };
+    setPeek({
+      note,
+      ...across,
+      top: low ? undefined : rect.bottom + LAYER_GAP,
+      bottom: low ? window.innerHeight - rect.top + LAYER_GAP : undefined,
+    });
+  }, []);
+
   /** Show a place, in whichever mode is on. */
   const showSegment = useCallback((segmentId: string, source: PageReason) => {
     if (paged) {
@@ -344,6 +400,8 @@ export function Reader({
       pages: paged ? pageIndex?.pages : undefined,
       chapterTitle: chapter?.title ?? "",
       percent,
+      annotations: opened.annotations?.length ?? 0,
+      notes: noteCount(opened.annotations ?? []),
       resumeChapterTitle: resume?.title ?? null,
     });
   }, [opened, paged, chapterIndex, seenChapter, shown, pageIndex, flat, marker, chapterOf, onPageInfo]);
@@ -439,11 +497,18 @@ export function Reader({
       return (
         <>
           {split.before}
-          <mark title={item.note ?? undefined}>{split.mark}</mark>
+          <mark>{split.mark}</mark>
           {item.note && (
-            <span className="ml-0.5 inline-flex align-middle text-ink-mute" title={item.note} aria-label={text("reader.note")}>
+            <InlineIconButton
+              onClick={() => { setPeek(null); onNotes(true, item.id); }}
+              onMouseEnter={(event) => showPeek(event.currentTarget, item.note!)}
+              onFocus={(event) => showPeek(event.currentTarget, item.note!)}
+              onMouseLeave={() => setPeek(null)}
+              onBlur={() => setPeek(null)}
+              aria-label={text("reader.note_open")}
+            >
               <NoteIcon />
-            </span>
+            </InlineIconButton>
           )}
           {split.after}
         </>
@@ -505,7 +570,7 @@ export function Reader({
       className={`absolute left-0 z-10 w-64 overflow-y-auto p-2 shadow-lifted ${
         paged
           ? "top-0 max-h-full"
-          : "top-[calc(var(--shell-top-h)+0.5rem)] max-h-[calc(100%-var(--shell-top-h)-var(--shell-bottom-h)-1rem)]"
+          : "top-[calc(var(--shell-top-h)+var(--layer-gap))] layer-capped"
       }`}
     >
       <nav>
@@ -529,6 +594,51 @@ export function Reader({
         ))}
       </nav>
     </Surface>
+  );
+
+  /* Beside the contents, and under the same rule: a row jumps to the place,
+   * it never starts speaking. */
+  const notes = showNotes && (
+    <NotesPanel
+      chapters={opened.book.chapters}
+      annotations={opened.annotations ?? []}
+      paged={paged}
+      focusId={notesFocus}
+      onNavigate={(segmentId) => {
+        showSegment(segmentId, "contents");
+        onNotes(false);
+      }}
+      onDelete={(annotationId) => {
+        // Off the page at once, and off the disk for good: the engine keeps
+        // a tombstone so the next Apple Books sync cannot hand it back.
+        setOpened((book) => book && {
+          ...book,
+          annotations: (book.annotations ?? []).filter((item) => item.id !== annotationId),
+        });
+        void invoke("engine_request", {
+          method: "annotations.delete",
+          params: { book_id: bookId, annotation_id: annotationId },
+        }).catch(console.error);
+      }}
+      onClose={() => onNotes(false)}
+    />
+  );
+
+  /* Wrapped rather than styled through `Surface`: the kit's card takes a
+     className, not a style, and a measured position is not a class. */
+  const notePeek = peek && (
+    <div
+      className="pointer-events-none fixed z-30 w-max"
+      style={{
+        left: peek.left, right: peek.right,
+        top: peek.top, bottom: peek.bottom,
+        maxWidth: peek.maxWidth,
+      }}
+    >
+      <Surface edge="strong" className="px-3 py-2 text-sm leading-relaxed shadow-lifted">
+        {peek.note}
+      </Surface>
+    </div>
   );
 
   const pills = (
@@ -566,6 +676,8 @@ export function Reader({
             {opened.book.chapters[chapterIndex] && chapterBody(opened.book.chapters[chapterIndex])}
           </PageFlow>
           {contents}
+          {notes}
+          {notePeek}
           {pills}
         </div>
       ) : (
@@ -583,6 +695,8 @@ export function Reader({
               </div>
             </div>
             {contents}
+            {notes}
+            {notePeek}
             {pills}
           </div>
         </div>

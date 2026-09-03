@@ -55,8 +55,21 @@
      each element's own height-default. Set it here, override per cluster with
      <Cluster>; never hand a control its own radius. */
   --ctl-radius: 0.75rem;
+  /* How far a floating layer sits from the thing that opened it. It was 4px
+     under a menu, 6 under a tooltip and 8 under a panel - three values for
+     one relationship (owner, 03/09). JS-positioned layers use 8 to match. */
+  --layer-gap: 0.5rem;
+
+  /* The dot rule's own colour. It is a ROLE, not an alias, because the two
+     themes need different tiers to read as the same weight: on the white
+     desk `edge` is the lighter hairline the owner asked for (03/09), but in
+     dark the same token is n(45) against an n(38) sheet - a seven-point step
+     that vanishes. Dark keeps `edge-strong`, which against its own ground is
+     no heavier than `edge` is against the light one. */
+  --app-dot: var(--border-color-neutral-primary);
 }
 [data-theme="dark"] {
+  --app-dot: var(--border-color-neutral-soft);
   --app-band: var(--neutral-n20);
   --app-rail: var(--neutral-n05);
   --app-edge-field: transparent;
@@ -98,6 +111,7 @@
      Same accepted decision as the Qt theme round. */
   --color-edge-strong: var(--border-color-neutral-soft);
   --color-edge-field: var(--app-edge-field);
+  --color-dot: var(--app-dot);
   /* Destructive is its own hue: DOL's hard rule keeps brand red for identity
      and the red ramp's semantic tokens for danger, and both flip with theme.
      The BOLD tier, not primary: measured 2026-09-01, primary reads 3.12:1 on
@@ -123,6 +137,59 @@
    02/09: "Về chỗ đang đọc" bị chữ đè lên khi hover). The gradient trick
    paints the alpha on top and leaves background-color alone. Not for
    <select>: its chevron already lives in background-image. */
+/* The DOL dot divider: separation without a container.
+ *
+ * A deterministic 2px dot on an 8px rhythm, drawn as a repeating radial
+ * gradient - NOT `border-style: dotted`, which the DS rejects outright
+ * because its cadence changes with the engine and the length of the line
+ * (DOL-DS-token layout-structure-family, Divider contract).
+ *
+ * The colour is `--color-dot`, a role of its own: a dotted rule already reads
+ * lighter than a solid one - only a quarter of it is inked - so the owner
+ * asked for a lighter tier (03/09), and each theme needs a DIFFERENT DS tier
+ * to arrive at the same lightness. See the token, defined in :root.
+ */
+/* How tall a floating layer may get when it hangs off the chrome: the room
+ * between the bars, less a margin, so a long panel scrolls inside itself
+ * instead of growing up under the header or down under the player.
+ *
+ * A UTILITY, not a custom property, and that is not a style choice. A custom
+ * property declared on :root has its own `var()` references substituted THERE
+ * - so `--layer-max-h` on :root baked in the placeholder insets (72px/0px)
+ * and never saw the 76px the observer measures onto the shell. Written as a
+ * utility, the calc resolves on the element that uses it, which inherits the
+ * real numbers. Measured the wrong way round first, 03/09.
+ */
+@utility layer-capped {
+  max-height: calc(
+    100vh - var(--shell-top-h) - var(--shell-bottom-h) - 2rem
+  );
+}
+
+@utility dot-divided {
+  & > * + * {
+    position: relative;
+  }
+  & > * + *::before {
+    content: "";
+    position: absolute;
+    /* Flush with the row by default. A list whose rows OUTDENT themselves -
+       so a hover wash can bleed past the text - pushes the rule back in by
+       the same amount with `--dot-inset`, or the rule ends up wider than the
+       content it separates (owner, 03/09). */
+    inset-inline: var(--dot-inset, 0);
+    top: 0;
+    height: 2px;
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      var(--color-dot) 1px,
+      transparent 1px
+    );
+    background-size: 8px 2px;
+    background-repeat: repeat-x;
+  }
+}
+
 @utility hover-wash {
   &:hover {
     background-image: linear-gradient(var(--color-wash), var(--color-wash));
@@ -252,14 +319,37 @@ textarea:focus-visible {
   background: color-mix(in srgb, var(--color-brand-600) 24%, transparent);
 }
 
-/* WKWebView scrollbars follow the page, not the OS: without this the reader
-   column shows a white scrollbar pill inside a dark page. */
-::-webkit-scrollbar { width: 10px; height: 10px; }
+/* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover
+   rather than parked there. A 10px rail with a permanent thumb is a lot of
+   furniture next to a list of highlights, and it read as if the panel had
+   sprung a leak (owner, 03/09).
+   Scrollbars are also not the OS's here: WKWebView follows the PAGE, so
+   without a rule the reader column shows a white pill inside a dark page.
+
+   The standard properties come first because they are what the DS moved to
+   (its `::-webkit-scrollbar` block was removed 2026-08-19: Chromium ignores
+   every webkit rule as soon as either standard property is set). The webkit
+   block is KEPT here, unlike the DS, because this app is WKWebView, not
+   Chromium - where the standard properties win it is dead weight, and where
+   they are not supported it is the only thing standing between a dark page
+   and a white scrollbar. Both paths are tuned to the same result. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: var(--border-color-neutral-soft) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color-neutral-soft);
-  border-radius: 5px;
+  background: transparent;
+  border-radius: 4px;
   border: 2px solid transparent;
+  background-clip: content-box;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--border-color-neutral-soft);
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--text-color-neutral-secondary); background-clip: content-box; }
