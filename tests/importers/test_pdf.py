@@ -132,3 +132,27 @@ class PdfImporterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PdfCoverTests(unittest.TestCase):
+    def test_first_page_becomes_a_jpeg_of_the_cover_height(self) -> None:
+        from vieneu_reader.importers.epub_presentation import _jpeg_dimensions
+        from vieneu_reader.importers.pdf import COVER_HEIGHT_PX, load_pdf_cover
+        with TemporaryDirectory() as directory:
+            cover = load_pdf_cover(make_text_pdf(Path(directory)))
+        self.assertIsNotNone(cover)
+        payload, media_type = cover
+        self.assertEqual(media_type, "image/jpeg")
+        self.assertTrue(payload.startswith(b"\xff\xd8"))
+        _width, height = _jpeg_dimensions(payload)
+        self.assertEqual(height, COVER_HEIGHT_PX)
+
+    def test_a_wrong_hash_or_a_broken_file_gives_none(self) -> None:
+        from vieneu_reader.importers.pdf import load_pdf_cover
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            good = make_text_pdf(root)
+            broken = root / "broken.pdf"
+            broken.write_bytes(b"%PDF-1.7 not really")
+            self.assertIsNone(load_pdf_cover(good, expected_hash="0" * 64))
+            self.assertIsNone(load_pdf_cover(broken))

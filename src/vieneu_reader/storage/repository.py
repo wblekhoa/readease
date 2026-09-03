@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import sqlite3
 from threading import RLock
-from typing import Any
+from typing import Sequence, Any
 
 from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
 from vieneu_reader.domain.prosody import ends_sentence
@@ -35,6 +35,18 @@ def _database_errors():
 class StoredBook:
     book: BookDocument
     managed_path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class StoredAnnotation:
+    """A highlight brought in from elsewhere, pinned to one segment."""
+
+    id: str
+    segment_id: str
+    selected_text: str = field(repr=False)
+    note: str | None = field(repr=False, default=None)
+    style: int = 0
+    source: str = "applebooks"
 
 
 @dataclass(frozen=True, slots=True)
@@ -323,6 +335,30 @@ class LibraryRepository:
                 )
                 """
             )
+            # Additive tables (no version bump: an older build reading this
+            # file must keep working, and it ignores what it does not know).
+            self._connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS annotations (
+                    id TEXT PRIMARY KEY,
+                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    segment_id TEXT NOT NULL,
+                    selected_text TEXT NOT NULL,
+                    note TEXT,
+                    style INTEGER NOT NULL DEFAULT 0,
+                    source TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            self._connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS apple_books_links (
+                    asset_id TEXT PRIMARY KEY,
+                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE
+                )
+                """
+            )
             if row is None:
                 self._connection.execute(
                     "INSERT INTO app_meta(key, value) VALUES('schema_version', ?)",
@@ -472,6 +508,69 @@ class LibraryRepository:
                     progress.voice_id,
                 ),
             )
+
+    def replace_annotations(
+        self,
+        book_id: str,
+        source: str,
+        items: Sequence[StoredAnnotation],
+    ) -> None:
+        """One source's highlights for one book, replaced wholesale: a sync
+        is a mirror, so a highlight deleted over there disappears here."""
+
+        with _database_errors(), self._lock, self._connection:
+            self._connection.execute(
+                "DELETE FROM annotations WHERE book_id = ? AND source = ?",
+                (book_id, source),
+            )
+            self._connection.executemany(
+                """
+                INSERT OR REPLACE INTO annotations(
+                    id, book_id, segment_id, selected_text, note, style, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (item.id, book_id, item.segment_id, item.selected_text,
+                     item.note, int(item.style), source)
+                    for item in items
+                ],
+            )
+
+    def annotations_for(self, book_id: str) -> tuple[StoredAnnotation, ...]:
+        with _database_errors(), self._lock:
+            rows = self._connection.execute(
+                """
+                SELECT id, segment_id, selected_text, note, style, source
+                FROM annotations WHERE book_id = ? ORDER BY rowid
+                """,
+                (book_id,),
+            ).fetchall()
+        return tuple(
+            StoredAnnotation(
+                id=str(row["id"]), segment_id=str(row["segment_id"]),
+                selected_text=str(row["selected_text"]),
+                note=row["note"], style=int(row["style"] or 0),
+                source=str(row["source"]),
+            )
+            for row in rows
+        )
+
+    def link_apple_book(self, asset_id: str, book_id: str) -> None:
+        """Remember which local book an Apple Books asset became, so a second
+        sync recognises it by identity and never by guesswork."""
+
+        with _database_errors(), self._lock, self._connection:
+            self._connection.execute(
+                "INSERT OR REPLACE INTO apple_books_links(asset_id, book_id) VALUES (?, ?)",
+                (asset_id, book_id),
+            )
+
+    def apple_book_links(self) -> dict[str, str]:
+        with _database_errors(), self._lock:
+            rows = self._connection.execute(
+                "SELECT asset_id, book_id FROM apple_books_links"
+            ).fetchall()
+        return {str(row["asset_id"]): str(row["book_id"]) for row in rows}
 
     def save_preferences(self, preferences: Progress) -> None:
         """Update voice/rate without moving a newer persisted segment backward."""

@@ -37,9 +37,16 @@ READING_REVISION = f"sentences-{SENTENCE_PAUSE_MS}"
 _SENTENCE_BOUNDARY = re.compile(r"[.!?…]+[\"\'”’»›)\]}]*\s+")
 # A colon only introduces something when a gap follows it, which is what keeps
 # "10:30" and "https://" whole without this needing to know about clocks or
-# links. A dash sets an aside apart, attached or spaced, but between two digits
-# it is a range like "1975—1980".
-_CLAUSE_BOUNDARY = re.compile(r":\s+|(?<!\d)\s*[—–]\s*(?!\d)")
+# links. A dash sets an aside apart, attached or spaced - but between two
+# digits it is a range like "1975—1980", so the range is matched FIRST, as its
+# own thing, and skipped. The old guard refused any dash touching a digit on
+# either side, which silently swallowed "kể—99 xu": a letter before, a number
+# after, and the voice ran straight through it (owner, 2026-09-02). A hyphen
+# only counts as a dash when spaced on both sides ("Anh - em"); "tháng 1-2"
+# and "Anh-Mỹ" stay whole.
+_CLAUSE_BOUNDARY = re.compile(
+    r":\s+|(?P<range>\d\s*[—–-]\s*\d)|\s*[—–]\s*|\s-\s"
+)
 _SENTENCE_OPENERS = frozenset("(\"'“‘«[-—–")
 # Titles and initials end in a period and are followed by a capitalised name,
 # which is exactly what a sentence boundary looks like.
@@ -122,8 +129,16 @@ def _boundaries(text: str) -> list[int]:
             continue
         cuts.add(following)
     for match in _CLAUSE_BOUNDARY.finditer(text):
-        # A dash that opens a line of dialogue has nothing before it to end.
-        if match.start() == 0 or match.end() >= len(text):
+        if match.group("range"):
+            continue  # "1975—1980": one thing, not two
+        if match.end() >= len(text):
+            continue
+        # A dash that OPENS a line of dialogue has nothing before it to end -
+        # at the start of the text, or right after a finished sentence
+        # ("Cô ấy gật đầu. - Vâng"). The sentence break already cut there;
+        # cutting again would leave the dash standing alone.
+        before = text[: match.start()].rstrip()
+        if not before or ends_sentence(before):
             continue
         cuts.add(match.end())
     return sorted(cuts)
@@ -238,6 +253,93 @@ def _capitalise_first(token: str) -> str:
     return token
 
 
+# "#1" is an ordinal in print ("Sự thật #1", "#2. Thế giới đã thay đổi") but
+# the voice has no way to know that; it was handed the raw "#1" and read it
+# however the model felt like. Spoken Vietnamese says "thứ nhất", and the
+# words are irregular at exactly the places a naive "thứ " + digits gets wrong:
+# 1 → nhất, 4 → tư, and inside compounds 1 → mốt, 4 → tư, 5 → lăm.
+_ORDINAL_MARK = re.compile(r"(?<![\w#])#(\d{1,3})(?!\w)")
+_UNITS = ("không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín")
+
+
+def ordinal_words(number: int) -> str:
+    """'thứ nhất' … 'thứ chín mươi chín'; digits past that (the model reads them)."""
+    if number < 1 or number > 99:
+        return f"thứ {number}"
+    if number == 1:
+        return "thứ nhất"
+    if number == 4:
+        return "thứ tư"
+    if number < 10:
+        return f"thứ {_UNITS[number]}"
+    tens, unit = divmod(number, 10)
+    head = "mười" if tens == 1 else f"{_UNITS[tens]} mươi"
+    if unit == 0:
+        return f"thứ {head}"
+    if unit == 1:
+        tail = "một" if tens == 1 else "mốt"
+    elif unit == 4:
+        tail = "bốn" if tens == 1 else "tư"
+    elif unit == 5:
+        tail = "lăm"
+    else:
+        tail = _UNITS[unit]
+    return f"thứ {head} {tail}"
+
+
+def spell_ordinal_marks(text: str) -> str:
+    """'#1' → 'thứ nhất' for the voice; the page keeps its '#1'."""
+    return _ORDINAL_MARK.sub(lambda m: ordinal_words(int(m.group(1))), text)
+
+
+# Footnote numbers set as superscripts. Six in the owner's library, every one a
+# note mark ("Tang.³", "người³"); none arithmetic. A superscript right after a
+# digit IS arithmetic ("10³") and is left alone.
+_NOTE_MARK = re.compile(r"(?<!\d)[\u00b2\u00b3\u00b9\u2070\u2074-\u2079]+")
+
+
+_LEADING_ZERO = re.compile(r"^\s*0+(?=\d)")
+
+
+# Inline enumerators "(a) … (b) …". The owner's library has 31, all of them
+# opening a phrase in a list, none a reference. The ear chose (02/09, four
+# renders of the same sentence) the letter kept and a pause after it: "a,
+# nhiệm vụ hiện tại, hoặc b, sở thích" - not deleted, not "một là / hai là".
+# "book(s)" has no space before the bracket and is not an enumerator.
+_ENUMERATOR = re.compile(r"(?<!\S)\(([a-z])\)")
+_ENUMERATOR_AFTER_CONJUNCTION = re.compile(
+    r"\s*(?:,\s*)?\b(hoặc|hay|và|rồi|cũng như)\s+\(([a-z])\)"
+)
+# "mục (b)", "điểm (c)": a reference to an item, spoken as its name, no pause.
+_ENUMERATOR_REFERENCE = re.compile(
+    r"\b(mục|điểm|phần|khoản|ý|câu|trường hợp|phương án|lựa chọn)\s+\(([a-z])\)"
+)
+
+
+def speak_enumerators(text: str) -> str:
+    """Turn "(a)" markers into something the voice can phrase.
+
+    An enumerator becomes the letter plus a pause ("a, "); when a conjunction
+    leads into it the pause moves in front of the conjunction, which is how
+    the sentence was read in the render the owner picked. A reference
+    ("mục (b)") keeps its letter and takes no pause.
+    """
+
+    spoken = _ENUMERATOR_REFERENCE.sub(lambda m: f"{m.group(1)} {m.group(2)}", text)
+    spoken = _ENUMERATOR_AFTER_CONJUNCTION.sub(lambda m: f", {m.group(1)} {m.group(2)},", spoken)
+    return _ENUMERATOR.sub(lambda m: f"{m.group(1)},", spoken)
+
+
+def drop_note_marks(text: str) -> str:
+    """Take the footnote superscripts out of what the voice says.
+
+    They are for the eye - the page keeps them - and spoken they land as a
+    stray "ba" in the middle of a sentence, glued to the word before it.
+    """
+
+    return _NOTE_MARK.sub("", text)
+
+
 def speakable_text(text: str, kind: str = "paragraph") -> str:
     """Shape one segment's text for the voice without touching the display.
 
@@ -246,12 +348,17 @@ def speakable_text(text: str, kind: str = "paragraph") -> str:
     punctuation tends to end mid-air, so it is spoken with a final period.
     """
 
-    spoken = unshout(text)
+    spoken = spell_ordinal_marks(unshout(speak_enumerators(drop_note_marks(text))))
     stripped = spoken.lstrip()
     while stripped and stripped[0] in _BULLET_GLYPHS:
         stripped = stripped[1:].lstrip()
     if stripped:
         spoken = stripped
-    if kind == "heading" and not final_punctuation(spoken):
-        spoken = f"{spoken}."
+    if kind == "heading":
+        # "01", "07": the numbered-principle headings the owner's library has
+        # 203 of. Spoken with the zero ("không một") they are wrong; the page
+        # keeps the zero-padded label, the voice says the number.
+        spoken = _LEADING_ZERO.sub("", spoken)
+        if not final_punctuation(spoken):
+            spoken = f"{spoken}."
     return spoken

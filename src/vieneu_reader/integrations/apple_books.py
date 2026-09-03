@@ -86,6 +86,9 @@ class Annotation:
     # default dataclass repr would put them into any traceback or %r log line.
     selected_text: str | None = field(repr=False, default=None)
     note: str | None = field(repr=False, default=None)
+    # Apple's highlight colour (1 green, 3 yellow, 5 purple...). Not read
+    # yet - ReadEase paints one tint - so it is always 0 for now.
+    style: int = 0
 
     @property
     def has_note(self) -> bool:
@@ -198,6 +201,16 @@ class AppleBooksLibrary:
         query: str,
         parameters: tuple = (),
     ) -> list[tuple]:
+        return self._with_copy(
+            database, lambda connection: connection.execute(query, parameters).fetchall()
+        )
+
+    def _with_copy(self, database: Path | None, read) -> list[tuple]:
+        """Copy the database (and its sidecars) once, run `read` on the copy.
+
+        One copy per call, whatever `read` asks of it: every extra copy is
+        another window with the person's notes on disk."""
+
         if database is None:
             raise AppleBooksUnavailable(
                 "Không tìm thấy dữ liệu Apple Books trên máy này."
@@ -239,7 +252,7 @@ class AppleBooksLibrary:
             try:
                 connection = sqlite3.connect(copy)
                 try:
-                    return connection.execute(query, parameters).fetchall()
+                    return read(connection)
                 finally:
                     connection.close()
             except sqlite3.Error as error:
@@ -289,10 +302,14 @@ class AppleBooksLibrary:
 
         if not asset_ids:
             return {}
+        # Bound in SQL, not filtered afterwards: reading every book's notes
+        # into memory to show one book's would make the privacy note false.
         rows = self._rows(
             self._annotations,
             # Bound in SQL, not filtered afterwards: reading every book's notes
             # into memory to show one book's would make the privacy note false.
+            # One query, one copy: the highlight colour (ZANNOTATIONSTYLE) is
+            # deliberately not read yet - it is carried at 0 until it is drawn.
             "SELECT ZANNOTATIONASSETID, ZANNOTATIONTYPE, ZANNOTATIONLOCATION, "
             "ZANNOTATIONSELECTEDTEXT, ZANNOTATIONNOTE FROM ZAEANNOTATION "
             "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID IN "
@@ -309,6 +326,7 @@ class AppleBooksLibrary:
                     location=str(row[2] or ""),
                     selected_text=row[3],
                     note=row[4],
+                    style=_as_int(row[5]) if len(row) > 5 else 0,
                 )
             )
         return {key: tuple(value) for key, value in grouped.items()}

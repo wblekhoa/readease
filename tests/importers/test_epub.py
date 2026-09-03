@@ -2,6 +2,7 @@ import lzma
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import base64
 import unittest
 from unittest.mock import patch
 import zlib
@@ -639,3 +640,91 @@ class EpubImportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CoverTests(unittest.TestCase):
+    """The cover is found by the three conventions publishers use, and only
+    real image bytes ever reach the shelf."""
+
+    PNG = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+    )
+
+    def _cover(self, root, **extras):
+        from vieneu_reader.importers.epub_presentation import load_epub_cover
+        return load_epub_cover(make_epub(root, **extras))
+
+    def test_epub3_cover_image_property_wins(self) -> None:
+        with TemporaryDirectory() as directory:
+            cover = self._cover(
+                Path(directory),
+                manifest_extra='<item id="art" href="images/front.png" media-type="image/png" properties="cover-image"/>',
+                extra_members={"OEBPS/images/front.png": self.PNG},
+            )
+        self.assertEqual(cover, (self.PNG, "image/png"))
+
+    def test_epub2_meta_cover_names_an_item_or_an_href(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            by_id = self._cover(
+                root, name="a.epub",
+                metadata_extra='<meta name="cover" content="art"/>',
+                manifest_extra='<item id="art" href="images/x.png" media-type="image/png"/>',
+                extra_members={"OEBPS/images/x.png": self.PNG},
+            )
+            by_href = self._cover(
+                root, name="b.epub",
+                metadata_extra='<meta name="cover" content="images/x.png"/>',
+                manifest_extra='<item id="whatever" href="images/x.png" media-type="image/jpg"/>',
+                extra_members={"OEBPS/images/x.png": self.PNG},
+            )
+        self.assertEqual(by_id, (self.PNG, "image/png"))
+        # "image/jpg" is normalised, and the PNG bytes then fail the JPEG
+        # check: a declared type that lies never ships.
+        self.assertIsNone(by_href)
+
+    def test_an_image_called_cover_is_the_fallback(self) -> None:
+        with TemporaryDirectory() as directory:
+            cover = self._cover(
+                Path(directory),
+                manifest_extra='<item id="img7" href="images/Cover.png" media-type="image/png"/>',
+                extra_members={"OEBPS/images/Cover.png": self.PNG},
+            )
+        self.assertEqual(cover, (self.PNG, "image/png"))
+
+    def test_no_cover_and_a_non_image_are_none_not_errors(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            none = self._cover(root, name="a.epub")
+            not_an_image = self._cover(
+                root, name="b.epub",
+                manifest_extra='<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>',
+                extra_members={"OEBPS/cover.xhtml": b"<html/>"},
+            )
+            lying_bytes = self._cover(
+                root, name="c.epub",
+                manifest_extra='<item id="cover" href="c.png" media-type="image/png" properties="cover-image"/>',
+                extra_members={"OEBPS/c.png": b"not a png at all"},
+            )
+        self.assertIsNone(none)
+        self.assertIsNone(not_an_image)
+        self.assertIsNone(lying_bytes)
+
+    def test_a_print_size_cover_is_shrunk_to_shelf_size(self) -> None:
+        from io import BytesIO
+        import PIL.Image
+        from vieneu_reader.importers.covers import COVER_HEIGHT_PX
+        from vieneu_reader.importers.epub_presentation import _jpeg_dimensions
+        big = BytesIO()
+        PIL.Image.new("RGB", (1300, 2000), (200, 30, 30)).save(big, format="PNG")
+        with TemporaryDirectory() as directory:
+            cover = self._cover(
+                Path(directory),
+                manifest_extra='<item id="art" href="big.png" media-type="image/png" properties="cover-image"/>',
+                extra_members={"OEBPS/big.png": big.getvalue()},
+            )
+        payload, media_type = cover
+        self.assertEqual(media_type, "image/jpeg")
+        self.assertEqual(_jpeg_dimensions(payload)[1], COVER_HEIGHT_PX)
+        self.assertLess(len(payload), len(big.getvalue()))
+

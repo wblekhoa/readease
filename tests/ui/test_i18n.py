@@ -42,6 +42,17 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         # for a matcher, never text anyone reads, so there is nothing to
         # translate; an English build must still not split "ĐH. Bách Khoa".
         ("domain/prosody.py", "đh"),
+        # Same class: the conjunctions and reference nouns the enumerator
+        # rule matches ("hoặc (b)", "mục (b)") are matcher data for
+        # Vietnamese book text, not words the app says to anyone.
+        (
+            "domain/prosody.py",
+            r"\s*(?:,\s*)?\b(hoặc|hay|và|rồi|cũng như)\s+\(([a-z])\)",
+        ),
+        (
+            "domain/prosody.py",
+            r"\b(mục|điểm|phần|khoản|ý|câu|trường hợp|phương án|lựa chọn)\s+\(([a-z])\)",
+        ),
         ("domain/prosody.py", "cđ"),
     }
 )

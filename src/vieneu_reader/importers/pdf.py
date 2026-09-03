@@ -15,10 +15,12 @@ from hashlib import sha256
 from pathlib import Path
 
 import pypdfium2 as pdfium
+from io import BytesIO
 
 from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_paragraph
 
+from .covers import COVER_HEIGHT_PX
 from .errors import CorruptBookError
 
 
@@ -290,3 +292,39 @@ def import_pdf(path: Path) -> BookDocument:
     finally:
         if document is not None:
             document.close()
+
+
+def load_pdf_cover(
+    path: Path,
+    *,
+    expected_hash: str | None = None,
+) -> tuple[bytes, str] | None:
+    """The first page rendered as a JPEG of COVER_HEIGHT_PX, or None.
+
+    A PDF has no cover convention; its first page is what a shelf shows.
+    Re-verified against the stored hash the way every EPUB read is."""
+
+    source = Path(path)
+    try:
+        if expected_hash is not None and _file_hash(source) != expected_hash:
+            return None
+        document = _open_document(source)
+    except (CorruptBookError, OSError):
+        return None
+    page = None
+    try:
+        if len(document) < 1:
+            return None
+        page = document[0]
+        _width, height = page.get_size()
+        scale = COVER_HEIGHT_PX / height if height > 0 else 1.0
+        image = page.render(scale=max(0.05, min(scale, 4.0))).to_pil().convert("RGB")
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG", quality=82, optimize=True)
+        return buffer.getvalue(), "image/jpeg"
+    except (pdfium.PdfiumError, OSError, ValueError, MemoryError):
+        return None
+    finally:
+        if page is not None:
+            page.close()
+        document.close()

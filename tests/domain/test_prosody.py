@@ -246,6 +246,32 @@ class ClauseSplittingTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(split_sentences(text), (text,))
 
+    def test_a_dash_before_a_number_is_still_an_aside(self):
+        """'kể—99 xu': a letter before, a number after. The range guard used
+        to refuse any dash that touched a digit, so the voice ran straight
+        through this one (owner, 2026-09-02)."""
+        self.assertEqual(
+            split_sentences("Giá kể—99 xu, thế là xong."),
+            ("Giá kể—", "99 xu, thế là xong."),
+        )
+        self.assertEqual(
+            split_sentences("Chỉ 3 người—và họ đều đúng."),
+            ("Chỉ 3 người—", "và họ đều đúng."),
+        )
+
+    def test_a_spaced_range_is_still_a_range(self):
+        self.assertEqual(
+            split_sentences("Giai đoạn 1975 — 1980 rất khó."),
+            ("Giai đoạn 1975 — 1980 rất khó.",),
+        )
+
+    def test_a_spaced_hyphen_is_a_dash_but_a_tight_one_is_not(self):
+        self.assertEqual(
+            split_sentences("Anh - em cùng đi."), ("Anh -", "em cùng đi.")
+        )
+        self.assertEqual(split_sentences("Tháng 1-2 rất lạnh."), ("Tháng 1-2 rất lạnh.",))
+        self.assertEqual(split_sentences("Quan hệ Anh-Mỹ bền."), ("Quan hệ Anh-Mỹ bền.",))
+
     def test_a_dash_between_numbers_is_a_range_not_an_aside(self):
         self.assertEqual(
             split_sentences("Giai đoạn 1975—1980 rất khó."),
@@ -310,4 +336,109 @@ class UnshoutTests(unittest.TestCase):
             speakable_text(shouted), 'Dòng "look right" phía trước.'
         )
         self.assertEqual(shouted, 'Dòng "LOOK RIGHT" phía trước.')
+
+
+class OrdinalMarkTests(unittest.TestCase):
+    """'#1' is printed, 'thứ nhất' is said (owner, 2026-09-02)."""
+
+    def test_the_irregular_ones_are_right(self) -> None:
+        from vieneu_reader.domain.prosody import ordinal_words
+
+        self.assertEqual(ordinal_words(1), "thứ nhất")
+        self.assertEqual(ordinal_words(2), "thứ hai")
+        self.assertEqual(ordinal_words(4), "thứ tư")
+        self.assertEqual(ordinal_words(5), "thứ năm")
+        self.assertEqual(ordinal_words(10), "thứ mười")
+        self.assertEqual(ordinal_words(11), "thứ mười một")
+        self.assertEqual(ordinal_words(14), "thứ mười bốn")
+        self.assertEqual(ordinal_words(15), "thứ mười lăm")
+        self.assertEqual(ordinal_words(21), "thứ hai mươi mốt")
+        self.assertEqual(ordinal_words(24), "thứ hai mươi tư")
+        self.assertEqual(ordinal_words(25), "thứ hai mươi lăm")
+        self.assertEqual(ordinal_words(30), "thứ ba mươi")
+        self.assertEqual(ordinal_words(120), "thứ 120")
+
+    def test_marks_are_spoken_as_ordinals_wherever_they_sit(self) -> None:
+        from vieneu_reader.domain.prosody import speakable_text
+
+        # The two shapes found in the owner's library.
+        self.assertEqual(
+            speakable_text("#1. Nói thẳng nhé: Cuốn sách đã cũ"),
+            "thứ nhất. Nói thẳng nhé: Cuốn sách đã cũ",
+        )
+        self.assertEqual(
+            speakable_text("Sự thật #2: Chúng ta không chọn phương án tối ưu."),
+            "Sự thật thứ hai: Chúng ta không chọn phương án tối ưu.",
+        )
+
+    def test_a_hash_that_is_not_an_ordinal_is_left_alone(self) -> None:
+        from vieneu_reader.domain.prosody import speakable_text
+
+        self.assertEqual(speakable_text("Tìm #hashtag trên mạng."), "Tìm #hashtag trên mạng.")
+        self.assertEqual(speakable_text("Viết bằng C# nhé."), "Viết bằng C# nhé.")
+        self.assertEqual(speakable_text("Mã ##12 nội bộ."), "Mã ##12 nội bộ.")
+
+
+class NoteMarkTests(unittest.TestCase):
+    """Footnote superscripts are read by the eye, never by the voice."""
+
+    def test_a_note_mark_after_a_period_is_not_spoken(self) -> None:
+        self.assertEqual(
+            speakable_text("đã cho ta Tang.³ Developer và designer"),
+            "đã cho ta Tang. Developer và designer",
+        )
+
+    def test_a_note_mark_glued_to_a_word_is_not_spoken(self) -> None:
+        self.assertEqual(
+            speakable_text("một số người³ cố nhờ practitioner"),
+            "một số người cố nhờ practitioner",
+        )
+
+    def test_a_multi_digit_mark_goes_as_one(self) -> None:
+        self.assertEqual(speakable_text("như đã nói.¹²"), "như đã nói.")
+
+    def test_a_power_after_a_digit_is_arithmetic_and_stays(self) -> None:
+        self.assertEqual(speakable_text("10³ lần"), "10³ lần")
+
+
+
+
+class ZeroPaddedHeadingTests(unittest.TestCase):
+    """A numbered heading says its number, never its padding."""
+
+    def test_a_zero_padded_heading_drops_the_zero(self) -> None:
+        self.assertEqual(speakable_text("01", "heading"), "1.")
+        self.assertEqual(speakable_text("07. Ánh sáng", "heading"), "7. Ánh sáng.")
+
+    def test_a_lone_zero_and_a_decimal_keep_their_zero(self) -> None:
+        self.assertEqual(speakable_text("0", "heading"), "0.")
+        self.assertEqual(speakable_text("0.5 giây", "heading"), "0.5 giây.")
+
+    def test_a_paragraph_keeps_its_leading_zero(self) -> None:
+        self.assertEqual(speakable_text("01/09 là ngày họp"), "01/09 là ngày họp")
+
+
+
+
+class EnumeratorTests(unittest.TestCase):
+    """The sentence from the owner's screenshot, spoken the way the ear chose."""
+
+    def test_the_approved_render_is_what_the_voice_gets(self) -> None:
+        self.assertEqual(
+            speakable_text(
+                "Giống Ginger, ta tập trung vào những từ và cụm từ có vẻ khớp với "
+                "(a) nhiệm vụ hiện tại hoặc (b) sở thích cá nhân đang có."
+            ),
+            "Giống Ginger, ta tập trung vào những từ và cụm từ có vẻ khớp với "
+            "a, nhiệm vụ hiện tại, hoặc b, sở thích cá nhân đang có.",
+        )
+
+    def test_a_reference_keeps_its_letter_without_a_pause(self) -> None:
+        self.assertEqual(speakable_text("xem lại mục (b) ở trên"), "xem lại mục b ở trên")
+
+    def test_an_existing_comma_before_the_conjunction_is_not_doubled(self) -> None:
+        self.assertEqual(speakable_text("(a) đọc, hoặc (b) nghe"), "a, đọc, hoặc b, nghe")
+
+    def test_a_plural_bracket_and_a_roman_numeral_are_left_alone(self) -> None:
+        self.assertEqual(speakable_text("the book(s) in (ii) above"), "the book(s) in (ii) above")
 

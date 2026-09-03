@@ -77,6 +77,37 @@ class _Utterance:
     text: str
     pause_after_ms: int
     segment_id: str | None = None
+    # Set on the spoken cue for a picture ("Xem hình 3."): rides the position
+    # event so the shell can bring the picture into view exactly when the ear
+    # hears the cue, not when the model synthesised it.
+    figure_id: str | None = None
+
+
+# What the voice says when the reading reaches a picture, and the rest that
+# follows so the listener has a beat to look. Vietnamese on purpose: the voice
+# is Vietnamese whatever the shell's UI language is.
+FIGURE_CUE = "Xem hình {number}."
+FIGURE_CUE_PAUSE_MS = 600
+
+
+def _figure_cues(presentation: Any) -> dict[str, list[tuple[str, str, int]]]:
+    """Per anchor segment: (placement, figure_id, number-within-chapter).
+
+    Numbered per CHAPTER, not per book: the domain's running count is right
+    for a print index, but "Xem hình 187" is not something a listener can
+    hold in their head, and "Xem hình 3" is (owner's call, 2026-09-02).
+    """
+    cues: dict[str, list[tuple[str, str, int]]] = {}
+    for chapter in presentation.chapters:
+        for number, figure in enumerate(chapter.figures, start=1):
+            cues.setdefault(figure.anchor_segment_id, []).append(
+                (figure.placement, figure.id, number)
+            )
+    return cues
+
+
+class _PreparationCancelled(Exception):
+    """A model download the person asked to abandon."""
 
 
 class _Session:
@@ -144,8 +175,26 @@ class _Session:
             self._send({"id": None, "ok": False, "error": "invalid json"})
             return self._next_request()
 
+    # Answered BETWEEN CHUNKS while a reading streams. Each is quick and
+    # touches nothing the reading owns, so serving it inline costs one chunk
+    # of latency. Everything else still waits for the reading to end.
+    #
+    # Measured before this existed (2026-09-02): with a reading running,
+    # library.list and config.get were answered only when the reading
+    # finished - 6.56 s for six sentences, minutes for a chapter, and past the
+    # shell's 30 s timeout. To the person that was "the app hangs": switch to
+    # the library while listening and the list never arrives; change the
+    # speed and it never saves; scroll to a picture and it never loads.
+    _INLINE_WHILE_STREAMING = frozenset({
+        "ping", "voices", "library.list", "book.open", "book.figure",
+        # A cover is a zip read (EPUB) or a 21 ms page render (PDF, measured
+        # 02/09) and cached after the first ask - cheap enough between chunks.
+        "book.cover",
+        "config.get", "config.set", "model.status", "notes.books",
+    })
+
     def _stop_requested(self) -> bool:
-        """Poll for a stop while streaming; defer everything else.
+        """Poll for a stop while streaming; answer the quick, defer the rest.
 
         EOF is not a stop: closing stdin means "no more requests", and batch
         callers do exactly that - one read, close, collect the audio. The
@@ -161,9 +210,17 @@ class _Session:
             except json.JSONDecodeError:
                 self._send({"id": None, "ok": False, "error": "invalid json"})
                 continue
-            if request.get("method") == "stop":
+            method = request.get("method")
+            if method == "stop":
                 self._reply(request.get("id"), {"stopped": True})
                 return True
+            if method in self._INLINE_WHILE_STREAMING:
+                request_id = request.get("id")
+                try:
+                    self._dispatch(method, request_id, request)
+                except Exception as error:  # noqa: BLE001 - same net as run()
+                    self._fail(request_id, f"{method} failed: {error}")
+                continue
             self._deferred.append(request)
         return False
 
@@ -199,6 +256,12 @@ class _Session:
                 self._read(request_id, request.get("params") or {})
             elif method == "read.book":
                 self._read_book(request_id, request.get("params") or {})
+            elif method == "applebooks.shelf":
+                self._applebooks_shelf(request_id)
+            elif method == "applebooks.import":
+                self._applebooks_import(request_id, request.get("params") or {})
+            elif method == "applebooks.sync_notes":
+                self._applebooks_sync_notes(request_id, request.get("params") or {})
             elif method == "notes.books":
                 self._notes_books(request_id)
             elif method == "notes.plan":
@@ -225,6 +288,8 @@ class _Session:
                 self._library_remove(request_id, request.get("params") or {})
             elif method == "book.open":
                 self._book_open(request_id, request.get("params") or {})
+            elif method == "book.cover":
+                self._book_cover(request_id, request.get("params") or {})
             elif method == "book.figure":
                 self._book_figure(request_id, request.get("params") or {})
             elif method == "stop":
@@ -272,7 +337,19 @@ class _Session:
             self._fail(request_id, f"unknown book: {book_id}")
             return
         voice_id = str(params.get("voice_id") or "")
+        if not voice_id:
+            # Progress is written at every position, BEFORE the voice is ever
+            # asked to speak - so a request the voice would reject later must
+            # be rejected here, or it leaves a row the library refuses to load
+            # (an empty voice made library.list fail for every book, 02/09).
+            self._fail(request_id, "voice_id is required")
+            return
         rate = float(params.get("rate") or 1.0)
+        if not 0.5 <= rate <= 2.0:
+            # The other half of the loader's contract: it refuses a stored
+            # rate outside this range, so one must never be stored.
+            self._fail(request_id, f"rate {rate} is outside 0.5-2.0")
+            return
         segments: list[Segment] = [
             segment
             for chapter in stored.book.chapters
@@ -283,22 +360,46 @@ class _Session:
         if not wanted:
             progress = self._repository.load_progress(book_id)
             wanted = progress.segment_id if progress else None
-        if wanted:
-            for index, segment in enumerate(segments):
-                if segment.id == wanted:
-                    start = index
-                    break
-        utterances = [
-            _Utterance(
+        cues: dict[str, list[tuple[str, str, int]]] = {}
+        if self._service is not None:
+            cues = _figure_cues(
+                self._service.presentation_for(stored.book, stored.managed_path)
+            )
+        utterances: list[_Utterance] = []
+        for index, segment in enumerate(segments):
+            here = cues.get(segment.id, [])
+            for placement, figure_id, number in here:
+                if placement == "before":
+                    utterances.append(_Utterance(
+                        text=FIGURE_CUE.format(number=number),
+                        pause_after_ms=FIGURE_CUE_PAUSE_MS,
+                        segment_id=segment.id,
+                        figure_id=figure_id,
+                    ))
+            utterances.append(_Utterance(
                 text=speakable_text(segment.text, segment.kind),
                 pause_after_ms=pause_after_ms(
                     segment,
                     segments[index + 1] if index + 1 < len(segments) else None,
                 ),
                 segment_id=segment.id,
-            )
-            for index, segment in enumerate(segments)
-        ][start:]
+            ))
+            for placement, figure_id, number in here:
+                if placement == "after":
+                    utterances.append(_Utterance(
+                        text=FIGURE_CUE.format(number=number),
+                        pause_after_ms=FIGURE_CUE_PAUSE_MS,
+                        segment_id=segment.id,
+                        figure_id=figure_id,
+                    ))
+        if wanted:
+            # Resume at the first thing said ABOUT that segment - which may be
+            # the cue for a picture placed before it.
+            for index, utterance in enumerate(utterances):
+                if utterance.segment_id == wanted:
+                    start = index
+                    break
+        utterances = utterances[start:]
         self._speak(
             request_id, utterances, voice_id, rate, SynthesisSettings(),
             book_id=book_id,
@@ -315,11 +416,30 @@ class _Session:
                 size_bytes = stored.managed_path.stat().st_size
             except OSError:
                 size_bytes = None
+            # How far the voice got, for the shelf: the spoken segment's place
+            # in the whole book, and the chapter it sits in. Null - not 0 -
+            # when there is no progress, or its segment no longer exists.
+            progress_ratio: float | None = None
+            progress_chapter: str | None = None
+            if progress is not None:
+                seen = 0
+                total = sum(len(chapter.segments) for chapter in stored.book.chapters)
+                for chapter in stored.book.chapters:
+                    for segment in chapter.segments:
+                        if segment.id == progress.segment_id:
+                            progress_ratio = seen / total if total else None
+                            progress_chapter = chapter.title
+                            break
+                        seen += 1
+                    if progress_chapter is not None:
+                        break
             books.append({
                 "id": stored.book.id,
                 "title": stored.book.title,
                 "source_format": stored.book.source_format,
                 "segment_id": progress.segment_id if progress else None,
+                "progress_ratio": progress_ratio,
+                "progress_chapter": progress_chapter,
                 # What tells two same-titled copies apart: shape, size, and
                 # when each one arrived.
                 "chapters": len(stored.book.chapters),
@@ -340,6 +460,12 @@ class _Session:
             return
 
         def report(progress: float, message: str) -> None:
+            # The progress callback is also the cancel point - the same place
+            # the Qt setup screen used, for the same reason: it is the only
+            # moment a long download hands control back. 453MB with no way out
+            # is not a download, it is a hostage situation.
+            if self._stop_requested():
+                raise _PreparationCancelled()
             self._send({
                 "id": request_id,
                 "event": "model_progress",
@@ -347,7 +473,11 @@ class _Session:
                 "message": str(message),
             })
 
-        prepare(report)
+        try:
+            prepare(report)
+        except _PreparationCancelled:
+            self._reply(request_id, {"ready": False, "cancelled": True})
+            return
         self._reply(request_id, {"ready": True})
 
     def _model_set_precision(
@@ -415,6 +545,172 @@ class _Session:
             return "same_book"
         # Unavailable/Unreadable carry user-ready sentences of their own.
         return str(error) or "unavailable"
+
+    # ── Apple Books → ReadEase, one way ─────────────────────────────────
+    _APPLE_MAX_BYTES = 200 * 1024 * 1024
+
+    def _apple_pairings(self):
+        """Apple asset → local book: by the link a sync wrote, else by title
+        (shown in the shelf, so a wrong pair is seen rather than suffered)."""
+        from vieneu_reader.integrations.apple_books_sync import same_title
+
+        deps = self._notes()
+        apple = deps["library"].books()
+        stored = self._repository.list_books() if self._repository else ()
+        links = self._repository.apple_book_links() if self._repository else {}
+        pairs: dict[str, str] = {}
+        for book in apple:
+            linked = links.get(book.asset_id)
+            if linked and any(item.book.id == linked for item in stored):
+                pairs[book.asset_id] = linked
+                continue
+            twin = next((item for item in stored if same_title(item.book.title, book.title)), None)
+            if twin is not None:
+                pairs[book.asset_id] = twin.book.id
+        return apple, stored, pairs
+
+    def _applebooks_shelf(self, request_id: Any) -> None:
+        from pathlib import Path
+        from vieneu_reader.integrations.apple_books_sync import (
+            HIGHLIGHT_KIND, folder_is_encrypted, folder_size,
+        )
+
+        if self._repository is None or self._service is None:
+            self._fail(request_id, "no library on this server")
+            return
+        deps = self._notes()
+        try:
+            apple, stored, pairs = self._apple_pairings()
+            notes = deps["library"].annotations_for(*[book.asset_id for book in apple])
+        except Exception as error:  # noqa: BLE001 - token or sentence
+            self._fail(request_id, self._notes_error_token(error))
+            return
+        titles = {item.book.id: item.book.title for item in stored}
+        rows = []
+        for book in apple:
+            folder = Path(book.path) if book.path else None
+            highlights = sum(
+                1 for a in notes.get(book.asset_id, ())
+                if a.kind == HIGHLIGHT_KIND and (a.selected_text or "").strip()
+            )
+            paired = pairs.get(book.asset_id)
+            if paired:
+                status = "linked"
+            elif folder is None or not folder.exists():
+                status = "missing"
+            elif folder.is_dir() and folder_is_encrypted(folder):
+                status = "encrypted"
+            elif (folder_size(folder) if folder.is_dir() else folder.stat().st_size) > self._APPLE_MAX_BYTES:
+                status = "too_large"
+            else:
+                status = "importable"
+            rows.append({
+                "asset_id": book.asset_id,
+                "title": book.title,
+                "status": status,
+                "book_id": paired,
+                "paired_title": titles.get(paired) if paired else None,
+                "highlights": highlights,
+            })
+        self._reply(request_id, {"books": rows})
+
+    def _applebooks_import(self, request_id: Any, params: dict[str, Any]) -> None:
+        import tempfile
+        from pathlib import Path
+        from vieneu_reader.integrations.apple_books_sync import (
+            folder_is_encrypted, folder_size, pack_epub_folder,
+        )
+
+        if self._repository is None or self._service is None:
+            self._fail(request_id, "no library on this server")
+            return
+        asset_id = str(params.get("asset_id") or "")
+        deps = self._notes()
+        try:
+            book = deps["library"].book(asset_id)
+        except Exception as error:  # noqa: BLE001
+            self._fail(request_id, self._notes_error_token(error))
+            return
+        source = Path(book.path) if book.path else None
+        if source is None or not source.exists():
+            self._fail(request_id, "book_missing")
+            return
+        if source.is_dir() and folder_is_encrypted(source):
+            self._fail(request_id, "encrypted")
+            return
+        size = folder_size(source) if source.is_dir() else source.stat().st_size
+        if size > self._APPLE_MAX_BYTES:
+            self._fail(request_id, "too_large")
+            return
+        try:
+            with tempfile.TemporaryDirectory() as scratch:
+                if source.is_dir():
+                    packed = pack_epub_folder(source, Path(scratch) / "apple-books.epub")
+                else:
+                    packed = source
+                result = self._service.import_book(packed)
+        except Exception as error:  # noqa: BLE001 - the importer's own sentence
+            self._fail(request_id, str(error))
+            return
+        self._repository.link_apple_book(asset_id, result.book.id)
+        self._reply(request_id, {
+            "book_id": result.book.id,
+            "title": result.book.title,
+            "was_existing": bool(getattr(result, "was_existing", False)),
+        })
+
+    def _applebooks_sync_notes(self, request_id: Any, params: dict[str, Any]) -> None:
+        from vieneu_reader.integrations.apple_books_sync import SegmentRef, match_annotations
+        from vieneu_reader.storage.repository import StoredAnnotation
+
+        if self._repository is None or self._service is None:
+            self._fail(request_id, "no library on this server")
+            return
+        asset_id = str(params.get("asset_id") or "")
+        deps = self._notes()
+        try:
+            _apple, _stored, pairs = self._apple_pairings()
+            annotations = deps["library"].annotations(asset_id)
+        except Exception as error:  # noqa: BLE001
+            self._fail(request_id, self._notes_error_token(error))
+            return
+        book_id = pairs.get(asset_id)
+        stored = self._repository.get_book(book_id) if book_id else None
+        if stored is None:
+            self._fail(request_id, "not_in_library")
+            return
+        segments = [
+            SegmentRef(index, segment.id, segment.text)
+            for index, chapter in enumerate(stored.book.chapters)
+            for segment in chapter.segments
+        ]
+        report = match_annotations(segments, annotations)
+        # What comes over (owner, 02/09): "highlights" = the passages, their
+        # notes left behind; "notes" = only passages that carry a note, with
+        # it; "both" (default) = everything matched.
+        mode = str(params.get("mode") or "both")
+        if mode not in ("both", "highlights", "notes"):
+            self._fail(request_id, f"unknown mode: {mode}")
+            return
+        kept = [
+            item for item in report.matched
+            if mode != "notes" or item.note
+        ]
+        self._repository.replace_annotations(stored.book.id, "applebooks", [
+            StoredAnnotation(
+                id=item.id, segment_id=item.segment_id, selected_text=item.selected_text,
+                note=None if mode == "highlights" else item.note,
+                style=item.style, source="applebooks",
+            )
+            for item in kept
+        ])
+        self._repository.link_apple_book(asset_id, stored.book.id)
+        self._reply(request_id, {
+            "book_id": stored.book.id,
+            "matched": len(kept),
+            "unmatched": report.unmatched,
+            "skipped": report.skipped + (len(report.matched) - len(kept)),
+        })
 
     def _notes_books(self, request_id: Any) -> None:
         deps = self._notes()
@@ -528,7 +824,16 @@ class _Session:
         deps["prune"](self._backup_root)
         outcome("copied", written=written, target_title=plan.target.title)
 
-    _CONFIG_KEYS = frozenset({"tauri_selection_shortcut", "ui_language"})
+    # "voice" and "rate" are the Qt shell's own keys, in the Qt shell's own
+    # settings file: a reader who picked Thu Hà at 1.25x before the rewrite
+    # still has that when the new shell opens. Chosen deliberately over new
+    # names - the file survived the rebrand, and it survives this too.
+    _CONFIG_KEYS = frozenset({
+        "tauri_selection_shortcut",
+        "ui_language",
+        "voice",
+        "rate",
+    })
 
     def _config_get(self, request_id: Any, params: dict[str, Any]) -> None:
         from vieneu_reader.settings import load_settings
@@ -621,8 +926,14 @@ class _Session:
                         "anchor_segment_id": figure.anchor_segment_id,
                         "placement": figure.placement,
                         "alt": figure.alt_text,
+                        # Per chapter, matching the spoken cue exactly.
+                        "number": number,
+                        # "Image" and friends: an alt that names nothing. The
+                        # shell hides it instead of captioning a picture
+                        # with the word Image.
+                        "alt_is_generic": bool(figure.alt_is_generic),
                     }
-                    for figure in chapter.figures
+                    for number, figure in enumerate(chapter.figures, start=1)
                 ]
         self._reply(request_id, {
             "book": {
@@ -646,11 +957,42 @@ class _Session:
                     for chapter in stored.book.chapters
                 ],
             },
+            "annotations": [
+                {
+                    "id": item.id,
+                    "segment_id": item.segment_id,
+                    "selected_text": item.selected_text,
+                    "note": item.note,
+                    "style": item.style,
+                }
+                for item in self._repository.annotations_for(book_id)
+            ],
             "progress": {
                 "segment_id": progress.segment_id if progress else None,
                 "rate": progress.playback_rate if progress else 1.0,
                 "voice_id": progress.voice_id if progress else None,
             },
+        })
+
+    def _book_cover(self, request_id: Any, params: dict[str, Any]) -> None:
+        """A book's cover for the shelf - `null` fields when it has none,
+        which is an ordinary answer, not an error."""
+        if self._repository is None or self._service is None:
+            self._fail(request_id, "no library on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        stored = self._repository.get_book(book_id)
+        if stored is None:
+            self._fail(request_id, f"unknown book: {book_id}")
+            return
+        cover = self._service.cover_for(stored.book, stored.managed_path)
+        if cover is None:
+            self._reply(request_id, {"media_type": None, "data": None})
+            return
+        data, media_type = cover
+        self._reply(request_id, {
+            "media_type": media_type,
+            "data": base64.b64encode(data).decode("ascii"),
         })
 
     def _book_figure(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -682,7 +1024,11 @@ class _Session:
         assets = self._service.assets_for(
             stored.book, stored.managed_path, (wanted,)
         )
-        data = assets.get(figure_id)
+        # Keyed by the member name inside the EPUB, never by figure id -
+        # `load_epub_assets` returns `{asset_path: bytes}`. Asking for the id
+        # missed every time, so no figure ever loaded in this shell; the Qt
+        # controller had it right (`assets.get(figure.asset_path)`).
+        data = assets.get(wanted.asset_path)
         if not data:
             self._fail(request_id, f"figure unavailable: {figure_id}")
             return
@@ -729,11 +1075,16 @@ class _Session:
                     stopped = True
                     break
                 if utterance.segment_id is not None:
-                    self._send({
+                    # Not `position`: that name is the loop index just above,
+                    # and shadowing it broke the is_last arithmetic once.
+                    where: dict[str, Any] = {
                         "id": request_id,
                         "event": "position",
                         "segment_id": utterance.segment_id,
-                    })
+                    }
+                    if utterance.figure_id is not None:
+                        where["figure_id"] = utterance.figure_id
+                    self._send(where)
                     if book_id is not None and self._repository is not None:
                         # Progress follows the voice, exactly like the Qt
                         # coordinator: reopening lands where reading stopped.

@@ -45,6 +45,9 @@ def make_epub(
     empty_chapters: bool = False,
     chapter_overrides: dict[str, str | bytes] | None = None,
     image_entries: dict[str, tuple[bytes, str]] | None = None,
+    metadata_extra: str = "",
+    manifest_extra: str = "",
+    extra_members: dict[str, bytes] | None = None,
 ) -> Path:
     path = root / name
     chapters = {
@@ -93,8 +96,8 @@ def make_epub(
     opf = f"""<?xml version="1.0"?>
     <package xmlns="http://www.idpf.org/2007/opf"
              xmlns:dc="http://purl.org/dc/elements/1.1/" version="3.0">
-      <metadata><dc:title>{title}</dc:title></metadata>
-      <manifest>{''.join(manifest_lines)}</manifest>
+      <metadata><dc:title>{title}</dc:title>{metadata_extra}</metadata>
+      <manifest>{''.join(manifest_lines)}{manifest_extra}</manifest>
       <spine>{''.join(spine_lines)}</spine>
     </package>
     """
@@ -107,6 +110,8 @@ def make_epub(
             archive.writestr(f"OEBPS/{href}", content, compress_type=ZIP_DEFLATED)
         for href, (payload, _media_type) in (image_entries or {}).items():
             archive.writestr(f"OEBPS/{href}", payload, compress_type=ZIP_DEFLATED)
+        for member, payload in (extra_members or {}).items():
+            archive.writestr(member, payload, compress_type=ZIP_DEFLATED)
         if unsafe_entry:
             archive.writestr(unsafe_entry, "malicious", compress_type=ZIP_DEFLATED)
     return path

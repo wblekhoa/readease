@@ -42,11 +42,14 @@ from .epub import (
     _validate_archive,
     _visible_inner_text,
 )
+from .covers import shrink_cover
 from .errors import CorruptBookError
 
 
 MAX_FIGURE_OCCURRENCES = 20_000
 MAX_ASSETS_PER_REQUEST = 2_000
+MAX_COVER_BYTES = 8_000_000
+_COVER_MEDIA_TYPES = {"image/png", "image/gif", "image/jpeg", "image/svg+xml"}
 _SUPPORTED_IMAGE_MEDIA_TYPES = frozenset(
     {"image/gif", "image/jpeg", "image/png", "image/webp"}
 )
@@ -462,9 +465,9 @@ def _verified_archive(
         raise CorruptBookError("Không thể đọc hình ảnh trong EPUB.") from error
 
 
-def _package_contract(
-    archive: ZipFile,
-) -> tuple[str, dict[str, tuple[str, str]], tuple[str, ...]]:
+def _package_document(archive: ZipFile) -> tuple[str, ElementTree.Element]:
+    """The OPF's path and parsed root - shared by the contract and the cover."""
+
     container = _parse_xml(
         _read_member(archive, "META-INF/container.xml"),
         "EPUB container",
@@ -488,6 +491,13 @@ def _package_contract(
         _read_member(archive, package_path),
         "EPUB package",
     )
+    return package_path, package_root
+
+
+def _package_contract(
+    archive: ZipFile,
+) -> tuple[str, dict[str, tuple[str, str]], tuple[str, ...]]:
+    package_path, package_root = _package_document(archive)
     manifest: dict[str, tuple[str, str]] = {}
     for element in package_root.iter():
         if _local_name(element.tag) != "item":
@@ -579,3 +589,93 @@ def load_epub_assets(
             except CorruptBookError:
                 continue
     return loaded
+
+
+def _cover_member(
+    package_path: str, package_root: ElementTree.Element
+) -> tuple[str, str] | None:
+    """The manifest member that is the book's cover, by the three conventions
+    publishers actually use: EPUB 3's `properties="cover-image"`, EPUB 2's
+    `<meta name="cover" content="…">` (an item id, occasionally an href),
+    and - for the many files that declare neither - an image whose id or
+    file name says "cover". A `<guide type="cover">` pointing at an XHTML
+    page is a known gap, left alone on purpose."""
+
+    items: dict[str, tuple[str, str, str]] = {}
+    by_href: dict[str, str] = {}
+    for element in package_root.iter():
+        if _local_name(element.tag) != "item":
+            continue
+        if len(items) >= MAX_MANIFEST_ITEMS:
+            raise CorruptBookError("EPUB manifest chứa quá nhiều mục.")
+        item_id = element.attrib.get("id", "")
+        href = element.attrib.get("href", "")
+        media_type = element.attrib.get("media-type", "").lower()
+        if media_type == "image/jpg":
+            media_type = "image/jpeg"
+        if item_id and href and media_type:
+            items[item_id] = (
+                _resolve_href(package_path, href),
+                media_type,
+                element.attrib.get("properties", ""),
+            )
+            by_href[href] = item_id
+
+    def image(item_id: str) -> tuple[str, str] | None:
+        item = items.get(item_id)
+        if item is not None and item[1].startswith("image/"):
+            return item[0], item[1]
+        return None
+
+    for item_id, (_member, media_type, properties) in items.items():
+        if "cover-image" in properties.split() and media_type.startswith("image/"):
+            return items[item_id][0], media_type
+    for element in package_root.iter():
+        if (
+            _local_name(element.tag) == "meta"
+            and element.attrib.get("name", "").lower() == "cover"
+        ):
+            content = element.attrib.get("content", "")
+            found = image(content) or image(by_href.get(content, ""))
+            if found is not None:
+                return found
+    for item_id, (member, media_type, _properties) in items.items():
+        name = PurePosixPath(member).name.lower()
+        if media_type.startswith("image/") and (
+            "cover" in item_id.lower() or "cover" in name
+        ):
+            return member, media_type
+    return None
+
+
+def _looks_like_image(payload: bytes, media_type: str) -> bool:
+    if media_type == "image/svg+xml":
+        head = payload[:512].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+        return head.startswith(b"<") and b"<svg" in head
+    return _image_dimensions(payload, media_type) is not None
+
+
+def load_epub_cover(
+    path: Path,
+    *,
+    expected_hash: str | None = None,
+) -> tuple[bytes, str] | None:
+    """The cover's bytes and media type, or None when the book has none."""
+
+    with _verified_archive(Path(path), expected_hash=expected_hash) as archive:
+        package_path, package_root = _package_document(archive)
+        found = _cover_member(package_path, package_root)
+        if found is None:
+            return None
+        member, media_type = found
+        if media_type not in _COVER_MEDIA_TYPES:
+            return None
+        try:
+            payload = _read_member(archive, member)
+        except CorruptBookError:
+            return None
+        if not payload or len(payload) > MAX_COVER_BYTES:
+            return None
+        if not _looks_like_image(payload, media_type):
+            return None
+        return shrink_cover(payload, media_type)

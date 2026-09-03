@@ -22,9 +22,13 @@ from vieneu_reader.storage.errors import RepositoryError
 from vieneu_reader.storage.repository import LibraryRepository
 
 from .epub import import_epub
-from .epub_presentation import load_epub_assets, load_epub_presentation
+from .epub_presentation import (
+    load_epub_assets,
+    load_epub_cover,
+    load_epub_presentation,
+)
 from .errors import CorruptBookError, LibraryStorageError, UnsupportedBookError
-from .pdf import import_pdf
+from .pdf import import_pdf, load_pdf_cover
 
 
 BookParser = Callable[[Path], BookDocument]
@@ -74,6 +78,7 @@ class LibraryService:
         }
         self._import_lock = RLock()
         self._presentation_cache: dict[str, BookPresentation] = {}
+        self._cover_cache: dict[str, tuple[str, tuple[bytes, str] | None]] = {}
 
     def presentation_for(
         self,
@@ -93,6 +98,32 @@ class LibraryService:
             return BookPresentation.empty(book.id, book.source_hash)
         self._presentation_cache[book.id] = presentation
         return presentation
+
+    def cover_for(
+        self,
+        book: BookDocument,
+        managed_path: Path,
+    ) -> tuple[bytes, str] | None:
+        """The book's cover bytes and media type, cached per source hash;
+        None (also cached) when the book has none or the read failed."""
+
+        cached = self._cover_cache.get(book.id)
+        if cached is not None and cached[0] == book.source_hash:
+            return cached[1]
+        cover: tuple[bytes, str] | None = None
+        try:
+            if book.source_format == "epub":
+                cover = load_epub_cover(
+                    Path(managed_path), expected_hash=book.source_hash
+                )
+            elif book.source_format == "pdf":
+                cover = load_pdf_cover(
+                    Path(managed_path), expected_hash=book.source_hash
+                )
+        except (CorruptBookError, OSError):
+            cover = None
+        self._cover_cache[book.id] = (book.source_hash, cover)
+        return cover
 
     def assets_for(
         self,

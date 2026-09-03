@@ -236,6 +236,66 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(progress.segment_id, flat[-1].id)
             self.assertEqual(progress.voice_id, "adam")
 
+    def test_read_book_without_a_voice_writes_no_progress(self) -> None:
+        """Progress is saved at every position before the voice speaks, so a
+        request the voice would reject must be refused up front. On 02/09 a
+        probe with no voice_id left a row with an empty voice - and the
+        library loader, which requires one, then failed library.list for
+        every book."""
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([("Một", [("Đoạn một.", "paragraph")])])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+
+            engine = FakeEngine(chunks_per_sentence=1)
+            replies = run_server(
+                [{"id": 12, "method": "read.book", "params": {"book_id": book.id}},
+                 {"id": 13, "method": "library.list"}],
+                engine, repository=repository,
+            )
+
+            self.assertFalse(replies[0]["ok"])
+            self.assertIn("voice", replies[0]["error"])
+            self.assertEqual(engine.requests, [])
+            self.assertIsNone(repository.load_progress(book.id))
+            # The library is still usable afterwards.
+            self.assertTrue(replies[1]["ok"])
+
+    def test_read_book_with_an_impossible_rate_writes_no_progress(self) -> None:
+        """The loader's other refusal: a stored rate outside 0.5-2.0."""
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([("Một", [("Đoạn một.", "paragraph")])])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+
+            engine = FakeEngine(chunks_per_sentence=1)
+            replies = run_server(
+                [{"id": 14, "method": "read.book",
+                  "params": {"book_id": book.id, "voice_id": "adam", "rate": 5}},
+                 {"id": 15, "method": "library.list"}],
+                engine, repository=repository,
+            )
+
+            self.assertFalse(replies[0]["ok"])
+            self.assertIn("rate", replies[0]["error"])
+            self.assertEqual(engine.requests, [])
+            self.assertIsNone(repository.load_progress(book.id))
+            self.assertTrue(replies[1]["ok"])
+
     def test_read_book_resumes_from_saved_progress(self) -> None:
         from vieneu_reader.storage.repository import LibraryRepository, Progress
         from tempfile import TemporaryDirectory
@@ -457,6 +517,34 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual([e["progress"] for e in events], [0.5, 1.0])
         self.assertTrue(replies[-1]["ok"])
 
+    def test_a_download_can_be_abandoned_from_the_shell(self) -> None:
+        """453MB with no way out is not a download, it is a hostage.
+
+        The Qt setup screen could cancel; the rewrite lost that until
+        2026-09-02. The progress callback is the cancel point, because it is
+        the only moment a long download hands control back.
+        """
+        engine = FakeEngine()
+        reported: list[float] = []
+
+        def prepare(report):
+            for step in range(1, 40):
+                report(step / 40, "Đang tải…")
+                reported.append(step / 40)
+
+        engine.prepare_model = prepare
+        replies = run_server([
+            {"id": 70, "method": "model.prepare"},
+            {"id": 71, "method": "stop"},
+        ], engine)
+
+        done = [r for r in replies if r.get("id") == 70 and "ok" in r]
+        self.assertEqual(len(done), 1)
+        self.assertTrue(done[0]["result"]["cancelled"])
+        self.assertFalse(done[0]["result"]["ready"])
+        # It really stopped early rather than finishing and claiming a cancel.
+        self.assertLess(len(reported), 40)
+
     def test_set_precision_persists_and_demands_a_restart(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -610,6 +698,77 @@ class ProtocolTests(unittest.TestCase):
         )
         self.assertIn("QT_FREE_OK", result.stdout, result.stderr[-500:])
 
+    def test_reading_a_book_announces_each_picture_where_it_sits(self) -> None:
+        """A listener cannot see the page. When the reading reaches a picture
+        the voice says "Xem hình N." - numbered per chapter, placed before or
+        after its anchor as the book laid it out - and the position event for
+        that cue carries the figure id so the shell can show the picture at
+        the moment the ear hears the cue (owner's call, 2026-09-02).
+        """
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([(
+                "Một",
+                [("Đoạn đầu.", "paragraph"), ("Đoạn hai.", "paragraph")],
+            )])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            first, second = book.chapters[0].segments
+            figures = (
+                SimpleNamespace(
+                    id="fig-a", number=41, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=first.id, placement="after",
+                    media_type="image/png", alt_text="Image",
+                    alt_is_generic=True, asset_path="a.png",
+                ),
+                SimpleNamespace(
+                    id="fig-b", number=42, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=second.id, placement="before",
+                    media_type="image/png", alt_text="Sơ đồ thật",
+                    alt_is_generic=False, asset_path="b.png",
+                ),
+            )
+            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+                chapter_id=book.chapters[0].id, figures=figures,
+            )])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            replies = run_server([
+                {"id": 90, "method": "book.open", "params": {"book_id": book.id}},
+                {"id": 91, "method": "read.book",
+                 "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service)
+
+            # book.open: numbered per chapter (not the domain's 41/42), and the
+            # generic alt is flagged so the shell can hide the word "Image".
+            opened = replies[0]["result"]["book"]["chapters"][0]["figures"]
+            self.assertEqual([f["number"] for f in opened], [1, 2])
+            self.assertEqual([f["alt_is_generic"] for f in opened], [True, False])
+
+            # What the voice was asked to say, in order.
+            spoken = [text for text, _voice in engine.requests]
+            self.assertEqual(spoken, [
+                "Đoạn đầu.", "Xem hình 1.", "Xem hình 2.", "Đoạn hai.",
+            ])
+
+            # And the cue's position carries the figure, the prose's does not.
+            positions = [r for r in replies if r.get("event") == "position"]
+            self.assertEqual(
+                [p.get("figure_id") for p in positions],
+                [None, "fig-a", "fig-b", None],
+            )
+        # A second-chapter picture starts again at 1 - that is the promise.
+
     def test_book_open_lists_figures_and_book_figure_serves_bytes(self) -> None:
         """EPUB figures ride the same pipe: refs inline in book.open, bytes
         lazily per figure - a whole art book must not sit inside one reply."""
@@ -629,7 +788,10 @@ class ProtocolTests(unittest.TestCase):
             figure = SimpleNamespace(
                 id="fig-1", number=1, chapter_id=book.chapters[0].id,
                 anchor_segment_id=segment.id, placement="after",
-                media_type="image/png", alt_text="Sơ đồ",
+                media_type="image/png", alt_text="Sơ đồ", alt_is_generic=False,
+                # Deliberately NOT the id: a fixture where the two are the
+                # same string cannot tell a correct lookup from the wrong one.
+                asset_path="OEBPS/images/one.png",
             )
             presentation = SimpleNamespace(
                 chapters=[SimpleNamespace(
@@ -638,8 +800,12 @@ class ProtocolTests(unittest.TestCase):
             )
             service = SimpleNamespace(
                 presentation_for=lambda book, path: presentation,
+                # Keyed the way the real `load_epub_assets` keys it: by the
+                # member name inside the archive. The old fake answered to the
+                # figure id instead, which is what let a caller that asked by
+                # id pass this test while no figure ever loaded (2026-09-02).
                 assets_for=lambda book, path, figures: {
-                    "fig-1": b"\x89PNG-fake-bytes",
+                    "OEBPS/images/one.png": b"\x89PNG-fake-bytes",
                 },
             )
 
@@ -657,12 +823,316 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(listed, [{
             "id": "fig-1", "anchor_segment_id": segment.id,
             "placement": "after", "alt": "Sơ đồ",
+            "number": 1, "alt_is_generic": False,
         }])
         served = replies[1]["result"]
         self.assertEqual(served["media_type"], "image/png")
         self.assertEqual(
             base64.b64decode(served["data"]), b"\x89PNG-fake-bytes")
         self.assertFalse(replies[2]["ok"])
+
+    def test_book_cover_serves_bytes_or_null_fields(self) -> None:
+        """No cover is an ordinary answer for a shelf, not an error."""
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([("Một", [("Đoạn.", "paragraph")])])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            covers = {book.id: (b"\xff\xd8-jpeg", "image/jpeg")}
+            service = SimpleNamespace(
+                cover_for=lambda stored, path: covers.get(stored.id),
+            )
+            replies = run_server(
+                [{"id": 60, "method": "book.cover", "params": {"book_id": BOOK_ID}},
+                 {"id": 61, "method": "book.cover", "params": {"book_id": "nope"}}],
+                FakeEngine(), repository=repository, service=service,
+            )
+            self.assertEqual(replies[0]["result"]["media_type"], "image/jpeg")
+            self.assertEqual(base64.b64decode(replies[0]["result"]["data"]), b"\xff\xd8-jpeg")
+            self.assertFalse(replies[1]["ok"])
+
+            covers.clear()
+            replies = run_server(
+                [{"id": 62, "method": "book.cover", "params": {"book_id": BOOK_ID}}],
+                FakeEngine(), repository=repository, service=service,
+            )
+            self.assertTrue(replies[0]["ok"])
+            self.assertEqual(replies[0]["result"], {"media_type": None, "data": None})
+
+    def test_library_list_says_how_far_and_in_which_chapter(self) -> None:
+        from vieneu_reader.storage.repository import LibraryRepository, Progress
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([
+                ("Một", [("A.", "paragraph"), ("B.", "paragraph")]),
+                ("Hai", [("C.", "paragraph"), ("D.", "paragraph")]),
+            ])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            third = book.chapters[1].segments[0]
+
+            before = run_server([{"id": 70, "method": "library.list"}],
+                                FakeEngine(), repository=repository)
+            repository.save_progress(Progress(
+                book_id=book.id, segment_id=third.id, playback_rate=1.0, voice_id="adam",
+            ))
+            after = run_server([{"id": 71, "method": "library.list"}],
+                               FakeEngine(), repository=repository)
+
+        row = before[0]["result"]["books"][0]
+        self.assertIsNone(row["progress_ratio"])
+        self.assertIsNone(row["progress_chapter"])
+        row = after[0]["result"]["books"][0]
+        self.assertEqual(row["progress_ratio"], 0.5)
+        self.assertEqual(row["progress_chapter"], "Hai")
+
+    def _apple_fixture(self, root):
+        """A tiny unpacked EPUB on disk, an Apple Books reader stub, and a repository."""
+        from types import SimpleNamespace
+        from vieneu_reader.integrations.apple_books import Annotation
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tests.importers.epub_fixture import make_epub
+        from zipfile import ZipFile
+
+        repository = LibraryRepository(root / "reader.sqlite3")
+        packed = make_epub(root, name="seed.epub", title="Thiên Nga Đen")
+        folder = root / "Thiên Nga Đen.epub"
+        with ZipFile(packed) as archive:
+            archive.extractall(folder)
+        apple_book = SimpleNamespace(asset_id="A1", title="Thiên Nga Đen", edition_id="e", reading_progress=0.0, path=str(folder))
+        notes = {"A1": (
+            Annotation("A1", 2, "epubcfi(/6/4!/4/2)", selected_text="Nội dung chương hai", note="hay", style=3),
+            Annotation("A1", 2, "epubcfi(/6/4!/4/2)", selected_text="không có trong sách"),
+            Annotation("A1", 3, "epubcfi(/6/4!/4/2)"),
+        )}
+        library = SimpleNamespace(
+            books=lambda: (apple_book,),
+            book=lambda asset_id: apple_book,
+            annotations=lambda asset_id: notes.get(asset_id, ()),
+            annotations_for=lambda *ids: {i: notes.get(i, ()) for i in ids},
+        )
+        return repository, library
+
+    def test_apple_books_shelf_import_and_note_sync_round_trip(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            deps = {"library": library}
+            replies = run_server(
+                [{"id": 1, "method": "applebooks.shelf"},
+                 {"id": 2, "method": "applebooks.import", "params": {"asset_id": "A1"}},
+                 {"id": 3, "method": "applebooks.shelf"},
+                 {"id": 4, "method": "applebooks.import", "params": {"asset_id": "A1"}},
+                 {"id": 5, "method": "applebooks.sync_notes", "params": {"asset_id": "A1"}},
+                 {"id": 6, "method": "library.list"}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )
+            before = replies[0]["result"]["books"][0]
+            self.assertEqual((before["status"], before["highlights"]), ("importable", 2))
+            imported = replies[1]["result"]
+            self.assertFalse(imported["was_existing"])
+            after = replies[2]["result"]["books"][0]
+            self.assertEqual((after["status"], after["book_id"]), ("linked", imported["book_id"]))
+            # The same folder again is the same book, by bytes and by link.
+            self.assertTrue(replies[3]["result"]["was_existing"])
+            synced = replies[4]["result"]
+            self.assertEqual((synced["matched"], synced["unmatched"], synced["skipped"]), (1, 1, 1))
+            self.assertEqual(len(replies[5]["result"]["books"]), 1)
+
+            opened = run_server(
+                [{"id": 7, "method": "book.open", "params": {"book_id": imported["book_id"]}}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )[0]["result"]
+            self.assertEqual(len(opened["annotations"]), 1)
+            self.assertEqual(opened["annotations"][0]["note"], "hay")
+            segment_ids = {s["id"] for c in opened["book"]["chapters"] for s in c["segments"]}
+            self.assertIn(opened["annotations"][0]["segment_id"], segment_ids)
+
+    def test_apple_books_note_sync_modes_keep_what_was_asked_for(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            deps = {"library": library}
+            imported = run_server(
+                [{"id": 1, "method": "applebooks.import", "params": {"asset_id": "A1"}}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )[0]["result"]["book_id"]
+            def synced(mode):
+                run_server(
+                    [{"id": 2, "method": "applebooks.sync_notes", "params": {"asset_id": "A1", "mode": mode}}],
+                    FakeEngine(), repository=repository, service=service, notes_deps=deps,
+                )
+                return [(a.selected_text, a.note) for a in repository.annotations_for(imported)]
+            self.assertEqual(synced("highlights"), [("Nội dung chương hai", None)])
+            self.assertEqual(synced("notes"), [("Nội dung chương hai", "hay")])
+            self.assertEqual(synced("both"), [("Nội dung chương hai", "hay")])
+            bad = run_server(
+                [{"id": 3, "method": "applebooks.sync_notes", "params": {"asset_id": "A1", "mode": "all"}}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )[0]
+            self.assertFalse(bad["ok"])
+
+    def test_apple_books_refuses_what_it_cannot_read(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            (root / "Thiên Nga Đen.epub" / "META-INF" / "encryption.xml").write_bytes(
+                b"""<encryption xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+                <EncryptedData xmlns="http://www.w3.org/2001/04/xmlenc#"><CipherData>
+                <CipherReference URI="OEBPS/chapter-1.xhtml"/></CipherData></EncryptedData></encryption>"""
+            )
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            replies = run_server(
+                [{"id": 1, "method": "applebooks.shelf"},
+                 {"id": 2, "method": "applebooks.import", "params": {"asset_id": "A1"}},
+                 {"id": 3, "method": "applebooks.sync_notes", "params": {"asset_id": "A1"}}],
+                FakeEngine(), repository=repository, service=service, notes_deps={"library": library},
+            )
+            self.assertEqual(replies[0]["result"]["books"][0]["status"], "encrypted")
+            self.assertIn("encrypted", replies[1]["error"])
+            self.assertIn("not_in_library", replies[2]["error"])
+
+    def test_a_stop_then_read_supersedes_the_reading_in_flight(self) -> None:
+        """The shell cancels before it starts, and this is why it must.
+
+        A read arriving mid-stream is DEFERRED by design, not merged: without
+        the stop in front of it the engine finishes the old text first, which
+        is what made an impatient second click buy a second full reading
+        instead of a new one (2026-09-02).
+        """
+        engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)
+        request_read, request_write = os.pipe()
+        reply_read, reply_write = os.pipe()
+        reader = os.fdopen(request_read, "r")
+        writer = os.fdopen(reply_write, "w")
+        requests = os.fdopen(request_write, "w")
+        replies = os.fdopen(reply_read, "r")
+
+        server = threading.Thread(
+            target=serve, args=(reader, writer, engine), daemon=True
+        )
+        server.start()
+        try:
+            requests.write(json.dumps({
+                "id": 10,
+                "method": "read",
+                "params": {"text": "Câu thứ nhất.", "voice_id": "adam"},
+            }) + "\n")
+            requests.flush()
+            self.assertEqual(json.loads(replies.readline())["event"], "chunk")
+
+            # Exactly the pair the Rust client sends when a reading starts
+            # while another one is running.
+            requests.write(json.dumps({"id": 11, "method": "stop"}) + "\n")
+            requests.write(json.dumps({
+                "id": 12,
+                "method": "read",
+                "params": {"text": "Câu thứ hai.", "voice_id": "adam"},
+            }) + "\n")
+            requests.flush()
+
+            first_done = None
+            chunks_after_cut = 0
+            second_chunks = 0
+            second_done = None
+            for line in replies:
+                message = json.loads(line)
+                if message.get("id") == 10 and "ok" in message:
+                    first_done = message
+                elif message.get("id") == 10 and message.get("event") == "chunk":
+                    if first_done is None:
+                        continue
+                    chunks_after_cut += 1
+                elif message.get("id") == 12 and message.get("event") == "chunk":
+                    second_chunks += 1
+                elif message.get("id") == 12 and "ok" in message:
+                    second_done = message
+                    break
+
+            self.assertIsNotNone(first_done)
+            self.assertTrue(first_done["result"]["stopped"])
+            # The superseded reading emits nothing once it has closed out.
+            self.assertEqual(chunks_after_cut, 0)
+            # And the new one really runs, rather than being swallowed.
+            self.assertGreater(second_chunks, 0)
+            self.assertIsNotNone(second_done)
+            self.assertFalse(second_done["result"]["stopped"])
+        finally:
+            requests.close()
+            reader.close()
+
+    def test_quick_requests_are_answered_while_a_reading_streams(self) -> None:
+        """Listening is not a modal state. Switching to the library, saving a
+        speed change, loading a picture that scrolled into view - all of that
+        used to wait until the reading ended (6.56 s for six sentences, minutes
+        for a chapter, past the shell's 30 s timeout), which the person saw as
+        the app hanging (2026-09-02). Quick, harmless requests are answered
+        between chunks now; the heavy ones still wait their turn.
+        """
+        engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)
+        request_read, request_write = os.pipe()
+        reply_read, reply_write = os.pipe()
+        reader = os.fdopen(request_read, "r")
+        writer = os.fdopen(reply_write, "w")
+        requests = os.fdopen(request_write, "w")
+        replies = os.fdopen(reply_read, "r")
+        server = threading.Thread(
+            target=serve, args=(reader, writer, engine), daemon=True
+        )
+        server.start()
+        try:
+            requests.write(json.dumps({
+                "id": 20, "method": "read",
+                "params": {"text": "Một câu rất dài.", "voice_id": "adam"},
+            }) + "\n")
+            requests.flush()
+            self.assertEqual(json.loads(replies.readline())["event"], "chunk")
+            requests.write(json.dumps({"id": 21, "method": "ping"}) + "\n")
+            requests.write(json.dumps({"id": 22, "method": "stop"}) + "\n")
+            requests.flush()
+
+            order = []
+            for line in replies:
+                message = json.loads(line)
+                if "ok" in message:
+                    order.append(message["id"])
+                if message.get("id") == 20 and "ok" in message:
+                    break
+            # The ping came back BEFORE the reading closed out - it did not
+            # wait in the deferred queue behind the whole utterance.
+            self.assertEqual(order.index(21) < order.index(20), True)
+        finally:
+            requests.close()
+            reader.close()
 
     def test_stop_interrupts_a_reading_mid_stream(self) -> None:
         engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)

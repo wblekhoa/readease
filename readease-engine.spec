@@ -23,7 +23,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['PySide6', 'shiboken6', 'librosa', 'soxr', 'soundfile', 'kaldi_native_fbank', 'gradio', 'matplotlib', 'PIL'],
+    excludes=['PySide6', 'shiboken6', 'librosa', 'soxr', 'soundfile', 'kaldi_native_fbank', 'gradio', 'matplotlib'],
     noarchive=False,
     optimize=0,
 )

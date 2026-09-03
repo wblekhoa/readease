@@ -276,6 +276,10 @@ _TEXT: dict[str, tuple[str, str]] = {
         "Read the selected text in this book",
     ),
     "reader.figure": ("Hình {number}", "Figure {number}"),
+    # Spoken by the engine when a reading reaches a picture. Registered here
+    # because the coverage test rightly counts speech as text put in front of
+    # a person; the voice itself is Vietnamese whatever the UI language.
+    "reader.figure_cue": ("Xem hình {number}.", "See figure {number}."),
     "reader.figure_unavailable": (
         "Không thể hiển thị hình này.",
         "This figure cannot be displayed.",
@@ -404,6 +408,13 @@ _TEXT: dict[str, tuple[str, str]] = {
 
 
 _RUNTIME_EN: dict[str, str] = {
+    # Spoken number words from domain/prosody.py - what the voice says for a
+    # printed "#N". They never reach the screen; they are here because the
+    # coverage test rightly counts speech as text put in front of a person.
+    "không": "zero", "một": "one", "bốn": "four", "năm": "five", "sáu": "six",
+    "bảy": "seven", "tám": "eight", "chín": "nine", "mười": "ten",
+    " mươi": "-ty", "mốt": "one", "tư": "four", "lăm": "five",
+    "thứ ": "number ", "thứ nhất": "first", "thứ tư": "fourth",
     'ReadEase chưa được phép đọc thư mục Apple Books.': "ReadEase has not been allowed to read the Apple Books folder.",
     "Mở sách hoặc dán nội dung để bắt đầu.": "Open a book or paste text to begin.",
     "Không thể mở sách.": "Could not open the book.",
