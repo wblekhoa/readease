@@ -25,6 +25,9 @@ diệt mơ hồ "token này áp vào đâu") · **Behavior** (trạng thái + b�
 | Xác nhận huỷ tại chỗ | ConfirmInline | Xoá sách (trailing của ListRow) |
 | Kéo dữ liệu từ app khác, một chiều | Sheet `Surface radius="sheet"` + `BookTile` (§3.12) | Từ Apple Books |
 | Tuỳ chọn phụ sau một hành động | `MenuButton` (icon → danh sách ngắn, mục đầu = mặc định) | Nhập/đồng bộ trong sheet Apple Books |
+| Bật/tắt một mục vào danh sách | `Switch` (role=switch, ô gạt) | Chọn giọng cho danh sách đổi nhanh |
+| Nút nhỏ nằm giữa dòng chữ | `InlineIconButton` (co theo cỡ chữ, tự chặn click của đoạn) | Icon ghi chú trong đoạn |
+| Danh sách bất kỳ | `GroupedSection` + `GroupedRow` (kẻ chấm, không thẻ) | Cài đặt · Chất lượng · Transfer · danh sách giọng |
 | Xin quyền hệ thống | PermissionCard | Quét đọc |
 | Chặn cho tới khi sẵn sàng | Setup gate | First-run model |
 
@@ -443,6 +446,10 @@ lệch 4px góc so với nút ngay bên nó. Nay mọi control đọc `--ctl-rad
 - Cỡ chữ nội dung: 5 nấc **15 · 16 · 17 · 19 · 21** (mặc định 16), nhớ trong `localStorage`.
 - **Lớp nổi (popover · tooltip · panel · sheet) LUÔN `Surface edge="strong"`** (chủ chốt 02/09): viền `field` tan
   trong nền tối, lớp nổi phải đọc thành vật ở cả hai nền. Card nằm trong dòng chảy giữ `field`.
+- **Lớp nổi có TIÊU ĐỀ thì thuộc bậc sheet 24**, không phải bậc card (chủ, 03/09: "đúng guideline là sẽ
+  cần tròn hơn"): panel cài đặt, bảng ghi chú, sheet Apple Books, sheet giọng — đo được 24 cả bốn. Còn
+  **menu gồm các hàng** (mục lục, menu đổi giọng, menu tuỳ chọn nhập) giữ **16**, vì ở đó hàng 12px mới
+  đồng tâm với khung 16 + đệm 4; kéo khung lên 24 thì hàng phải lên 20, quá tròn cho một hàng cao 36.
 - Bán kính: control 12 · surface/card 16 (`rounded-2xl`) · **sheet/modal 24 (`Surface radius="sheet"`, chủ 02/09:
   "modal tròn trịa hơn")** · bìa sách 8 (`rounded-lg`, vật in) · viên nổi pill.
 - Bề rộng cột: **40em** (chủ nới từ 36em, 02/09) → ~80 ký tự/dòng ở cỡ 16px; 36em đo bằng `Range` được 72 ký tự, dải dễ đọc cổ điển 45–75 — nới một bậc theo mắt chủ, không nới thêm.
@@ -452,6 +459,158 @@ lệch 4px góc so với nút ngay bên nó. Nay mọi control đọc `--ctl-rad
 - Hàng mục lục `dense`: px 10 / py 4 - 26 chương lọt trong 820px so với 15 hàng thường.
 - Tương phản (đo cả hai theme): dải đang đọc/nền **1.12** (sáng) · **1.24** (tối); chữ trên dải
   **11.71** (sáng) · **12.82** (tối) - dải đủ thấy mà không cướp mất chữ.
+### 3.14 Highlight và ghi chú: đọc được, và có một danh sách (03/09)
+
+Ghi chú trước đây chỉ nằm trong `title` của thẻ `<mark>` — tooltip hệ điều hành: chậm hiện, cắt cụt, và
+trên màn cảm ứng thì không đọc được. Nay:
+
+- **Icon ghi chú trong dòng chữ là NÚT** (`InlineIconButton`, control mới trong kit — `IconButton` tròn
+  32px đẩy giãn dòng khi nhét giữa đoạn). Bấm vào mở bảng và **ghim đúng ghi chú đó** (`bg-wash` +
+  `scrollIntoView`). Nút tự `stopPropagation`: bấm vào đoạn văn nghĩa là "đọc từ đây", bấm icon ghi chú
+  nghĩa là ngược lại — đã kiểm là không phát sinh lệnh đọc nào.
+- **Xem nhanh ngay tại chỗ** (chủ, 03/09): rê chuột (hoặc tab tới) icon ghi chú thì hiện **bong bóng** đọc
+  luôn nội dung — không phải mở gì cả; bấm mới mở bảng. Bong bóng được **tính toạ độ từ icon rồi vẽ bằng
+  `fixed` ở lớp ngoài**, KHÔNG neo trong đoạn văn: ở mode lật trang, chữ nằm trong cột CSS bị trượt bằng
+  `translateX` trong một khung `overflow-hidden`, nên một popover con của đoạn văn sẽ bị cắt hoặc rơi sai
+  chỗ. **Lật lên trên** khi icon ở nửa dưới màn hình. Đã bỏ `title` gốc của trình duyệt để hai tooltip
+  không chồng nhau.
+- **Bề rộng co theo ghi chú, trần tính theo chỗ trống thật** (chủ, 03/09): một ghi chú năm chữ trong hộp
+  20rem phần lớn là hộp rỗng. Bong bóng `w-max`, còn thứ tính bằng JS là **trần**: khoảng trống THẬT bên
+  phải icon (icon có thể nằm bất kỳ đâu trên dòng), chặn trên bởi **28rem** — quá ngưỡng đó thì ghi chú
+  không còn là liếc nhanh nữa mà nên mở bảng. Khi chỗ trống bên phải hẹp hơn **260px** (bong bóng sẽ thành
+  một cột hai chữ mỗi dòng), nó **thôi bám icon** và canh theo lề phải cửa sổ. Đo được: 129 / 206 / 293px
+  cho ba ghi chú ở cửa sổ 1060, và đúng 448px (4 dòng) cho ghi chú dài ở cửa sổ 1400.
+- **`NotesPanel`** nổi ở lề TRÁI, **ngay dưới nút mở nó** — cùng chỗ với mục lục (chủ bắt 03/09: nút bên
+  trái thì bảng phải bên trái). Hai bảng dùng chung góc được vì không bao giờ mở cùng lúc. Gom
+  theo chương, đúng thứ tự đọc (`annotationsList.ts`, 5 test); mỗi hàng = đoạn được tô (`<mark>`) + ghi
+  chú **đầy đủ** bên dưới. Bấm hàng **nhảy tới chỗ đó và KHÔNG đọc** — cùng luật với mục lục ("browsing
+  should not read at you").
+- **Mỗi hàng nói nó là loại gì, ở bên trái** (chủ, 03/09): `HighlightIcon` (hai dòng chữ + một vệt bút)
+  cho đoạn tô trơn, `NoteIcon` cho đoạn có ghi chú — một cặp đọc được khi lướt dọc danh sách. Icon canh
+  theo **dòng đầu**, không canh giữa hàng: một ghi chú ba dòng sẽ kéo icon canh-giữa rời khỏi đoạn nó
+  thuộc về. Màu `ink-faint` để không tranh với chữ; kèm nhãn `sr-only` cho trình đọc màn hình.
+- **Nút trên header chỉ hiện khi sách có highlight** (`PageInfo.annotations`), tooltip đếm số lượng. Nút
+  mở một bảng rỗng là nút nói dối về cuốn sách.
+- Một lớp nổi tại một thời điểm: mở ghi chú thì đóng mục lục và ngược lại.
+- Annotation trỏ vào đoạn **không thuộc sách này** bị bỏ khỏi danh sách, không đoán chương — hàng nhảy
+  đi đâu không biết còn tệ hơn là không có hàng.
+
+**Thanh cuộn** (chủ, 03/09: "đừng để nó lòi ra khỏi panel… phạm vi nên chỉ thuộc phần body"): panel là
+cột flex `overflow-hidden` — tiêu đề `shrink-0` đứng yên, **chỉ body cuộn**, nên thanh cuộn thuộc về danh
+sách chứ không phải cả bảng, và `overflow-hidden` giữ nó trong góc bo thay vì chạy tràn ra.
+Kiểu dáng theo **công thức Scroller của DS**: `scrollbar-width: thin` + `scrollbar-color` trong suốt lúc
+nghỉ, hiện khi hover. DS đã **bỏ hẳn khối `::-webkit-scrollbar`** ngày 19/08 (đo được: Chromium bỏ qua mọi
+luật webkit ngay khi có một trong hai thuộc tính chuẩn). App này **giữ lại** khối webkit — lệch DS có chủ
+đích — vì chạy trên **WKWebView chứ không phải Chromium**: chỗ nào thuộc tính chuẩn thắng thì nó là thừa,
+chỗ nào không hỗ trợ thì nó là thứ duy nhất chặn một thanh cuộn trắng nằm giữa trang nền tối. Hai đường
+được chỉnh về cùng một kết quả (8px, trong suốt lúc nghỉ).
+
+**Xoá là xoá HẲN** (chủ chốt 03/09: "xoá hẳn luôn"). Đồng bộ Apple Books là một tấm gương — `sync_notes`
+gọi `replace_annotations` ghi đè cả cụm — nên nếu chỉ xoá dòng thì lần đồng bộ kế tiếp sẽ **đặt nó về chỗ
+cũ**. Vì vậy engine giữ **bia mộ**: bảng `annotations_forgotten` (thêm mới, không bump SCHEMA_VERSION, cùng
+lối với `annotations`), và bộ lọc nằm **trong `replace_annotations`** chứ không ở nơi gọi — để mọi đường
+ghi annotation về sau đều phải tuân. Giao thức `annotations.delete {book_id, annotation_id}` trả `removed`
+để phân biệt "vừa xoá" với "vốn không có"; nằm trong nhóm trả lời ngay giữa lúc đang đọc, vì người ta dọn
+ghi chú trong khi nghe. Nút thùng rác **im lặng cho tới khi rê chuột vào hàng** (vẫn tới được bằng bàn
+phím) và **hỏi lại ngay trong hàng** — cùng mẫu với xoá sách khỏi thư viện, câu hỏi nói thẳng hậu quả:
+"Xoá hẳn, đồng bộ lại cũng không quay về?".
+
+**Tooltip ⓘ ghim theo LỀ CỬA SỔ, không theo icon** (chủ, 03/09: nó tràn mép). Icon ⓘ trôi theo độ dài tên
+sách, nên neo trái thì cửa sổ hẹp tràn phải, neo phải thì cửa sổ rộng tràn trái — không lựa chọn tĩnh nào
+đúng cho cả hai. `fixed left-6` dưới header + chặn `max-w` là bản duy nhất không thể ra khỏi màn hình; đổi
+lại nó không còn chỉ vào icon mà đọc như một dòng trạng thái dưới thanh — vốn đúng là thứ nó đang là.
+
+**Kẻ chấm canh theo nội dung**: `dot-divided` nhận `--dot-inset` (mặc định 0). Danh sách nào có hàng
+**thụt ra ngoài** để vệt hover tràn quá chữ thì đẩy kẻ vào đúng bằng ngần ấy, nếu không kẻ rộng hơn nội
+dung nó ngăn (chủ, 03/09).
+
+**Giới hạn còn lại (chưa sửa, cố ý)**: `marked()` chỉ tô **highlight khớp ĐẦU TIÊN** trong một đoạn, nên
+đoạn có hai highlight sẽ hiện đủ hai ở bảng nhưng chỉ tô một trên trang. Sửa nội dung ghi chú cũng chưa có
+— ghi chú vẫn là dữ liệu một chiều từ Apple Books.
+
+### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
+
+Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
+
+- **Chọn** (`VoicesPanel`, sheet 32rem) — nghe thử + bật vào danh sách. Mỗi hàng `GroupedRow roomy`:
+  tên (+ "đang dùng"), một dòng mô tả `Nữ · Bắc · Phong cách kể chuyện` tách từ nhãn engine, `IconButton`
+  loa để nghe thử, `Switch` (control mới trong kit) để đưa vào danh sách. Chân sheet đếm "Đã chọn N giọng".
+- **Đổi** (`MenuButton` loa ở thanh transport, chỉ hiện khi đang phát) — chỉ liệt kê **danh sách đã bật**
+  + giọng đang dùng + "Quản lý giọng…". Đây đúng là định nghĩa của danh sách: giọng đáng với tay khi đang nghe.
+- `SettingsPanel`: select giọng cũng **chỉ liệt kê danh sách đã bật** (chủ chốt lại 03/09 — một danh sách
+  thì là một danh sách ở mọi nơi; hàng ngay dưới nó là lối thêm vào), và **không còn khoá khi đang đọc**.
+- **Bật sẵn NĂM giọng khi chưa từng chọn** (chủ, 03/09: "đừng tắt hết"): không ai mở app lên là muốn nghe
+  thử hai mươi giọng trước khi đọc được sách. Năm giọng đó là một **dải**, không phải bảng xếp hạng — không
+  có dữ liệu dùng thật để xếp: giọng mặc định của engine, một giọng tự nhiên mỗi giới, và một giọng kể
+  chuyện mỗi giới (thứ một cuốn sách hay cần). Giọng nào bản dựng này không có thì bỏ, không mời.
+  **"Chưa từng chọn" khác "đã chọn là rỗng"**, và chỉ cái đầu được mồi — nếu không, người tự tay tắt hết
+  sẽ thấy chúng bật lại nguyên si ở lần mở app sau (`initialShortlist`, 3 test).
+- Một lớp nổi tại một thời điểm: bấm chip cài đặt ở footer **đóng** sheet giọng (nếu không, panel cài đặt
+  mở NGAY DƯỚI sheet, nơi không ai với tới).
+
+**Nghe thử không dùng được lúc đang đọc** — đó là sự thật của engine, không phải lựa chọn giao diện:
+máy đọc mỗi lúc một thứ, nên một câu mẫu sẽ **huỷ chính chương** mà nó định giúp bạn chọn giọng cho.
+Nút nghe thử bị khoá kèm câu giải thích ở tooltip và ở chân sheet. Nghe thử khi rảnh, đổi khi đang đọc.
+
+**Đổi giọng giữa chừng = đọc lại từ ĐOẠN đang đọc, bằng giọng mới.** Engine không hoán giọng giữa câu
+(giọng được chốt lúc bắt đầu), nên vết nối là **đầu đoạn hiện tại**, không phải đúng chữ đang đọc —
+mịn hơn thì engine phải biết nó đang ở đâu trong đoạn âm thanh. Để việc này thật với **cả văn bản dán và
+đoạn quét**, `read` nay đánh địa chỉ từng phần (`part-N`) và nhận `segment_id` y như `read.book`.
+Tốc độ vẫn đọc-một-lần lúc bắt đầu nên vẫn khoá — thà khoá còn hơn hứa suông.
+
+**MỘT kiểu danh sách cho cả product** (chủ, 03/09: "đồng bộ cho list tương đồng ở các nơi khác"):
+`GroupedSection` **chính nó** nay là danh sách chấm - không còn thẻ xám kiểu iOS. Thẻ xám đúng cho hai ba
+dòng cài đặt, nhưng đặt trong một sheet trắng là **hộp trong hộp**, đúng điều DS cấm ("no box-in-box:
+card treatment max depth = 1"), và màu xám đánh nhau với mọi panel nó ngồi lên. Hàng **không tự đệm trái
+phải** (panel đã lo lề) và thở bằng đệm dọc (`py-3.5`, roomy `py-4`). Đổi ở kit nên Cài đặt giọng đọc,
+Chất lượng, Transfer và danh sách giọng đều đi theo cùng lúc - kit chỉ còn MỘT kiểu danh sách.
+
+**Dot divider theo đúng DS**: chấm 2px trên nhịp 8px vẽ bằng `radial-gradient`, utility `dot-divided` đặt
+cạnh `hover-wash` trong `index.css`. **Không dùng `border-style: dotted`** - DS bác bỏ vì nhịp chấm đổi
+theo engine và theo độ dài đường kẻ (`DOL-DS-token/.../layout-structure-family.md`).
+
+**Màu chấm là `--color-dot`, một ROLE riêng chứ không phải alias** (chủ xin nhạt hơn, 03/09): kẻ chấm vốn
+đã nhẹ hơn kẻ liền - chỉ một phần tư được tô mực - nên bậc `edge-strong` quá đanh khi đổ xuống hai mươi
+dòng. Nhưng hai nền cần HAI bậc DS khác nhau để ra cùng một độ nhạt: sáng dùng `edge`; tối mà cũng dùng
+`edge` thì là n(45) trên nền n(38) - lệch bảy điểm, **biến mất** - nên tối giữ `edge-strong`, so với nền
+của chính nó thì không nặng hơn `edge` trên nền sáng.
+
+**Tooltip của nút icon nằm TRONG `IconButton`** (chủ, 03/09): truyền `title` là có tooltip có kiểu, và
+`title` bị gỡ khỏi DOM để không chồng với tooltip của trình duyệt — thứ đợi cả giây, do hệ điều hành vẽ
+theo một kiểu không giống gì trong app, và trên màn cảm ứng thì không hiện. Đặt ở kit nên **mọi nút icon
+trong product** có cùng lúc, không màn nào phải nhớ tự thêm. Vẽ qua **portal** và định vị từ hình chữ nhật
+đo được: nút icon có thể nằm trong cột đã `transform` của trang sách hoặc trong panel bị cắt, mà `fixed`
+một mình KHÔNG sống sót qua một tổ tiên có transform. Đo trước rồi mới kẹp, nếu không nút ở sát mép sẽ
+canh giữa tooltip ra nửa ngoài màn hình (đo: nút nền tối ở x=1004, tooltip 912-1048 trong cửa sổ 1060).
+**Chữ tooltip là HÀNH ĐỘNG, ngắn**: "Chuyển sang lật trang", không phải "Đang cuộn · bấm để lật trang".
+*Còn thiếu*: nút **đang bị vô hiệu** không hiện tooltip — trình duyệt không phát sự kiện chuột trên control
+bị disable; muốn có phải bọc thêm một thẻ ngoài.
+
+**Một khoảng cách, một trần cao cho mọi lớp nổi** (chủ, 03/09):
+
+- **`--layer-gap` = 8** cho mọi lớp treo dưới thứ mở nó. Trước đó là 4 dưới menu, 6 dưới tooltip, 8 dưới
+  panel — ba con số cho cùng một quan hệ. Lớp định vị bằng đo (tooltip icon, bong bóng ghi chú) dùng hằng
+  `LAYER_GAP = 8` trong `controls.tsx`. Đo lại sau khi sửa: cả ba tooltip đều 8, menu 8.
+  *Ngoại lệ có lý do*: panel cài đặt treo 8 trên **thanh footer**, không phải trên cái chip — chip thuộc
+  về thanh, và một panel đè lên thanh sẽ đọc như lỗi.
+- **`layer-capped`** (utility) chặn chiều cao bằng đúng khoảng trống giữa hai thanh: panel dài thì **tự
+  cuộn bên trong** thay vì mọc lên dưới header. Panel cài đặt nay tách tiêu đề đứng yên / thân cuộn như
+  bảng ghi chú; menu cũng bị chặn (danh sách 20 giọng không được dài quá màn).
+
+  **Vì sao là utility chứ không phải một token** — và đây không phải chuyện thẩm mỹ: một custom property
+  khai ở `:root` bị **thay `var()` ngay tại `:root`**, nên `--layer-max-h` đã nướng cứng cặp inset khởi tạo
+  (72px/0px) và không bao giờ thấy 76px mà ResizeObserver đo lên shell. Viết thành utility thì phép `calc`
+  giải ở chính phần tử dùng, nơi có số thật. Đo sai trước rồi mới ra (436px đúng, 516px sai).
+
+**Đệm của lớp nổi, hai tầng** (chủ: "đồng bộ padding các popover"): **panel** (cài đặt · sheet Apple Books ·
+sheet giọng) đặt nội dung vào **24**; **menu gồm các hàng** (popover mục lục · menu đổi giọng) chỉ có khung
+**8**, vì ở đó chính HÀNG mang lề. Tooltip giữ thang chật riêng.
+
+**Ba cái bẫy đã bịt** (kiểm trên harness): id giọng mới truyền thẳng vào lệnh chứ không đọc lại từ state
+(`setVoiceId` chưa kịp về là gửi nhầm giọng cũ); nghe thử **xoá `origin`** nếu không chip "Đang đọc: …
+/ Quay lại" sẽ trỏ về cuốn sách mà chính nghe-thử vừa cắt; `part-N` không phải segment của sách nên nút
+⏮/⏭ và highlight của Reader đều bỏ qua nó (trước đó `indexOf` trả -1 rồi `-1 + 1` nhảy về đoạn đầu sách).
+
 - **Bo đồng tâm cho lớp lồng**: một hàng nằm TRONG một lớp bo thì bán kính của nó = bán kính ngoài −
   đệm. Menu tuỳ chọn (`MenuButton`) khung 16 + đệm 4 ⇒ item **12** (`rounded-xl`), trùng luôn bậc
   control; ban đầu để 8 nên item trông vuông trong khung tròn (chủ bắt 02/09). Viết cứng chứ KHÔNG

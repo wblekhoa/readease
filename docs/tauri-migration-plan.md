@@ -620,3 +620,50 @@ Chủ: ô = card trắng viền xám, hover viền đậm + bóng 3; hành độ
 phụ (mặc định chỉ nhập sách) → kit `MenuButton` (Esc/click ngoài đóng), engine `sync_notes {mode:
 both|highlights|notes}` + test; footer primary mặc định chỉ nhập + chevron tuỳ chọn. Sidecar dựng lại.
 Chủ: item dropdown bo tròn hơn → 12 (đồng tâm với khung 16 + đệm 4), đệm dọc 6→8, cao 36.
+Chủ (03/09): cần nơi quản lý giọng (nghe thử + switch vào danh sách) và đổi giọng khi đang đọc mà vẫn
+đọc tiếp. Đảo lại quyết định "giọng đọc-một-lần" cũ: `switchVoice` phát lại chính lượt đang đọc từ đoạn
+hiện tại bằng giọng mới. Engine: `read` đánh địa chỉ `part-N` + nhận `segment_id` (3 test) để văn bản
+dán/quét cũng nối tiếp được, không phải đọc lại từ đầu. Kit thêm `Switch`; `voiceShortlist.ts` (6 test)
+giữ luật danh sách; `VoicesPanel` là nơi chọn, `MenuButton` ở transport là nơi đổi. Tốc độ VẪN đọc-một-lần.
+Chủ: danh sách giọng bỏ nền xám + hộp, chuyển sang danh sách phẳng trên giấy, phân tầng bằng dot divider
+(chấm 2px/nhịp 8px theo DS, không phải border-dotted) + đệm trên dưới, không đệm trái phải. Kit: DotDivider,
+DottedList. Ba test engine đỏ vì `read` nay phát `position` trước `chunk` - sửa kỳ vọng (helper _first_audio),
+không sửa hành vi; suite 747 OK.
+Chủ (03/09, một loạt chỉnh khi nhìn màn hình): chấm nhạt hơn -> token --color-dot theo nền (sáng edge, tối
+edge-strong, vì edge ở nền tối biến mất); gộp kiểu danh sách chấm vào chính GroupedSection nên cả product
+đi theo (bỏ DottedList, kit còn MỘT kiểu list); hàng thoáng hơn py-3.5/py-4; bỏ px-3 của tiêu đề mục;
+select giọng chỉ hiện giọng đã bật; đệm lớp nổi hai tầng 24 (panel) / 8 (menu hàng); nút quản lý có icon
+loa; chip cài đặt đóng sheet giọng.
+Chủ (03/09): xem được ghi chú + có nơi quản lý danh sách highlight/note. Dựng NotesPanel (lề phải, đối
+xứng mục lục) + annotationsList.ts gom theo chương (5 test) + InlineIconButton cho icon ghi chú trong
+đoạn; PageInfo mang thêm số annotation để header ẩn nút khi sách không có gì. Dữ liệu đã có sẵn ở
+book.open.annotations nên KHÔNG cần đụng engine. CHƯA làm: xoá/sửa (giao thức chỉ có replace_annotations
+ghi đè cả cụm, và sync_notes gọi chính nó -> cái đã xoá quay lại sau lần đồng bộ sau; cần chốt sản phẩm).
+Chủ: thanh cuộn NotesPanel lòi ra ngoài panel va cuon ca header -> panel thanh cot flex overflow-hidden
+(header shrink-0 dung yen, chi body cuon); scrollbar doi sang cong thuc DS scrollbar-width thin +
+scrollbar-color hover-reveal, GIU khoi ::-webkit-scrollbar lam duong lui vi day la WKWebView (DS bo khoi
+do sau khi do tren Chromium). Panel cung doi sang le TRAI cho khop nut mo no.
+Chu chot (03/09): "xoa han luon" -> bang bia mo annotations_forgotten + loc trong replace_annotations
+(mot cho, moi duong ghi deu tuan) + giao thuc annotations.delete; 2 test moi canh dung cai da xoa KHONG
+quay ve sau sync. UI: nut thung rac hien khi hover, xac nhan trong hang. Kem 2 sua nho: tooltip position
+fixed theo le cua so (icon troi theo ten sach nen neo ben nao cung co luc tran), va dot divider nhan
+--dot-inset de ke thang hang voi noi dung o list co outdent.
+Chu: xem nhanh note ngay tren UI -> bong bong hover tren icon ghi chu, toa do tinh tu getBoundingClientRect
+roi ve bang position:fixed o lop ngoai (neo trong doan van se bi cot CSS + translateX + overflow-hidden cua
+mode lat trang cat mat), kep ngang va lat len tren khi icon nam thap. Bam van mo bang nhu cu.
+Chu: bong bong note doi sang w-max + tran tinh tu cho trong that ben phai icon (chan tren 28rem); duoi
+260px cho trong thi thoi bam icon, canh theo le phai cua so. Do: 129/206/293 o 1060, 448 o 1400.
+Chu (03/09): BO co che tu dong build/cai sau moi sua - chi dong goi khi co update lon hoac khi duoc yeu
+cau; van chay typecheck + unit test + UI_AUDIT + preview moi lan. Kem: bo px-5 ep them o 2 nut CTA (ve
+px-4 cua kit); IconButton tu ve tooltip co kieu tu title (portal + do roi kep), 4 nhan duoc rut gon ve
+dang hanh dong.
+Chu: mac dinh bat san 5 giong (Adam, Truc Ly, Pham Tuyen, Ngoc Linh, Thai Son - mot dai, khong phai xep
+hang) thay vi tat het. initialShortlist phan biet "chua tung chon" (mo) voi "da chon la rong" (ton trong),
+loc theo catalogue cua ban dung. 3 test moi.
+Chu: dong bo khoang cach nut->popover (--layer-gap = 8, LAYER_GAP=8 cho lop dinh vi bang do) va chan chieu
+cao (utility layer-capped). Bay: --layer-max-h khai o :root bi thay var() ngay tai :root nen nuong cung
+inset khoi tao 72/0, khong thay 76 do duoc -> phai viet thanh utility de calc giai o phan tu dung.
+SettingsPanel tach header dung yen / than cuon.
+Chu: lop noi co tieu de len bac sheet 24 (SettingsPanel + NotesPanel, khop voi 2 sheet san co); menu gom
+cac hang giu 16 de hang 12 con dong tam voi khung 16 + dem 4.
+
