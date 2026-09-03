@@ -431,6 +431,11 @@ class _Session:
             self._fail(request_id, "no library on this server")
             return
         books = []
+        # Which books still have a live pairing with Apple Books. One read for
+        # the whole shelf, and it is the LINK that is reported - not a check
+        # against Apple's own database, which would mean copying it every time
+        # the library is opened, for a badge (owner, 03/09).
+        paired = set(self._repository.apple_book_links().values())
         for stored in self._repository.list_books():
             progress = self._repository.load_progress(stored.book.id)
             try:
@@ -466,6 +471,9 @@ class _Session:
                 "chapters": len(stored.book.chapters),
                 "size_bytes": size_bytes,
                 "imported_at": self._repository.imported_at(stored.book.id),
+                # True while the pairing holds, which is what makes a note
+                # sync land on this book rather than a guess at its title.
+                "from_apple_books": stored.book.id in paired,
             })
         self._reply(request_id, {"books": books})
 

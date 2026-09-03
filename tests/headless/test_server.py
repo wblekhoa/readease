@@ -939,6 +939,55 @@ class ProtocolTests(unittest.TestCase):
         )
         return repository, library
 
+    def test_the_shelf_says_which_books_are_paired_with_apple_books(self) -> None:
+        # The badge on the shelf reports the LINK, so the flag has to follow
+        # the link and nothing else: a book imported by hand is not paired,
+        # and one imported from Apple Books is - without the shelf going and
+        # reading Apple's own database to find out.
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            deps = {"library": library}
+
+            def flags():
+                reply = run_server(
+                    [{"id": 9, "method": "library.list"}],
+                    FakeEngine(), repository=repository, service=service,
+                    notes_deps=deps,
+                )[0]
+                return {
+                    book["title"]: book["from_apple_books"]
+                    for book in reply["result"]["books"]
+                }
+
+            # A book that arrived by hand: the flag has to be False for it,
+            # or a hardcoded True would pass this test just as well.
+            from tests.importers.epub_fixture import make_epub
+            sources = root / "by-hand"
+            sources.mkdir()
+            run_server(
+                [{"id": 1, "method": "library.import",
+                  "params": {"path": str(make_epub(sources))}}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )
+            by_hand = flags()
+            self.assertEqual(len(by_hand), 1, by_hand)
+            self.assertFalse(any(by_hand.values()), by_hand)
+
+            run_server(
+                [{"id": 2, "method": "applebooks.import", "params": {"asset_id": "A1"}}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )
+            both = flags()
+            self.assertEqual(len(both), 2, both)
+            self.assertEqual(sorted(both.values()), [False, True], both)
+
     def test_apple_books_shelf_import_and_note_sync_round_trip(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
