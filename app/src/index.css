@@ -85,6 +85,9 @@
      plus a tight contact pass. Tailwind's shadow-sm is a single hard offset -
      next to this it reads as a printed line under the element. */
   --shadow-raised: var(--shadow-neutral-to-bot-2);
+  /* One step heavier, for a cover under the cursor: the DS's own next tier,
+     so the lift reads as the same material coming closer - not a new shadow. */
+  --shadow-lifted: var(--shadow-neutral-to-bot-3);
   --color-ink: var(--text-color-neutral-primary);
   --color-ink-mute: var(--text-color-neutral-secondary);
   --color-ink-faint: var(--text-color-neutral-disabled);
@@ -104,11 +107,96 @@
      desk that is gone - a contrast number is only true of one background). */
   --color-danger: var(--text-color-danger-bold);
   --color-danger-fill: var(--fill-danger-primary);
+  /* A highlight brought over from Apple Books: the DS's warning haze, a
+     30% yellow alpha, so it reads as a marker pen on both papers. */
+  --color-highlight: var(--fill-warning-haze);
   /* Focus is info-blue, per the DS registry's own ring - brand red was this
      app's mistake, and the owner caught it. secondary (b60) is the soft
      tier that reads on both themes without shouting. */
   --color-focus: var(--border-color-info-secondary);
 }
+
+/* Hover and press are a wash LAYERED OVER a control's own fill, never a
+   replacement for it. `hover:bg-wash` swapped the opaque paper for a 5%
+   alpha, so a pill floating over the reading column turned transparent the
+   moment it was hovered and the text underneath showed through (owner,
+   02/09: "Về chỗ đang đọc" bị chữ đè lên khi hover). The gradient trick
+   paints the alpha on top and leaves background-color alone. Not for
+   <select>: its chevron already lives in background-image. */
+@utility hover-wash {
+  &:hover {
+    background-image: linear-gradient(var(--color-wash), var(--color-wash));
+  }
+  &:active {
+    background-image: linear-gradient(var(--color-press), var(--color-press));
+  }
+  &:disabled {
+    background-image: none;
+  }
+}
+
+/* ── Shell chrome: gradient-blur header/footer ────────────────────────────
+   The owner asked for the DOL "premium-blur" shell (02/09), so the bars are
+   overlays and content scrolls UNDER them. Canonical engine = the workspace
+   build recipe (codex figma-header-footer-shell/gradient-blur-shell.md,
+   shipped in Flowsmith): 8 real layers, doubling radii, 12.5% mask bands,
+   overlapping so the ramp reads as continuous - two radii still "cut" over a
+   tall fade zone under sharp reading text. Radii and bands are geometry and
+   stay verbatim (the guideline allows literal geometry); the only colour is
+   the token tint, painted BEHIND the stack as its deepest layer - an opaque
+   tint on top re-creates the cut. Blur layers never take the pointer.
+
+   The named insets are the one contract the screens rely on: a scroller that
+   runs under the chrome pads its content by them (guideline §3.2 "named
+   insets"), and a screen with nothing to scroll simply starts below them. */
+:root {
+  --shell-top-h: 72px;
+  --shell-bottom-h: 0px;
+  /* How far a bar's ramp may reach past its own box. Zero: the owner asked
+     for the frost to stay INSIDE the bar (02/09 - a 40px reach blurred the
+     library title and the tops of the covers). The bars carry enough
+     padding on their inner edge for the ramp to finish within them. */
+  --shell-ramp: 0px;
+}
+
+.gradient-blur {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  filter: none;
+  backdrop-filter: none;
+}
+.gradient-blur.to-bottom { bottom: calc(-1 * var(--shell-ramp)); }
+.gradient-blur.to-top { top: calc(-1 * var(--shell-ramp)); transform: rotate(180deg); }
+.gradient-blur::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: color-mix(in srgb, var(--app-ground) 78%, transparent);
+  -webkit-mask: linear-gradient(to bottom, #000 30%, transparent 92%);
+  mask: linear-gradient(to bottom, #000 30%, transparent 92%);
+}
+.gradient-blur > div {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.gradient-blur > div:nth-child(1) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 12.5%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 12.5%); -webkit-backdrop-filter: blur(128px); backdrop-filter: blur(128px); }
+.gradient-blur > div:nth-child(2) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 12.5%, rgba(0,0,0,0) 25%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 12.5%, rgba(0,0,0,0) 25%); -webkit-backdrop-filter: blur(64px); backdrop-filter: blur(64px); }
+.gradient-blur > div:nth-child(3) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 37.5%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 37.5%); -webkit-backdrop-filter: blur(32px); backdrop-filter: blur(32px); }
+.gradient-blur > div:nth-child(4) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 37.5%, rgba(0,0,0,0) 50%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 37.5%, rgba(0,0,0,0) 50%); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.gradient-blur > div:nth-child(5) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 62.5%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 62.5%); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.gradient-blur > div:nth-child(6) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 62.5%, rgba(0,0,0,0) 75%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 62.5%, rgba(0,0,0,0) 75%); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.gradient-blur > div:nth-child(7) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.gradient-blur > div:nth-child(8) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%); -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px); }
+
+/* A screen with nothing that scrolls under the chrome starts below it. */
+.shell-inset { padding-top: var(--shell-top-h); padding-bottom: var(--shell-bottom-h); }
+/* Content inside a scroller that DOES run under the chrome pads itself. */
+.shell-inset-content { padding-top: var(--shell-top-h); padding-bottom: calc(var(--shell-bottom-h) + 4rem); }
 
 body {
   margin: 0;
@@ -157,9 +245,11 @@ textarea:focus-visible {
   outline-offset: -1px;
 }
 
+/* A selection is a wash over the words, not a slab under them: brand hue
+   at a light tint, the ink left alone - the solid red with white text was
+   too heavy (owner, 02/09). The alpha keeps it right on both papers. */
 ::selection {
-  background: var(--color-brand-600);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--color-brand-600) 24%, transparent);
 }
 
 /* WKWebView scrollbars follow the page, not the OS: without this the reader
@@ -173,3 +263,11 @@ textarea:focus-visible {
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--text-color-neutral-secondary); background-clip: content-box; }
+
+/* <mark> comes with the UA's yellow-on-black; the token paints it instead. */
+mark {
+  background: var(--color-highlight);
+  color: inherit;
+  border-radius: 0.2em;
+  padding: 0 0.05em;
+}

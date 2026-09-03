@@ -14,6 +14,7 @@
  */
 import type {
   ButtonHTMLAttributes,
+  InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
@@ -22,7 +23,10 @@ import type {
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "md" | "sm";
 
-/* Focus is drawn ONCE, by the `:focus-visible` ring in index.css. Controls
+/* Hover/press come from the `hover-wash` utility in index.css: a wash painted
+ * OVER the control's fill. Swapping the fill for the alpha wash (the old
+ * `hover:bg-wash`) made any control floating over content go see-through.
+ * Focus is drawn ONCE, by the `:focus-visible` ring in index.css. Controls
  * used to switch their border colour instead, which meant two competing
  * formulas - and on the borderless ones, adding a border on focus shifted
  * the label by a pixel every time it was tabbed to. */
@@ -47,11 +51,11 @@ const BUTTON_VARIANT: Record<Variant, string> = {
   primary:
     "border border-brand-600 bg-brand-600 font-semibold text-white hover:bg-brand-700 hover:border-brand-700 active:bg-brand-700 disabled:border-edge-strong disabled:bg-transparent disabled:text-ink-faint",
   secondary:
-    "border border-edge-strong bg-paper text-ink hover:bg-wash active:bg-press disabled:bg-transparent disabled:text-ink-faint",
+    "border border-edge-strong bg-paper text-ink hover-wash disabled:bg-transparent disabled:text-ink-faint",
   ghost:
-    "border border-transparent bg-transparent text-ink-mute hover:bg-wash hover:text-ink active:bg-press disabled:text-ink-faint",
+    "border border-transparent bg-transparent text-ink-mute hover-wash hover:text-ink disabled:text-ink-faint",
   danger:
-    "border border-transparent bg-transparent font-semibold text-danger hover:bg-wash active:bg-press disabled:text-ink-faint",
+    "border border-transparent bg-transparent font-semibold text-danger hover-wash disabled:text-ink-faint",
 };
 
 export function Button({
@@ -80,7 +84,7 @@ export function IconButton({
   return (
     <button
       type="button"
-      className={`flex h-8 w-8 items-center justify-center rounded-full text-ink-mute transition-colors hover:bg-wash active:bg-press disabled:text-ink-faint ${className}`}
+      className={`flex h-8 w-8 items-center justify-center rounded-full text-ink-mute transition-colors hover-wash disabled:text-ink-faint ${className}`}
       {...rest}
     />
   );
@@ -96,6 +100,21 @@ export function Select({
   return (
     <select
       className={`${pill ? "h-8 rounded-full px-3" : "h-[30px] rounded-[var(--ctl-radius)] px-2"} border border-edge-strong bg-paper text-sm text-ink hover:bg-wash disabled:text-ink-faint ${className}`}
+      {...rest}
+    />
+  );
+}
+
+/** The one single-line input: a search or a filter box, control-height,
+ * at the cluster radius like every other control in its row. */
+export function Input({
+  className = "",
+  ...rest
+}: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      data-raw
+      className={`h-[30px] rounded-[var(--ctl-radius)] border border-edge-strong bg-paper px-3 text-sm text-ink placeholder:text-ink-faint ${className}`}
       {...rest}
     />
   );
@@ -151,12 +170,27 @@ export function SectionTitle({
 export function Surface({
   children,
   className = "",
+  edge = "field",
+  radius = "surface",
 }: {
   children: ReactNode;
   className?: string;
+  /** `field`: the fallback hairline that disappears where the fill already
+   * separates (dark). `strong`: a real stroke for a layer that floats over
+   * content and must read as an object on both papers - a tooltip (owner
+   * asked for a firmer edge, 02/09). */
+  edge?: "field" | "strong";
+  /** `surface` = the 16px card tier. `sheet` = 24px for a layer that stands
+   * on its own in the middle of the window (owner, 02/09: a modal should be
+   * rounder than a card). */
+  radius?: "surface" | "sheet";
 }) {
   return (
-    <div className={`rounded-2xl border border-edge-field bg-paper ${className}`}>
+    <div
+      className={`border bg-paper ${radius === "sheet" ? "rounded-3xl" : "rounded-2xl"} ${
+        edge === "strong" ? "border-edge-strong" : "border-edge-field"
+      } ${className}`}
+    >
       {children}
     </div>
   );

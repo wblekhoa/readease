@@ -31,7 +31,14 @@ fn engine_of(app: &tauri::AppHandle) -> Option<Engine> {
         .map(|slot| slot.0.lock().unwrap().clone())
 }
 
-#[tauri::command]
+// Every command below touches the engine, and several WAIT on it: a stop is
+// answered between utterances, book.open builds a presentation, an import
+// parses the whole file, a restart loads the model. Tauri runs a plain `fn`
+// command on the MAIN thread ("sync" in tauri-macros' wrapper.rs), so each of
+// those waits froze the window for its whole duration - the "app đứng" the
+// owner reported (2026-09-02). `(async)` runs the same synchronous body on
+// the thread pool instead; nothing here needs the main thread.
+#[tauri::command(async)]
 fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String> {
     let reply = client_of(&engine).request("voices", serde_json::json!({}))?;
     let voices = reply["result"]["voices"]
@@ -46,7 +53,7 @@ fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String>
     Ok(voices)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_text(
     engine: tauri::State<EngineSlot>,
     text: String,
@@ -58,7 +65,7 @@ fn read_text(
     }))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_book(
     engine: tauri::State<EngineSlot>,
     book_id: String,
@@ -72,7 +79,7 @@ fn read_book(
     }))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn read_selection_text(
     app: tauri::AppHandle,
     engine: tauri::State<EngineSlot>,
@@ -86,7 +93,7 @@ fn read_selection_text(
     }))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn import_book_bytes(
     engine: tauri::State<EngineSlot>,
     name: String,
@@ -116,7 +123,7 @@ fn import_book_bytes(
     reply
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn engine_request(
     engine: tauri::State<EngineSlot>,
     method: String,
@@ -125,17 +132,17 @@ fn engine_request(
     client_of(&engine).request(&method, params)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn stop_reading(engine: tauri::State<EngineSlot>) -> Result<(), String> {
     client_of(&engine).stop()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn pause_audio(engine: tauri::State<EngineSlot>) {
     client_of(&engine).pause();
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn resume_audio(engine: tauri::State<EngineSlot>) {
     client_of(&engine).resume();
 }
@@ -160,12 +167,12 @@ fn register_selection_shortcut(
         .map_err(|error| format!("register {accelerator}: {error}"))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn prepare_model(engine: tauri::State<EngineSlot>) -> Result<(), String> {
     client_of(&engine).notify("model.prepare", serde_json::json!({}))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn restart_engine(
     app: tauri::AppHandle,
     engine: tauri::State<EngineSlot>,
@@ -186,7 +193,7 @@ fn restart_engine(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn set_selection_shortcut(
     app: tauri::AppHandle,
     accelerator: String,

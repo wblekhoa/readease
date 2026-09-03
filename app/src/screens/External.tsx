@@ -20,12 +20,14 @@ export function External({
   shortcut,
   onChangeShortcut,
   onReplay,
+  onClearHistory,
 }: {
   history: ExternalEntry[];
   status: string | null;
   shortcut: string;
   onChangeShortcut: (accelerator: string) => Promise<void>;
   onReplay: (entry: ExternalEntry) => void;
+  onClearHistory: () => void;
 }) {
   const [granted, setGranted] = useState<boolean | null>(null);
   const [asked, setAsked] = useState(false);
@@ -63,7 +65,7 @@ export function External({
         : null;
 
   return (
-    <section className="flex min-h-0 flex-1 gap-10">
+    <section className="shell-inset flex min-h-0 flex-1 gap-10">
       <div className="max-w-[52ch]">
         <SectionTitle>{text("external.title")}</SectionTitle>
         {granted === false && (
@@ -135,7 +137,18 @@ export function External({
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="m-0 text-sm font-bold">{text("external.recent_title")}</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="m-0 flex-1 text-sm font-bold">
+            {text("external.recent_title")}
+          </h3>
+          {/* The Qt shell could empty this list; the rewrite dropped the
+              action until the parity audit found it (2026-09-02). */}
+          {history.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={onClearHistory}>
+              {text("external.history_clear")}
+            </Button>
+          )}
+        </div>
         {history.length === 0 ? (
           <p className="m-0 mt-2 text-sm text-ink-mute">
             {text("external.history_empty")}

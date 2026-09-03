@@ -1,4 +1,4 @@
-/** The voice-build manager behind the little chip beside the voice picker.
+/** The voice-build manager, now a section of the settings panel.
  *
  * A switch restarts the engine process - the build loads at construction -
  * so this panel is loud about that, downloads what is missing first
@@ -9,9 +9,8 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { text } from "../i18n";
-import { Button, IconButton, ProgressBar } from "./controls";
+import { Button, ProgressBar } from "./controls";
 import { GroupedRow, GroupedSection } from "./patterns";
-import { CloseIcon } from "./icons";
 
 type Status = {
   ready: boolean;
@@ -24,12 +23,13 @@ const BUILDS = [
   { id: "fp32", label: () => text("model.build_maximum") },
 ] as const;
 
-export function ModelPanel({
-  onClose,
+export function ModelChoices({
   reading,
+  onBusy,
 }: {
-  onClose: () => void;
   reading: boolean;
+  /** The settings panel must not close over a running download. */
+  onBusy?: (busy: boolean) => void;
 }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -47,16 +47,7 @@ export function ModelPanel({
 
   useEffect(refresh, [refresh]);
 
-  // Esc closes any layer that sits above the screen - the keyboard contract
-  // in docs/readease-hig.md §4. Not while a build is being fetched: leaving
-  // then would hide a running download behind a chip.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && busy === null) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [busy, onClose]);
+  useEffect(() => { onBusy?.(busy !== null); }, [busy, onBusy]);
 
   useEffect(() => {
     const progressEvents = listen<{ progress: number; message: string }>(
@@ -68,15 +59,22 @@ export function ModelPanel({
     );
     // A model download outlives any sane request timeout, so its completion
     // arrives as an event rather than a reply (advisor finding #2).
-    const finished = listen<{ ok: boolean; error?: string }>(
-      "engine:orphan_reply",
-      (event) => {
-        setBusy(null);
-        setProgress(null);
-        setNote(event.payload.ok ? null : event.payload.error ?? null);
-        refresh();
-      },
-    );
+    const finished = listen<{
+      ok: boolean;
+      error?: string;
+      result?: { cancelled?: boolean };
+    }>("engine:orphan_reply", (event) => {
+      setBusy(null);
+      setProgress(null);
+      setNote(
+        event.payload.result?.cancelled
+          ? text("model.cancelled")
+          : event.payload.ok
+            ? null
+            : event.payload.error ?? null,
+      );
+      refresh();
+    });
     return () => {
       progressEvents.then((unlisten) => unlisten());
       finished.then((unlisten) => unlisten());
@@ -120,14 +118,8 @@ export function ModelPanel({
   }, [refresh]);
 
   return (
-    <div className="absolute bottom-14 right-6 z-20 w-96 rounded-2xl border border-edge bg-paper p-4 shadow-lg">
-      <div className="flex items-center">
-        <h3 className="m-0 flex-1 text-sm font-bold">{text("model.quality")}</h3>
-        <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
-          <CloseIcon />
-        </IconButton>
-      </div>
-      <p className="m-0 mt-1 text-xs leading-relaxed text-ink-mute">
+    <>
+      <p className="m-0 text-xs leading-relaxed text-ink-mute">
         {text("model.switch_restart")}
       </p>
       <GroupedSection className="mt-3">
@@ -173,13 +165,18 @@ export function ModelPanel({
         })}
       </GroupedSection>
       {progress !== null && (
-        <div className="mt-3">
-          <ProgressBar value={progress} />
+        <div className="mt-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <ProgressBar value={progress} />
+          </div>
+          <Button size="sm" onClick={() => void invoke("stop_reading")}>
+            {text("model.cancel")}
+          </Button>
         </div>
       )}
       {note && (
         <p className="m-0 mt-2 text-xs leading-relaxed text-ink-mute">{note}</p>
       )}
-    </div>
+    </>
   );
 }

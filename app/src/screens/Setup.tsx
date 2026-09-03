@@ -30,10 +30,14 @@ export function Setup({
         setNote(event.payload.message);
       },
     );
-    const finished = listen<{ ok: boolean; error?: string }>(
+    const finished = listen<{ ok: boolean; error?: string; result?: { cancelled?: boolean } }>(
       "engine:orphan_reply",
       (event) => {
-        if (event.payload.ok) {
+        if (event.payload.result?.cancelled) {
+          setBusy(false);
+          setProgress(null);
+          setNote(text("model.cancelled"));
+        } else if (event.payload.ok) {
           onReady();
         } else {
           setBusy(false);
@@ -90,7 +94,7 @@ export function Setup({
           </div>
         )}
         <p className="m-0 mt-3 text-center text-sm text-ink-mute">{note}</p>
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex justify-center gap-2">
           <Button
             variant="primary"
             disabled={busy}
@@ -99,6 +103,16 @@ export function Setup({
           >
             {text("setup.prepare")}
           </Button>
+          {/* A download this size must have a way out; the Qt setup screen
+              had one and losing it in the rewrite was a regression. */}
+          {busy && (
+            <Button
+              className="h-[34px] px-4"
+              onClick={() => void invoke("stop_reading")}
+            >
+              {text("model.cancel")}
+            </Button>
+          )}
         </div>
       </div>
     </div>

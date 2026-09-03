@@ -114,3 +114,165 @@ export function NextIcon() {
     </svg>
   );
 }
+
+export function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 3.5 10.5 8 6 12.5" />
+    </svg>
+  );
+}
+
+/** Two pages side by side: the paginated reading mode. */
+export function PagesIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="2" y="3" width="5.2" height="10" rx="1.2" />
+      <rect x="8.8" y="3" width="5.2" height="10" rx="1.2" />
+    </svg>
+  );
+}
+
+/** Lines running off the bottom: the continuous scroll mode. */
+export function ScrollIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 3.5h10M3 6.5h10M3 9.5h10M3 12.5h6" />
+    </svg>
+  );
+}
+
+/** A small "i" in a ring: secondary information on request. */
+export function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="8" cy="8" r="5.8" />
+      <path d="M8 7.2v3.6M8 5.2v.2" />
+    </svg>
+  );
+}
+
+/** Three sliders: the settings the reader may want to open. */
+export function SlidersIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 4.5h6.2M11.8 4.5H13M3 8h1.6M7.2 8H13M3 11.5h8M13.6 11.5H13" />
+      <circle cx="10.6" cy="4.5" r="1.4" />
+      <circle cx="5.8" cy="8" r="1.4" />
+      <circle cx="12.2" cy="11.5" r="1.4" />
+    </svg>
+  );
+}
+
+export function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="8" cy="8" r="3" />
+      <path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1" />
+    </svg>
+  );
+}
+
+export function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8Z" />
+    </svg>
+  );
+}
+
+/** A clipboard with lines: pasted text. */
+export function ClipboardIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="3.5" y="3" width="9" height="11" rx="1.6" />
+      <path d="M6 3V2.4h4V3M6 7.5h4M6 10h2.6" />
+    </svg>
+  );
+}
+
+/** An I-beam over a line of text: reading whatever is selected elsewhere. */
+export function CursorTextIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M2.5 8h4M9.5 8h4" />
+      <path d="M8 2.8v10.4M6.4 2.8h3.2M6.4 13.2h3.2" />
+    </svg>
+  );
+}
+
+/** Two pages with an arrow between: notes moving from one book to another. */
+export function TransferIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="2" y="3" width="4.6" height="10" rx="1.2" />
+      <rect x="9.4" y="3" width="4.6" height="10" rx="1.2" />
+      <path d="M6.6 8h2.8M8.2 6.8 9.4 8l-1.2 1.2" />
+    </svg>
+  );
+}
+
+/** A small note card: a highlight that carries the person's own words. */
+export function NoteIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3 3.5h10v6.2L9.8 13H3V3.5Z" />
+      <path d="M9.8 13V9.7H13M5.5 6.5h5M5.5 9h3" />
+    </svg>
+  );
+}
+
+/** Apple Books' shelf glyph: an open book with a bookmark. */
+export function ShelfIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M2.5 3.5h4.2c.8 0 1.3.5 1.3 1.3v8.4c-.4-.6-.9-.9-1.6-.9H2.5V3.5ZM13.5 3.5H9.3c-.8 0-1.3.5-1.3 1.3v8.4c.4-.6.9-.9 1.6-.9h3.9V3.5Z" />
+      <path d="M11 3.5v4l-1-.8-1 .8v-4" />
+    </svg>
+  );
+}
+
+export function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3.2 8.4 6.5 11.6 12.8 4.6" />
+    </svg>
+  );
+}
+
+export function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="3.2" y="7" width="9.6" height="6.6" rx="1.6" />
+      <path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" />
+    </svg>
+  );
+}
+
+/** An arrow down into a tray: bring the book in. */
+export function ImportIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M8 2.5v7.4M5.2 7.2 8 10l2.8-2.8" />
+      <path d="M2.8 10.4v1.8c0 .7.6 1.3 1.3 1.3h7.8c.7 0 1.3-.6 1.3-1.3v-1.8" />
+    </svg>
+  );
+}
+
+/** Two arrows chasing: bring the highlights over again. */
+export function SyncIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M13 6.8A5.2 5.2 0 0 0 3.6 5.4M3 9.2a5.2 5.2 0 0 0 9.4 1.4" />
+      <path d="M13 2.8v4h-4M3 13.2v-4h4" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M3.5 6 8 10.5 12.5 6" />
+    </svg>
+  );
+}

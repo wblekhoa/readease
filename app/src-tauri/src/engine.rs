@@ -13,11 +13,11 @@
 //! - backpressure for free, no protocol needed. A stop bumps the epoch so
 //! chunks already in flight are dropped instead of played late.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, sync_channel, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -74,6 +74,21 @@ pub fn acquire_selection() -> Result<String, i32> {
 const SAMPLE_RATE: u32 = 48_000;
 /// ~48 frames of ~0.1-0.5s each keeps a few seconds buffered, no more.
 const AUDIO_QUEUE_FRAMES: usize = 48;
+/// How much synthesised audio may sit in the player ahead of the ear.
+///
+/// The engine synthesises far faster than playback, and the player's own
+/// queue is unbounded - so without this the whole book races ahead, the
+/// "backpressure" this module claims never engages, and the highlight (which
+/// the engine emits as it SYNTHESISES) runs minutes ahead of the voice.
+const PLAYER_LOOKAHEAD: usize = 2;
+
+/// What crosses into the audio thread, in the order the engine produced it.
+/// Positions travel the same queue as the audio they belong to, so they are
+/// announced when the ear reaches them, not when the model wrote them.
+enum Frame {
+    Chunk(u64, Vec<f32>),
+    Position(u64, Value),
+}
 
 pub struct EngineClient {
     stdin: Mutex<ChildStdin>,
@@ -81,11 +96,21 @@ pub struct EngineClient {
     next_id: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, Sender<Value>>>>,
     current_read: Arc<Mutex<Option<u64>>>,
-    audio: SyncSender<(u64, Vec<f32>)>,
+    /// Held for the whole of starting a reading, so two fast clicks queue up
+    /// behind each other instead of interleaving their cancel-and-send.
+    start: Mutex<()>,
+    audio: SyncSender<Frame>,
     player: Arc<rodio::Player>,
     epoch: Arc<AtomicU64>,
+    /// Pause is a state, not an event: the audio thread must not un-pause the
+    /// player just because another chunk arrived.
+    paused: Arc<AtomicBool>,
     tray: Arc<Mutex<Option<tauri::tray::TrayIcon>>>,
     voice_started: Arc<std::sync::atomic::AtomicBool>,
+    /// Requests whose reply nobody waits for. Only these may surface as
+    /// `engine:orphan_reply`; a superseded reading's late reply is dropped
+    /// instead of being broadcast at whatever listener happens to be mounted.
+    notified: Arc<Mutex<HashSet<u64>>>,
 }
 
 fn repo_root() -> PathBuf {
@@ -115,12 +140,14 @@ fn engine_command(app: &AppHandle) -> Command {
 
 fn spawn_audio(
     epoch: Arc<AtomicU64>,
-) -> Result<(SyncSender<(u64, Vec<f32>)>, Arc<rodio::Player>), String> {
+    paused: Arc<AtomicBool>,
+    app: tauri::AppHandle,
+) -> Result<(SyncSender<Frame>, Arc<rodio::Player>), String> {
     // The device sink is not Send, so a dedicated thread owns it for life.
     // The Player is all interior mutability, so pause/play/clear are safe
     // to call from command handlers while this thread appends.
     let (ready_tx, ready_rx) = channel();
-    let (chunk_tx, chunk_rx) = sync_channel::<(u64, Vec<f32>)>(AUDIO_QUEUE_FRAMES);
+    let (chunk_tx, chunk_rx) = sync_channel::<Frame>(AUDIO_QUEUE_FRAMES);
     std::thread::spawn(move || {
         let device = match rodio::DeviceSinkBuilder::open_default_sink() {
             Ok(device) => device,
@@ -131,16 +158,40 @@ fn spawn_audio(
         };
         let player = Arc::new(rodio::Player::connect_new(device.mixer()));
         let _ = ready_tx.send(Ok(player.clone()));
-        for (chunk_epoch, samples) in chunk_rx {
-            if chunk_epoch != epoch.load(Ordering::SeqCst) {
-                continue; // a stop outran this frame; play nothing stale
+        for frame in chunk_rx {
+            match frame {
+                Frame::Chunk(chunk_epoch, samples) => {
+                    if chunk_epoch != epoch.load(Ordering::SeqCst) {
+                        continue; // a stop outran this frame; play nothing stale
+                    }
+                    // Keep only a little audio ahead of the ear. This is what
+                    // finally makes the queue fill, the engine's writes block,
+                    // and synthesis walk in step with playback.
+                    while player.len() > PLAYER_LOOKAHEAD
+                        && chunk_epoch == epoch.load(Ordering::SeqCst)
+                    {
+                        std::thread::sleep(std::time::Duration::from_millis(20));
+                    }
+                    if chunk_epoch != epoch.load(Ordering::SeqCst) {
+                        continue;
+                    }
+                    player.append(rodio::buffer::SamplesBuffer::new(
+                        rodio::ChannelCount::new(1).expect("mono"),
+                        rodio::SampleRate::new(SAMPLE_RATE).expect("48kHz"),
+                        samples,
+                    ));
+                    // Only the person may un-pause. Appending must not.
+                    if !paused.load(Ordering::SeqCst) {
+                        player.play();
+                    }
+                }
+                Frame::Position(frame_epoch, message) => {
+                    if frame_epoch != epoch.load(Ordering::SeqCst) {
+                        continue;
+                    }
+                    let _ = app.emit("reading:position", &message);
+                }
             }
-            player.append(rodio::buffer::SamplesBuffer::new(
-                rodio::ChannelCount::new(1).expect("mono"),
-                rodio::SampleRate::new(SAMPLE_RATE).expect("48kHz"),
-                samples,
-            ));
-            player.play();
         }
     });
     let player = ready_rx
@@ -165,7 +216,9 @@ impl EngineClient {
         let stdout = child.stdout.take().ok_or("engine stdout unavailable")?;
 
         let epoch = Arc::new(AtomicU64::new(0));
-        let (audio, player) = spawn_audio(epoch.clone())?;
+        let paused = Arc::new(AtomicBool::new(false));
+        let (audio, player) =
+            spawn_audio(epoch.clone(), paused.clone(), app.clone())?;
 
         let client = Arc::new(Self {
             stdin: Mutex::new(stdin),
@@ -176,6 +229,9 @@ impl EngineClient {
             audio,
             player,
             epoch,
+            paused,
+            start: Mutex::new(()),
+            notified: Arc::new(Mutex::new(HashSet::new())),
             tray,
             voice_started: Arc::new(std::sync::atomic::AtomicBool::new(true)),
         });
@@ -186,6 +242,7 @@ impl EngineClient {
         let epoch_for_reader = client.epoch.clone();
         let client_for_reader = client.clone();
         let voice_started = client.voice_started.clone();
+        let notified_for_reader = client.notified.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
@@ -203,6 +260,13 @@ impl EngineClient {
                             .chunks_exact(4)
                             .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                             .collect::<Vec<f32>>();
+                        // Whose reading is this? An event from a superseded
+                        // reading must die here - before it clears the warming
+                        // notice or reaches the speakers.
+                        let read_id = message.get("id").and_then(Value::as_u64);
+                        if read_id != *current_read.lock().unwrap() {
+                            continue;
+                        }
                         let stamped = epoch_for_reader.load(Ordering::SeqCst);
                         if !voice_started.swap(true, Ordering::SeqCst) {
                             // First audio of this reading: the model finished
@@ -211,10 +275,21 @@ impl EngineClient {
                         }
                         // Blocks when the queue is full - that IS the flow
                         // control described in the module docs.
-                        let _ = audio.send((stamped, samples));
+                        let _ = audio.send(Frame::Chunk(stamped, samples));
                     }
                     Some("position") => {
-                        let _ = app.emit("reading:position", &message);
+                        if message.get("id").and_then(Value::as_u64)
+                            != *current_read.lock().unwrap()
+                        {
+                            continue;
+                        }
+                        // Down the audio queue, not straight to the webview:
+                        // the highlight belongs to the ear, and the engine is
+                        // minutes ahead of it.
+                        let _ = audio.send(Frame::Position(
+                            epoch_for_reader.load(Ordering::SeqCst),
+                            message,
+                        ));
                     }
                     Some(name) => {
                         // Progress and any future event reach the webview
@@ -239,9 +314,14 @@ impl EngineClient {
                             } else {
                                 drop(reading);
                                 // A fire-without-waiting request (model
-                                // download) finishes here; the webview is
-                                // the only party still interested.
-                                let _ = app.emit("engine:orphan_reply", &message);
+                                // download) finishes here; the webview is the
+                                // only party still interested. A SUPERSEDED
+                                // reading also lands here, and must not be
+                                // broadcast - it would look like a download
+                                // finishing to whatever listener is mounted.
+                                if notified_for_reader.lock().unwrap().remove(&id) {
+                                    let _ = app.emit("engine:orphan_reply", &message);
+                                }
                             }
                         }
                     }
@@ -269,10 +349,33 @@ impl EngineClient {
             .map_err(|_| format!("engine timeout on {method}"))
     }
 
-    /// A streaming request: chunks flow as events, completion is emitted.
+    /// Start a reading, cancelling whatever was being read.
+    ///
+    /// One reading at a time is the whole contract. Without the cancel, the
+    /// engine DEFERS the new request (it queues non-stop requests while it
+    /// streams) and finishes the old text first - so an impatient second
+    /// click used to buy a second full reading rather than a new one.
+    ///
+    /// The order matters and was got wrong once: current_read moves FIRST so
+    /// the reader thread starts rejecting the old reading's events; only then
+    /// is the epoch bumped to kill frames already past that filter.
     pub fn fire(&self, method: &str, params: Value) -> Result<(), String> {
+        let _serialised = self.start.lock().unwrap();
+        let was_reading = self.is_reading();
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         *self.current_read.lock().unwrap() = Some(id);
+        self.epoch.fetch_add(1, Ordering::SeqCst);
+        self.player.clear();
+        // `clear()` leaves the player paused (rodio does that deliberately),
+        // and a person who pressed pause stays paused until they say so.
+        self.paused.store(false, Ordering::SeqCst);
+        self.player.play();
+        if was_reading {
+            // Tell the engine to abandon the old reading. It answers this
+            // between utterances, so the reply is prompt, and the request we
+            // send next is the one it picks up.
+            let _ = self.request("stop", json!({}));
+        }
         // The menu bar indicator lives for the whole reading - including
         // paused, which the Qt shell got wrong and left no way out.
         self.show_tray(true);
@@ -286,6 +389,7 @@ impl EngineClient {
     /// sane timeout, like a 625MB model download.
     pub fn notify(&self, method: &str, params: Value) -> Result<(), String> {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        self.notified.lock().unwrap().insert(id);
         self.send(id, method, params)
     }
 
@@ -300,12 +404,22 @@ impl EngineClient {
     }
 
     pub fn stop(&self) -> Result<(), String> {
+        // Same lock as `fire`, and for the same reason: both rewrite
+        // current_read, the epoch and the player. Without it, "stop this and
+        // read from here" - one gesture, two commands, two Tauri threads -
+        // could interleave so that stop wiped the id of the reading that had
+        // just begun. Its reply then matched nobody, no `reading:done` was
+        // ever emitted, and the shell sat on "đang đọc" in silence with no
+        // way out. Found by independent review, 2026-09-02.
+        let _serialised = self.start.lock().unwrap();
         let began = Instant::now();
         // Silence first, protocol second: the ear judges stop latency by the
         // player, not by the engine's bookkeeping.
         self.epoch.fetch_add(1, Ordering::SeqCst);
-        self.player.clear();
         *self.current_read.lock().unwrap() = None;
+        self.player.clear();
+        // Stopping releases the pause too: the next reading starts audible.
+        self.paused.store(false, Ordering::SeqCst);
         self.show_tray(false);
         let reply = self.request("stop", json!({}));
         eprintln!("[stop] audio+engine in {:?}", began.elapsed());
@@ -313,10 +427,12 @@ impl EngineClient {
     }
 
     pub fn pause(&self) {
+        self.paused.store(true, Ordering::SeqCst);
         self.player.pause();
     }
 
     pub fn resume(&self) {
+        self.paused.store(false, Ordering::SeqCst);
         self.player.play();
     }
 

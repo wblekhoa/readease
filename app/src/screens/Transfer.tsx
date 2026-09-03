@@ -136,7 +136,7 @@ export function Transfer() {
   const ready = source && target && source !== target;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section className="shell-inset flex min-h-0 flex-1 flex-col">
       <SectionTitle>{text("transfer.title")}</SectionTitle>
       <p className="m-0 mt-0.5 text-sm text-ink-mute">
         {text("transfer.description")}

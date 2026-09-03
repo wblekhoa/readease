@@ -12,11 +12,14 @@
  * token bridge, which follows [data-theme]. Gap recorded in
  * docs/tauri-migration-plan.md - upstream candidate: a dark-capable variant.
  */
-import { useRef, type KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent, type ReactNode } from "react";
 
 export interface AppTab {
   value: string;
   label: string;
+  /** A glyph before the label - the owner asked for the rail to read at a
+   * glance (02/09). 16px, currentColor, from ui/icons. */
+  icon?: ReactNode;
 }
 
 export function AppTabs({
@@ -33,9 +36,11 @@ export function AppTabs({
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // `value` may belong to a screen outside the rail (a secondary tool):
+    // then the arrows enter the rail from its first item.
     const index = items.findIndex((item) => item.value === value);
     let next = index;
-    if (event.key === "ArrowRight") next = Math.min(index + 1, items.length - 1);
+    if (event.key === "ArrowRight") next = index < 0 ? 0 : Math.min(index + 1, items.length - 1);
     else if (event.key === "ArrowLeft") next = Math.max(index - 1, 0);
     else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = items.length - 1;
@@ -62,15 +67,16 @@ export function AppTabs({
             }}
             type="button"
             aria-pressed={active}
-            tabIndex={active ? 0 : -1}
+            tabIndex={active || (index === 0 && !items.some((item) => item.value === value)) ? 0 : -1}
             onClick={() => onChange(item.value)}
             className={
-              "h-8 whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition-colors " +
+              "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition-colors " +
               (active
                 ? "border-edge-strong bg-paper text-ink shadow-raised"
                 : "border-transparent text-ink-mute hover:bg-wash hover:text-ink")
             }
           >
+            {item.icon}
             {item.label}
           </button>
         );
