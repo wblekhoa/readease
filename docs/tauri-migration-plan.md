@@ -666,4 +666,19 @@ inset khoi tao 72/0, khong thay 76 do duoc -> phai viet thanh utility de calc gi
 SettingsPanel tach header dung yen / than cuon.
 Chu: lop noi co tieu de len bac sheet 24 (SettingsPanel + NotesPanel, khop voi 2 sheet san co); menu gom
 cac hang giu 16 de hang 12 con dong tam voi khung 16 + dem 4.
+Chu (03/09, giao not hai chinh da dat truoc do): thanh tien do xuong DUOI CUNG the sach + mau
+--fill-progress-primary cua DS (vai `progress`, khong phai brand do); tag Apple Books o goc duoi-trai bia
+cho sach con cap noi, du lieu tu co moi from_apple_books trong library.list (nguon: apple_book_links, co
+test ca am - da chung minh test do khi hardcode True). Hai dau goc bia nay gio neo theo BIA: truoc do
+accessory dung cho chi vi tinh co. Bai hoc CSS: ai-memory/lessons/css-value-resolves-at-the-wrong-scope.md
+CHUA dong goi (luat 03/09) -> tag can cai lai moi thay du lieu that.
+Chu dua asset dung: tag la ICON APP Apple Books (khong phai logo Apple) -> AppleBooksIcon, 20px, khong
+chip giay, id gradient tu useId (hai the tren mot ke = hai svg cung tai lieu, id cung se trung). Ghi chu
+thuong hieu ve logo Apple khong con ap dung.
+Chu (04/09): chip cai dat sang o PHAI footer; nut "Doc tiep" bo phu de, thay bang tooltip hover hien doan
+se doc tiep va BAM VAO DO thi nhay toi (khong doc). PageInfo them resumeSegmentId/resumeExcerpt; Reader
+them prop reveal={segmentId,at} (dau `at` de hoi cung mot cho hai lan van chay; effect dat SAU showSegment
+vi mang phu thuoc duoc danh gia luc render). Tooltip mo bang state chu khong group-hover: no bam duoc nen
+phai song sot khi con tro di vao, va phai kiem duoc. Da kiem: nhay sang chuong khac roi bam -> ve dung
+doan nghi, 0 lenh doc.
 

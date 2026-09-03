@@ -320,9 +320,30 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   thứ người đọc nhớ, chữ tiêu đề là thứ phải đọc. Danh sách `ListRow` chỉ còn cho mục lục và lịch sử.
 - **Anatomy**: `BookCover` tỉ lệ in 2:3, góc `rounded-lg` (bìa là ảnh của một vật, không phải control),
   `shadow-raised`; hover: nhấc lên 2px + `shadow-lifted` (`--shadow-neutral-to-bot-3`, bậc kế tiếp
-  của chính DS — cùng chất liệu tiến lại gần, không phải bóng mới); **không nhấc/translate** (chủ bỏ 02/09: kệ không cựa quậy). Dưới bìa: **thanh tiến độ** brand
-  (chỉ sách đang đọc) → tiêu đề 14 semibold tối đa 2 dòng → một dòng dữ kiện 12 mute. Accessory
-  (thùng rác) nổi ở góc bìa, lộ khi hover/focus — đúng hợp đồng `ListRow` chuyển lên thẻ.
+  của chính DS — cùng chất liệu tiến lại gần, không phải bóng mới); **không nhấc/translate** (chủ bỏ 02/09: kệ không cựa quậy). Thứ tự dọc (chủ đổi 03/09): bìa → tiêu đề
+  14 semibold tối đa 2 dòng → một dòng dữ kiện 12 mute → **thanh tiến độ ở DƯỚI CÙNG**, `mt-auto` nên nó
+  bám đáy thẻ kể cả khi thẻ bên cạnh cao hơn (xảy ra ngay khi một tiêu đề xuống hai dòng). Cả hàng vì thế
+  cho **một đường tiến độ thẳng**, thay vì mỗi bìa bị một vạch chen giữa nó và tiêu đề của chính nó.
+  Màu: **`--color-progress` = `--fill-progress-primary`** (ramp xanh) — DS có hẳn vai `progress` cho đúng
+  việc này; brand đỏ là *bản sắc* của app, không phải *trạng thái*, và nó làm mọi cuốn đang đọc gào lên.
+- **Hai dấu ở góc bìa, và cả hai neo theo BÌA chứ không theo thẻ**: accessory (thùng rác) góc trên-phải,
+  lộ khi hover/focus; **tag nguồn** (`tag`) góc dưới-trái, **hiện thường trực** — nó là một *dữ kiện* về
+  cuốn sách, mà dữ kiện chỉ xuất hiện dưới con trỏ thì không ai tìm ra. Tag hiện tại: **icon app Apple Books** 20px
+  (`AppleBooksIcon`) cho sách **còn cặp nối** (`from_apple_books` mới trong `library.list`, lấy từ
+  `apple_book_links`, có test cả ca âm — đã chứng minh test đỏ khi hardcode `True`).
+  **Icon APP, không phải logo Apple** (chủ đưa asset 03/09): nó gọi tên *sản phẩm* chứ không phải *công
+  ty*, và vì có màu nên đọc được ở 20px — bản logo quả táo đơn sắc thử trước đó ở 12px chỉ còn là một
+  vết mờ. Đây là icon DUY NHẤT trong `icons.tsx` không theo lưới 16px/`currentColor`: một nhãn sản phẩm
+  là *ảnh của một vật*, nên giữ nguyên hình học và màu của nó, y như bìa sách.
+  **Không có chip giấy phía sau**: bản thân nhãn đã là một khối màu đặc có cạnh, thêm đĩa trắng là badge
+  bọc badge; `shadow-raised` của chính nó lo việc tách khỏi bìa tối.
+  Id gradient lấy từ `useId()` — hai cuốn trên một kệ là hai bản svg trong cùng một tài liệu, id viết
+  cứng sẽ trùng và cả hai cùng trỏ về cái xuất hiện trước (đo: `_r_0_-books` / `_r_1_-books`).
+  Tag mang `pointer-events-none` để không bao giờ ăn cắp cú bấm mở sách — nên nó **không thể** mang
+  tooltip; nghĩa của nó đi vào cây trợ năng bằng một nhãn `sr-only`, chứ không dùng `title` của hệ điều
+  hành (thứ đã bị bỏ ở §3.4).
+  Tag KHÔNG đi kiểm phía Apple mỗi lần mở kệ — việc đó phải sao chép DB của Books, quá đắt cho một nhãn;
+  nó báo **cặp nối còn sống**, và việc đối chiếu thật vẫn thuộc sheet Apple Books (§3.12).
   `BookGrid`: `auto-fill` cột tối thiểu 8.5rem, khoảng cách rộng (32/40px) vì bìa là khối đặc, đứng
   xa nhau mới thở (chủ yêu cầu 02/09).
 - **Behavior**: cả bìa là một nút (aria-label "Mở {tiêu đề}"); xác nhận xoá thay chỗ khối chữ
@@ -514,6 +535,26 @@ ghi annotation về sau đều phải tuân. Giao thức `annotations.delete {bo
 ghi chú trong khi nghe. Nút thùng rác **im lặng cho tới khi rê chuột vào hàng** (vẫn tới được bằng bàn
 phím) và **hỏi lại ngay trong hàng** — cùng mẫu với xoá sách khỏi thư viện, câu hỏi nói thẳng hậu quả:
 "Xoá hẳn, đồng bộ lại cũng không quay về?".
+
+**Nút "Đọc tiếp" chỉ nói nó LÀM gì; thứ nó sẽ đọc nằm ở tooltip** (chủ, 04/09). Trước đó tên chương bị
+nhét vào nhãn nút rồi cắt cụt thành vô nghĩa. Nay hover (hoặc tab tới) hiện một tooltip: tên chương, **ba
+dòng đầu của chính đoạn sẽ được đọc** (`PageInfo.resumeExcerpt`), và **bấm vào đoạn đó là nhảy tới chỗ
+ấy — không đọc**. Cùng luật với mục lục và bảng ghi chú: duyệt thì không được đọc vào mặt người ta.
+
+- **Mở bằng state, không phải `group-hover`**: tooltip này **với tới được** (chữ trong nó là một liên
+  kết), nên nó phải sống sót khi con trỏ đi từ nút vào trong nó — và phải **kiểm được**. `pb-2` ở lớp bọc
+  là cây cầu giữ cho cây con liền mạch, nếu không `onMouseLeave` sẽ bắn ngay lúc con trỏ rời khỏi nút.
+  (`group-hover` của CSS không kiểm được bằng sự kiện tổng hợp, mà một nút bấm không kiểm được thì không
+  được ship.)
+- **Đường "đưa tôi tới đó" đi qua prop `reveal={{segmentId, at}}`** của Reader. Dấu `at` là thứ khiến hỏi
+  **cùng một chỗ hai lần** vẫn chạy — chỉ mỗi id thì effect thấy không đổi và im lặng bỏ qua.
+  `useEffect` đặt **sau** `showSegment`: mảng phụ thuộc được đánh giá lúc render, viết ở trên thì đọc vào
+  vùng chết tạm thời và ném lỗi trước khi vẽ.
+- Kiểm: nhảy sang chương khác → bấm nội dung trong tooltip → **về đúng đoạn nghỉ, không lệnh đọc nào**.
+
+**Chip cài đặt nằm ở ô PHẢI của footer** (chủ, 04/09): ô giữa là *một cú bấm thì làm gì*, còn chip là một
+**dữ kiện thường trực** về lượt đọc kèm lối vào — nó thuộc về bên cạnh trạng thái, không thuộc nhóm hành
+động. Panel của nó vẫn mở ở giữa trên thanh.
 
 **Tooltip ⓘ ghim theo LỀ CỬA SỔ, không theo icon** (chủ, 03/09: nó tràn mép). Icon ⓘ trôi theo độ dài tên
 sách, nên neo trái thì cửa sổ hẹp tràn phải, neo phải thì cửa sổ rộng tràn trái — không lựa chọn tĩnh nào
