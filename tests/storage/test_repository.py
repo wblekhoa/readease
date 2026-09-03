@@ -10,7 +10,11 @@ from unittest.mock import patch
 from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.models import stable_id
 from vieneu_reader.storage.errors import RepositoryError
-from vieneu_reader.storage.repository import LibraryRepository, Progress
+from vieneu_reader.storage.repository import (
+    LibraryRepository,
+    Progress,
+    SCHEMA_VERSION,
+)
 
 from tests.domain.book_fixture import sample_book
 
@@ -47,7 +51,10 @@ class LibraryRepositoryTests(unittest.TestCase):
                     "INSERT INTO app_meta(key, value) VALUES('schema_version', '999')"
                 )
 
-        with self.assertRaisesRegex(RuntimeError, "schema"):
+        # Kho từ bản mới hơn nay có câu riêng (xem
+        # UpgradingOverAnOlderInstallTests). Điều test này canh không đổi:
+        # từ chối TRƯỚC khi tạo bất kỳ bảng nào của bản hiện tại.
+        with self.assertRaisesRegex(RuntimeError, "mới hơn"):
             LibraryRepository(database)
 
         with closing(sqlite3.connect(database)) as connection:
@@ -448,3 +455,109 @@ class SegmentStructureStorageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UpgradingOverAnOlderInstallTests(unittest.TestCase):
+    """Dragging a new build over the old one is how this app updates now.
+
+    The store it finds is the person's whole library, and it usually predates
+    the code. These are the four things that decide whether that is an
+    upgrade or a bad afternoon.
+    """
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.database = Path(self.temp_dir.name) / "library.sqlite3"
+
+    def _v1_store_with_a_book(self) -> str:
+        """A real store, written by today's build, then stamped older."""
+        with closing(LibraryRepository(self.database)) as repository:
+            book = sample_book()
+            repository.add_book(book, self.database.parent / "b.epub")
+            return book.id
+
+    def _stamp(self, version: int) -> None:
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute(
+                "UPDATE app_meta SET value = ? WHERE key = 'schema_version'",
+                (str(version),),
+            )
+            connection.commit()
+
+    def test_an_older_library_is_carried_forward_with_its_books_intact(self):
+        book_id = self._v1_store_with_a_book()
+        self._stamp(1)
+        ran: list[int] = []
+
+        def to_v2(connection):
+            ran.append(2)
+            connection.execute("CREATE TABLE upgraded_marker (id INTEGER)")
+
+        with patch("vieneu_reader.storage.repository.SCHEMA_VERSION", 2), \
+             patch.dict("vieneu_reader.storage.repository._MIGRATIONS", {2: to_v2}):
+            with closing(LibraryRepository(self.database)) as repository:
+                self.assertEqual(ran, [2])
+                # The point of the whole exercise: the library survived.
+                self.assertIsNotNone(repository.get_book(book_id))
+                self.assertEqual(repository.schema_version(), 2)
+
+    def test_a_gap_of_two_versions_runs_both_steps_in_order(self):
+        self._v1_store_with_a_book()
+        self._stamp(1)
+        ran: list[int] = []
+        steps = {
+            2: lambda connection: ran.append(2),
+            3: lambda connection: ran.append(3),
+        }
+        with patch("vieneu_reader.storage.repository.SCHEMA_VERSION", 3), \
+             patch.dict("vieneu_reader.storage.repository._MIGRATIONS", steps):
+            with closing(LibraryRepository(self.database)) as repository:
+                self.assertEqual(ran, [2, 3], "one step at a time, never a leap")
+                self.assertEqual(repository.schema_version(), 3)
+
+    def test_a_library_from_a_newer_build_is_refused_by_name_not_migrated(self):
+        # The person has a newer ReadEase somewhere. Touching their store from
+        # here could only damage it, and "unsupported" would send them hunting
+        # for a corrupt file instead of the newer app.
+        self._v1_store_with_a_book()
+        self._stamp(SCHEMA_VERSION + 5)
+        # RuntimeError, not RepositoryError: the same path the older
+        # "Unsupported ReadEase database schema" check already takes out of
+        # this constructor. Changing that type is a wider job than this one.
+        with self.assertRaises(RuntimeError) as caught:
+            LibraryRepository(self.database)
+        self.assertIn("mới hơn", str(caught.exception))
+
+    def test_a_failed_step_leaves_the_library_exactly_as_it_was(self):
+        book_id = self._v1_store_with_a_book()
+        self._stamp(1)
+
+        def explodes(connection):
+            connection.execute("CREATE TABLE half (id INTEGER)")
+            raise sqlite3.OperationalError("nửa chừng thì hỏng")
+
+        with patch("vieneu_reader.storage.repository.SCHEMA_VERSION", 2), \
+             patch.dict("vieneu_reader.storage.repository._MIGRATIONS", {2: explodes}):
+            with self.assertRaises(RuntimeError):
+                LibraryRepository(self.database)
+
+        # Still openable by the build the person already has, still at v1,
+        # and without the table the half-run step created. Half a migration
+        # is worse than none.
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.row_factory = sqlite3.Row
+            version = connection.execute(
+                "SELECT value FROM app_meta WHERE key = 'schema_version'"
+            ).fetchone()["value"]
+            tables = {
+                row["name"]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+        self.assertEqual(int(version), 1)
+        self.assertNotIn("half", tables)
+        with closing(LibraryRepository(self.database)) as repository:
+            self.assertIsNotNone(repository.get_book(book_id))
+

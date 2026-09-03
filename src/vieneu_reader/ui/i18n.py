@@ -547,6 +547,28 @@ _RUNTIME_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^(.+) chứa khai báo XML không an toàn\.$"), r"\1 contains unsafe XML declarations."),
     (re.compile(r"^(.+) không phải XML hợp lệ\.$"), r"\1 is not valid XML."),
     (re.compile(r"^EPUB thiếu thành phần bắt buộc: (.+)\.$"), r"The EPUB is missing a required component: \1."),
+    # Cài đè bản mới lên bản cũ: ba câu nói về việc nâng cấp dữ liệu, đều có
+    # số phiên bản nội suy nên phải khớp bằng mẫu chứ không tra bảng.
+    (
+        re.compile(
+            r"^Thư viện này được tạo bởi bản ReadEase mới hơn "
+            r"\(dữ liệu v(\d+), bản này đọc tới v(\d+)\)\. Hãy cài lại bản mới nhất\.$"
+        ),
+        r"This library was written by a newer ReadEase "
+        r"(data v\1, this build reads up to v\2). Please install the latest version.",
+    ),
+    (
+        re.compile(r"^Không có bước nâng cấp dữ liệu lên v(\d+)\.$"),
+        r"No upgrade step to data v\1.",
+    ),
+    (
+        re.compile(
+            r"^Nâng cấp dữ liệu từ v(\d+) lên v(\d+) không xong; "
+            r"thư viện được giữ nguyên như cũ\.$"
+        ),
+        r"Upgrading data from v\1 to v\2 did not finish; "
+        r"the library was left exactly as it was.",
+    ),
     (re.compile(r"^(.+) - Nam Bộ$"), r"\1 - Southern Vietnamese"),
     (re.compile(r"^(.+) - Bắc Bộ$"), r"\1 - Northern Vietnamese"),
 )

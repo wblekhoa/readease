@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import sqlite3
 from threading import RLock
-from typing import Sequence, Any
+from typing import Any, Callable, Sequence
 
 from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
 from vieneu_reader.domain.prosody import ends_sentence
@@ -17,6 +17,19 @@ from .errors import RepositoryCorruptionError, RepositoryError
 
 
 SCHEMA_VERSION = 1
+
+# One step per version: key `n` takes a store at version n-1 to version n,
+# and they run in order.
+#
+# Empty on purpose, and that is not the same as absent. Everything added so
+# far - annotations, annotations_forgotten, apple_books_links - was ADDITIVE,
+# created by `CREATE TABLE IF NOT EXISTS` in `_create_schema`, which an older
+# build simply ignores; none of it needed a version bump. What was missing is
+# what happens the FIRST time a change is not additive, and the answer used
+# to be: every library already on disk becomes "Unsupported". Now the runner
+# is here and tested, so the bump that finally needs it is a one-line entry
+# rather than a migration written under pressure.
+_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {}
 
 
 @contextmanager
@@ -288,8 +301,66 @@ class LibraryRepository:
             raise
         except (KeyError, TypeError, ValueError, sqlite3.Error) as error:
             raise RuntimeError("Unsupported ReadEase database schema") from error
-        if version != SCHEMA_VERSION:
-            raise RuntimeError("Unsupported ReadEase database schema")
+        if version > SCHEMA_VERSION:
+            # Written by a NEWER ReadEase. Never migrate downwards and never
+            # open it read-write: this build does not know what the newer one
+            # put in there, and guessing would damage the person's library on
+            # the machine where their newest app also lives. Its own message,
+            # because "unsupported" sends someone looking for a corrupt file
+            # when what they need is the newer app.
+            raise RuntimeError(
+                "Thư viện này được tạo bởi bản ReadEase mới hơn "
+                f"(dữ liệu v{version}, bản này đọc tới v{SCHEMA_VERSION}). "
+                "Hãy cài lại bản mới nhất."
+            )
+        if version < SCHEMA_VERSION:
+            self._migrate(version)
+
+    def _migrate(self, version: int) -> None:
+        """Carry a store forward, one version at a time, or not at all.
+
+        Installing a new build over an old one is the ordinary way this app
+        is updated now, so the store in front of it is usually older than the
+        code. It is walked up step by step - a jump from 1 to 3 runs 2 then
+        3, never a single leap - because each step was only ever written
+        against the shape the one before it left.
+
+        The whole walk is ONE transaction. A step that throws leaves the
+        store exactly as it was, at its old version, openable by the build
+        the person still has. Half a migration is worse than none: it is a
+        library that no version of the app understands.
+        """
+
+        for step in range(version + 1, SCHEMA_VERSION + 1):
+            migration = _MIGRATIONS.get(step)
+            if migration is None:
+                raise RuntimeError(
+                    f"Không có bước nâng cấp dữ liệu lên v{step}."
+                )
+        # BEGIN by hand, and this is the whole reason the rollback works.
+        # Python's sqlite3 opens a transaction for INSERT/UPDATE/DELETE and
+        # NOT for DDL, so `with connection:` leaves a `CREATE TABLE` running
+        # in autocommit - a step that failed halfway left its new table
+        # behind at the old version number. SQLite itself rolls DDL back
+        # perfectly well once there is a transaction to roll back.
+        try:
+            self._connection.execute("BEGIN")
+            for step in range(version + 1, SCHEMA_VERSION + 1):
+                _MIGRATIONS[step](self._connection)
+            self._connection.execute(
+                "UPDATE app_meta SET value = ? WHERE key = 'schema_version'",
+                (str(SCHEMA_VERSION),),
+            )
+            self._connection.commit()
+        except Exception as error:
+            try:
+                self._connection.rollback()
+            except sqlite3.Error:
+                pass
+            raise RuntimeError(
+                f"Nâng cấp dữ liệu từ v{version} lên v{SCHEMA_VERSION} không xong; "
+                "thư viện được giữ nguyên như cũ."
+            ) from error
 
     def _configure(self) -> None:
         self._connection.execute("PRAGMA foreign_keys = ON")
