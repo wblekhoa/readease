@@ -386,12 +386,16 @@ export function Switch({
   );
 }
 
-/** Brand progress, 0..1. */
+/** How far something got, 0..1.
+ *
+ * Blue, from the DS's own `progress` role - not brand red, which is this
+ * app's identity rather than a status, and made every started book shout
+ * (owner, 03/09). */
 export function ProgressBar({ value }: { value: number }) {
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-band">
       <div
-        className="h-full rounded-full bg-brand-600 transition-[width]"
+        className="h-full rounded-full bg-progress transition-[width]"
         style={{ width: `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%` }}
       />
     </div>

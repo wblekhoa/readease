@@ -45,6 +45,11 @@ export type PageInfo = {
   /** The chapter a "read" would resume in - null when the book is untouched
    * and reading would start from the beginning. */
   resumeChapterTitle: string | null;
+  /** The segment a "read on" would start at, and its opening words - so the
+   * footer can SHOW what is about to be read instead of naming the chapter,
+   * and can offer to go there without reading it (owner, 04/09). */
+  resumeSegmentId: string | null;
+  resumeExcerpt: string | null;
 };
 
 type BookSegment = { id: string; text: string; kind: string };
@@ -178,6 +183,7 @@ export function Reader({
   showNotes,
   notesFocus,
   onNotes,
+  reveal,
   size,
   onSegments,
   onReadFrom,
@@ -199,6 +205,10 @@ export function Reader({
   notesFocus: string | null;
   /** Open (with an optional annotation to focus) or close the notes panel. */
   onNotes: (open: boolean, focusId?: string | null) => void;
+  /** Bring a place into view without speaking it. The `at` stamp is what
+   * makes asking twice for the SAME place work - a plain id would look
+   * unchanged to an effect and do nothing the second time. */
+  reveal: { segmentId: string; at: number } | null;
   size: number;
   onSegments: (ids: string[]) => void;
   onReadFrom: (segmentId: string) => void;
@@ -352,6 +362,14 @@ export function Reader({
     }
   }, [paged, chapterOf, jumpTo]);
 
+  /* Placed AFTER showSegment on purpose: a dependency array is evaluated
+     during render, so an effect written above the `const` would read it in
+     the temporal dead zone and throw before the first paint. */
+  useEffect(() => {
+    if (!reveal) return;
+    showSegment(reveal.segmentId, "contents");
+  }, [reveal, showSegment]);
+
   // The voice moved. Follow it only while the reader is still watching the
   // spoken line; if they have turned or scrolled away, leave them be.
   useEffect(() => {
@@ -395,6 +413,9 @@ export function Reader({
     const first = paged ? shown[0] : chapter?.segments[0]?.id;
     const percent = flat.length && first ? Math.round((Math.max(0, flat.indexOf(first)) / flat.length) * 100) : 0;
     const resume = marker ? opened.book.chapters[chapterOf(marker)] : null;
+    const resumeSegment = marker
+      ? resume?.segments.find((segment) => segment.id === marker) ?? null
+      : null;
     onPageInfo({
       page: paged ? pageIndex?.page : undefined,
       pages: paged ? pageIndex?.pages : undefined,
@@ -403,6 +424,8 @@ export function Reader({
       annotations: opened.annotations?.length ?? 0,
       notes: noteCount(opened.annotations ?? []),
       resumeChapterTitle: resume?.title ?? null,
+      resumeSegmentId: marker,
+      resumeExcerpt: resumeSegment?.text ?? null,
     });
   }, [opened, paged, chapterIndex, seenChapter, shown, pageIndex, flat, marker, chapterOf, onPageInfo]);
   useEffect(() => () => onPageInfo(null), [onPageInfo]);

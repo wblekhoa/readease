@@ -239,6 +239,7 @@ export function BookCard({
   onOpen,
   openLabel,
   accessory,
+  tag,
   caption,
 }: {
   cover: ReactNode;
@@ -249,28 +250,52 @@ export function BookCard({
   onOpen: () => void;
   openLabel: string;
   accessory?: ReactNode;
+  /** Where the book came from, if that is worth saying - a small mark on the
+   * cover's corner. Unlike `accessory` it is not an action and does not wait
+   * for a hover: it is a fact about the book, and a fact that only appears
+   * under the cursor is a fact nobody finds. */
+  tag?: ReactNode;
   caption?: ReactNode;
 }) {
   return (
     <div className="group relative flex min-w-0 flex-col gap-3">
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={openLabel}
-        className="block w-full rounded-lg text-left"
-      >
-        {cover}
-      </button>
-      {accessory && (
-        <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-          {accessory}
-        </div>
-      )}
-      {progress !== null && <ProgressBar value={progress} />}
+      {/* Both corner marks hang off the COVER, not off the card. The card is
+          cover plus title plus bar, so a card-relative `bottom` lands the tag
+          next to the progress bar instead of on the picture - measured, not
+          guessed (03/09). The accessory was card-relative too and only looked
+          right because the cover happens to be at the top. */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={openLabel}
+          className="block w-full rounded-lg text-left"
+        >
+          {cover}
+        </button>
+        {accessory && (
+          <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            {accessory}
+          </div>
+        )}
+        {/* Bottom-left, because top-right is where the remove button appears
+            on hover and a fact must not sit where an action is about to. */}
+        {tag && <div className="pointer-events-none absolute bottom-1.5 left-1.5">{tag}</div>}
+      </div>
       {caption ?? (
         <div className="min-w-0">
           <div className="line-clamp-2 text-sm font-semibold leading-snug">{title}</div>
           {meta && <div className="mt-1.5 truncate text-xs text-ink-mute">{meta}</div>}
+        </div>
+      )}
+      {/* Last, not under the cover: the bar is the card's footing, so a row
+          of shelves shows one straight line of progress across it instead of
+          a stripe interrupting each cover from its own title (owner,
+          03/09). `mt-auto` pins it to the bottom when a neighbouring card is
+          taller, which happens as soon as one title wraps to two lines. */}
+      {progress !== null && (
+        <div className="mt-auto">
+          <ProgressBar value={progress} />
         </div>
       )}
     </div>

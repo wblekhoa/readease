@@ -172,6 +172,10 @@ export default function App() {
   /* The notes panel and which note it should land on, when it was opened by
    * pressing a note's own icon in the text. */
   const [notes, setNotes] = useState<{ open: boolean; focus: string | null }>({ open: false, focus: null });
+  /** "Take me to where reading would resume" - the stamp lets the same place
+   * be asked for twice. */
+  const [reveal, setReveal] = useState<{ segmentId: string; at: number } | null>(null);
+  const [resumeTip, setResumeTip] = useState(false);
   const [readingSize, setReadingSize] = useState(storedReadingSize);
   const [readingMode, setReadingMode] = useState<ReadingMode>(storedReadingMode);
   const toggleReadingMode = useCallback(() => {
@@ -744,6 +748,7 @@ export default function App() {
               mode={readingMode}
               showToc={showToc}
               onHideToc={() => setShowToc(false)}
+              reveal={reveal}
               showNotes={notes.open}
               notesFocus={notes.focus}
               onNotes={(open, focus = null) => {
@@ -871,49 +876,69 @@ export default function App() {
                   </Button>
                 )}
                 {canStart && (
-                  <Button
-                    variant={selection ? "secondary" : "primary"}
-                   
-                    disabled={startDisabled}
-                    onClick={() => {
-                      if (screen === "reader") void readBookFrom(null);
-                      else void startReading();
-                    }}
+                  /* The button says only what it DOES; what it would read is
+                     shown on hover instead of crammed into the label, where a
+                     chapter title was truncated to nothing useful anyway
+                     (owner, 04/09).
+
+                     Open state, not `group-hover`: this tooltip is REACHABLE
+                     - its text is a link to the place - so it has to survive
+                     the pointer travelling into it, and it has to be
+                     verifiable. The `pb-2` on its wrapper is the bridge that
+                     keeps the subtree contiguous, so `onMouseLeave` on the
+                     group does not fire on the way up. */
+                  <span
+                    className="relative inline-flex"
+                    onMouseEnter={() => setResumeTip(true)}
+                    onMouseLeave={() => setResumeTip(false)}
+                    onFocusCapture={() => setResumeTip(true)}
+                    onBlurCapture={() => setResumeTip(false)}
                   >
-                    {screen !== "reader"
-                      ? text("paste.read")
-                      : pageInfo?.resumeChapterTitle
-                        ? (
-                          <>
-                            {text("player.play_resume")}
-                            <span className="max-w-[14em] truncate font-normal opacity-85">
-                              · {pageInfo.resumeChapterTitle}
+                    <Button
+                      variant={selection ? "secondary" : "primary"}
+                      disabled={startDisabled}
+                      onClick={() => {
+                        if (screen === "reader") void readBookFrom(null);
+                        else void startReading();
+                      }}
+                    >
+                      {screen !== "reader"
+                        ? text("paste.read")
+                        : pageInfo?.resumeChapterTitle
+                          ? text("player.play_resume")
+                          : pageInfo
+                            ? text("player.play_start")
+                            : text("player.play")}
+                    </Button>
+                    {resumeTip && screen === "reader" && pageInfo?.resumeExcerpt && pageInfo.resumeSegmentId && (
+                      <span className="absolute bottom-full left-1/2 block -translate-x-1/2 pb-2">
+                        <Surface
+                          edge="strong"
+                          className="w-[24rem] max-w-[calc(100vw-3rem)] p-3 shadow-lifted"
+                        >
+                          <span className="block text-xs text-ink-mute">
+                            {pageInfo.resumeChapterTitle}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResumeTip(false);
+                              setReveal({
+                                segmentId: pageInfo.resumeSegmentId!,
+                                at: Date.now(),
+                              });
+                            }}
+                            className="-mx-1 mt-1 block w-full rounded-lg px-1 py-1 text-left text-sm leading-relaxed hover-wash"
+                          >
+                            <span className="line-clamp-3">{pageInfo.resumeExcerpt}</span>
+                            <span className="mt-1 block text-xs text-ink-faint">
+                              {text("player.resume_goto")}
                             </span>
-                          </>
-                        )
-                        : pageInfo
-                          ? text("player.play_start")
-                          : text("player.play")}
-                  </Button>
-                )}
-                {speechSettings && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      // One floating layer at a time: the voices sheet sits
-                      // above this panel, so opening settings under it would
-                      // put a panel where nobody can reach it.
-                      if (previewing !== null) stopPreview();
-                      setVoicesOpen(false);
-                      setSettingsOpen((value) => !value);
-                    }}
-                    aria-label={text("player.settings_open")}
-                    title={text("player.settings_open")}
-                    className={settingsOpen ? "text-ink" : ""}
-                  >
-                    <SlidersIcon />
-                    <span className="font-normal">{voiceId} · {rate}×</span>
-                  </Button>
+                          </button>
+                        </Surface>
+                      </span>
+                    )}
+                  </span>
                 )}
               </>
             ) : (
@@ -980,7 +1005,12 @@ export default function App() {
               </>
             )}
           </div>
-          <div className="min-w-0 justify-self-end">
+          {/* Right: what the voice is up to, and which voice that is. The
+              settings chip moved out of the middle group (owner, 03/09): the
+              middle is what a CLICK DOES, and the chip is a standing fact
+              about the reading with a way in - it belongs beside the state,
+              not inside the actions. Its panel stays centred over the bar. */}
+          <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">
             {reading !== "idle" && player.warming && (
               <Notice className="min-w-0 truncate whitespace-nowrap">{text("player.warming")}</Notice>
             )}
@@ -988,6 +1018,25 @@ export default function App() {
               <Notice tone="error" className="min-w-0 truncate">
                 {player.error}
               </Notice>
+            )}
+            {speechSettings && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  // One floating layer at a time: the voices sheet sits above
+                  // this panel, so opening settings under it would put a
+                  // panel where nobody can reach it.
+                  if (previewing !== null) stopPreview();
+                  setVoicesOpen(false);
+                  setSettingsOpen((value) => !value);
+                }}
+                aria-label={text("player.settings_open")}
+                title={text("player.settings_open")}
+                className={`shrink-0 ${settingsOpen ? "text-ink" : ""}`}
+              >
+                <SlidersIcon />
+                <span className="font-normal">{voiceId} · {rate}×</span>
+              </Button>
             )}
           </div>
         </div>

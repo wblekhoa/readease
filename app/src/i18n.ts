@@ -40,6 +40,7 @@ export const TEXT = {
   "reader.page_of": ["Trang {page}/{total}", "Page {page} of {total}"],
   "reader.page_info": ["Vị trí đang đọc", "Where you are"],
   "player.settings": ["Cài đặt giọng đọc", "Voice settings"],
+  "player.resume_goto": ["Bấm để tới chỗ này", "Go to this passage"],
   "player.play_resume": ["Đọc tiếp", "Continue"],
   "player.play_start": ["Đọc từ đầu", "Read from the start"],
   "player.hint_click": ["Nhấn vào đoạn văn để đọc từ đó", "Click a paragraph to read from there"],
@@ -101,6 +102,7 @@ export const TEXT = {
   "library.remove_confirm": ["Xoá khỏi thư viện?", "Remove from the library?"],
   "library.remove_keep": ["Giữ lại", "Keep"],
   "library.removed": ["Đã xoá khỏi thư viện.", "Removed from the library."],
+  "library.from_apple_books": ["Từ Apple Books · còn cặp nối, đồng bộ ghi chú sẽ tìm đúng cuốn này", "From Apple Books - still paired, so a note sync finds this book"],
   "library.apple_books": ["Từ Apple Books", "From Apple Books"],
   "apple.title": ["Sách trong Apple Books", "Books in Apple Books"],
   "apple.one_way": [

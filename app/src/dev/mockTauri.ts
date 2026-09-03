@@ -124,6 +124,10 @@ const LIBRARY = [
     chapters: BOOK.chapters.length,
     size_bytes: 9_512_000,
     imported_at: "2026-08-28T09:12:00Z",
+    // Paired, and it must agree with APPLE_SHELF below: a harness that
+    // says "linked" on the shelf and "not paired" on the card teaches the
+    // wrong thing about the feature.
+    from_apple_books: true,
   },
   {
     id: "book-two",
@@ -135,6 +139,7 @@ const LIBRARY = [
     chapters: 12,
     size_bytes: 2_310_000,
     imported_at: "2026-08-30T15:40:00Z",
+    from_apple_books: false,
   },
   {
     id: "book-three",
@@ -146,6 +151,7 @@ const LIBRARY = [
     chapters: 26,
     size_bytes: 25_200_000,
     imported_at: "2026-08-26T08:00:00Z",
+    from_apple_books: true,
   },
   {
     id: "book-four",
@@ -157,6 +163,7 @@ const LIBRARY = [
     chapters: 23,
     size_bytes: 45_900_000,
     imported_at: "2026-09-02T10:20:00Z",
+    from_apple_books: false,
   },
 ];
 
@@ -283,7 +290,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       if (row.status === "encrypted") throw new Error("applebooks.import failed: encrypted");
       const id = `imported-${row.asset_id}`;
       row.status = "linked"; row.book_id = id; row.paired_title = row.title;
-      LIBRARY.push({ id, title: row.title, source_format: "epub", segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 9, size_bytes: 1_400_000, imported_at: new Date().toISOString() });
+      LIBRARY.push({ id, title: row.title, source_format: "epub", segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 9, size_bytes: 1_400_000, imported_at: new Date().toISOString(), from_apple_books: true });
       return { book_id: id, title: row.title, was_existing: false };
     }
     case "applebooks.sync_notes": {

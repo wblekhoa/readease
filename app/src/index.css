@@ -124,6 +124,13 @@
   /* A highlight brought over from Apple Books: the DS's warning haze, a
      30% yellow alpha, so it reads as a marker pen on both papers. */
   --color-highlight: var(--fill-warning-haze);
+  /* How far the voice got. Blue, and not because blue merely looks like
+     progress: the DS carries a `progress` ROLE of its own on the blue ramp
+     (--fill-progress-primary = --blue-b100), so this is the named token for
+     exactly this job rather than an info blue borrowed for its look. Brand
+     red was wrong here - it made every started book shout, and red is this
+     app's identity, not its status (owner, 03/09). */
+  --color-progress: var(--fill-progress-primary);
   /* Focus is info-blue, per the DS registry's own ring - brand red was this
      app's mistake, and the owner caught it. secondary (b60) is the soft
      tier that reads on both themes without shouting. */

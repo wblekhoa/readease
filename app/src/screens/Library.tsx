@@ -6,7 +6,7 @@ import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, EmptyState } from "../ui/patterns";
 import { orderShelf } from "../ui/libraryOrder";
 import { forgetCover, useCover } from "../ui/useCover";
-import { ShelfIcon, TrashIcon } from "../ui/icons";
+import { AppleBooksIcon, ShelfIcon, TrashIcon } from "../ui/icons";
 import { AppleBooksPanel } from "./AppleBooksPanel";
 
 export type LibraryBook = {
@@ -20,6 +20,9 @@ export type LibraryBook = {
   chapters: number;
   size_bytes: number | null;
   imported_at: string | null;
+  /** The pairing with Apple Books still holds, so a note sync lands on this
+   * book. False for a book that arrived by hand. */
+  from_apple_books?: boolean;
 };
 
 /** The cover as a data URL: undefined while loading, null when the book has
@@ -75,6 +78,21 @@ function ShelfBook({
         </span>
       }
       progress={reading ? book.progress_ratio ?? 0 : null}
+      tag={
+        /* No paper chip behind it: the app mark is already a solid coloured
+           square with its own edge, so a white disc under it would be a
+           second badge around a badge. Its own shadow does the separating on
+           a dark cover. */
+        book.from_apple_books ? (
+          <span className="block h-5 w-5 overflow-hidden rounded-[5px] shadow-raised">
+            <AppleBooksIcon className="h-full w-full" />
+            {/* The glyph takes no pointer events, so it cannot carry a
+                tooltip without stealing clicks from the cover. The words go
+                to the accessibility tree instead. */}
+            <span className="sr-only">{text("library.from_apple_books")}</span>
+          </span>
+        ) : undefined
+      }
       onOpen={onOpen}
       openLabel={text("library.open_book", { title: book.title })}
       accessory={
