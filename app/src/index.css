@@ -122,8 +122,20 @@
   --color-danger: var(--text-color-danger-bold);
   --color-danger-fill: var(--fill-danger-primary);
   /* A highlight brought over from Apple Books: the DS's warning haze, a
-     30% yellow alpha, so it reads as a marker pen on both papers. */
+     30% yellow alpha, so it reads as a marker pen on both papers. This one
+     is also the FALLBACK - what a highlight with no colour gets, and what an
+     older Books schema that has no colour column gets. */
   --color-highlight: var(--fill-warning-haze);
+  /* The five Apple Books draws in. Haze tier throughout, because a highlight
+     is ink laid OVER text and has to leave it readable on both papers - the
+     solid tiers would be a block with words hidden under it. Each maps to
+     the DS hue that matches what Books shows, so a passage keeps the colour
+     the reader chose rather than being repainted one shade of yellow. */
+  --color-highlight-green: var(--fill-success-haze);
+  --color-highlight-blue: var(--fill-info-haze);
+  --color-highlight-yellow: var(--fill-warning-haze);
+  --color-highlight-pink: var(--fill-pink-haze);
+  --color-highlight-purple: var(--fill-purple-haze);
   /* How far the voice got. Blue, and not because blue merely looks like
      progress: the DS carries a `progress` ROLE of its own on the blue ramp
      (--fill-progress-primary = --blue-b100), so this is the named token for
@@ -362,6 +374,15 @@ textarea:focus-visible {
 ::-webkit-scrollbar-thumb:hover { background-color: var(--text-color-neutral-secondary); background-clip: content-box; }
 
 /* <mark> comes with the UA's yellow-on-black; the token paints it instead. */
+/* 1 green · 2 blue · 3 yellow · 4 pink · 5 purple - Apple Books' own
+   numbering. Anything else (0, or a schema with no colour column) keeps the
+   yellow above, which is what the app drew every highlight in before. */
+mark[data-style="1"] { background: var(--color-highlight-green); }
+mark[data-style="2"] { background: var(--color-highlight-blue); }
+mark[data-style="3"] { background: var(--color-highlight-yellow); }
+mark[data-style="4"] { background: var(--color-highlight-pink); }
+mark[data-style="5"] { background: var(--color-highlight-purple); }
+
 mark {
   background: var(--color-highlight);
   color: inherit;

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
 import sqlite3
+from typing import Callable
 import tempfile
 
 from vieneu_reader.integrations.epub_layout import (
@@ -198,11 +199,36 @@ class AppleBooksLibrary:
     def _rows(
         self,
         database: Path | None,
-        query: str,
+        query: str | Callable[[sqlite3.Connection], str],
         parameters: tuple = (),
     ) -> list[tuple]:
-        return self._with_copy(
-            database, lambda connection: connection.execute(query, parameters).fetchall()
+        """One copy, one query - and EVERY annotation read comes through here.
+
+        `query` may be a callable given the open connection, for a query whose
+        columns depend on the schema in front of it. It stays a parameter of
+        this method rather than a separate path around it: the read-scope
+        guards watch this seam, and a second way in would be a way past them.
+        """
+
+        def read(connection):
+            statement = query(connection) if callable(query) else query
+            return connection.execute(statement, parameters).fetchall()
+
+        return self._with_copy(database, read)
+
+    @staticmethod
+    def _has_column(connection, table: str, column: str) -> bool:
+        """Whether this copy of Apple Books' schema carries a column.
+
+        Asked rather than assumed, because this is somebody else's database:
+        its shape follows whatever version of Books wrote it, and a column
+        that is missing must cost one field, not every annotation. A plain
+        SELECT of an absent column fails the whole read.
+        """
+
+        return any(
+            str(row[1]) == column
+            for row in connection.execute(f"PRAGMA table_info({table})")
         )
 
     def _with_copy(self, database: Path | None, read) -> list[tuple]:
@@ -302,20 +328,26 @@ class AppleBooksLibrary:
 
         if not asset_ids:
             return {}
+
+        def query(connection) -> str:
+            # The colour is appended only when this schema carries it, so the
+            # row reader's `len(row) > 5` guard is what decides, not a hope.
+            colour = (
+                ", ZANNOTATIONSTYLE"
+                if self._has_column(connection, "ZAEANNOTATION", "ZANNOTATIONSTYLE")
+                else ""
+            )
+            return (
+                "SELECT ZANNOTATIONASSETID, ZANNOTATIONTYPE, ZANNOTATIONLOCATION, "
+                f"ZANNOTATIONSELECTEDTEXT, ZANNOTATIONNOTE{colour} "
+                "FROM ZAEANNOTATION "
+                "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID IN "
+                f"({', '.join('?' for _ in asset_ids)})"
+            )
+
         # Bound in SQL, not filtered afterwards: reading every book's notes
         # into memory to show one book's would make the privacy note false.
-        rows = self._rows(
-            self._annotations,
-            # Bound in SQL, not filtered afterwards: reading every book's notes
-            # into memory to show one book's would make the privacy note false.
-            # One query, one copy: the highlight colour (ZANNOTATIONSTYLE) is
-            # deliberately not read yet - it is carried at 0 until it is drawn.
-            "SELECT ZANNOTATIONASSETID, ZANNOTATIONTYPE, ZANNOTATIONLOCATION, "
-            "ZANNOTATIONSELECTEDTEXT, ZANNOTATIONNOTE FROM ZAEANNOTATION "
-            "WHERE ZANNOTATIONDELETED = 0 AND ZANNOTATIONASSETID IN "
-            f"({', '.join('?' for _ in asset_ids)})",
-            tuple(asset_ids),
-        )
+        rows = self._rows(self._annotations, query, tuple(asset_ids))
         grouped: dict[str, list[Annotation]] = {key: [] for key in asset_ids}
         for row in rows:
             asset_id = str(row[0])
@@ -326,6 +358,12 @@ class AppleBooksLibrary:
                     location=str(row[2] or ""),
                     selected_text=row[3],
                     note=row[4],
+                    # 1 green · 2 blue · 3 yellow · 4 pink · 5 purple.
+                    # 0 means "no colour": Books gives it to underlines and
+                    # to reading bookmarks. Corroborated by two independent
+                    # readers of this database (py-apple-books'
+                    # AnnotationColor, and the apple-books-annotation-import
+                    # plugin), which agree exactly.
                     style=_as_int(row[5]) if len(row) > 5 else 0,
                 )
             )

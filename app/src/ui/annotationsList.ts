@@ -12,6 +12,9 @@ export type Annotation = {
   segment_id: string;
   selected_text: string;
   note: string | null;
+  /** Apple Books' colour number: 1 green, 2 blue, 3 yellow, 4 pink,
+   * 5 purple. 0 (or absent) is no colour. */
+  style?: number;
 };
 
 type Chapter = { id: string; title: string; segments: { id: string }[] };

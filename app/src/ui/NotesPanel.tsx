@@ -128,7 +128,7 @@ export function NotesPanel({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm leading-relaxed">
-                    <mark>{item.selected_text}</mark>
+                    <mark data-style={item.style || undefined}>{item.selected_text}</mark>
                   </span>
                   {item.note && (
                     <span className="mt-1.5 block text-sm leading-relaxed text-ink-mute">

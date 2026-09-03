@@ -520,7 +520,10 @@ export function Reader({
       return (
         <>
           {split.before}
-          <mark>{split.mark}</mark>
+          {/* The colour Books drew it in - the stylesheet turns the number
+              into the wash. An unknown or absent number falls through to the
+              yellow every highlight used to get. */}
+          <mark data-style={item.style || undefined}>{split.mark}</mark>
           {item.note && (
             <InlineIconButton
               onClick={() => { setPeek(null); onNotes(true, item.id); }}

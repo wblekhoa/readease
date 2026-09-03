@@ -274,9 +274,9 @@ const APPLE_SHELF: Array<{ asset_id: string; title: string; status: string; book
 const ANNOTATIONS = [
   { id: "applebooks:1", segment_id: "ch-1-seg-1", selected_text: "những phương án đầu tiên của họ đều nhanh chóng chìm vào quên lãng", note: "Đúng với dự án năm ngoái.", style: 3 },
   { id: "applebooks:2", segment_id: "ch-1-seg-1", selected_text: "Chỉ khi học cách nhìn vấn đề từ một góc khác", note: null, style: 1 },
-  { id: "applebooks:3", segment_id: "ch-1-seg-3", selected_text: "số ứng dụng di động đã lên đến gần mười triệu", note: null, style: 1 },
-  { id: "applebooks:4", segment_id: "ch-1-seg-6", selected_text: "thao tác chụm hai ngón tay để thu phóng", note: "Chỗ này nên dẫn lại khi viết phần mở đầu: một thao tác nhỏ mà đổi hẳn cách người ta nghĩ về máy tính bỏ túi. Kiểm tra lại năm 2007 cho chắc.", style: 2 },
-  { id: "applebooks:5", segment_id: "ch-0-seg-2", selected_text: "sản phẩm phải hoạt động", note: "Câu để mở bài.", style: 3 },
+  { id: "applebooks:3", segment_id: "ch-1-seg-3", selected_text: "số ứng dụng di động đã lên đến gần mười triệu", note: null, style: 2 },
+  { id: "applebooks:4", segment_id: "ch-1-seg-6", selected_text: "thao tác chụm hai ngón tay để thu phóng", note: "Chỗ này nên dẫn lại khi viết phần mở đầu: một thao tác nhỏ mà đổi hẳn cách người ta nghĩ về máy tính bỏ túi. Kiểm tra lại năm 2007 cho chắc.", style: 4 },
+  { id: "applebooks:5", segment_id: "ch-0-seg-2", selected_text: "sản phẩm phải hoạt động", note: "Câu để mở bài.", style: 5 },
   { id: "applebooks:6", segment_id: "ch-3-seg-0", selected_text: "bỏ qua phần giá trị cộng thêm", note: null, style: 1 },
 ];
 

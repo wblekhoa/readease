@@ -60,6 +60,33 @@ def _make_annotations(
     return path
 
 
+def _make_annotations_with_colour(
+    root: Path,
+    rows: tuple[tuple[str, int, str, str | None, str | None, int, int], ...],
+) -> Path:
+    """The same fixture, on a schema that DOES carry ZANNOTATIONSTYLE.
+
+    Every other fixture here omits the column on purpose - it is the older
+    Books schema, and it is what proves the reader survives its absence.
+    """
+
+    path = root / "AEAnnotation_v2.sqlite"
+    connection = sqlite3.connect(path)
+    connection.execute(
+        "CREATE TABLE ZAEANNOTATION ("
+        "ZANNOTATIONASSETID TEXT, ZANNOTATIONTYPE INTEGER,"
+        "ZANNOTATIONLOCATION TEXT, ZANNOTATIONSELECTEDTEXT TEXT,"
+        "ZANNOTATIONNOTE TEXT, ZANNOTATIONDELETED INTEGER,"
+        "ZANNOTATIONSTYLE INTEGER)"
+    )
+    connection.executemany(
+        "INSERT INTO ZAEANNOTATION VALUES (?, ?, ?, ?, ?, ?, ?)", rows
+    )
+    connection.commit()
+    connection.close()
+    return path
+
+
 def _make_book(
     root: Path,
     name: str,
@@ -625,3 +652,44 @@ class ChapterDiffersTests(unittest.TestCase):
                 annotation_database=_make_annotations(root, ROWS),
             )
             self.assertEqual(build_transfer_plan(library, "SRC", "DST").copyable, ())
+
+
+class HighlightColourTests(unittest.TestCase):
+    """The colour Apple Books drew the highlight in.
+
+    1 green, 2 blue, 3 yellow, 4 pink, 5 purple; 0 is not a colour. The map
+    is not this project's invention - two independent readers of the same
+    database agree on it - but the numbers still have to arrive intact.
+    """
+
+    def test_each_highlight_carries_the_colour_books_drew_it_in(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = _make_annotations_with_colour(root, (
+                ("BOOK", 2, "cfi-1", "lục", None, 0, 1),
+                ("BOOK", 2, "cfi-2", "lam", None, 0, 2),
+                ("BOOK", 2, "cfi-3", "vàng", None, 0, 3),
+                ("BOOK", 2, "cfi-4", "hồng", None, 0, 4),
+                ("BOOK", 2, "cfi-5", "tím", None, 0, 5),
+            ))
+            library = AppleBooksLibrary(annotation_database=database)
+            styles = {
+                annotation.selected_text: annotation.style
+                for annotation in library.annotations("BOOK")
+            }
+            self.assertEqual(
+                styles,
+                {"lục": 1, "lam": 2, "vàng": 3, "hồng": 4, "tím": 5},
+            )
+
+    def test_a_schema_without_the_colour_still_reads_every_highlight(self) -> None:
+        # Books' schema follows whatever version wrote it. A missing column
+        # must cost the colour, not the annotations.
+        with TemporaryDirectory() as directory:
+            database = _make_annotations(Path(directory), (
+                ("BOOK", 2, "cfi-1", "không màu", None, 0),
+            ))
+            library = AppleBooksLibrary(annotation_database=database)
+            found = library.annotations("BOOK")
+            self.assertEqual([a.selected_text for a in found], ["không màu"])
+            self.assertEqual([a.style for a in found], [0])
