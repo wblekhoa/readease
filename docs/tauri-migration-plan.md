@@ -272,3 +272,351 @@ thoát app ⇒ `pgrep` không còn python mồ côi · tab nav vẽ đúng token
   Icons: DsIcon không tiêu thụ được ngoài repo DOL (gap đã ghi) → 2 glyph vẽ theo hình học của
   nó (grid 16, stroke 1.5, currentColor). Bài học sed lần 2: `h-7 shrink-0 rounded-md` thoát
   lưới "h-7 rounded-md" — anchor class Tailwind phải lỏng hoặc grep-hậu-kiểm theo bậc.
+
+## Cơ chế đọc - audit và sửa (2026-09-02)
+
+Chủ báo: highlight nhảy loạn không khớp nội dung đang đọc; bấm nhanh thì đọc không ngừng dù đã
+bấm dừng. Đọc cả ba tầng, tìm ra **sáu lỗi chồng lên nhau**, tất cả đều xác nhận bằng mã nguồn:
+
+1. **Bắt đầu một lượt đọc KHÔNG huỷ lượt đang chạy.** `fire()` chỉ ghi đè `current_read`. Engine
+   Python **hoãn** (`_deferred`) mọi request không phải `stop` khi đang stream, nên click thứ hai
+   mua thêm MỘT lượt đọc đầy đủ nữa chứ không thay thế. → `fire()` nay huỷ trước khi gửi.
+2. **Sự kiện `position` không lọc theo id** — vị trí của lượt đã bị bỏ vẫn lái highlight.
+3. **Chunk đóng dấu epoch lúc Rust ĐỌC được**, không phải epoch của lượt sinh ra nó.
+4. **Luồng âm thanh gọi `player.play()` sau MỖI lần append** ⇒ tạm dừng bị phá: chunk kế tiếp tự
+   bật lại tiếng. Pause nay là TRẠNG THÁI (`AtomicBool`), append không được phép bật lại.
+5. **`Player::clear()` của rodio kết thúc bằng `pause()`** (đọc mã crate) — sau mỗi lần dừng,
+   player nằm im; lượt sau chỉ kêu nhờ đúng cái `play()` sai ở lỗi 4 che đi.
+6. **Không có backpressure thật**: hàng đợi của rodio vô hạn nên `sync_channel(48)` không bao giờ
+   đầy; engine dựng chạy trước tai rất xa, và vì `position` phát lúc dựng nên highlight chạy
+   trước giọng. → giới hạn `PLAYER_LOOKAHEAD = 2` + mốc vị trí đi chung hàng đợi âm thanh.
+
+**Thứ tự trong `fire()` là bắt buộc** (sai một nhịp là hở race): đặt `current_read` mới TRƯỚC để
+bộ lọc id bắt đầu chặn lượt cũ → rồi mới tăng epoch để giết chunk đã lọt qua bộ lọc → clear →
+`play()` (gỡ pause mà `clear` để lại) → gửi `stop` nếu đang đọc → gửi lượt mới. Toàn bộ trong một
+mutex `start` để hai click nhanh xếp hàng thay vì đan vào nhau.
+
+**Kèm theo**: `engine:orphan_reply` chỉ còn phát cho request gửi qua `notify()` (sổ `notified`) —
+trước đây reply muộn của một lượt đọc bị bỏ cũng phát ra, và ModelPanel/Setup nghe nhầm thành
+"tải model xong".
+
+**Đã kiểm**: probe trên engine THẬT (cắt giữa dòng: lượt cũ 0 chunk sau khi cắt, lượt mới chạy
+14 chunk rồi kết thúc) · test hồi quy mới trong `tests/headless` · toàn bộ 702 test engine OK ·
+`cargo build --release` sạch cảnh báo · cổng frontend xanh.
+**CHƯA kiểm được bằng máy**: tai người - hết tiếng ngay khi bấm dừng, không còn tồn đọng, và
+highlight bám đúng câu đang nghe. Đó là 3 mục cần chủ nghe thử.
+
+### Nửa sau: máy trạng thái ở vỏ (2026-09-02, chạy dưới /goal)
+
+Sáu lỗi trên nằm ở Rust/engine. Nửa còn lại của cùng triệu chứng nằm ở React và chưa từng được
+audit: `stopReading` **await** engine rồi mới đổi trạng thái, mà `stop()` bên Rust chặn ở
+`player.clear()` → `sleep_until_end()` cộng một `request("stop")` đồng bộ. Người bấm Dừng thấy
+giao diện y nguyên nên bấm tiếp — đúng lời chủ mô tả. Cộng thêm **5 chỗ** tự tay `setReading`,
+trong đó 2 chỗ quên `setWarming`.
+
+Sửa: tách máy trạng thái ra `app/src/ui/playback.ts` — hàm thuần tuý `playback(state, event)`
+với 6 sự kiện (start · stop · toggle · failed · voice · done), không phụ thuộc React nên test
+được bằng runner zero-dep sẵn có (8 test mới, tổng frontend 10 → 18). App tiêu thụ qua
+`useReducer`; **stop/pause đổi trạng thái TRƯỚC rồi mới gọi engine**.
+
+Bằng chứng: engine giả trả lời `stop_reading` sau 3000ms → giao diện về idle sau **26ms** (trước
+đây phải chờ đủ 3000ms) · `grep` còn **0** chỗ tự đổi trạng thái ngoài reducer · Space vẫn đổi
+Tạm dừng/Tiếp tục · bảng hiện-footer-theo-màn (HIG §3.5) không đổi · tsc·UI_AUDIT·18 test xanh.
+
+**Sửa đổi ranh giới sau review độc lập (02/09)**: `stop()` bên Rust không lấy khoá `start` mà
+`fire()` dùng, dù cả hai cùng viết `current_read`, `epoch` và player. Cử chỉ rất thường —
+"dừng cái này, đọc từ đây" — là hai lệnh Tauri chạy trên hai luồng, và có một thứ tự hợp lệ
+khiến `stop()` xoá mất id của lượt vừa bắt đầu: lượt mới bị giết, reply của nó không khớp ai,
+không có `reading:done` nào được phát, và vỏ kẹt ở "đang đọc" trong im lặng. Đây đúng là đường
+mà tiêu chí H2 cấm, và KHÔNG sửa được ở tầng UI. Đã cho `stop()` lấy cùng khoá; phép gán lại
+`current_read` trong `fire()` nhờ đó thành thừa và đã bỏ.
+
+**Rủi ro còn lại, cố ý KHÔNG gộp vào vòng này**: lượt cũ kết thúc TỰ NHIÊN đúng trong khe vài
+ms giữa lúc UI phát `start` và lúc `fire()` nhận `current_read`. Rust phát một `reading:done`
+hợp lệ, reducer về idle, trong khi lượt mới đang chạy → hiện nút "Đọc" dù đang phát. Khe hẹp,
+tự phục hồi ở tương tác kế tiếp. Cách sửa sạch: `fire()` trả id, `reading:done` mang id, UI bỏ
+qua done của thế hệ đã bị thay — việc đó mở rộng hợp đồng sự kiện nên thuộc vòng khác.
+
+## Đối chiếu parity với vỏ Qt (2026-09-02)
+
+Cách soi: liệt kê bề mặt app cũ (13 module UI, 5026 dòng + `ui/controller.py` 847 dòng +
+`playback/preferences.py`), lấy **155 khoá i18n cũ** làm proxy cho bề mặt tính năng rồi diff
+với 117 khoá mới, và kiểm từng khoá chênh xem là **đổi tên** hay **mất thật**.
+
+**Đã đưa qua trong vòng này**
+
+| Thiếu | Vì sao quan trọng | Đã làm |
+|---|---|---|
+| Không nhớ giọng + tốc độ | App cũ lưu `voice`/`rate` vào settings.json; bản mới mặc định lại mỗi lần mở | Cho phép đúng HAI khoá cũ qua `_CONFIG_KEYS`, đọc lúc khởi động, ghi khi đổi — người dùng bản Qt giữ nguyên lựa chọn |
+| Không huỷ được lượt tải model | fp32 = 453MB, bấm nhầm là kẹt tới hết | `report()` thăm dò stop và ném `_PreparationCancelled` (đúng chỗ app cũ dùng), reply `cancelled: true`; nút Huỷ ở cả Setup lẫn ModelPanel |
+| Ảnh trong sách hỏng thì im lặng | Người đọc chỉ thấy khoảng trắng, không biết là lỗi hay sách vốn thế | `reader.figure_unavailable` + bắt cả lỗi tải lẫn lỗi giải mã (`onError`) |
+| Vượt giới hạn ký tự không nói gì | Nút mờ đi mà không giải thích | `paste.over_limit` |
+| Không xoá được lịch sử quét đọc | App cũ có trong menu lịch sử | Nút "Xoá lịch sử" ở màn Quét đọc |
+
+**Cố ý KHÔNG đưa qua** (nêu để chủ quyết, không phải bỏ sót):
+- `player.source.*` — nhãn "đang đọc từ Apple Books / từ sách / từ nội dung dán". Thanh dưới bản
+  mới đã mang đúng năng lực của từng màn nên bản thân màn đã nói nguồn; thêm nhãn là lặp.
+- Lịch sử đọc nằm trong **menu của thanh phát** (bản cũ). Bản mới đặt lịch sử ở màn Quét đọc —
+  đúng chỗ hơn theo luật "thanh dưới chỉ mang năng lực của màn".
+- Biểu tượng menu bar: bản cũ vẽ hình loa dạng template cho macOS tô màu; bản mới dùng icon app.
+  Thuần thẩm mỹ, một click dừng đọc thì cả hai như nhau.
+
+**Không hở**: 6 lý do trạng thái của cầu chọn văn bản (`selection_status_name`) khớp đủ 6 chuỗi
+`status.*`; các khoá `transfer.*`/`model.*` chênh chỉ là đổi tên (`outcome.*`, `noteserr.*`,
+`model.build_*`).
+
+## Hình trong sách chưa từng hiện được (sửa 2026-09-02)
+
+Chủ báo "Không mở được hình này" trên sách thật. Không phải lỗi giao diện: gọi thẳng engine cũng
+trả `figure unavailable`.
+
+**Gốc rễ - sai khoá tra cứu.** `load_epub_assets` trả `{asset_path: bytes}` (khoá là tên member
+trong file EPUB), nhưng `_book_figure` tra bằng `figure_id` (một chuỗi băm). Không bao giờ khớp
+⇒ **chưa một hình nào từng hiện trong vỏ Tauri**. Controller của vỏ Qt vốn làm đúng:
+`assets.get(figure.asset_path)`.
+
+**Gốc rễ thứ hai - con giả trong test mô phỏng CÁI SAI của người gọi.** Test `book.figure` đã tồn
+tại và luôn xanh, vì fake `assets_for` trả `{"fig-1": bytes}` tức khoá theo figure id, và fixture
+đặt `id` trùng vai trò với đường dẫn. Một fixture mà hai khoá là một chuỗi thì không thể phân
+biệt tra đúng với tra sai. Đã cho fixture `asset_path="OEBPS/images/one.png"` khác hẳn `id`, và
+fake trả về đúng hợp đồng thật.
+
+**Verify**: test mới ĐỎ với mã cũ / XANH với mã mới (thử cả hai chiều) · engine chạy từ nguồn lấy
+được **5/5 hình** của một sách thật 195 hình (image/jpeg, bytes thật) · 703 test engine + 18 test
+frontend xanh.
+
+**Bài học chung**: fake trong test phải mô phỏng HỢP ĐỒNG của thứ nó thay thế, không phải mô
+phỏng cách người gọi đang dùng - nếu không, test chỉ đóng dấu cho lỗi.
+
+## Báo hình khi đọc (2026-09-02, chủ duyệt 4 quyết định)
+
+Người nghe không thấy trang, nên tới hình thì giọng nói **"Xem hình N."** + nghỉ 600ms. Quyết
+định đã chốt: câu "Xem hình N." · số theo **chương** · báo **mọi** hình · ẩn alt rác.
+
+Cách làm: `_figure_cues()` gom hình theo segment neo; `read.book` dệt một utterance cue vào
+TRƯỚC hoặc SAU segment đúng theo `placement`; utterance mang `figure_id`, và sự kiện `position`
+của nó mang `figure_id` ⇒ đi chung hàng đợi âm thanh bên Rust (không sửa Rust) ⇒ vỏ nhận đúng
+lúc tai nghe, cuộn tới + nháy hình. `book.open` nay gửi thêm `number` (theo chương) và
+`alt_is_generic` — hai trường domain đã tính sẵn nhưng bản viết lại bỏ rơi.
+
+Test: `test_reading_a_book_announces_each_picture_where_it_sits` (thứ tự nói: "Đoạn đầu." →
+"Xem hình 1." → "Xem hình 2." → "Đoạn hai."; position mang figure_id đúng chỗ; số 41/42 của
+domain thành 1/2 theo chương). Câu cue đăng ký vào `ui/i18n.py` vì test phủ-dịch coi lời nói
+cũng là chữ đặt trước mặt người. Bẫy đã gặp: đặt tên biến `position` cho dict sự kiện đè lên
+biến đếm `position` của vòng lặp ⇒ `is_last` cộng dict với int.
+
+## App bị đứng khi đang chạy (sửa 2026-09-02) - hai tầng
+
+Chủ báo app thỉnh thoảng non-responsive khi đang chạy. Hai nguyên nhân xếp chồng, đều xác minh
+bằng mã nguồn crate + đo trên engine thật; nghi vấn thứ ba (rodio `clear()` treo khi pause) bị
+loại sau khi đọc `Pausable` ("returns zero value samples" - mẫu vẫn chảy).
+
+**Tầng 1 - lệnh Tauri chạy trên LUỒNG CHÍNH.** `tauri-macros/src/command/wrapper.rs`: lệnh `fn`
+thường → ngữ cảnh `"sync"` (chạy ngay trong IPC handler, trên main thread); chỉ `async fn` hoặc
+`#[tauri::command(async)]` → `"sync_threadpool"`. Cả 12 lệnh của app đều là `fn` thường, và
+nhiều lệnh CHỜ engine (`request()` có timeout 30s). Mỗi lần chờ = cửa sổ đứng. → Tất cả 12 lệnh
+chuyển sang `#[tauri::command(async)]`; biên dịch sạch (mọi State đều Send+Sync).
+
+**Tầng 2 - engine HOÃN mọi request khác trong lúc đọc.** `_stop_requested()` chỉ bắt `stop`,
+còn lại đẩy vào `_deferred` tới khi lượt đọc xong. Đo trên engine đã cài: `library.list` và
+`config.get` gửi lúc đang đọc chỉ được trả lời sau **6.56s** (đúng lúc 6 câu đọc xong); một
+chương dài = hàng phút = quá timeout 30s. Với người dùng: đang nghe mà bấm sang Thư viện thì
+danh sách không bao giờ về; đổi tốc độ thì không lưu; cuộn tới hình thì hình không tải — trên
+main thread thì cả cửa sổ đứng. → `_INLINE_WHILE_STREAMING`: 9 method nhanh, vô hại
+(ping · voices · library.list · book.open · book.figure · config.get/set · model.status ·
+notes.books) được `_dispatch` ngay giữa hai chunk, cùng lưới try/except như `run()`; thứ nặng
+hoặc ghi (import/remove/prepare/set_precision/transfer/read*) vẫn hoãn. Đo lại: trả lời trong
+vài ms.
+
+Test: `test_quick_requests_are_answered_while_a_reading_streams` (ping về TRƯỚC reply của
+lượt đọc). Rust không có test tự động cho tầng 1 - bằng chứng là mã macro + biên dịch.
+
+## "#N" đọc thành số thứ tự (2026-09-02)
+
+Chủ: "#1 đọc thành 'thứ nhất', #2 → 'thứ hai' thì hay hơn". Sách đang đọc có 9 chỗ. Sửa ở
+`speakable_text` (chỉ lời nói, không đổi chữ hiển thị): `spell_ordinal_marks` + `ordinal_words`
+với luật bất quy tắc tiếng Việt (nhất/tư; mốt/tư/lăm trong số ghép). 3 test mới trong
+`tests/domain/test_prosody.py`. Cache khoá theo chữ đưa model ⇒ tự vô hiệu.
+
+## Gạch ngang trước số không được nghỉ (sửa 2026-09-02)
+
+Chủ: "kể—99 xu" đọc liền không nghỉ. Gốc: `_CLAUSE_BOUNDARY` có guard khoảng số viết là
+`(?<!\d)…(?!\d)` = né gạch chạm chữ số ở bất kỳ phía nào, trong khi khoảng số cần chữ số ở CẢ
+hai phía. Sửa: bắt khoảng số làm nhóm riêng `(?P<range>\d\s*[—–-]\s*\d)` và bỏ qua nó; mọi
+gạch ngang khác là ranh giới; thêm gạch nối có khoảng trắng hai bên. Tổng quát hoá guard
+mở-lời-thoại (đầu văn bản HOẶC ngay sau câu đã kết) — test cũ "Cô ấy gật đầu. - Vâng" bắt được
+khi tôi thêm gạch nối. 3 test mới, 41 prosody test OK.
+
+## Chú thích siêu chỉ số bị đọc thành tiếng (sửa 2026-09-02)
+
+Quét toàn thư viện qua chính giao thức engine (3 sách, 6.722 đoạn) tìm "rác" mà giọng sẽ đọc:
+noteref `[N]` 0 · siêu chỉ số `¹²³` **6** (tất cả là chú thích: sau dấu chấm hoặc dính vào từ, không
+có luỹ thừa) · URL/email 10 (tiền văn) · ISBN/© 19 (tiền văn) · tiêu đề "01…100" 203 (cấu trúc
+sách 100 nguyên tắc, chưa rõ model đọc "01" ra sao - chờ tai) · `[ghi chú]` 12 (lời dẫn trong
+transcript, là nội dung). Sửa cái duy nhất rõ ràng và an toàn: `drop_note_marks` trong
+`speakable_text` bỏ siêu chỉ số KHÔNG đứng sau chữ số (giữ "10³"). Trang giữ ký hiệu. 4 test
+(đỏ trước/xanh sau: "Tang.³ Developer" đọc là "Tang. Developer"); 715 test OK.
+Không làm: URL/ISBN (tiền văn, người đọc bỏ qua bằng cách bấm vào chương), `[N]` (0 ca).
+Cùng lượt: tiêu đề "01…100" - đo thời lượng "01." 0,64s · "1." 0,48s · "không một." 0,72s (bước
+lượng tử 0,08s) → số 0 gần như chắc được đọc. `_LEADING_ZERO` chỉ áp cho heading, chỉ số 0 dẫn đầu
+ngay trước chữ số; nước đi không thể thua (model vốn nói "một" thì không đổi gì). 3 test, 718 OK.
+Chứng minh trên binary (sandbox HOME, bản sao DB, sách thật, 9 tiêu đề 0N): engine cũ 17:56 →
+mới 18:25: "01" 0,72s → 0,48s · "02" 0,88s → 0,56s. Số 0 đúng là được đọc; giờ chỉ nói số.
+
+## Bản app rác trong thư mục ẩn (2026-09-02)
+
+`open -a ReadEase` mở nhầm bản Qt cũ trong `~/.config/superpowers/worktrees/…/dist/` - `mdfind`
+đợt dọn trước không thấy vì Spotlight không index thư mục ẩn. Nguồn sự thật cho "open -a chọn
+bản nào" là **LaunchServices**: `lsregister -dump | grep ReadEase.app`. Dọn: bản worktree → Trash;
+`lsregister -u` bản build trong `target/` (file giữ, chỉ gỡ đăng ký - `tauri build` nào cũng tạo
+lại bản này nên gỡ đăng ký sau MỖI lần cài); `-gc` dọn 13 mount `.dmg` đã biến mất. Còn đúng 1.
+
+## Ký hiệu liệt kê "(a)(b)(c)" (2026-09-02, chủ chọn bằng tai)
+
+Đề xuất đầu "xoá" bị tự phản biện lật (xem reading-intelligence-audit §7). Render 4 wav từ chính câu
+trong ảnh của chủ; chủ chọn **"3-chu-cai-nghi"**: giữ chữ cái, thêm nghỉ - "a, nhiệm vụ hiện tại, hoặc
+b, sở thích cá nhân". `speak_enumerators` trong `speakable_text`: `(x)` chữ thường đơn, có khoảng trắng
+trước → "x,"; nếu có liên từ dẫn vào (hoặc/hay/và/rồi/cũng như) thì nghỉ chuyển lên TRƯỚC liên từ
+(đúng bản đã nghe; lỗi đầu tiên để sót khoảng trắng " , hoặc" - bắt bằng test so khớp từng ký tự);
+tham chiếu "mục (b)" → "mục b" không nghỉ (guard giữ dù thư viện 0 ca). Không mở rộng sang "(1)",
+"(A)": 0 ca trong thư viện. 4 test; 722 OK. Trang giữ nguyên "(a)".
+
+## Sự cố: probe làm hỏng tiến độ thư viện thật (2026-09-02) - sửa engine + luật probe
+
+Probe đo "01" gọi `read.book` KHÔNG kèm `voice_id` → engine ghi progress (segment, rate, voice="")
+ở position đầu tiên RỒI mới hỏi giọng → giọng từ chối ("Voice '' not found") nhưng dòng đã nằm
+trong `reader.sqlite3`; `load_progress` đòi voice không rỗng → `RepositoryCorruptionError` → cả
+`library.list` sập (3 sách đều không liệt kê được). WAL cho thấy phiên bản trước của dòng đó cũng
+là probe (giọng "Minh Đức", probe báo hình lúc chiều) ⇒ vị trí thật của chủ trong cuốn Universal
+Principles (nếu từng có) đã mất từ trước, không khôi phục được. Đã xoá dòng voice rỗng; thư viện
+liệt kê lại (3 sách). Cuốn "Đừng bắt tôi phải suy nghĩ!" (giọng Adam) không bị đụng.
+Sửa gốc: `_read_book` từ chối `voice_id` rỗng TRƯỚC `_speak` (điểm ghi progress). Test:
+read.book không voice → lỗi, engine không được gọi, `load_progress` None, `library.list` sau đó OK.
+Không nới `load_progress` (giữ nguyên tắc "hỏng thì kêu to"). Advisor chỉ thêm nửa kia của hợp đồng loader: `rate` ngoài 0,5–2,0 cũng bị từ chối khi nạp → guard + test tương tự (724 OK). **Source đi trước binary 18:35 đúng một guard `rate`** (UI không gửi được giá trị đó nên chưa dựng lại; gói ở lần cài kế). Luật probe (memory + brief):
+`read` chữ thường không ghi gì; `read.book` LUÔN là ghi → chạy trên app-root tạm / bản sao DB.
+
+## Nút nổi trong suốt khi hover (sửa 2026-09-02, chủ bắt)
+
+"Về chỗ đang đọc" bị chữ đè lên khi rê chuột. Đo trong preview đúng trạng thái lỗi (đang đọc +
+cuộn xa): nền hover = `rgba(243,243,243,0.05)` — `hover:bg-wash` THAY nền giấy đục bằng alpha 5%.
+Sửa ở bộ control: utility `hover-wash` (index.css) vẽ wash/press bằng `background-image` gradient
+PHỦ LÊN `background-color`; áp cho Button secondary/ghost/danger + IconButton (nút đóng lightbox trên
+nền đen cùng lỗi). `Select` giữ nguyên (chevron nằm trong background-image). Sau sửa: tối
+`rgb(38,39,39)` + gradient, sáng `rgb(255,255,255)` + gradient. HIG §3.9b. Kèm: mock thiếu
+`__TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener` (mọi cleanup effect ném lỗi trong preview) — vá.
+
+## Thư viện thành kệ bìa (2026-09-02, chủ yêu cầu "layout có cover")
+
+Nghiên cứu (miền ổn định, không tra web): Apple Books, Kindle, Google Play Books, Libby, Calibre đều
+hội tụ về lưới bìa 2:3 + tiêu đề dưới + thanh tiến độ cho sách đang đọc; "continue reading" tách riêng
+chỉ đáng khi thư viện hàng trăm cuốn. Quyết định: MỘT lưới, đang-đọc xếp trước (`orderShelf`, test
+node), thanh tiến độ brand dưới bìa, placeholder chữ trên `panel` khi không bìa, accessory xoá nổi
+góc bìa + ConfirmInline thay khối chữ. Khoảng cách 32/40px giữa sách, 12px trong thẻ (chủ chỉnh).
+Engine: `load_epub_cover` (3 quy ước: `cover-image` → `<meta name=cover>` id/href → tên chứa
+"cover"; chỉ png/gif/jpeg/svg, xác minh byte thật, cap 8MB, qua `_verified_archive` + hash),
+`load_pdf_cover` (trang 1 → JPEG 600px, 21 ms), `shrink_cover` (bìa >300KB/900px → JPEG 600px; bìa
+in 2MB của chủ → 48KB), `service.cover_for` cache theo hash, `book.cover` (null = bình thường, trả
+lời ngay khi đang đọc — đo lạnh trên sách thật sau shrink: 67 / 22 / 13 ms, nóng 0 ms, dưới ngưỡng
+100 ms giữa hai chunk audio), `library.list` thêm `progress_ratio`/`progress_chapter`. `_package_contract`
+tách `_package_document` (giữ nguyên tuple trả về). Gate sách thật (đọc-chỉ, bản sao DB): **3/3 có
+bìa**. Frontend cache bìa theo book id qua các lần vào/ra kệ. `progress_chapter` = tooltip "Đang ở: …" trên dòng dữ kiện (advisor: không ship
+trường không ai đọc). Test: 7 importer + 2 server + 3 node.
+Pillow (đã có trong venv) giờ được import tường minh trong `importers/covers.py` để PyInstaller gói.
+**Suýt hỏng**: `build-sidecar.sh` còn `--exclude-module PIL` (chép từ danh sách Nuitka cũ) → engine
+đóng băng chết ngay lúc import `covers.py` (`ModuleNotFoundError: PIL`) trong khi 733 test venv xanh
+và `tauri build` EXIT=0. Bắt được nhờ chạy thử binary vừa dựng trước khi cài. Sửa: bỏ loại trừ PIL +
+**cổng khói** trong script (binary phải trả lời `ping`, không thì build fail) — lớp lỗi "đóng băng
+thiếu module" chỉ lộ ở đây, không ở suite.
+
+## Vỏ premium-blur + bốn chỉnh sửa của chủ (2026-09-02)
+
+1. Bỏ nhấc 2px khi hover bìa (giữ bóng đậm hơn). 2. Cột đọc 36em → 40em (~80 ký tự). 3. Cột đọc
+bật `select-text`; guard click-khi-đang-chọn để kéo-chọn không nhảy giọng. 4. Header/footer thành
+lớp phủ gradient-blur theo guideline DOL (`plugin-shell.md` §6 tier 3 · recipe
+`gradient-blur-shell.md` verbatim: 8 div, 128→0, dải 12,5%; tint token sau stack). Bố cục App đổi:
+root `relative h-screen`, `main` phủ toàn bộ, bar `absolute` z-20; inset đặt tên `--shell-top-h` 72 /
+`--shell-bottom-h` 56 hoặc 0 (footer ẩn) — Reader/Library cuộn dưới bar và đệm nội dung, các màn
+khác `shell-inset`. Đo trong preview 1060×720: scroller 0→720, 2 stack × 8 lớp (128/64/32…), điểm
+trong vùng ramp trả về `<p>`/`<img>` (click xuyên), cột 600px, userSelect text. Reader scroll-spy +
+viên nổi tính theo inset. HIG §3.4/§3.9/§3.11/§6.
+Chủ chỉnh ngay trên preview: (a) viên "Về chỗ đang đọc" căn tâm CỘT chứ không phải cột+mục lục →
+bọc vùng cuộn cột trong hộp `relative`, viên neo vào đó (đo: tâm viên 644 = tâm cột, tâm cả vùng
+530); (b) blur đừng tràn — ramp 40px che tiêu đề thư viện và mép bìa → `--shell-ramp: 0`, dải nằm
+trong bar, header pb-6 / footer pt-4 cho dải tan; inset đo bằng ResizeObserver (advisor: footer có
+thể cao lên khi dòng lỗi dài). Advisor bắt lỗi thật: double-click chọn từ làm giọng nhảy (click đầu
+tới khi caret còn gập) → click đơn hoãn 220 ms, `onDoubleClick` huỷ; ảnh `draggable={false}` để kéo
+qua hình không thành kéo ảnh.
+
+## Lật trang kiểu Apple Books (2026-09-02, chủ chọn hướng + gật 4 đề xuất)
+
+Meta-trigger UI/Code → REFINE+EXECUTE (Continue — General). Quyết định: giữ cuộn làm lựa chọn ·
+ranh giới chương = ranh giới trang · 2 trang khi vùng đọc ≥ 1040 px & chữ ≤ 19 · số trang theo
+chương + % sách. Kỹ thuật = CSS multi-column (như Apple Books/WebKit): `PageFlow` đo hộp trang
+(ResizeObserver), `layoutPages` (thuần, test) chọn 1/2 cột + bề rộng, flow cao cố định
+`column-fill:auto` tràn cột sang phải, lật = `translateX`; vị trí đoạn = `getBoundingClientRect`
+so với flow → cột → view. Địa chỉ luôn là segment id → engine/giọng/mục lục/tiến độ không đổi.
+Reflow giữ `anchor` (đoạn đầu trang). `reason` của mỗi lần hiện trang ("turn" vs app-driven) quyết
+định `following`. Mục lục = popover, mặc định đóng. Lỗi gặp khi soát: số trang đổi sau khi ảnh tải
+muộn → đếm lại khi `load` + ảnh chương tải ngay ở chế độ trang; popover mở sẵn che trang → đóng
+mặc định. UI audit bắt popover viết tay → `Surface`. Test node 25 (4 mới).
+
+## ⓘ vị trí + footer tối giản (2026-09-02, chủ chỉnh trên preview)
+
+Dòng "Trang 3/3 · Chương 3 · 11%" dưới trang → tooltip ⓘ cạnh tên sách (`PageFlow` báo page/pages
+qua `onPageShown`, `Reader.onPageInfo` → App; cuộn chỉ có chương + %). Footer: cụm Chất lượng/Giọng/
+Tốc độ bên phải → một chip ghost ở giữa "Thu Hà · 1,25×" mở `SettingsPanel` (Giọng · Tốc độ ·
+Chất lượng = `ModelChoices`, tách từ ModelPanel; Esc đóng trừ khi đang tải); transport đứng giữa khi
+đọc, trạng thái/lỗi bên phải. Advisor (vòng trước): phím trên nút đang focus không lật thêm; `reason`
+báo qua ref + reset "idle" để giọng sang trang không bật nhầm viên "Về chỗ đang đọc".
+Chủ chốt thêm: mục lục dạng panel nổi "quá tối ưu" → chế độ cuộn cũng dùng panel (dưới header, đóng
+mặc định, bấm chương → nhảy + đóng); bỏ cột mục lục cố định. Soát preview: cuộn + trang đều đạt.
+Mũi tên lật → `EdgeZone`: dải rộng bằng lề trống trừ 8 px lề âm của đoạn (≥ 32 px), không lấn chữ (chủ:
+"cẩn thận quá lố width"; đo: mép dải = mép hộp chữ). Chủ chỉnh thêm: chọn ngôn ngữ chỉ ở trang chủ;
+`::selection` = brand 24% tint thay vì đỏ đặc chữ trắng.
+Nút sáng/tối trên toolbar (`useAppearance` = lựa chọn đè lên OS, `resolveTheme`/`nextTheme` thuần + 3 test).
+Footer rảnh: CTA + chip cùng nhóm ở giữa ("cùng loại đi chung"); CTA = "Đọc tiếp · <chương>" / "Đọc
+từ đầu" (Reader báo `resumeChapterTitle` từ đoạn đánh dấu); hint trái "Nhấn vào đoạn văn để đọc từ đó".
+Tooltip ⓘ một dòng + `Surface edge="strong"` (prop mới của kit; viền đậm hơn theo chủ). Footer cao bằng
+header: 24 + 36 + 16 = 76 px (padding lớn ở mép trong, như header).
+Phân cấp tính năng (chủ 02/09): rãnh AppTabs = 2 tab chính có icon (Thư viện · Dán nội dung); Quét đọc ·
+Chuyển ghi chú = cụm ghost phụ bên phải (icon + nhãn, aria-pressed), vạch tách; 3 icon mới. Footer:
+lưới 3 cột `min-h-[76px]` thay cho cụm absolute (footer bị ép 40 px, thành phần sát mép dưới — chủ bắt).
+
+## Đồng bộ từ Apple Books (2026-09-02, chủ: tính năng phụ, "tinh gọn, nhẹ", + "sync tất cả nhanh")
+
+Tận dụng `integrations/apple_books.py` sẵn có (đọc BKLibrary/AEAnnotation qua bản sao). Mới:
+`apple_books_sync.py` (nén thư mục tất định · DRM theo CipherReference không-font · `same_title` ·
+`match_annotations` theo chữ + CFI phân xử), bảng `annotations` + `apple_books_links` (thêm, không bump
+schema), `applebooks.shelf/import/sync_notes` (KHÔNG trong nhóm trả lời giữa chunk), `book.open`
+kèm `annotations`; frontend `AppleBooksPanel` (lặp từng cuốn, tiến độ, tóm tắt), `ui/highlight.ts`
+(+4 test), `<mark>` token. Advisor định hình: nén tất định + bảng link (nhập lại không trùng), sandbox
+`Books` phải là thư mục thật (symlink từng trỏ vào thư mục thật của chủ), từng cuốn một request (timeout
+30 s). Cổng dữ liệu thật trong sandbox: 7 cuốn đúng trạng thái, nhập 0,2–0,3 s, nhập lần hai
+`was_existing`, highlight thật 1/1. Lỗi gặp: `ZANNOTATIONSTYLE` làm 50 test fixture cũ vỡ (INSERT theo
+vị trí) → KHÔNG đọc cột màu nữa (ba test cũ canh `_rows` = một truy vấn/một bản sao DB, đúng lời hứa
+PRIVACY), khôi phục fixture, `style` = 0; `useMemo` đặt sau `return null` → màn
+trắng → chuyển lên trước.
+
+## Đường về chỗ đang đọc + đệm khung trang (2026-09-02, chủ)
+
+`origin` (book/paste/external) ghi lúc bắt đầu đọc ở 5 điểm (sách, dán, chọn-trong-sách, phím tắt,
+phát lại lịch sử); `atOrigin` so với tab/sách đang mở; ô trái footer hiện "Đang đọc: …" + "Quay lại"
+khi đang phát mà không ở nguồn. Khung trang `px-2`, rộng view+16 để lề âm hover không bị cắt (dải lật
+vẫn dừng đúng mép khung).
+Sheet Apple Books làm lại theo hình thái sheet macOS (chủ: "phân cấp và layout"): header gọn, nhóm
+Nhập được/Đã có/Không nhập được (`GroupedSection`+`GroupedRow`, glyph trạng thái, chip số ghi chú),
+hành động chính "Đồng bộ N cuốn" + tóm tắt/tiến độ ở footer sheet. Icon mới: Check, Lock.
+Chủ chỉnh tiếp: modal tròn hơn → `Surface radius="sheet"` 24 px (bậc mới, card giữ 16); bỏ chia vùng →
+một danh sách phẳng tự xếp ưu tiên (`ui/shelfFilter.ts`, 3 test) + ô tìm không dấu hiểu từ trạng thái,
+hiện khi > 6 cuốn; kit thêm `Input` một dòng.
+Chủ: "thử layout listing khác" → hàng kiểu thư viện: `ListRow` + `MiniCover` 32×48 (bìa thật cho cuốn đã
+có qua `ui/useCover.ts` dùng chung với kệ; ô xám + glyph khi chưa nhập; khoá + mờ khi chặn), hairline
+thay khối xám, dữ kiện gộp một dòng.
+Chủ: lớp nổi phải viền đậm → SettingsPanel + mục lục nổi `edge="strong"` (luật chung HIG); select giọng
+chỉ tên, mô tả xuống dòng phụ hàng "Giọng".
+Chủ: ô 2 cột như Apple Books (không màu) → `BookTile` + `MiniCover size="md"`; "Đọc phần đã chọn" xuống
+footer (Reader `onSelection` → App; primary khi rảnh, nhỏ cạnh transport khi đọc; viên trong trang bỏ).
+Chủ: ô = card trắng viền xám, hover viền đậm + bóng 3; hành động thành icon phải; "Nhập" có tuỳ chọn
+phụ (mặc định chỉ nhập sách) → kit `MenuButton` (Esc/click ngoài đóng), engine `sync_notes {mode:
+both|highlights|notes}` + test; footer primary mặc định chỉ nhập + chevron tuỳ chọn. Sidecar dựng lại.
+Chủ: item dropdown bo tròn hơn → 12 (đồng tâm với khung 16 + đệm 4), đệm dọc 6→8, cao 36.
