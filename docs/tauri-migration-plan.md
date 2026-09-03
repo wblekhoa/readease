@@ -681,4 +681,45 @@ them prop reveal={segmentId,at} (dau `at` de hoi cung mot cho hai lan van chay; 
 vi mang phu thuoc duoc danh gia luc render). Tooltip mo bang state chu khong group-hover: no bam duoc nen
 phai song sot khi con tro di vao, va phai kiem duoc. Da kiem: nhay sang chuong khac roi bam -> ve dung
 doan nghi, 0 lenh doc.
+Phase 0 (04/09): highlight giu MAU cua no. Doc ZANNOTATIONSTYLE (1 luc 2 lam 3 vang 4 hong 5 tim, 0 khong
+phai mau) - ban do lay tu HAI cai dat doc lap khop nhau, khong tu che. Cot la TUY CHON qua PRAGMA
+table_info nen schema Books cu mat mau chu khong mat ghi chu; 2 test cho hai hinh dang schema. Bay da dap:
+lan dau toi goi thang _with_copy, di vong qua seam _rows ma 3 test rieng tu dang canh -> mo rong seam
+(query nhan callable) thay vi sua test. Lesson: ai-memory/lessons/dont-route-around-the-seam-a-guard-watches.md
+
+## P6 — khai tử vỏ Qt: đường phát hành (chủ chốt 04/09)
+
+Ẩn số làm đổi hình dạng cả phase, tìm ra khi ground: **installer công khai chỉ bootstrap `uv`**
+(`for tool in curl tar shasum mktemp ditto`) và README hứa "không cần Homebrew, Python, uv". Bản Tauri
+cần thêm **Rust + Node + pnpm** (~911 MB toolchain). Nên P6 KHÔNG phải "trỏ installer sang Tauri".
+
+**Chủ chọn**: phát hành **bản dựng sẵn qua Releases**; **chưa xoá vỏ Qt** cho tới khi đường mới chạy được.
+
+### Cái suýt làm hỏng cả hướng này
+
+`tauri build` để lại bundle `adhoc, linker-signed` mà chữ ký **KHÔNG hợp lệ**:
+`code has no resources but signature indicates they must be present`. App bị kiểm dịch + chữ ký hỏng
+= macOS báo **"damaged and can't be opened"**, chỉ có nút Move to Trash, **không có Open Anyway**. Tức
+bản tải về sẽ không cài được, và triệu chứng không giống "chưa notarize" chút nào.
+
+Cách chữa: **ký lại ad-hoc** (`codesign --force --deep --sign -`). Đo trước/sau trên bản sao:
+
+| | `codesign --verify` | `spctl -a -t exec` |
+|---|---|---|
+| Sau `tauri build` | lỗi niêm phong tài nguyên | cùng lỗi → "damaged" |
+| Sau khi ký lại | **exit 0** | **exit 3 "rejected"** = chưa notarize, có Open Anyway |
+
+### `scripts/build-release-app.sh`
+
+Dựng sidecar (nếu cũ) → `pnpm tauri build` → ký lại → **`codesign --verify` là CỔNG, hỏng thì dừng, không
+đóng gói** → `ditto -c -k --keepParent` ra zip (ditto chứ không phải `zip`: nó giữ chữ ký và symlink).
+Script **không tự publish**.
+
+Đã thử đúng đường người dùng đi: giải nén → gắn `com.apple.quarantine` → verify exit 0 → spctl exit 3 →
+engine bên trong 25 MB, verify exit 0.
+
+### Còn lại của P6 (chưa làm)
+
+Sau khi đường mới chạy được ở máy người khác: tag `qt-final` → xoá `ui/`, `qt_audio`, gỡ PySide6 → viết
+lại `verify.sh` → gỡ mục "cài từ nguồn dựng bản Qt cũ" khỏi README.
 

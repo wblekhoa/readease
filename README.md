@@ -6,12 +6,14 @@
 
 ## Tải và cài ngay
 
-### [⬇️ Tải ReadEase — Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip)
+### [⬇️ Tải ReadEase (.zip) — trang Releases](https://github.com/wblekhoa/readease/releases/latest)
 
-Liên kết trên tải trực tiếp bản mới nhất từ nhánh `main`. Đây là bản cài từ mã nguồn dành cho Mac, chưa phải file `.dmg` hoặc binary đã notarize.
+Tải file `ReadEase-<phiên bản>-arm64.zip`, giải nén, rồi **kéo `ReadEase.app` vào thư mục Applications**. Không cần Terminal, không cần cài công cụ gì.
 
 > [!IMPORTANT]
-> macOS có thể báo **“Install ReadEase.command” Not Opened** vì bản source chưa được Apple notarize. Hãy bấm **Done** — không bấm **Move to Trash** — rồi mở **System Settings → Privacy & Security → Security → Open Anyway**. Xem [hướng dẫn cài đặt đầy đủ](INSTALL.md), gồm ảnh hưởng của Gatekeeper và cách xử lý lỗi.
+> **Lần mở đầu tiên macOS sẽ chặn** — bản này không mua chứng chỉ Apple nên máy chưa biết ai làm ra nó. Bấm chuột phải vào ReadEase.app → **Open** → **Open** lần nữa. Chỉ phải làm một lần.
+>
+> Nếu bạn bấm đúp và thấy nút **Move to Trash**, đừng bấm: bấm **Done**, rồi vào **System Settings → Privacy & Security → Security → Open Anyway**. Chi tiết ở [INSTALL.md](INSTALL.md).
 
 ### Máy của bạn cần có gì?
 
@@ -19,17 +21,17 @@ Liên kết trên tải trực tiếp bản mới nhất từ nhánh `main`. Đ�
 | --- | --- |
 | Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn |
 | macOS | macOS 15 trở lên |
-| Dung lượng trống | Tối thiểu 6 GB **trong lúc** cài đặt. Cài xong app chỉ chiếm ~324 MB, cộng ~331 MB giọng đọc tải một lần; phần còn lại là môi trường build tạm và bị xoá ngay sau khi cài xong. |
-| Kết nối mạng | Cần ở lần cài đầu và lần tải giọng đọc đầu tiên |
-| Công cụ của Apple | Xcode Command Line Tools; máy chưa có thì installer tự mở trình cài của Apple giúp bạn |
+| Dung lượng trống | Khoảng 450 MB cho app, cộng ~331 MB giọng đọc tải một lần |
+| Kết nối mạng | Cần lúc tải app và lần chuẩn bị giọng đọc đầu tiên |
 
-Bạn **không cần** API key, Homebrew, Python, `uv` hay kiến thức lập trình. Installer tự tải môi trường build đã khóa phiên bản và checksum, sau đó dọn môi trường tạm khi cài thành công.
+Bạn **không cần** API key, Homebrew, Python hay kiến thức lập trình.
 
-### Cách cài đơn giản
+### Cách khác — cài từ mã nguồn
 
-Có hai cách. **Cách A không bao giờ bị macOS chặn** vì nguồn lấy bằng `git` không bị gắn cờ kiểm dịch — nên hãy dùng cách này nếu bạn mở được Terminal.
+Cách này dựng app ngay trên máy bạn nên **không bao giờ bị macOS chặn**, đổi lại tốn 10–25 phút và khoảng 6 GB trống lúc dựng. Dùng khi bạn không muốn làm bước Open Anyway ở trên.
 
-#### Cách A — dùng Terminal (khuyên dùng, không bị chặn)
+> [!NOTE]
+> Đường cài từ nguồn hiện vẫn dựng **bản Qt cũ**, chưa có các tính năng mới nhất (đọc theo trang, danh sách giọng, ghi chú Apple Books). Muốn bản mới nhất thì tải `.zip` ở trên.
 
 Mở **Terminal**, dán nguyên khối lệnh sau rồi nhấn Enter:
 
@@ -39,25 +41,13 @@ git clone https://github.com/wblekhoa/readease.git ~/Downloads/readease && "$HOM
 
 Nếu máy chưa có công cụ của Apple, macOS sẽ tự hiện cửa sổ cài **Command Line Tools** — hoàn tất rồi chạy lại lệnh trên.
 
-#### Cách B — tải ZIP và bấm đúp
+Installer liệt kê **trước** mọi thứ nó sẽ cài, thay, đóng và dọn, rồi hỏi **đúng một câu**; sau đó chạy một mạch và in rõ từng bước (`READEASE_STEP 1/5` → `5/5`), cài vào `~/Applications/ReadEase.app` rồi tự mở app.
 
-1. Bấm [**Tải ReadEase — Source ZIP**](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip), rồi mở file ZIP vừa tải.
-2. Trong thư mục `readease-main`, bấm đúp **Install ReadEase.command**.
-3. macOS **sẽ chặn lần mở đầu tiên** — đây là điều bình thường với bản chưa notarize. Bấm **Done** (không bấm **Move to Trash**), rồi vào **System Settings → Privacy & Security → Security → Open Anyway**. Chi tiết ở [INSTALL.md](INSTALL.md).
+### Lần đầu mở app
 
-   Muốn bỏ qua bước này, mở Terminal và gỡ cờ kiểm dịch cho thư mục vừa giải nén:
+Bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**. App **chỉ tải bản bạn chọn**, không tải cả hai: *Tiêu chuẩn* (mặc định) tốn khoảng 330 MB tổng cộng, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Đổi bản ở thanh phát khi đang đọc thì app hỏi lại trước, nói rõ cần tải bao nhiêu nếu bản đó chưa có trên máy. Sau khi đổi, app báo bản cũ đang chiếm bao nhiêu và cho xoá bằng một nút.
 
-   ```bash
-   xattr -d com.apple.quarantine ~/Downloads/readease-main
-   ```
-
-#### Sau đó, cả hai cách đều giống nhau
-
-4. Installer liệt kê **trước** mọi thứ nó sẽ cài, thay, đóng và dọn, rồi hỏi **đúng một câu**. Đồng ý xong là nó chạy một mạch, không hỏi thêm gì nữa.
-5. Chờ khoảng 10–25 phút. Installer in rõ từng bước (`READEASE_STEP 1/5` → `5/5`), cho biết máy đã có bản ReadEase nào chưa, có bản cũ nào sẽ được gỡ, rồi cài vào `~/Applications/ReadEase.app` và tự mở app.
-6. Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**. App **chỉ tải bản bạn chọn**, không tải cả hai: *Tiêu chuẩn* (mặc định) tốn khoảng 330 MB tổng cộng, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Đổi bản ở thanh phát khi đang đọc thì app hỏi lại trước, nói rõ cần tải bao nhiêu nếu bản đó chưa có trên máy. Sau khi đổi, app báo bản cũ đang chiếm bao nhiêu và cho xoá bằng một nút.
-
-Muốn kiểm tra máy trước mà chưa cài, mở Terminal tại thư mục source và chạy:
+Muốn kiểm tra máy trước khi cài từ nguồn, mở Terminal tại thư mục source và chạy:
 
 ```bash
 ./Install\ ReadEase.command --check

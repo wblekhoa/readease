@@ -526,6 +526,20 @@ luật webkit ngay khi có một trong hai thuộc tính chuẩn). App này **gi
 chỗ nào không hỗ trợ thì nó là thứ duy nhất chặn một thanh cuộn trắng nằm giữa trang nền tối. Hai đường
 được chỉnh về cùng một kết quả (8px, trong suốt lúc nghỉ).
 
+**Highlight giữ MÀU của nó** (04/09). Trước đó mọi highlight bị vẽ lại thành một sắc vàng, nên năm màu
+người đọc đã chọn ở Apple Books biến thành một. Nay `ZANNOTATIONSTYLE` được đọc và `mark[data-style]` đổ
+màu: **1 lục · 2 lam · 3 vàng · 4 hồng · 5 tím**; 0 hoặc không có thì rơi về vàng cũ.
+
+- **Bản đồ số→màu không phải tôi chế**: hai cài đặt độc lập đọc cùng DB này khớp nhau chính xác
+  (`py-apple-books` enum `AnnotationColor`, và plugin `apple-books-annotation-import`). Web không có tài
+  liệu chính thức, nên hai nguồn độc lập là mức chắc chắn cao nhất lấy được.
+- **Đều dùng bậc `haze`** (~30% alpha): highlight là mực phủ LÊN chữ, phải để chữ đọc được. Đo tương phản
+  chữ trên nền tô: **6,5–8,6 ở nền sáng · 7,7–7,8 ở nền tối** — đều trên AA. (Lần đo đầu ra 1,4–8,6 lệch
+  nhau vô lý vì ghép nền của các mark nằm sau lớp mờ của panel; đo lại theo đúng nền của từng mark.)
+- **Cột màu là TUỲ CHỌN, không bắt buộc**: schema của Books đi theo phiên bản đã ghi nó, nên reader hỏi
+  `PRAGMA table_info` rồi mới thêm cột vào `SELECT`. Thiếu cột thì mất *màu*, không mất *ghi chú* — một
+  `SELECT` cột không tồn tại làm hỏng cả lượt đọc. Có test cho cả hai hình dạng schema.
+
 **Xoá là xoá HẲN** (chủ chốt 03/09: "xoá hẳn luôn"). Đồng bộ Apple Books là một tấm gương — `sync_notes`
 gọi `replace_annotations` ghi đè cả cụm — nên nếu chỉ xoá dòng thì lần đồng bộ kế tiếp sẽ **đặt nó về chỗ
 cũ**. Vì vậy engine giữ **bia mộ**: bảng `annotations_forgotten` (thêm mới, không bump SCHEMA_VERSION, cùng

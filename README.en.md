@@ -6,12 +6,14 @@ ReadEase is a local-first macOS app that reads text-based PDFs, reflowable EPUBs
 
 ## Download ReadEase
 
-### [⬇️ Download the latest Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip)
+### [⬇️ Download ReadEase (.zip) - Releases](https://github.com/wblekhoa/readease/releases/latest)
 
-This link downloads the latest source from `main`. ReadEase is currently distributed as a local source build, not as a notarized `.dmg` or public binary release.
+Download `ReadEase-<version>-arm64.zip`, unzip it, and **drag `ReadEase.app` into Applications**. No Terminal, no tools to install.
 
 > [!IMPORTANT]
-> macOS may show **“Install ReadEase.command” Not Opened** because this source build is not Apple-notarized. Click **Done**, not **Move to Trash**, then open **System Settings → Privacy & Security → Security → Open Anyway**. Follow the [step-by-step English installation guide](INSTALL.en.md).
+> **macOS will block the first launch** - this build carries no Apple certificate, so your Mac does not know who made it. Right-click ReadEase.app → **Open** → **Open** again. Once only.
+>
+> If you double-clicked and see **Move to Trash**, do not click it: click **Done**, then go to **System Settings → Privacy & Security → Security → Open Anyway**. Details in [INSTALL.en.md](INSTALL.en.md).
 
 ## System requirements
 
@@ -19,20 +21,29 @@ This link downloads the latest source from `main`. ReadEase is currently distrib
 | --- | --- |
 | Mac | Apple Silicon: M1, M2, M3, M4 or newer |
 | macOS | macOS 15 or newer |
-| Free disk space | At least 6 GB **while** it builds. What stays is about 324 MB for the app plus a one-time 331 MB of voice data; the rest is a temporary build environment that is deleted as soon as the install succeeds. |
-| Internet | Required for the first build and first voice-model download |
-| Apple tools | Xcode Command Line Tools - the installer opens Apple's own installer for you if they are missing |
+| Free disk space | About 450 MB for the app, plus a one-time 331 MB of voice data |
+| Internet | Required to download the app and for the first voice-model download |
 
-You do not need an API key, Homebrew, Python, `uv` or programming knowledge. The installer downloads its checksum-pinned build environment, does not use `sudo`, does not modify your shell profile and removes temporary build files after a successful installation.
+You do not need an API key, Homebrew, Python or programming knowledge.
 
-## Quick installation
+## The other way - build from source
 
-1. [Download the Source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip) and extract it.
-2. Open `readease-main` and double-click **Install ReadEase.command**.
-3. If Gatekeeper blocks it, click **Done**, then use **System Settings → Privacy & Security → Security → Open Anyway**.
-4. The installer lists everything it will install, replace, close and remove **before** it starts, then asks **one** question. After you agree it runs start to finish without asking anything else.
-5. Wait about 10–25 minutes. ReadEase is built and checked locally, installed at `~/Applications/ReadEase.app` and opened automatically.
-6. In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build. Only the build you pick is downloaded, never both: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower. If you change build later, the app says what the old one is taking and offers to remove it.
+Building on your own Mac is **never blocked by macOS**, at the cost of 10-25 minutes and about 6 GB of free space while it builds. Use it if you would rather not do the Open Anyway step above.
+
+> [!NOTE]
+> The source install still builds the **older Qt shell**, without the newest features (paged reading, the voice list, Apple Books notes). For the latest, download the `.zip` above.
+
+Open **Terminal**, paste this and press Enter:
+
+```bash
+git clone https://github.com/wblekhoa/readease.git ~/Downloads/readease && "$HOME/Downloads/readease/Install ReadEase.command"
+```
+
+The installer lists everything it will install, replace, close and remove **before** it starts, then asks **one** question, and installs to `~/Applications/ReadEase.app`.
+
+## First launch
+
+In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build. Only the build you pick is downloaded, never both: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower.
 
 See [INSTALL.en.md](INSTALL.en.md) for screenshots-message wording, Gatekeeper details, compatibility checks and troubleshooting.
 
