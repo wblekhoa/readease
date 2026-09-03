@@ -723,3 +723,26 @@ engine bên trong 25 MB, verify exit 0.
 Sau khi đường mới chạy được ở máy người khác: tag `qt-final` → xoá `ui/`, `qt_audio`, gỡ PySide6 → viết
 lại `verify.sh` → gỡ mục "cài từ nguồn dựng bản Qt cũ" khỏi README.
 
+## Cài đè bản mới lên bản cũ (04/09)
+
+Phát hành bản dựng sẵn nghĩa là cách cập nhật thông thường từ nay là **kéo `.app` mới đè lên bản cũ**.
+Ba thứ phải đúng, và cả ba nay đã đo:
+
+1. **Dữ liệu nằm ngoài bundle** — `~/Library/Application Support/VieNeu Reader/` giữ thư viện, tiến độ,
+   ghi chú, `settings.json`, `Models/`. Kéo đè không đụng tới. Vốn đã đúng, nay có bằng chứng.
+2. **Schema đi tiến lên** — `_migrate` chạy từng bước tới `SCHEMA_VERSION`; kho từ bản MỚI HƠN bị từ chối
+   bằng câu riêng (bảo người dùng cài bản mới), **không bao giờ** hạ cấp. Bảng migration rỗng là cố ý:
+   mọi thay đổi tới giờ đều additive qua `CREATE TABLE IF NOT EXISTS`.
+   **Transaction mở bằng tay**: `sqlite3` của Python không mở transaction cho DDL, nên `with connection:`
+   để lại bảng của bước hỏng ở nguyên số phiên bản cũ — một thư viện không bản nào hiểu. Test bắt được
+   đúng lỗi này trước khi nó ra khỏi máy.
+3. **Không tải lại giọng đọc** — `Models/` (330 MB) nằm cùng chỗ, không bị chạm.
+
+**Diễn tập bằng binary thật** (không phải unit test): engine bản CŨ ghi `voice=Trúc Ly`, `rate=1.5` →
+engine bản MỚI đọc lại nguyên vẹn; `library.list` trả đúng cuốn sách kho cũ có, kèm trường mới
+`from_apple_books`; `Models/` không đổi.
+
+**Chưa làm (PARK)**: app chưa *nói* rằng nó vừa được nâng cấp — đó là quyết định giao diện, chờ chủ.
+Và các thông điệp lỗi schema thoát ra dưới dạng `RuntimeError` thô (đường sẵn có từ trước), chứ không
+phải `RepositoryError` — đổi kiểu lỗi là việc rộng hơn, để riêng.
+
