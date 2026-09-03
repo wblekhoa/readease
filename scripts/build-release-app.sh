@@ -33,8 +33,16 @@ cd "$project_root"
 app="app/src-tauri/target/release/bundle/macos/ReadEase.app"
 engine="app/src-tauri/engine/readease-engine"
 version="$(sed -n 's/.*"version": "\(.*\)".*/\1/p' app/src-tauri/tauri.conf.json | head -1)"
+# Which BUILD this is, not just which version. Two artifacts built an hour
+# apart carried the same name and the same 0.1.0 while their contents
+# differed, so "did my update take?" had no answer - for the person who
+# installed it or for anyone checking afterwards. The commit answers it.
+build="$(git rev-parse --short HEAD 2>/dev/null || echo nogit)"
+dirty=""
+if ! git diff --quiet HEAD 2>/dev/null; then dirty="-dirty"; fi
+build="$build$dirty"
 out_dir="dist/release"
-artifact="$out_dir/ReadEase-$version-arm64.zip"
+artifact="$out_dir/ReadEase-$version+$build-arm64.zip"
 
 # The sidecar is bundled as a resource, so a stale one ships silently. Build
 # it first unless it is already newer than every Python source.
@@ -48,6 +56,11 @@ echo "==> building the app"
 (cd app && pnpm tauri build)
 
 [[ -d "$app" ]] || { echo "BUILD_FAILED: no bundle at $app" >&2; exit 1; }
+
+# Stamped BEFORE signing: touching Info.plist afterwards breaks the seal the
+# next step spends its whole existence earning.
+echo "==> stamping the build id ($build) into CFBundleVersion"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $version+$build" "$app/Contents/Info.plist"
 
 echo "==> re-signing ad hoc"
 codesign --force --deep --sign - "$app"
@@ -72,5 +85,8 @@ echo
 echo "READY  $artifact"
 echo "size   $(du -h "$artifact" | cut -f1)"
 echo "sha256 $(shasum -a 256 "$artifact" | cut -d' ' -f1)"
+echo
+echo "Which build is installed, at any time:"
+echo "  /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' ~/Applications/ReadEase.app/Contents/Info.plist"
 echo
 echo "Not published by this script - upload it to a GitHub release yourself."
