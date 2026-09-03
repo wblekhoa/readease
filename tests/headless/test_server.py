@@ -63,6 +63,20 @@ def _chunk(samples: np.ndarray) -> AudioChunk:
     return AudioChunk(pcm=samples.astype(np.float32).tobytes(), sample_rate=SAMPLE_RATE)
 
 
+def _first_audio(replies) -> dict:
+    """The first CHUNK of a reading, past the position that announces it.
+
+    A plain read used to open with audio. It now says where it is first -
+    every utterance is addressable, so that a reading can be resumed in
+    another voice - and these tests are about what the audio does, not about
+    that announcement.
+    """
+    while True:
+        message = json.loads(replies.readline())
+        if message.get("event") != "position":
+            return message
+
+
 class FakeEngine:
     engine_version = "fake-1"
 
@@ -966,6 +980,40 @@ class ProtocolTests(unittest.TestCase):
             segment_ids = {s["id"] for c in opened["book"]["chapters"] for s in c["segments"]}
             self.assertIn(opened["annotations"][0]["segment_id"], segment_ids)
 
+    def test_a_plain_read_says_which_part_it_is_speaking(self) -> None:
+        events = run_server(
+            [{"id": 1, "method": "read", "params": {
+                "text": "Câu một. Câu hai.\n\nĐoạn sau.", "voice_id": "v",
+            }}],
+            FakeEngine(),
+        )
+        parts = [e["segment_id"] for e in events if e.get("event") == "position"]
+        self.assertEqual(parts, ["part-0", "part-1"])
+
+    def test_a_plain_read_can_carry_on_from_the_part_it_reached(self) -> None:
+        # What changing the voice mid-reading needs: the same text, resumed
+        # where the ear was, not restarted from the top.
+        engine = FakeEngine()
+        events = run_server(
+            [{"id": 1, "method": "read", "params": {
+                "text": "Câu một.\n\nĐoạn hai.\n\nĐoạn ba.",
+                "voice_id": "v", "segment_id": "part-2",
+            }}],
+            engine,
+        )
+        parts = [e["segment_id"] for e in events if e.get("event") == "position"]
+        self.assertEqual(parts, ["part-2"])
+        self.assertNotIn("Câu một.", " ".join(t for t, _ in engine.requests))
+
+    def test_a_plain_read_refuses_a_part_it_does_not_have(self) -> None:
+        reply = run_server(
+            [{"id": 1, "method": "read", "params": {
+                "text": "Một câu.", "voice_id": "v", "segment_id": "part-9",
+            }}],
+            FakeEngine(),
+        )[0]
+        self.assertFalse(reply["ok"])
+
     def test_apple_books_note_sync_modes_keep_what_was_asked_for(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -994,6 +1042,73 @@ class ProtocolTests(unittest.TestCase):
                 [{"id": 3, "method": "applebooks.sync_notes", "params": {"asset_id": "A1", "mode": "all"}}],
                 FakeEngine(), repository=repository, service=service, notes_deps=deps,
             )[0]
+            self.assertFalse(bad["ok"])
+
+    def test_a_deleted_highlight_does_not_come_back_on_the_next_sync(self) -> None:
+        # The whole point of deleting: a sync is a mirror of Apple Books, so
+        # without a tombstone the next one would put the highlight straight
+        # back (owner, 03/09: "xoá hẳn luôn").
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            deps = {"library": library}
+            def call(n, method, params):
+                return run_server(
+                    [{"id": n, "method": method, "params": params}],
+                    FakeEngine(), repository=repository, service=service,
+                    notes_deps=deps,
+                )[0]
+            book_id = call(1, "applebooks.import", {"asset_id": "A1"})["result"]["book_id"]
+            call(2, "applebooks.sync_notes", {"asset_id": "A1"})
+            carried = repository.annotations_for(book_id)
+            self.assertTrue(carried)
+
+            gone = call(3, "annotations.delete", {
+                "book_id": book_id, "annotation_id": carried[0].id,
+            })
+            self.assertTrue(gone["result"]["removed"])
+            self.assertEqual(repository.annotations_for(book_id), ())
+
+            call(4, "applebooks.sync_notes", {"asset_id": "A1"})
+            self.assertEqual(repository.annotations_for(book_id), ())
+            self.assertIn(carried[0].id, repository.forgotten_annotations(book_id))
+
+    def test_deleting_a_highlight_that_is_not_there_says_so(self) -> None:
+        # The real "not there" case is a stale id on a book that DOES exist -
+        # a second window removed it first, say. It answers rather than
+        # throwing, so the shell can tell "gone" from "never here".
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            def call(n, params):
+                return run_server(
+                    [{"id": n, "method": "annotations.delete", "params": params}],
+                    FakeEngine(), repository=repository, service=service,
+                    notes_deps={"library": library},
+                )[0]
+            book_id = run_server(
+                [{"id": 0, "method": "applebooks.import", "params": {"asset_id": "A1"}}],
+                FakeEngine(), repository=repository, service=service,
+                notes_deps={"library": library},
+            )[0]["result"]["book_id"]
+
+            reply = call(1, {"book_id": book_id, "annotation_id": "khong-co"})
+            self.assertTrue(reply["ok"])
+            self.assertFalse(reply["result"]["removed"])
+
+            bad = call(2, {"book_id": book_id})
             self.assertFalse(bad["ok"])
 
     def test_apple_books_refuses_what_it_cannot_read(self) -> None:
@@ -1048,7 +1163,7 @@ class ProtocolTests(unittest.TestCase):
                 "params": {"text": "Câu thứ nhất.", "voice_id": "adam"},
             }) + "\n")
             requests.flush()
-            self.assertEqual(json.loads(replies.readline())["event"], "chunk")
+            self.assertEqual(_first_audio(replies)["event"], "chunk")
 
             # Exactly the pair the Rust client sends when a reading starts
             # while another one is running.
@@ -1115,7 +1230,7 @@ class ProtocolTests(unittest.TestCase):
                 "params": {"text": "Một câu rất dài.", "voice_id": "adam"},
             }) + "\n")
             requests.flush()
-            self.assertEqual(json.loads(replies.readline())["event"], "chunk")
+            self.assertEqual(_first_audio(replies)["event"], "chunk")
             requests.write(json.dumps({"id": 21, "method": "ping"}) + "\n")
             requests.write(json.dumps({"id": 22, "method": "stop"}) + "\n")
             requests.flush()
@@ -1154,7 +1269,7 @@ class ProtocolTests(unittest.TestCase):
                 "params": {"text": "Một câu rất dài.", "voice_id": "adam"},
             }) + "\n")
             requests.flush()
-            first = json.loads(replies.readline())
+            first = _first_audio(replies)
             self.assertEqual(first["event"], "chunk")
             requests.write(json.dumps({"id": 6, "method": "stop"}) + "\n")
             requests.flush()

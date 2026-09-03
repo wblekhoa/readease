@@ -11,7 +11,8 @@ Protocol (one JSON object per line, requests on stdin, replies on stdout):
     {"id": 1, "method": "ping"}
     {"id": 2, "method": "voices"}
     {"id": 3, "method": "read", "params": {"text": ..., "voice_id": ...,
-                                            "rate": 1.0}}
+                                            "rate": 1.0,
+                                            "segment_id": "part-2"}}
     {"id": 4, "method": "stop"}
 
 A read streams `{"id": 3, "event": "chunk", "seq": n, "from_voice": bool,
@@ -191,6 +192,10 @@ class _Session:
         # 02/09) and cached after the first ask - cheap enough between chunks.
         "book.cover",
         "config.get", "config.set", "model.status", "notes.books",
+        # Removing a highlight is one small write, and a person reads (and
+        # tidies) while listening - deferring it until the chapter ends
+        # would look like the button did nothing.
+        "annotations.delete",
     })
 
     def _stop_requested(self) -> bool:
@@ -262,6 +267,8 @@ class _Session:
                 self._applebooks_import(request_id, request.get("params") or {})
             elif method == "applebooks.sync_notes":
                 self._applebooks_sync_notes(request_id, request.get("params") or {})
+            elif method == "annotations.delete":
+                self._annotations_delete(request_id, request.get("params") or {})
             elif method == "notes.books":
                 self._notes_books(request_id)
             elif method == "notes.plan":
@@ -314,6 +321,10 @@ class _Session:
             self._fail(request_id, "text is empty")
             return
         spoken = tuple(speakable_text(part.text) for part in parts)
+        # Each part is addressable, exactly as a book's segments are. Nothing
+        # is stored for a plain read (no book_id reaches _speak, so no
+        # progress row) - the id exists so a reading can be RESUMED at the
+        # part it had reached, which is what changing the voice mid-way does.
         utterances = [
             _Utterance(
                 text=spoken[index],
@@ -322,9 +333,19 @@ class _Session:
                     if index + 1 < len(parts)
                     else 0
                 ),
+                segment_id=f"part-{index}",
             )
             for index in range(len(parts))
         ]
+        wanted = str(params.get("segment_id") or "")
+        if wanted:
+            for index, utterance in enumerate(utterances):
+                if utterance.segment_id == wanted:
+                    utterances = utterances[index:]
+                    break
+            else:
+                self._fail(request_id, f"unknown part: {wanted}")
+                return
         self._speak(request_id, utterances, voice_id, rate, settings)
 
     def _read_book(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -711,6 +732,24 @@ class _Session:
             "unmatched": report.unmatched,
             "skipped": report.skipped + (len(report.matched) - len(kept)),
         })
+
+    def _annotations_delete(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Remove one highlight for good.
+
+        For good is the point (owner, 03/09): the repository keeps a
+        tombstone, so the next Apple Books sync will not hand it back.
+        """
+
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        annotation_id = str(params.get("annotation_id") or "")
+        if not book_id or not annotation_id:
+            self._fail(request_id, "book_id and annotation_id are required")
+            return
+        removed = self._repository.forget_annotation(book_id, annotation_id)
+        self._reply(request_id, {"removed": removed})
 
     def _notes_books(self, request_id: Any) -> None:
         deps = self._notes()

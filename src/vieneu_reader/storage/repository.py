@@ -353,6 +353,16 @@ class LibraryRepository:
             )
             self._connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS annotations_forgotten (
+                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    annotation_id TEXT NOT NULL,
+                    forgotten_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (book_id, annotation_id)
+                )
+                """
+            )
+            self._connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS apple_books_links (
                     asset_id TEXT PRIMARY KEY,
                     book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE
@@ -516,13 +526,28 @@ class LibraryRepository:
         items: Sequence[StoredAnnotation],
     ) -> None:
         """One source's highlights for one book, replaced wholesale: a sync
-        is a mirror, so a highlight deleted over there disappears here."""
+        is a mirror, so a highlight deleted over there disappears here.
+
+        Except the ones deleted HERE. A person who removes a highlight means
+        it to stay gone (owner, 03/09: "xoá hẳn luôn"), and a sync is a
+        mirror of the other side - without a record of what was removed, the
+        very next sync would put it all back. The filter lives here rather
+        than at the caller so every path that writes annotations obeys it.
+        """
 
         with _database_errors(), self._lock, self._connection:
+            forgotten = {
+                str(row["annotation_id"])
+                for row in self._connection.execute(
+                    "SELECT annotation_id FROM annotations_forgotten WHERE book_id = ?",
+                    (book_id,),
+                )
+            }
             self._connection.execute(
                 "DELETE FROM annotations WHERE book_id = ? AND source = ?",
                 (book_id, source),
             )
+            items = [item for item in items if item.id not in forgotten]
             self._connection.executemany(
                 """
                 INSERT OR REPLACE INTO annotations(
@@ -535,6 +560,37 @@ class LibraryRepository:
                     for item in items
                 ],
             )
+
+    def forget_annotation(self, book_id: str, annotation_id: str) -> bool:
+        """Remove one highlight, and remember that it was removed.
+
+        The tombstone is what makes it permanent: `replace_annotations`
+        reads it, so the next Apple Books sync cannot hand the highlight
+        back. Answers whether a row was actually there to remove, so the
+        shell can tell "gone" from "never here".
+        """
+
+        with _database_errors(), self._lock, self._connection:
+            self._connection.execute(
+                """
+                INSERT OR IGNORE INTO annotations_forgotten(book_id, annotation_id)
+                VALUES (?, ?)
+                """,
+                (book_id, annotation_id),
+            )
+            cursor = self._connection.execute(
+                "DELETE FROM annotations WHERE book_id = ? AND id = ?",
+                (book_id, annotation_id),
+            )
+        return cursor.rowcount > 0
+
+    def forgotten_annotations(self, book_id: str) -> frozenset[str]:
+        with _database_errors(), self._lock:
+            rows = self._connection.execute(
+                "SELECT annotation_id FROM annotations_forgotten WHERE book_id = ?",
+                (book_id,),
+            ).fetchall()
+        return frozenset(str(row["annotation_id"]) for row in rows)
 
     def annotations_for(self, book_id: str) -> tuple[StoredAnnotation, ...]:
         with _database_errors(), self._lock:
