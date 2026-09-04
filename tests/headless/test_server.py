@@ -97,11 +97,12 @@ class FakeEngine:
 
 
 def run_server(requests: list[dict], engine, repository=None, service=None,
-               settings_path=None, notes_deps=None) -> list[dict]:
+               settings_path=None, notes_deps=None, audio_cache=None) -> list[dict]:
     reader = io.StringIO("".join(json.dumps(request) + "\n" for request in requests))
     writer = io.StringIO()
     serve(reader, writer, engine, repository=repository, service=service,
-          settings_path=settings_path, notes_deps=notes_deps)
+          settings_path=settings_path, notes_deps=notes_deps,
+          audio_cache=audio_cache)
     return [json.loads(line) for line in writer.getvalue().splitlines()]
 
 

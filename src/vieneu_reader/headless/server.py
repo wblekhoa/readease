@@ -48,6 +48,7 @@ from vieneu_reader.playback.time_stretch import SAMPLE_RATE, TimeStretcher
 from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.importers.errors import BookImportError
 from vieneu_reader.importers.service import LibraryService
+from vieneu_reader.speech.cache import AudioCache, audio_cache_key
 from vieneu_reader.storage.repository import LibraryRepository, Progress
 
 PROTOCOL_VERSION = 1
@@ -123,9 +124,11 @@ class _Session:
         service: "LibraryService | None" = None,
         settings_path: "Path | None" = None,
         notes_deps: "dict[str, Any] | None" = None,
+        audio_cache: "AudioCache | None" = None,
     ):
         self._writer = writer
         self._engine = engine
+        self._audio_cache = audio_cache
         self._repository = repository
         self._service = service
         self._settings_path = settings_path
@@ -875,12 +878,23 @@ class _Session:
     # settings file: a reader who picked Thu Hà at 1.25x before the rewrite
     # still has that when the new shell opens. Chosen deliberately over new
     # names - the file survived the rebrand, and it survives this too.
+    # An outside voice provider's key is WRITE-ONLY over this pipe. The
+    # webview may set one and ask whether one is set; it can never read one
+    # back. The key belongs to this machine (the owner's condition for the
+    # feature), and the webview is the one place in the app that renders
+    # arbitrary strings to a screen - so the value simply never goes there,
+    # and no future rendering bug can spill it.
+    _SECRET_CONFIG_KEYS = frozenset({
+        "openai_api_key",
+        "elevenlabs_api_key",
+    })
     _CONFIG_KEYS = frozenset({
         "tauri_selection_shortcut",
         "ui_language",
         "voice",
         "rate",
-    })
+        "external_voice_budget",
+    }) | _SECRET_CONFIG_KEYS
 
     def _config_get(self, request_id: Any, params: dict[str, Any]) -> None:
         from vieneu_reader.settings import load_settings
@@ -890,6 +904,12 @@ class _Session:
             self._fail(request_id, f"unknown config key: {key}")
             return
         value = load_settings(self._settings_path).get(key)
+        if key in self._SECRET_CONFIG_KEYS:
+            # "Is one set" is the only question the shell needs answered, and
+            # the only one it gets. A settings screen shows "đã đặt", never
+            # the key.
+            self._reply(request_id, {"value": None, "set": bool(value)})
+            return
         self._reply(request_id, {"value": value})
 
     def _config_set(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -1084,6 +1104,84 @@ class _Session:
             "data": base64.b64encode(data).decode("ascii"),
         })
 
+    def _sentence_cache_key(
+        self, sentence: str, voice_id: str, settings: SynthesisSettings
+    ) -> str | None:
+        """Where this sentence's audio lives, or None if nothing is cached.
+
+        Keyed on what the SOUND depends on: the sentence as it will be sent,
+        the voice, and who is speaking it. `engine_version`/`model_revision`
+        come off the engine, so a paid provider's audio can never be served
+        for the local model or the other way round - they are different
+        engines with different versions, which is what the key is for.
+        """
+
+        if self._audio_cache is None:
+            return None
+        engine_version = getattr(self._engine, "engine_version", "")
+        model_revision = getattr(self._engine, "model_revision", "")
+        if not engine_version:
+            # A fake or a stub engine has no identity to key on; caching audio
+            # under an empty name would let two of them collide.
+            return None
+        return audio_cache_key(
+            sentence,
+            voice_id,
+            str(engine_version),
+            str(model_revision),
+            settings,
+            # Bumped when the way a sentence becomes sound changes in a manner
+            # the sentence text does not show.
+            reading_revision="headless-sentence-1",
+        )
+
+    def _sentence_audio(
+        self,
+        sentence: str,
+        voice_id: str,
+        settings: SynthesisSettings,
+        fresh: list[AudioChunk],
+    ) -> Iterator[AudioChunk]:
+        """This sentence as audio, from the cache when it is there.
+
+        What is cached is PRE-STRETCH: the rate is applied on the way out, so
+        one entry serves 1× and 1.5× alike rather than buying the sentence
+        again for every speed.
+        """
+
+        key = self._sentence_cache_key(sentence, voice_id, settings)
+        if key is not None:
+            assert self._audio_cache is not None
+            cached = self._audio_cache.get(key)
+            if cached is not None:
+                yield cached
+                return
+        for chunk in self._engine.stream(sentence, voice_id, settings):
+            fresh.append(chunk)
+            yield chunk
+
+    def _remember_sentence(
+        self,
+        sentence: str,
+        voice_id: str,
+        settings: SynthesisSettings,
+        fresh: list[AudioChunk],
+    ) -> None:
+        """Keep a sentence that was spoken all the way through."""
+
+        if not fresh or self._audio_cache is None:
+            return
+        key = self._sentence_cache_key(sentence, voice_id, settings)
+        if key is None:
+            return
+        try:
+            self._audio_cache.put_complete(key, fresh)
+        except Exception:  # noqa: BLE001
+            # A full disk, a quota, a racing sibling process: the reading has
+            # already been heard, and failing it now over bookkeeping would
+            # turn a saved-nothing into a stopped-reading.
+            pass
+
     def _speak(
         self,
         request_id: Any,
@@ -1148,8 +1246,13 @@ class _Session:
                     if index:
                         emit(_silence(int(SENTENCE_PAUSE_MS / rate)),
                              from_voice=False)
-                    for chunk in self._engine.stream(
-                        sentence, voice_id, settings
+                    # Anything the engine actually produced this time, kept so
+                    # it can be remembered - but only once the sentence is
+                    # WHOLE. Half a sentence in the cache would be handed back
+                    # as a finished one for ever after.
+                    fresh: list[AudioChunk] = []
+                    for chunk in self._sentence_audio(
+                        sentence, voice_id, settings, fresh
                     ):
                         if self._stop_requested():
                             stopped = True
@@ -1164,6 +1267,7 @@ class _Session:
                                      from_voice=True)
                     if stopped:
                         break
+                    self._remember_sentence(sentence, voice_id, settings, fresh)
                 if stretcher is not None:
                     # Drain per utterance: the tail lands before the rest that
                     # follows it, and a stop never strands buffered audio.
@@ -1196,12 +1300,13 @@ def serve(
     service: "LibraryService | None" = None,
     settings_path: "Path | None" = None,
     notes_deps: "dict[str, Any] | None" = None,
+    audio_cache: "AudioCache | None" = None,
 ) -> None:
     """Answer requests until the reader closes."""
     _Session(
         reader, writer, engine,
         repository=repository, service=service, settings_path=settings_path,
-        notes_deps=notes_deps,
+        notes_deps=notes_deps, audio_cache=audio_cache,
     ).run()
 
 
@@ -1219,6 +1324,10 @@ def main() -> int:
     engine = VieNeuSpeechEngine(paths.models, precision=quality.load())
     repository = LibraryRepository(paths.database)
     service = LibraryService(paths, repository)
+    # The Qt shell had this and the new one did not, so every re-read paid the
+    # model again. It matters more once a voice bills by the character: a
+    # sentence already spoken must never be bought twice.
+    audio_cache = AudioCache(paths.cache / "Audio")
 
     # The SDK prints progress to stdout; the protocol channel must stay clean.
     protocol = sys.stdout
@@ -1227,6 +1336,7 @@ def main() -> int:
         sys.stdin, protocol, engine,
         repository=repository, service=service,
         settings_path=paths.root / "settings.json",
+        audio_cache=audio_cache,
     )
     return 0
 

@@ -283,17 +283,77 @@ class PackagePreparationTests(unittest.TestCase):
             environment = environment_path.read_text(encoding="utf-8")
             self.assertIn('command = "./script/build_and_run.sh"', environment)
 
-    def test_application_source_has_no_api_key_or_listener_entrypoint(self) -> None:
-        source = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in sorted((ROOT / "src" / "vieneu_reader").rglob("*.py"))
-        ).lower()
+    def test_the_app_never_listens_and_never_carries_a_key(self) -> None:
+        """No server, no embedded credential - the two halves that still hold.
 
-        self.assertNotIn("api_key", source)
-        self.assertNotIn("socketserver", source)
-        self.assertNotIn("uvicorn.run", source)
-        self.assertNotIn(".listen(", source)
-        self.assertIn("vieneu_reader_tts_self_check", source)
+        This guard used to ban the string "api_key" outright, on the promise
+        in PRIVACY.md: "does not require an API key, run an HTTP server, send
+        telemetry, or upload book content". Outside voices (2026-09-04) make
+        one of those four conditional: a reader who switches on a paid voice
+        sends the text of what they chose to read to the provider THEY picked,
+        on THEIR key. Nothing goes to the ReadEase publisher, nothing is
+        required, nothing happens by default.
+
+        Banning the string would only have pushed the same code under another
+        name, so what it was protecting is asserted directly instead: no
+        credential is ever embedded, and nothing listens. The wording in
+        PRIVACY.md and both READMEs is the owner's to change - see the PARK
+        list in ai-memory/plans/external-ai-voices.md.
+        """
+
+        sources = {
+            path.relative_to(ROOT): path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "src" / "vieneu_reader").rglob("*.py"))
+        }
+        joined = "\n".join(sources.values()).lower()
+
+        self.assertNotIn("socketserver", joined)
+        self.assertNotIn("uvicorn.run", joined)
+        self.assertNotIn(".listen(", joined)
+        self.assertIn("vieneu_reader_tts_self_check", joined)
+
+        # A key belongs to the person, never to the build. Any literal shaped
+        # like one of the providers' credentials is a key that shipped.
+        for prefix in ("sk-", "sk_", "xi-api-key:"):
+            for path, source in sources.items():
+                for line in source.splitlines():
+                    stripped = line.strip()
+                    if stripped.startswith("#"):
+                        continue
+                    self.assertNotIn(
+                        f'"{prefix}', stripped,
+                        f"{path} looks like it carries a credential",
+                    )
+
+    def test_only_one_directory_may_reach_the_network(self) -> None:
+        """Outbound HTTP lives in speech/external/ or it does not exist.
+
+        The privacy claim a reader can still check for themselves is about
+        WHERE, not whether: everything that can leave this Mac is in one
+        directory, so an audit is reading one folder rather than trusting a
+        sentence. Model download is the standing exception - it predates this
+        and PRIVACY.md already describes it.
+        """
+
+        allowed = {
+            Path("src/vieneu_reader/speech/external"),
+            # The voice model is fetched by the vendored SDK on prepare, which
+            # PRIVACY.md §Network use already sets out.
+            Path("src/vieneu_reader/speech/vieneu.py"),
+        }
+        offenders = []
+        for path in sorted((ROOT / "src" / "vieneu_reader").rglob("*.py")):
+            relative = path.relative_to(ROOT)
+            if any(
+                relative == allowance or allowance in relative.parents
+                for allowance in allowed
+            ):
+                continue
+            source = path.read_text(encoding="utf-8")
+            for marker in ("urllib.request", "http.client", "requests.post", "socket.socket"):
+                if marker in source:
+                    offenders.append(f"{relative}: {marker}")
+        self.assertEqual(offenders, [], "network access outside speech/external/")
 
 
 if __name__ == "__main__":
