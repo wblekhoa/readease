@@ -102,6 +102,10 @@ export const TEXT = {
   "library.remove_confirm": ["Xoá khỏi thư viện?", "Remove from the library?"],
   "library.remove_keep": ["Giữ lại", "Keep"],
   "library.removed": ["Đã xoá khỏi thư viện.", "Removed from the library."],
+  "library.load_failed": [
+    "Không mở được thư viện. Sách trên máy KHÔNG bị xoá - ứng dụng chỉ chưa đọc được danh sách.",
+    "Could not open the library. Nothing on this Mac was deleted - the app just could not read the list.",
+  ],
   "library.from_apple_books": ["Từ Apple Books · còn cặp nối, đồng bộ ghi chú sẽ tìm đúng cuốn này", "From Apple Books - still paired, so a note sync finds this book"],
   "library.apple_books": ["Từ Apple Books", "From Apple Books"],
   "apple.title": ["Sách trong Apple Books", "Books in Apple Books"],

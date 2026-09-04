@@ -138,6 +138,9 @@ export function Library({
   onPaste: () => void;
 }) {
   const [books, setBooks] = useState<LibraryBook[] | null>(null);
+  /** Why the shelf could not be listed - kept apart from `books`, because
+   * they are different claims and only one of them is true here. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [importing, setImporting] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -149,10 +152,24 @@ export function Library({
       method: "library.list",
       params: {},
     })
-      .then((reply) => setBooks(reply.result.books))
+      .then((reply) => {
+        setBooks(reply.result.books);
+        setLoadError(null);
+      })
       .catch((error) => {
+        // Deliberately NOT `setBooks([])`, which is what this used to do.
+        // An empty shelf is a claim about the library - "you have no books"
+        // - and the truth here is "I could not ask". Someone who has just
+        // installed a new build over the old one reads the first as the
+        // second, and concludes the update ate everything they had. The
+        // engine dies this way for real: it opens the store in `main()`
+        // with nothing catching the failure, so a store it cannot read
+        // takes the whole sidecar down and every request after it fails.
+        // Books already on screen stay on screen: a refresh that fails
+        // after an import is no reason to empty a shelf that was right a
+        // second ago.
         console.error(error);
-        setBooks([]);
+        setLoadError(String(error));
       });
   }, []);
 
@@ -268,6 +285,11 @@ export function Library({
             </>
           )}
         </div>
+        {loadError && (
+          <Notice tone="error" className="mt-2">
+            {text("library.load_failed")} ({loadError})
+          </Notice>
+        )}
         {notice && (
           <Notice tone={notice.tone} className="mt-2">
             {notice.message}

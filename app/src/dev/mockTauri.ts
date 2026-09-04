@@ -332,7 +332,20 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
   }
 }
 
+/** Make one engine method fail, from the address bar: `?fail=library.list`.
+ *
+ * The paths worth looking at hardest are the ones nothing normally reaches -
+ * what the shelf says when it could not ASK the engine, which is what a
+ * person sees the first time an install goes wrong. Without a switch here
+ * that state can only be produced by breaking the real engine, so it never
+ * got looked at at all.
+ */
+const FAIL = new URLSearchParams(window.location.search).get("fail");
+
 function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
+  if (FAIL && (command === FAIL || args.method === FAIL)) {
+    return Promise.reject(`engine timeout on ${FAIL}`);
+  }
   if (command === "plugin:event|listen") {
     const handler = callbacks.get(args.handler as number);
     const event = args.event as string;

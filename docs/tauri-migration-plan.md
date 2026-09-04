@@ -746,3 +746,52 @@ engine bản MỚI đọc lại nguyên vẹn; `library.list` trả đúng cuố
 Và các thông điệp lỗi schema thoát ra dưới dạng `RuntimeError` thô (đường sẵn có từ trước), chứ không
 phải `RepositoryError` — đổi kiểu lỗi là việc rộng hơn, để riêng.
 
+### Câu báo lỗi có tới được người đọc không? (04/09 — nửa đã sửa, nửa còn treo)
+
+Câu tiếng Việt viết cho lúc nâng cấp hỏng chỉ đáng giá bằng khả năng người ta ĐỌC được nó. Lần theo cả
+đường thì thấy hai chỗ chặn, và chỗ thứ hai đang **nói ngược lại sự thật**:
+
+1. **`main()` không bắt gì cả.** `LibraryRepository(paths.database)` dựng thẳng trong `headless/server.py`
+   `main()`; kho không mở được ⇒ traceback ⇒ sidecar chết. Đây không phải giả định về tương lai: bảng
+   `_MIGRATIONS` còn rỗng nên đường migrate chưa chạy được, nhưng **kho hỏng** đã đủ đi đúng lối đó hôm nay.
+2. **stderr bị đổ bỏ.** `engine.rs:211` `.stderr(Stdio::null())` ⇒ mọi lời engine nói lúc chết đều mất.
+   Vỏ chỉ còn `engine write: …` (ống gãy) hoặc `engine timeout on <method>` sau 30 giây. Luồng đọc stdout
+   khi đứt cũng chỉ `eprintln!("[engine] pipe closed")`, **không** `app.emit` gì — webview không hề biết
+   engine đã chết. `EngineClient::spawn` ở `lib.rs:242` là lần dựng đầu, không phải respawn ⇒ không có
+   vòng lặp khởi động lại.
+3. **Và kệ sách nói dối.** `Library.tsx` bắt lỗi rồi `setBooks([])` ⇒ màn hình hiện lời mời "thêm sách
+   đi" — đúng thứ một người vừa cài đè đọc thành *bản cập nhật đã xoá sạch sách của tôi*.
+
+**Đã sửa (mục 3)**: `loadError` tách khỏi `books`. Hỏi không được thì nói là hỏi không được, kèm nguyên
+văn lời của engine; sách đang hiện thì giữ nguyên trên màn (refresh hỏng sau khi nhập không còn quét sạch
+kệ). Đo trên harness bằng công tắc mới `?fail=library.list` trong `dev/mockTauri.ts`: TRƯỚC = 0 thẻ sách +
+lời mời "Mở PDF hoặc EPUB" (lời khẳng định sai), SAU = 0 thẻ sách + "Không mở được thư viện. Sách trên máy
+KHÔNG bị xoá…" + `(engine timeout on library.list)`; bỏ cờ đi thì 4 thẻ như cũ.
+
+**Còn treo (mục 2) — bản vá đã soạn, áp vào LẦN BUILD TỚI mà chủ yêu cầu**, vì nó chỉ chứng minh được
+bằng một lần dựng app thật:
+
+```rust
+// engine.rs, trong spawn(): .stderr(Stdio::null()) -> piped, + luồng RÚT liên tục
+.stderr(Stdio::piped())
+// …
+let last_words = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(20)));
+let sink = last_words.clone();
+std::thread::spawn(move || {                   // PHẢI rút, nếu không ống đầy là engine treo
+    for line in BufReader::new(stderr).lines() {
+        let Ok(line) = line else { break };
+        eprintln!("[engine] {line}");
+        if line.trim().is_empty() { continue; }
+        let mut buffer = sink.lock().unwrap();
+        if buffer.len() == 20 { buffer.pop_front(); }
+        buffer.push_back(line);
+    }
+});
+// request(): lỗi ghi/timeout thì nối câu cuối cùng engine nói vào chuỗi lỗi.
+```
+
+**Rủi ro phải canh khi áp**: tiến trình tải model in ra stderr bằng `\r` (không xuống dòng), nên
+`lines()` có thể gom thành một dòng khổng lồ — luồng rút vẫn chạy nên không treo, nhưng phải kiểm bằng
+một lượt tải model thật trước khi tin. Đó chính là lý do bản vá này KHÔNG commit theo kiểu chỉ
+`cargo check`.
+
