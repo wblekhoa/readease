@@ -59,7 +59,7 @@ export function CostPanel({
     <Surface
       edge="strong"
       radius="sheet"
-      className="absolute bottom-[calc(var(--shell-bottom-h)+var(--layer-gap))] left-1/2 z-20 w-[26rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 p-6 shadow-lifted"
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 w-[26rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 p-6 shadow-lifted"
     >
       <div className="flex items-center gap-2">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("cost.title")}</h3>

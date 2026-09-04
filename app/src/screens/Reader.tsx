@@ -631,7 +631,7 @@ export function Reader({
       className={`absolute left-0 z-10 w-64 overflow-y-auto p-2 shadow-lifted ${
         paged
           ? "top-0 max-h-full"
-          : "top-[calc(var(--shell-top-h)+var(--layer-gap))] layer-capped"
+          : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
       }`}
     >
       <nav>

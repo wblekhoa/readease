@@ -118,12 +118,50 @@ export default function App() {
   const shell = useRef<HTMLDivElement>(null);
   const headerBar = useRef<HTMLDivElement>(null);
   const footerBar = useRef<HTMLElement>(null);
+  /* The rows the CONTROLS sit in, inside each bar. A floating layer belongs
+     12px from the button that opened it, and the bar's box stops 24px past
+     that button - so a panel measured from the box is a panel measured from
+     the wrong edge (owner, 04/09). */
+  const headerRow = useRef<HTMLDivElement>(null);
+  const footerRow = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = shell.current;
     if (!root) return;
     const apply = () => {
       root.style.setProperty("--shell-top-h", `${headerBar.current?.offsetHeight ?? 0}px`);
       root.style.setProperty("--shell-bottom-h", `${footerBar.current?.offsetHeight ?? 0}px`);
+      // …and where the controls themselves stop, in the shell's own
+      // coordinates, which is what an absolutely positioned layer uses.
+      const box = root.getBoundingClientRect();
+      /* Where the CONTROLS stop, measured off the controls themselves.
+       *
+       * Not the bar's box (24px of frost room past them) and not the row's
+       * content box either (a 30px button centred in a 36px row leaves
+       * slack). The row's own children hug the buttons, so their edge is the
+       * one a person sees and the one a layer should sit 12px from. */
+      const edge = (row: HTMLElement | null, side: "top" | "bottom") => {
+        // The controls THEMSELVES, however deeply the bar nests them: a
+        // wrapper is a couple of pixels taller than what it wraps, and those
+        // pixels land in the gap a person is looking at.
+        const controls = row
+          ? [...row.querySelectorAll("button, select, input, a")]
+          : [];
+        if (!controls.length) return null;
+        const rects = controls.map((control) => control.getBoundingClientRect());
+        return side === "top"
+          ? Math.max(...rects.map((rect) => rect.bottom))
+          : Math.min(...rects.map((rect) => rect.top));
+      };
+      const top = edge(headerRow.current, "top");
+      const bottom = edge(footerRow.current, "bottom");
+      root.style.setProperty(
+        "--shell-top-inner",
+        `${top === null ? headerBar.current?.offsetHeight ?? 0 : Math.round(top - box.top)}px`,
+      );
+      root.style.setProperty(
+        "--shell-bottom-inner",
+        `${bottom === null ? footerBar.current?.offsetHeight ?? 0 : Math.round(box.bottom - bottom)}px`,
+      );
     };
     apply();
     const observer = new ResizeObserver(apply);
@@ -693,7 +731,7 @@ export default function App() {
     >
       <div ref={headerBar} className="absolute inset-x-0 top-0 z-20">
         <GradientBlur edge="top" />
-        <div className="relative z-10 px-6 pb-6 pt-4">
+        <div ref={headerRow} className="relative z-10 px-6 pb-6 pt-4">
       <Toolbar
         leading={
           /* A book pushes its own chrome into the one row the window has: the
@@ -947,7 +985,7 @@ export default function App() {
         {/* Same height as the header (76px): the frost's room sits on the
             inner edge of each bar - the header's bottom, the footer's top
             (owner, 02/09: "tương đồng với header"). */}
-        <div className="relative z-10 grid min-h-[76px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-4 pt-6">
+        <div ref={footerRow} className="relative z-10 grid min-h-[76px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-4 pt-6">
           {/* Left: the other way in. Middle: what a click does. Right: what
               the voice is up to. A grid keeps the middle in the middle
               whatever the sides say - and gives the bar its height (an

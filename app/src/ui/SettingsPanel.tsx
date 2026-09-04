@@ -99,7 +99,7 @@ export function SettingsPanel({
       /* Sheet tier, not card: this floats over the book and stands on its
          own, which is what the guideline's 24 is for (owner, 03/09). */
       radius="sheet"
-      className="absolute bottom-[calc(var(--shell-bottom-h)+var(--layer-gap))] left-1/2 z-20 flex layer-capped w-[26rem] -translate-x-1/2 flex-col overflow-hidden shadow-lifted"
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 flex layer-capped w-[26rem] -translate-x-1/2 flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("player.settings")}</h3>

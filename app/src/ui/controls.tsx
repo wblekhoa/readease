@@ -27,7 +27,7 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 /** `--layer-gap` in pixels, for the layers positioned by measurement rather
  * than by class. Kept in step with the token in index.css by hand: there is
  * one relationship here, and it should not read as three. */
-export const LAYER_GAP = 8;
+export const LAYER_GAP = 12;
 type Size = "md" | "sm";
 
 /* Hover/press come from the `hover-wash` utility in index.css: a wash painted

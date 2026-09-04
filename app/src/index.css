@@ -58,7 +58,7 @@
   /* How far a floating layer sits from the thing that opened it. It was 4px
      under a menu, 6 under a tooltip and 8 under a panel - three values for
      one relationship (owner, 03/09). JS-positioned layers use 8 to match. */
-  --layer-gap: 0.5rem;
+  --layer-gap: 0.75rem;
 
   /* The dot rule's own colour. It is a ROLE, not an alias, because the two
      themes need different tiers to read as the same weight: on the white
@@ -238,6 +238,13 @@
 :root {
   --shell-top-h: 72px;
   --shell-bottom-h: 0px;
+  /* The chrome's INNER edge - where its controls actually stop, not where
+     its box does. A bar carries 24px of frost room past its last button, so
+     a panel measured from the box sat 35px off the control it belongs to
+     while the token said 8. Layers anchor on these; screens still pad by the
+     full `-h` above, because a screen has to clear the whole bar. */
+  --shell-top-inner: 72px;
+  --shell-bottom-inner: 0px;
   /* How far a bar's ramp may reach past its own box. Zero: the owner asked
      for the frost to stay INSIDE the bar (02/09 - a 40px reach blurred the
      library title and the tops of the covers). The bars carry enough

@@ -76,7 +76,7 @@ export function NotesPanel({
       className={`absolute left-0 z-10 flex w-[23rem] flex-col overflow-hidden shadow-lifted ${
         paged
           ? "top-0 max-h-full"
-          : "top-[calc(var(--shell-top-h)+var(--layer-gap))] layer-capped"
+          : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
       }`}
     >
       <div className="flex shrink-0 items-center gap-2 px-4 pb-1 pt-3">
