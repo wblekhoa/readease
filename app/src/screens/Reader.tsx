@@ -262,6 +262,14 @@ export function Reader({
   }, []);
   useEffect(() => cancelPendingRead, [cancelPendingRead]);
 
+  /* A failed delete explains itself only while the panel it happened in is
+   * open. Clearing it in the panel's own onClose was not enough: the toolbar
+   * button closes the panel without going through it, so reopening later
+   * showed a complaint about something the person had not just done. */
+  useEffect(() => {
+    if (!showNotes) setNoteError(null);
+  }, [showNotes]);
+
   const marker = currentSegment ?? opened?.progress.segment_id ?? null;
   const flat = useMemo(
     () => opened?.book.chapters.flatMap((chapter) => chapter.segments.map((s) => s.id)) ?? [],
@@ -692,7 +700,7 @@ export function Reader({
           setNoteError(String(error));
         });
       }}
-      onClose={() => { setNoteError(null); onNotes(false); }}
+      onClose={() => onNotes(false)}
     />
   );
 
