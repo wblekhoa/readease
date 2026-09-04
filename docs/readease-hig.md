@@ -397,7 +397,7 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   ngoặc kép/khoảng trắng), CFI chỉ dùng phân xử khi trùng; bookmark bỏ qua, không tính là thất bại.
 - **Màn đọc**: highlight = `<mark>` tô `--fill-warning-haze` (vàng alpha 30%, đúng cả hai nền), chữ giữ
   màu; ghi chú = icon nhỏ sau đoạn bôi, hover thấy nội dung. Highlight tràn sang đoạn sau chỉ tô hết
-  đoạn nó bắt đầu. Tách trong `ui/highlight.ts` (test node: ngoặc cong, NBSP, khoảng trắng đôi, tràn đoạn).
+  đoạn nó bắt đầu. Tách trong `ui/highlight.ts` (test node: ngoặc cong, NBSP, khoảng trắng đôi, tràn đoạn, nhiều highlight một đoạn — §3.14 cuối).
 - **Thư viện chủ (02/09, đếm, không đọc chữ)**: 7 cuốn Apple Books, tất cả là thư mục; 2 ghép theo tiêu
   đề với bản đã có; 1 quá lớn (230 MB, 3 highlight — không đồng bộ được); 4 nhập được; highlight thật
   khớp 1/1 trên «101 Essays». Nhập cuốn 1,4 MB mất 0,2 s.
@@ -579,9 +579,23 @@ lại nó không còn chỉ vào icon mà đọc như một dòng trạng thái 
 **thụt ra ngoài** để vệt hover tràn quá chữ thì đẩy kẻ vào đúng bằng ngần ấy, nếu không kẻ rộng hơn nội
 dung nó ngăn (chủ, 03/09).
 
-**Giới hạn còn lại (chưa sửa, cố ý)**: `marked()` chỉ tô **highlight khớp ĐẦU TIÊN** trong một đoạn, nên
-đoạn có hai highlight sẽ hiện đủ hai ở bảng nhưng chỉ tô một trên trang. Sửa nội dung ghi chú cũng chưa có
-— ghi chú vẫn là dữ liệu một chiều từ Apple Books.
+**Một đoạn tô ĐỦ mọi highlight nó mang** (04/09). Trước đó `marked()` dừng ở highlight khớp ĐẦU TIÊN, nên
+đoạn có hai highlight hiện đủ hai ở bảng ghi chú nhưng chỉ tô một trên trang — và ghi chú gắn vào cái thứ
+hai không có icon nào để mở. `markParagraph` **cắt đoạn thành từng khúc** thay vì tách một lần; mỗi khúc
+biết highlight nào sinh ra nó, nên mang đúng màu và đúng ghi chú của cái đó.
+
+- **Không ký tự nào bị hai vệt cùng nhận.** Highlight rơi trúng chỗ một cái trước đã lấy thì dời sang lần
+  xuất hiện còn trống kế tiếp, hết chỗ thì thôi: câu lặp hai lần trong đoạn ⇒ hai vệt; đánh dấu trùng một
+  câu chỉ nói một lần ⇒ một vệt; cụm nằm TRONG một câu đã tô cả ⇒ không tô lại lần nữa.
+- **Chồng lấn một phần thì cắt**, và vệt bị cắt đầu bỏ khoảng trắng dẫn — nếu không nó hiện ra như một ô
+  màu rỗng trước chữ.
+- **Bất biến**: ghép mọi khúc lại phải ra đúng đoạn văn cũ. Test node giữ tính chất này, không chỉ giữ ví dụ.
+
+Đo trên harness (04/09): đoạn `ch-1-seg-1` trước **1** vệt → sau **2** vệt, `data-style` 3 và 1 (vàng ·
+xanh lá), `p.textContent` không đổi một ký tự.
+
+**Giới hạn còn lại (chưa sửa, cố ý)**: sửa nội dung ghi chú chưa có — ghi chú vẫn là dữ liệu một chiều từ
+Apple Books.
 
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 

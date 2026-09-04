@@ -18,7 +18,7 @@
  * everywhere else): drag to copy, or hand the selection to the voice through
  * the pill. A plain click on a paragraph still moves the voice.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Surface } from "../ui/controls";
@@ -26,7 +26,7 @@ import { ListRow } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
 import { noteCount } from "../ui/annotationsList";
-import { splitHighlight } from "../ui/highlight";
+import { markParagraph } from "../ui/highlight";
 import type { ReadingMode } from "../ui/readingMode";
 import { PageFlow, type PageReason, type PageTarget } from "./PageFlow";
 
@@ -509,21 +509,30 @@ export function Reader({
     opened.book.chapters.find((chapter) =>
       chapter.segments.some((segment) => segment.id === marker),
     )?.id;
-  /** A paragraph's text with its highlights marked - the first highlight
-   * whose words are found; the rest of the paragraph stays plain. */
+  /** A paragraph's text with EVERY highlight it carries marked.
+   *
+   * A paragraph often holds more than one - two sentences marked on
+   * different days, a phrase inside a sentence marked whole - and for a
+   * while this showed only the first, so a note attached to the second had
+   * no icon to open it by. `markParagraph` cuts the paragraph up instead;
+   * each piece knows which highlight made it, and so which colour and which
+   * note belong to it.
+   */
   const marked = (segment: BookSegment) => {
     const items = highlightsBySegment.get(segment.id);
     if (!items) return segment.text;
-    for (const item of items) {
-      const split = splitHighlight(segment.text, item.selected_text);
-      if (!split) continue;
+    const pieces = markParagraph(segment.text, items.map((item) => item.selected_text));
+    // Nothing found: hand back the plain string, not a wrapped one.
+    if (pieces.every((piece) => piece.index === null)) return segment.text;
+    return pieces.map((piece, at) => {
+      if (piece.index === null) return <Fragment key={at}>{piece.text}</Fragment>;
+      const item = items[piece.index];
       return (
-        <>
-          {split.before}
+        <Fragment key={at}>
           {/* The colour Books drew it in - the stylesheet turns the number
               into the wash. An unknown or absent number falls through to the
               yellow every highlight used to get. */}
-          <mark data-style={item.style || undefined}>{split.mark}</mark>
+          <mark data-style={item.style || undefined}>{piece.text}</mark>
           {item.note && (
             <InlineIconButton
               onClick={() => { setPeek(null); onNotes(true, item.id); }}
@@ -536,11 +545,9 @@ export function Reader({
               <NoteIcon />
             </InlineIconButton>
           )}
-          {split.after}
-        </>
+        </Fragment>
       );
-    }
-    return segment.text;
+    });
   };
 
   const chapterBody = (chapter: BookChapter) =>
