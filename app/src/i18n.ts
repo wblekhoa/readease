@@ -76,6 +76,10 @@ export const TEXT = {
   "voices.preview_while_reading": ["Đang đọc nên không nghe thử được - máy đọc mỗi lúc một giọng.", "No preview while reading - the engine speaks one thing at a time."],
   "voices.in_switcher": ["Đưa {name} vào danh sách đổi nhanh", "Keep {name} in the quick switcher"],
   "voices.marked": ["Đã chọn {count} giọng để đổi nhanh.", "{count} voices marked for quick switching."],
+  "voices.unavailable": [
+    "Chưa lấy được danh sách giọng đọc - không phải máy này không có giọng nào.",
+    "The voice list could not be fetched - this is not the same as having no voices.",
+  ],
   "voices.sample": ["Tôi sẽ đọc sách cho bạn nghe bằng giọng này.", "Tôi sẽ đọc sách cho bạn nghe bằng giọng này."],
   "voices.switch": ["Đổi giọng", "Change voice"],
   "voices.switched": ["Đang đọc tiếp bằng giọng {name}.", "Reading on with {name}."],

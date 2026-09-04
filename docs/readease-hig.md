@@ -575,6 +575,14 @@ TRƯỚC = 0 đoạn văn + không một chữ nào; SAU = 0 đoạn + "Không m
 trong khi không có đoạn nào để nhấn. Nút "Đọc" thì KHÔNG hẳn là nói dối — engine đọc sách không cần
 `book.open` của vỏ, nên nghe vẫn có thể chạy. Bỏ hay giữ là câu hỏi cho chủ.
 
+**Danh sách giọng rỗng cũng là một LỜI KHẲNG ĐỊNH** (04/09). `engine_voices` hỏng thì `.catch` cũ để
+danh sách rỗng nói thay — màn hình đọc thành *"máy này không có giọng nào"*, select 0 lựa chọn, và chip
+footer thành **"· 1.25×"**: một dấu phân cách không có gì bên trái. Nay `voicesError` tách khỏi `voices`;
+cả `SettingsPanel` lẫn `VoicesPanel` nói `voices.unavailable` kèm nguyên văn lời engine, và chip bỏ dấu
+chấm khi chưa có tên giọng. Đo bằng `?fail=engine_voices`: chip "· 1.25×" → **"1.25×"**, hai bảng đều
+hiện câu thật; bỏ cờ thì "Minh Đức · 1.25×", 6 giọng, không notice. Cùng luật §3.11/§3.14 — đây là chỗ
+thứ **năm**.
+
 **Nút "Đọc tiếp" chỉ nói nó LÀM gì; thứ nó sẽ đọc nằm ở tooltip** (chủ, 04/09). Trước đó tên chương bị
 nhét vào nhãn nút rồi cắt cụt thành vô nghĩa. Nay hover (hoặc tab tới) hiện một tooltip: tên chương, **ba
 dòng đầu của chính đoạn sẽ được đọc** (`PageInfo.resumeExcerpt`), và **bấm vào đoạn đó là nhảy tới chỗ

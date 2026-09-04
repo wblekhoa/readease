@@ -20,6 +20,7 @@ import { voiceDescription, voiceName, type Voice } from "./voiceShortlist";
 
 export function VoicesPanel({
   voices,
+  error,
   shortlist,
   voiceId,
   reading,
@@ -30,6 +31,8 @@ export function VoicesPanel({
   onClose,
 }: {
   voices: Voice[];
+  /** Why the catalogue is empty, when it is empty because we could not ask. */
+  error?: string | null;
   shortlist: string[];
   voiceId: string;
   /** Something is being read, so the engine cannot also speak a sample. */
@@ -102,10 +105,12 @@ export function VoicesPanel({
       </div>
 
       <div className="border-t border-edge px-6 py-4">
-        <Notice>
-          {reading
-            ? text("voices.preview_while_reading")
-            : text("voices.marked", { count: shortlist.length })}
+        <Notice tone={error ? "error" : "ok"}>
+          {error
+            ? `${text("voices.unavailable")} (${error})`
+            : reading
+              ? text("voices.preview_while_reading")
+              : text("voices.marked", { count: shortlist.length })}
         </Notice>
       </div>
     </Surface>

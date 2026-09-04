@@ -17,7 +17,7 @@
  */
 import { useEffect, useState } from "react";
 import { text } from "../i18n";
-import { Button, IconButton, Select, Surface } from "./controls";
+import { Button, IconButton, Notice, Select, Surface } from "./controls";
 import { GroupedRow, GroupedSection } from "./patterns";
 import { CloseIcon, SpeakerIcon } from "./icons";
 import { ModelChoices } from "./ModelPanel";
@@ -36,6 +36,7 @@ export function SettingsPanel({
   rates,
   reading,
   shortlisted,
+  voicesError,
   onVoice,
   onRate,
   onManageVoices,
@@ -48,6 +49,8 @@ export function SettingsPanel({
   reading: boolean;
   /** How many voices are marked for the mid-reading switcher. */
   shortlisted: number;
+  /** Why the list is empty, when it is empty for a reason worth saying. */
+  voicesError?: string | null;
   onVoice: (voiceId: string) => void;
   onRate: (rate: number) => void;
   onManageVoices: () => void;
@@ -101,6 +104,11 @@ export function SettingsPanel({
             </Select>
           }
         />
+        {voicesError && (
+          <Notice tone="error" className="py-2">
+            {text("voices.unavailable")} ({voicesError})
+          </Notice>
+        )}
         <GroupedRow
           title={text("voices.title")}
           subtitle={text("voices.marked", { count: shortlisted })}

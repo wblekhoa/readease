@@ -86,6 +86,9 @@ export default function App() {
   const [theme, toggleTheme] = useAppearance();
   const [tab, setTab] = useState("paste");
   const [voices, setVoices] = useState<Voice[]>([]);
+  /** Why there are no voices to offer. An empty catalogue is a claim - "this
+   * Mac has no voices" - and a failed request is not that claim. */
+  const [voicesError, setVoicesError] = useState<string | null>(null);
   const [voiceId, setVoiceId] = useState<string>("");
   const [rate, setRate] = useState(1.0);
   /** The voices worth offering mid-reading, in the person's own words:
@@ -238,6 +241,7 @@ export default function App() {
     invoke<Voice[]>("engine_voices")
       .then(async (list) => {
         setVoices(list);
+        setVoicesError(null);
         if (!list.length) return;
         const saved = await invoke<{ result: { value: string | null } }>(
           "engine_request",
@@ -259,7 +263,10 @@ export default function App() {
             : list[0].id,
         );
       })
-      .catch(console.error);
+      .catch((error) => {
+        console.error(error);
+        setVoicesError(String(error));
+      });
     invoke<{ result: { value: string | null } }>("engine_request", {
       method: "config.get",
       params: { key: "rate" },
@@ -1035,7 +1042,9 @@ export default function App() {
                 className={`shrink-0 ${settingsOpen ? "text-ink" : ""}`}
               >
                 <SlidersIcon />
-                <span className="font-normal">{voiceId} · {rate}×</span>
+                {/* Without a voice the old chip read " · 1.25×", a
+                    separator with nothing on its left. */}
+                <span className="font-normal">{voiceId ? `${voiceId} · ` : ""}{rate}×</span>
               </Button>
             )}
           </div>
@@ -1053,6 +1062,7 @@ export default function App() {
           rates={RATES}
           reading={reading !== "idle"}
           shortlisted={shortlist.length}
+          voicesError={voicesError}
           onVoice={switchVoice}
           onRate={rememberRate}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
@@ -1066,6 +1076,7 @@ export default function App() {
       )}
       {voicesOpen && (
         <VoicesPanel
+          error={voicesError}
           voices={voices}
           shortlist={shortlist}
           voiceId={voiceId}
