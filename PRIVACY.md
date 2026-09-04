@@ -1,7 +1,12 @@
 # Privacy
 
-ReadEase is a local-first macOS reader. It does not require an API key, run an
-HTTP server, send telemetry, or upload book content to the ReadEase publisher.
+ReadEase is a local-first macOS reader. It does not run an HTTP server, send
+telemetry, or upload book content to the ReadEase publisher. Out of the box it
+needs no API key and, once the voice model is prepared, no network at all.
+
+One feature departs from that, only if you switch it on: an **outside AI voice**
+(see below) sends the passage being read to the provider whose key you entered.
+Nothing about it is on by default and nothing turns it on by itself.
 
 Every source copy and app bundle carries the same static provenance marker,
 `READEASE-THU-AM-NC-2026-01`, to identify the ReadEase scaffold and its license.
@@ -21,10 +26,51 @@ memory and disappears when ReadEase exits.
 
 ## Network use
 
-Network access is used only when the user explicitly prepares the local VieNeu
+Network access is used when the user explicitly prepares the local VieNeu
 model. The backbone and codec are downloaded from the public model repositories
 at the exact revisions listed in `legal/MODEL_PROVENANCE.md`. Once both are
 verified locally, speech initialization fails closed on any remote lookup.
+
+The other time ReadEase reaches the network is an outside AI voice, described
+next. There is no third.
+
+## Outside AI voices (off unless you turn them on)
+
+ReadEase can read with a paid voice from OpenAI or ElevenLabs, on **your own
+account and your own key**. This is the one place where the text you are
+reading leaves this Mac, so it is worth being exact about what does and does
+not happen.
+
+**What is sent.** The passage about to be spoken, sentence by sentence as the
+reading advances, and the identifier of the voice. Nothing else: not the book,
+not its title or file, not your progress, not your notes or highlights, not
+your name, and nothing identifying this Mac or this installation. Text outside
+the scope you chose is never sent at all — the scope is a ceiling, checked
+before anything goes out, not a preference applied afterwards.
+
+**Who it goes to.** Directly from your Mac to the provider you configured,
+over HTTPS, on your key. It does not pass through any ReadEase server; there
+is no ReadEase server. ElevenLabs requests are sent with `enable_logging=false`,
+which asks them not to retain the text for review; what each provider does
+with a request is governed by their terms and their retention policy, not by
+this app.
+
+**What it costs, and what you are told first.** These voices bill by the
+character. ReadEase counts the exact characters it is about to send and shows
+the figure in the read button before the reading starts; the button will not
+start one until it can quote it. You can cap both how much of a book one press
+may read and how much a session may spend.
+
+**Your key.** It is written to `~/Library/Application Support/VieNeu Reader/
+settings.json` with owner-only permissions (0600) and is write-only across the
+app's internal pipe: the interface can ask whether a key is set and never what
+it is, so no rendering bug can put it on screen. It is sent to that provider
+and to nobody else, and it is never written to a log or an error message —
+messages coming back from a provider are redacted before they are shown.
+
+**If you never turn this on**, none of the above happens, and ReadEase behaves
+exactly as it did before the feature existed: the voice runs on this Mac, and
+after the first model download it needs no network.
 
 ## Apple Books library
 

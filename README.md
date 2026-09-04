@@ -1,6 +1,8 @@
 # ReadEase — Thư Âm
 
-Ứng dụng macOS đọc PDF, EPUB và văn bản tiếng Việt bằng **VieNeu-TTS chạy cục bộ**. ReadEase không cần API key, không gửi nội dung sách lên máy chủ và có thể đọc offline sau khi chuẩn bị giọng lần đầu.
+Ứng dụng macOS đọc PDF, EPUB và văn bản tiếng Việt bằng **VieNeu-TTS chạy cục bộ**. Mặc định ReadEase không cần API key, không gửi nội dung sách đi đâu cả và đọc được offline sau khi chuẩn bị giọng lần đầu.
+
+> **Một ngoại lệ, và bạn phải tự bật:** ReadEase đọc được bằng **giọng AI trả phí của OpenAI hoặc ElevenLabs**, bằng khoá của chính bạn. Khi dùng, đoạn văn sắp đọc sẽ được gửi thẳng từ máy bạn tới nhà cung cấp đó — không qua máy chủ nào của ReadEase, vì không có máy chủ nào cả. Không gửi tên sách, tiến độ, ghi chú hay bất cứ thứ gì nhận dạng bạn. Giá tính theo ký tự và **hiện sẵn trong nút đọc trước khi bấm**; bạn đặt được trần cho cả phạm vi đọc lẫn số tiền mỗi phiên. Không bật thì không có gì rời khỏi máy. Chi tiết: [PRIVACY.md](PRIVACY.md).
 
 > **English documentation:** [README.en.md](README.en.md)
 
@@ -159,7 +161,9 @@ Model VieNeu, codec MOSS và các dependency giữ giấy phép riêng của nh�
 
 # English
 
-ReadEase — Thư Âm is a local-first macOS app that reads PDFs, EPUBs and pasted text with Vietnamese VieNeu-TTS. It requires no API key and can work offline after the first voice-model setup.
+ReadEase — Thư Âm is a local-first macOS app that reads PDFs, EPUBs and pasted text with Vietnamese VieNeu-TTS. By default it requires no API key and works offline after the first voice-model setup.
+
+> **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).
 
 ## Download and install
 
