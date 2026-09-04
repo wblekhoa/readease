@@ -550,6 +550,23 @@ ghi chú trong khi nghe. Nút thùng rác **im lặng cho tới khi rê chuột 
 phím) và **hỏi lại ngay trong hàng** — cùng mẫu với xoá sách khỏi thư viện, câu hỏi nói thẳng hậu quả:
 "Xoá hẳn, đồng bộ lại cũng không quay về?".
 
+**Và nếu engine từ chối thì ghi chú QUAY LẠI trang, kèm lý do** (04/09). Trước đó hàng biến mất khỏi màn
+hình ngay rồi lời gọi engine đi kèm `.catch(console.error)`: engine hỏng là ghi chú **trông như đã xoá mà
+vẫn nằm nguyên trên đĩa** — người ta đóng sách, mở lại, nó ở đó. Với một thứ riêng tư thì đó là kiểu nói
+dối tệ nhất. Nay: bỏ khỏi trang ngay (ngón tay xứng đáng có câu trả lời tức thì) nhưng lời gọi hỏng thì
+**đặt lại đúng chỗ cũ** (`groupAnnotations` xếp theo vị trí trong sách nên thêm vào cuối là về đúng chỗ)
+và bảng ghi chú hiện `notes.remove_failed` kèm nguyên văn lời engine. Đo bằng `?fail=annotations.delete`:
+hàng 6→5 rồi **về lại 6**, vệt trên trang giữ nguyên 2; bỏ cờ thì xoá thật, 6→5 và vệt 2→1.
+
+**Sách không mở được thì NÓI, đừng để trắng** (04/09). `if (!opened) return null` biến mọi lỗi `book.open`
+thành một màn đọc trống trơn — không phân biệt được với sách đang tải, cũng không phân biệt được với sách
+không có chữ, và thứ duy nhất nó không bao giờ hiện là **lý do**. Nay đang tải vẫn trống (nó qua trong
+chớp mắt), còn hỏng thì hiện `reader.open_failed` giữa màn kèm lời engine. Đo bằng `?fail=book.open`:
+TRƯỚC = 0 đoạn văn + không một chữ nào; SAU = 0 đoạn + "Không mở được sách này…".
+**Còn treo (quyết định sản phẩm)**: footer trong trạng thái đó vẫn mời "Nhấn vào đoạn văn để đọc từ đó"
+trong khi không có đoạn nào để nhấn. Nút "Đọc" thì KHÔNG hẳn là nói dối — engine đọc sách không cần
+`book.open` của vỏ, nên nghe vẫn có thể chạy. Bỏ hay giữ là câu hỏi cho chủ.
+
 **Nút "Đọc tiếp" chỉ nói nó LÀM gì; thứ nó sẽ đọc nằm ở tooltip** (chủ, 04/09). Trước đó tên chương bị
 nhét vào nhãn nút rồi cắt cụt thành vô nghĩa. Nay hover (hoặc tab tới) hiện một tooltip: tên chương, **ba
 dòng đầu của chính đoạn sẽ được đọc** (`PageInfo.resumeExcerpt`), và **bấm vào đoạn đó là nhảy tới chỗ

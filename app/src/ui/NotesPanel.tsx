@@ -15,7 +15,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { text } from "../i18n";
-import { Button, IconButton, Surface } from "./controls";
+import { Button, IconButton, Notice, Surface } from "./controls";
 import { GroupedSection } from "./patterns";
 import { CloseIcon, HighlightIcon, NoteIcon, TrashIcon } from "./icons";
 import { groupAnnotations, type Annotation } from "./annotationsList";
@@ -25,6 +25,7 @@ export function NotesPanel({
   annotations,
   paged,
   focusId,
+  error,
   onNavigate,
   onDelete,
   onClose,
@@ -34,6 +35,8 @@ export function NotesPanel({
   paged: boolean;
   /** The note whose icon was pressed: brought into view and marked. */
   focusId: string | null;
+  /** Why a note that was asked to go is still here. */
+  error?: string | null;
   onNavigate: (segmentId: string) => void;
   /** Remove one for good - a tombstone in the engine keeps the next Apple
    * Books sync from handing it back. */
@@ -82,6 +85,12 @@ export function NotesPanel({
           <CloseIcon />
         </IconButton>
       </div>
+
+      {error && (
+        <Notice tone="error" className="shrink-0 px-4 pb-2">
+          {text("notes.remove_failed")} ({error})
+        </Notice>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
       {groups.length === 0 ? (

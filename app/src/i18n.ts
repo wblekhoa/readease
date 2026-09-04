@@ -30,6 +30,10 @@ export const TEXT = {
   "player.stop": ["Dừng", "Stop"],
   "library.title": ["Thư viện sách", "Book library"],
   "reader.back": ["Quay lại thư viện", "Back to library"],
+  "reader.open_failed": [
+    "Không mở được sách này. Sách vẫn còn trong thư viện - lần này ứng dụng chưa đọc được nội dung.",
+    "This book would not open. It is still in your library - the app just could not read it this time.",
+  ],
   "reader.toc_hide": ["Ẩn mục lục", "Hide contents"],
   "reader.toc_show": ["Hiện mục lục", "Show contents"],
   "reader.text_smaller": ["Chữ nhỏ hơn", "Smaller text"],
@@ -52,6 +56,10 @@ export const TEXT = {
   "aria.theme_to_dark": ["Chuyển sang nền tối", "Switch to dark"],
   "notes.title": ["Highlight và ghi chú", "Highlights and notes"],
   "notes.empty": ["Sách này chưa có highlight nào.", "Nothing marked in this book yet."],
+  "notes.remove_failed": [
+    "Chưa xoá được ghi chú này - nó vẫn còn nguyên.",
+    "That note could not be removed - it is still here.",
+  ],
   "notes.kind_highlight": ["Highlight", "Highlight"],
   "notes.kind_note": ["Highlight kèm ghi chú", "Highlight with a note"],
   "notes.remove": ["Xoá", "Delete"],

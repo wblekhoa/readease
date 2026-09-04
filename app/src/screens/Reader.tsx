@@ -21,7 +21,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
-import { Button, IconButton, InlineIconButton, LAYER_GAP, Surface } from "../ui/controls";
+import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
@@ -218,6 +218,9 @@ export function Reader({
   onPageInfo: (info: PageInfo | null) => void;
 }) {
   const [opened, setOpened] = useState<OpenedBook | null>(null);
+  /** Why the book would not open, and why one that was deleted came back. */
+  const [openError, setOpenError] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [seenChapter, setSeenChapter] = useState<string | null>(null);
   const [following, setFollowing] = useState(true);
   const [zoomed, setZoomed] = useState<{ source: string; alt: string } | null>(null);
@@ -311,7 +314,10 @@ export function Reader({
           setTarget({ segmentId: start, source: "open" });
         }
       })
-      .catch(console.error);
+      .catch((error) => {
+        console.error(error);
+        setOpenError(String(error));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId]);
 
@@ -502,7 +508,21 @@ export function Reader({
     return map;
   }, [opened]);
 
-  if (!opened) return null;
+  if (!opened) {
+    // A book that will not open has to SAY so. Returning null whatever the
+    // reason left the reader permanently blank - a screen indistinguishable
+    // from a book still loading and from a book with no words in it, and the
+    // one thing it never showed was the reason. Loading still renders
+    // nothing, because it is over in a moment; a failure does not end.
+    if (!openError) return null;
+    return (
+      <section className="shell-inset flex min-h-0 flex-1 items-center justify-center">
+        <Notice tone="error" className="max-w-[28em] text-center">
+          {text("reader.open_failed")} ({openError})
+        </Notice>
+      </section>
+    );
+  }
   // The contents mark where the EYE is; `marker` marks where the voice is.
   const activeChapter =
     seenChapter ??
@@ -641,9 +661,17 @@ export function Reader({
         showSegment(segmentId, "contents");
         onNotes(false);
       }}
+      error={noteError}
       onDelete={(annotationId) => {
-        // Off the page at once, and off the disk for good: the engine keeps
-        // a tombstone so the next Apple Books sync cannot hand it back.
+        // Off the page at once, because the finger deserves an answer now -
+        // but the ENGINE is what makes a delete true, and it keeps a
+        // tombstone so the next Apple Books sync cannot hand the note back.
+        // If it refuses, the note is still on disk, so it goes back on the
+        // page and says why. A note that only LOOKS deleted is the one
+        // outcome this must never produce: the person walks away believing
+        // something private is gone.
+        const removed = (opened.annotations ?? []).find((item) => item.id === annotationId);
+        setNoteError(null);
         setOpened((book) => book && {
           ...book,
           annotations: (book.annotations ?? []).filter((item) => item.id !== annotationId),
@@ -651,9 +679,20 @@ export function Reader({
         void invoke("engine_request", {
           method: "annotations.delete",
           params: { book_id: bookId, annotation_id: annotationId },
-        }).catch(console.error);
+        }).catch((error) => {
+          console.error(error);
+          // `groupAnnotations` orders by where a note falls in the book, so
+          // putting it back on the end puts it back in its place.
+          if (removed) {
+            setOpened((book) => book && {
+              ...book,
+              annotations: [...(book.annotations ?? []), removed],
+            });
+          }
+          setNoteError(String(error));
+        });
       }}
-      onClose={() => onNotes(false)}
+      onClose={() => { setNoteError(null); onNotes(false); }}
     />
   );
 
