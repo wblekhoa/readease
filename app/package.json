@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && node scripts-audit-ui.mjs && node --experimental-strip-types --test tests/*.test.ts",
+    "build": "tsc && vite build && node scripts-audit-ui.mjs && node scripts-audit-mock.mjs && node --experimental-strip-types --test tests/*.test.ts",
     "preview": "vite preview",
     "tauri": "tauri",
     "audit:ui": "node scripts-audit-ui.mjs",
+    "audit:mock": "node scripts-audit-mock.mjs",
     "test:ui": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {

@@ -768,6 +768,28 @@ kệ). Đo trên harness bằng công tắc mới `?fail=library.list` trong `de
 lời mời "Mở PDF hoặc EPUB" (lời khẳng định sai), SAU = 0 thẻ sách + "Không mở được thư viện. Sách trên máy
 KHÔNG bị xoá…" + `(engine timeout on library.list)`; bỏ cờ đi thì 4 thẻ như cũ.
 
+### Harness trả lời đủ 28/28 lời gọi, và có cổng giữ (04/09)
+
+Đếm bằng máy: app gọi **28** lời gọi engine khác nhau, `dev/mockTauri.ts` trả lời **17**, còn **11** rơi
+vào `{}` rỗng. Không phải khe hở nhỏ — đó là **cả màn hình không ai xem được**:
+
+- `prepare_model` · `model.set_precision` · `restart_engine` · `model.remove_build` ⇒ **màn chuẩn bị
+  giọng đọc, thứ người mới thấy ĐẦU TIÊN**, trong preview treo mãi mãi.
+- `notes.plan` · `notes.transfer` ⇒ "Chuyển ghi chú" chỉ có hai ô chọn rỗng, không đi tiếp được. Mà
+  `notes.books` lại trả `{books: []}` nên màn ấy còn **trông như người dùng không có cuốn nào có ghi chú**.
+- `import_book_bytes` · `library.remove` ⇒ nhập và xoá sách trông như không làm gì.
+- **`pause_audio`/`resume_audio` ⇒ harness DẠY NGƯỢC**: `startMockReading` xếp sẵn mọi mốc bằng
+  `setTimeout` cố định, nên bấm tạm dừng thì giao diện đổi mà mốc vẫn chạy tiếp.
+
+Nay đủ 28/28, đồng hồ đọc giả chạy **từng bước một** nên dừng được thật (đo: mốc đứng yên ở
+`ch-0-seg-3` suốt 4 giây khi tạm dừng, chạy tiếp sau khi bấm tiếp tục), và thêm công tắc `?model=missing`
+— đường DUY NHẤT tới màn chuẩn bị giọng đọc, vì fixture lúc nào cũng "sẵn sàng" thì không bao giờ rẽ vào đó.
+
+**Cổng `MOCK_AUDIT`** (`app/scripts-audit-mock.mjs`, chạy trong `pnpm build` cạnh `UI_AUDIT`): lời gọi
+nào không có handler thì build đỏ, nêu tên lời gọi và file gọi nó. Đã thử bằng cách bỏ 2 handler → FAIL
+đúng 2, exit 1; trả lại → PASS. Lý do là cổng chứ không phải báo cáo: một lời gọi không được trả lời
+**vẫn vẽ ra màn hình**, chỉ là vẽ sai — nó không tự lộ ra như một tính năng thiếu.
+
 **Còn treo (mục 2) — bản vá đã soạn, áp vào LẦN BUILD TỚI mà chủ yêu cầu**, vì nó chỉ chứng minh được
 bằng một lần dựng app thật:
 

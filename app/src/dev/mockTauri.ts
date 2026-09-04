@@ -218,24 +218,52 @@ const VOICES = [
  * PROGRESS - changing the voice mid-chapter, above all - could not be looked
  * at outside the app. This walks positions on a timer and can be stopped,
  * which is as much of the engine as the shell can tell apart. */
+/* A reading that can be PAUSED, which the fixed `setTimeout` per segment
+ * could not be. Pause and resume are real commands in the app, and the mock
+ * used to ignore them: the transport flipped to "paused" while the marker
+ * kept walking down the page, so the one screen where pausing matters taught
+ * the opposite of what the app does. The clock now schedules one step at a
+ * time and can stop between them. */
 let readingTimers: number[] = [];
+let live: { steps: string[]; index: number; timer: number | null; paused: boolean } | null = null;
+
 function stopMockReading() {
   for (const timer of readingTimers) clearTimeout(timer);
   readingTimers = [];
+  if (live?.timer !== null && live?.timer !== undefined) clearTimeout(live.timer);
+  live = null;
+}
+function stepReading(delay: number) {
+  if (!live || live.paused) return;
+  live.timer = setTimeout(() => {
+    if (!live) return;
+    live.timer = null;
+    if (live.index >= live.steps.length) {
+      live = null;
+      emit("reading:done", { ok: true });
+      return;
+    }
+    emit("reading:position", { segment_id: live.steps[live.index] });
+    live.index += 1;
+    stepReading(1200);
+  }, delay) as unknown as number;
 }
 function startMockReading(steps: string[]) {
   stopMockReading();
-  readingTimers.push(setTimeout(() => emit("reading:started", {}), 120));
-  steps.forEach((id, index) => {
-    readingTimers.push(setTimeout(
-      () => emit("reading:position", { segment_id: id }),
-      150 + index * 1200,
-    ));
-  });
-  readingTimers.push(setTimeout(
-    () => emit("reading:done", { ok: true }),
-    150 + steps.length * 1200,
-  ));
+  live = { steps, index: 0, timer: null, paused: false };
+  readingTimers.push(setTimeout(() => emit("reading:started", {}), 120) as unknown as number);
+  stepReading(150);
+}
+function pauseMockReading(paused: boolean) {
+  if (!live) return;
+  if (paused) {
+    if (live.timer !== null) clearTimeout(live.timer);
+    live.timer = null;
+    live.paused = true;
+    return;
+  }
+  live.paused = false;
+  stepReading(1200);
 }
 
 /** Every segment of the fixture book, in reading order. */
@@ -258,6 +286,41 @@ const SETTINGS: Record<string, string | number | null> = {
 /* Apple Books, as the panel sees it: one already in the library, one to
  * import, one purchased (encrypted), one without highlights. Import and
  * sync mutate the shelf so the flow can be watched end to end. */
+/* The model the app thinks is installed - mutable, because switching build
+ * and removing a spare are the two things the model panel DOES, and a
+ * fixture that never changes cannot show either of them happening. */
+const MODEL: { ready: boolean; precision: string | null; installed: Record<string, number> } = {
+  ready: true,
+  precision: "fp32",
+  installed: { fp32: 626_000_000 },
+};
+
+/* `?model=missing` starts with no voice installed, which is the ONLY way to
+ * reach the setup screen - the first thing a new person ever sees, and until
+ * now the one screen the preview could not show at all, because a fixture
+ * that is always ready never routes to it. */
+if (new URLSearchParams(window.location.search).get("model") === "missing") {
+  MODEL.ready = false;
+  MODEL.precision = null;
+  MODEL.installed = {};
+}
+
+/** Books Apple Books holds notes for - the source of the "Chuyển ghi chú"
+ * pickers. Empty until now, which made that screen look like a person with
+ * no annotated books rather than a screen nobody had wired up. */
+const NOTE_BOOKS = [
+  { asset_id: "nb-1", title: "Universal Principles of UX", edition_id: "ed-2019", progress: 0.42 },
+  { asset_id: "nb-2", title: "Universal Principles of UX (bản 2024)", edition_id: "ed-2024", progress: 0.0 },
+  { asset_id: "nb-3", title: "Thiên Nga Đen", edition_id: "ed-swan", progress: 0.13 },
+];
+
+const PLAN_ITEMS = [
+  { kind: 2, has_note: true, excerpt: "Đúng với dự án năm ngoái.", verdict: "same-edition" },
+  { kind: 2, has_note: false, excerpt: "những phương án đầu tiên của họ đều nhanh chóng chìm vào quên lãng", verdict: "same-edition" },
+  { kind: 2, has_note: true, excerpt: "Câu để mở bài.", verdict: "needs-review" },
+  { kind: 2, has_note: false, excerpt: "bỏ qua phần giá trị cộng thêm", verdict: "already-there" },
+];
+
 const APPLE_SHELF: Array<{ asset_id: string; title: string; status: string; book_id: string | null; paired_title: string | null; highlights: number }> = [
   { asset_id: "ab-1", title: "Universal Principles of UX", status: "linked", book_id: "book-ux", paired_title: "Universal Principles of UX", highlights: 3 },
   { asset_id: "ab-2", title: "Thiên Nga Đen", status: "importable", book_id: null, paired_title: null, highlights: 5 },
@@ -312,7 +375,51 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         data: FIGURE_DATA[String(params.figure_id)] ?? FIGURE_WIDE,
       };
     case "model.status":
-      return { ready: true, precision: "fp32", installed: { fp32: 1 } };
+      return { ...MODEL, installed: { ...MODEL.installed } };
+    case "model.set_precision": {
+      MODEL.precision = String(params.precision ?? "");
+      return {};
+    }
+    case "model.remove_build": {
+      delete MODEL.installed[String(params.precision ?? "")];
+      return {};
+    }
+    case "library.remove": {
+      const at = LIBRARY.findIndex((book) => book.id === params.book_id);
+      if (at < 0) throw new Error("library.remove failed: book_gone");
+      LIBRARY.splice(at, 1);
+      // The pairing goes with it, exactly as it does in the engine: a shelf
+      // row that still says "linked" to a book that is gone is a lie the
+      // harness would be teaching.
+      const row = APPLE_SHELF.find((book) => book.book_id === params.book_id);
+      if (row) { row.status = "importable"; row.book_id = null; row.paired_title = null; }
+      return { removed: true };
+    }
+    case "notes.plan": {
+      const source = NOTE_BOOKS.find((book) => book.asset_id === params.source);
+      const target = NOTE_BOOKS.find((book) => book.asset_id === params.target);
+      if (!source || !target) throw new Error("notes.plan failed: book_gone");
+      const sameEdition = source.edition_id === target.edition_id;
+      const items = sameEdition ? PLAN_ITEMS : PLAN_ITEMS.slice(0, 3);
+      return {
+        source_title: source.title,
+        target_title: target.title,
+        same_edition: sameEdition,
+        copyable: items.filter((item) => item.verdict !== "already-there").length,
+        items,
+        total: items.length,
+      };
+    }
+    case "notes.transfer": {
+      const target = NOTE_BOOKS.find((book) => book.asset_id === params.target);
+      if (!target) throw new Error("notes.transfer failed: book_gone");
+      return {
+        outcome: "copied",
+        written: 3,
+        target_title: target.title,
+        backup: "~/Library/…/AEAnnotation.sqlite.bak",
+      };
+    }
     case "config.get":
       // Per KEY, not one answer for everything: answering "vi" to the
       // shortcut key made the keycaps render "VI" and looked like an app bug.
@@ -326,7 +433,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       return { removed: index >= 0 };
     }
     case "notes.books":
-      return { books: [] };
+      return { books: NOTE_BOOKS };
     default:
       return {};
   }
@@ -358,6 +465,44 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   }
   if (command === "plugin:event|unlisten") return Promise.resolve();
   if (command === "engine_voices") return Promise.resolve(VOICES);
+  if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
+  if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
+  if (command === "set_selection_shortcut") return Promise.resolve(null);
+  if (command === "restart_engine") return Promise.resolve(null);
+  if (command === "import_book_bytes") {
+    const name = String(args.name ?? "sách mới.epub");
+    const existing = LIBRARY.find((book) => book.title === name.replace(/\.(epub|pdf)$/i, ""));
+    if (existing) return Promise.resolve({ result: { was_existing: true } });
+    LIBRARY.push({
+      id: `imported-${Date.now()}`,
+      title: name.replace(/\.(epub|pdf)$/i, ""),
+      source_format: /\.pdf$/i.test(name) ? "pdf" : "epub",
+      segment_id: null, progress_ratio: null, progress_chapter: null,
+      chapters: 7, size_bytes: 2_100_000,
+      imported_at: new Date().toISOString(), from_apple_books: false,
+    });
+    return Promise.resolve({ result: { was_existing: false } });
+  }
+  if (command === "prepare_model") {
+    /* A download outlives any request timeout, so the app waits on EVENTS:
+     * progress while it runs, `engine:orphan_reply` when it ends. Answering
+     * this with `{}` left the setup screen - the first thing a new person
+     * sees - spinning forever in the preview, so nobody ever looked at it. */
+    stopMockReading();
+    const steps = [0.12, 0.38, 0.61, 0.87, 1];
+    steps.forEach((progress, index) => {
+      setTimeout(() => emit("engine:model_progress", {
+        progress,
+        message: `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
+      }), 400 + index * 700);
+    });
+    setTimeout(() => {
+      MODEL.ready = true;
+      if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
+      emit("engine:orphan_reply", { ok: true, result: {} });
+    }, 400 + steps.length * 700);
+    return Promise.resolve(null);
+  }
   if (command === "read_book") {
     startMockReading(bookSteps((args.segmentId as string | null) ?? null));
     return Promise.resolve(null);
