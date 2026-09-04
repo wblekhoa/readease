@@ -44,6 +44,14 @@ import {
   storedReadingSize,
 } from "./ui/readingSize";
 import { rememberReadingMode, storedReadingMode, type ReadingMode } from "./ui/readingMode";
+import { CostPanel } from "./ui/CostPanel";
+import {
+  buttonCost,
+  isPaidVoice,
+  rememberScope,
+  storedScope,
+  type Estimate,
+} from "./ui/readingCost";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
@@ -179,6 +187,16 @@ export default function App() {
    * be asked for twice. */
   const [reveal, setReveal] = useState<{ segmentId: string; at: number } | null>(null);
   const [resumeTip, setResumeTip] = useState(false);
+  /* What a paid voice would cost this press of the button, and how far the
+     press reaches. `null` estimate means "still counting", and the button
+     stays disabled until it is not - the owner's rule (04/09): nobody spends
+     money by pressing a button that had not yet told them the price. */
+  const [scope, setScope] = useState<number | null>(storedScope);
+  const [budget, setBudget] = useState<number | null>(null);
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [estimateFailed, setEstimateFailed] = useState(false);
+  const [spent, setSpent] = useState(0);
+  const [costOpen, setCostOpen] = useState(false);
   const [readingSize, setReadingSize] = useState(storedReadingSize);
   const [readingMode, setReadingMode] = useState<ReadingMode>(storedReadingMode);
   const toggleReadingMode = useCallback(() => {
@@ -187,6 +205,51 @@ export default function App() {
       rememberReadingMode(next);
       return next;
     });
+  }, []);
+
+  const paidVoice = isPaidVoice(voiceId);
+
+  /* Re-price whenever anything the price depends on moves: the book, where
+     the voice would resume, which voice, how far. Every one of those changes
+     the number in the button, so every one of them must invalidate it first
+     - a stale price on a button that spends money is worse than no price. */
+  useEffect(() => {
+    if (!openBook || !voiceId) {
+      setEstimate(null);
+      return;
+    }
+    let live = true;
+    setEstimate(null);
+    setEstimateFailed(false);
+    void invoke<{ result: Estimate & { spent_usd?: number } }>("engine_request", {
+      method: "estimate",
+      params: {
+        book_id: openBook.id,
+        segment_id: position ?? openBook.segment_id ?? null,
+        voice_id: voiceId,
+        chapters: scope,
+      },
+    })
+      .then((reply) => {
+        if (!live) return;
+        setEstimate(reply.result);
+        setSpent(reply.result.spent_usd ?? 0);
+      })
+      .catch((error) => {
+        // The button stays LOCKED - guessing a price would be the one thing
+        // worse than waiting - but it says so rather than sitting there
+        // claiming to still be counting.
+        console.error(error);
+        if (live) setEstimateFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [openBook, position, voiceId, scope]);
+
+  const changeScope = useCallback((chapters: number | null) => {
+    setScope(chapters);
+    rememberScope(chapters);
   }, []);
 
   const changeReadingSize = useCallback((step: number) => {
@@ -222,7 +285,11 @@ export default function App() {
     setRate(value);
     remember("rate", value);
   }, [remember]);
-  const rememberShortlist = useCallback((ids: string[]) => {
+  const changeBudget = useCallback((usd: number | null) => {
+    setBudget(usd);
+    remember("external_voice_budget", usd === null ? "" : String(usd));
+  }, [remember]);
+    const rememberShortlist = useCallback((ids: string[]) => {
     setShortlist(ids);
     // config.* is answered between audio chunks, so this saves even while a
     // chapter is being read - which is exactly when the list gets edited.
@@ -267,6 +334,15 @@ export default function App() {
         console.error(error);
         setVoicesError(String(error));
       });
+    invoke<{ result: { value: string | null } }>("engine_request", {
+      method: "config.get",
+      params: { key: "external_voice_budget" },
+    })
+      .then((reply) => {
+        const saved = Number(reply.result.value);
+        if (Number.isFinite(saved) && saved > 0) setBudget(saved);
+      })
+      .catch(() => undefined);
     invoke<{ result: { value: string | null } }>("engine_request", {
       method: "config.get",
       params: { key: "rate" },
@@ -378,13 +454,16 @@ export default function App() {
     current.current = { kind: "book", bookId: openBook.id };
     try {
       await invoke("read_book", {
-        bookId: openBook.id, segmentId, voiceId, rate,
+        // How far this press may reach. Outside it, nothing is ever sent -
+        // which for a paid voice is the difference between a chapter and a
+        // book.
+        bookId: openBook.id, segmentId, voiceId, rate, chapters: scope,
       });
     } catch (error) {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
     }
-  }, [openBook, voiceId, rate]);
+  }, [openBook, voiceId, rate, scope]);
 
   /** Change the voice, and carry on with it.
    *
@@ -406,7 +485,7 @@ export default function App() {
     const at = where.current;
     onPlayer({ type: "start" });
     const request = live.kind === "book"
-      ? invoke("read_book", { bookId: live.bookId, segmentId: at, voiceId: id, rate })
+      ? invoke("read_book", { bookId: live.bookId, segmentId: at, voiceId: id, rate, chapters: scope })
       : invoke("read_text", {
         text: live.text,
         // A book segment id left over from an earlier reading is not a part
@@ -419,7 +498,7 @@ export default function App() {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
     });
-  }, [player.reading, rate, rememberVoice]);
+  }, [player.reading, rate, rememberVoice, scope]);
 
   /** Speak one sentence in a voice, so a choice can be heard before it is made.
    *
@@ -903,7 +982,12 @@ export default function App() {
                   >
                     <Button
                       variant={selection ? "secondary" : "primary"}
-                      disabled={startDisabled}
+                      /* A paid voice cannot be started until its price is
+                         known: the owner's rule (04/09) is that the figure
+                         lives IN this button, so pressing it before the
+                         figure arrives would be spending money the button
+                         had not yet quoted. */
+                      disabled={startDisabled || (paidVoice && screen === "reader" && estimate === null)}
                       onClick={() => {
                         if (screen === "reader") void readBookFrom(null);
                         else void startReading();
@@ -916,6 +1000,15 @@ export default function App() {
                           : pageInfo
                             ? text("player.play_start")
                             : text("player.play")}
+                      {paidVoice && screen === "reader" && (
+                        <span className="font-normal">
+                          {estimateFailed
+                            ? `· ${text("cost.unavailable")}`
+                            : estimate === null
+                              ? `· ${text("cost.measuring")}`
+                              : buttonCost(estimate) && `· ${buttonCost(estimate)}`}
+                        </span>
+                      )}
                     </Button>
                     {resumeTip && screen === "reader" && pageInfo?.resumeExcerpt && pageInfo.resumeSegmentId && (
                       <span className="absolute bottom-full left-1/2 block -translate-x-1/2 pb-2">
@@ -946,6 +1039,19 @@ export default function App() {
                       </span>
                     )}
                   </span>
+                )}
+                {/* Everything else about the money is one press away, not on
+                    the outside of the app (owner, 04/09: "đừng hiện quá
+                    nhiều thông tin ra ngoài, nếu cần thì ẩn chúng đi"). */}
+                {paidVoice && screen === "reader" && (
+                  <IconButton
+                    onClick={() => setCostOpen((open) => !open)}
+                    aria-label={text("cost.open")}
+                    title={text("cost.open")}
+                    className={costOpen ? "text-ink" : ""}
+                  >
+                    <SlidersIcon />
+                  </IconButton>
                 )}
               </>
             ) : (
@@ -1043,13 +1149,30 @@ export default function App() {
               >
                 <SlidersIcon />
                 {/* Without a voice the old chip read " · 1.25×", a
-                    separator with nothing on its left. */}
-                <span className="font-normal">{voiceId ? `${voiceId} · ` : ""}{rate}×</span>
+                    separator with nothing on its left. And a paid voice's id
+                    is `openai:tts-1:alloy`, which is an address, not a name -
+                    the chip shows what the catalogue calls it. */}
+                <span className="font-normal">
+                  {voiceId ? `${voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId} · ` : ""}
+                  {rate}×
+                </span>
               </Button>
             )}
           </div>
         </div>
       </footer>
+      )}
+      {costOpen && paidVoice && screen === "reader" && (
+        <CostPanel
+          estimate={estimate}
+          failed={estimateFailed}
+          scope={scope}
+          budget={budget}
+          spent={spent}
+          onScope={changeScope}
+          onBudget={changeBudget}
+          onClose={() => setCostOpen(false)}
+        />
       )}
       {settingsOpen && speechSettings && (
         <SettingsPanel

@@ -122,7 +122,9 @@ class ProtocolTests(unittest.TestCase):
 
         self.assertEqual(
             replies[0]["result"]["voices"],
-            [{"id": "adam", "label": "Adam - Nam Bộ"}],
+            # `paid` is additive: the shell needs to know which voices cost
+            # money BEFORE one is chosen, not after it refuses.
+            [{"id": "adam", "label": "Adam - Nam Bộ", "paid": False}],
         )
 
     def test_read_streams_voice_frames_with_a_rest_between_sentences(self) -> None:

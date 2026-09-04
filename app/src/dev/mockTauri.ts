@@ -189,6 +189,12 @@ const COVERS: Record<string, string> = {
  * be judged against a fixture of two - the scroll, the switches and the
  * shortlist only behave like themselves at full length. */
 const VOICES = [
+  /* Two paid voices at the top of the catalogue, so the price-in-the-button
+     state can actually be looked at. Without them the whole paid path is a
+     screen nobody could reach in the preview - the same gap the 11 missing
+     handlers were (MOCK_AUDIT, 04/09). */
+  { id: "openai:tts-1:alloy", label: "Alloy · OpenAI" },
+  { id: "elevenlabs:eleven_v3:rachel", label: "Rachel · ElevenLabs" },
   { id: "Minh Đức", label: "Minh Đức - Nam · Bắc · Phong cách tin tức" },
   { id: "Phạm Tuyên", label: "Phạm Tuyên - Nam · Bắc · Phong cách tự nhiên" },
   { id: "Thái Sơn", label: "Thái Sơn - Nam · Nam · Phong cách kể chuyện" },
@@ -431,6 +437,33 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       const index = ANNOTATIONS.findIndex((item) => item.id === params.annotation_id);
       if (index >= 0) ANNOTATIONS.splice(index, 1);
       return { removed: index >= 0 };
+    }
+    case "estimate": {
+      const voice = String(params.voice_id ?? "");
+      const chapters = params.chapters === null || params.chapters === undefined
+        ? 3
+        : Number(params.chapters);
+      // Roughly a real chapter: enough that the money in the button is a
+      // number somebody would actually think about.
+      const chars = 11_800 * chapters;
+      const paid = voice.split(":").length >= 3;
+      if (!paid) {
+        return { paid: false, chars, utterances: chapters * 9, chapters, spent_usd: 0 };
+      }
+      const perThousand = voice.startsWith("elevenlabs") ? 0.1 : 0.015;
+      return {
+        paid: true,
+        provider: voice.split(":")[0],
+        model: voice.split(":")[1],
+        chars,
+        utterances: chapters * 9,
+        chapters,
+        usd: Math.round(chars * perThousand) / 1000,
+        units: chars,
+        unit: voice.startsWith("elevenlabs") ? "credits" : "characters",
+        price_dated: "2026-09-04",
+        spent_usd: 0.042,
+      };
     }
     case "notes.books":
       return { books: NOTE_BOOKS };

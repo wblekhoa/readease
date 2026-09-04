@@ -50,7 +50,7 @@ from vieneu_reader.importers.errors import BookImportError
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.speech.cache import AudioCache, audio_cache_key
 from vieneu_reader.speech.external.estimate import estimate_scope, scope_end
-from vieneu_reader.speech.external.pricing import price_for
+from vieneu_reader.speech.external.pricing import PRICES, price_for
 from vieneu_reader.speech.external.provider import ExternalVoiceError
 from vieneu_reader.speech.external.engine import ExternalSpeechEngine
 from vieneu_reader.speech.external.pricing import VoicePrice
@@ -301,12 +301,7 @@ class _Session:
                     "sample_rate": SAMPLE_RATE,
                 })
             elif method == "voices":
-                self._reply(request_id, {
-                    "voices": [
-                        {"id": voice.id, "label": voice.label}
-                        for voice in self._engine.voices()
-                    ],
-                })
+                self._reply(request_id, {"voices": self._voice_catalogue()})
             elif method == "read":
                 self._read(request_id, request.get("params") or {})
             elif method == "read.book":
@@ -439,6 +434,43 @@ class _Session:
             book_id=book_id,
         )
 
+    def _voice_catalogue(self) -> list[dict[str, Any]]:
+        """Every voice on offer: the local model first, then paid ones.
+
+        A provider's voices appear ONLY once its key is on this machine.
+        Offering a voice that cannot speak would put the refusal after the
+        choice instead of before it - the person would pick Alloy, press
+        read, and be told no. The local model comes first because it is the
+        product; the paid ones are an option somebody went and enabled.
+        """
+
+        catalogue: list[dict[str, Any]] = [
+            {"id": voice.id, "label": voice.label, "paid": False}
+            for voice in self._engine.voices()
+        ]
+        settings = self._settings_document()
+        for provider in sorted(KEY_FOR_PROVIDER):
+            if not settings.get(KEY_FOR_PROVIDER[provider]):
+                continue
+            for price in PRICES:
+                if price.provider != provider:
+                    continue
+                voice_id = f"{provider}:{price.model}:x"
+                external = _external_provider(provider, voice_id, settings)
+                if external is None:
+                    continue
+                catalogue.extend(
+                    {
+                        "id": voice.as_voice(provider).id,
+                        "label": voice.as_voice(provider).label,
+                        "paid": True,
+                        "provider": provider,
+                        "model": price.model,
+                    }
+                    for voice in external.voices()
+                )
+        return catalogue
+
     def _estimate(self, request_id: Any, params: dict[str, Any]) -> None:
         """What one press of the read button would cost, before it is pressed.
 
@@ -475,6 +507,7 @@ class _Session:
                 "chars": sum(len(u.text) for u in utterances[start:end]),
                 "utterances": end - start,
                 "chapters": len(set(chapter_of[start:end])),
+                "spent_usd": self._spend.snapshot().usd,
             })
             return
         result = estimate_scope(
@@ -492,6 +525,12 @@ class _Session:
             "units": result.units,
             "unit": result.unit,
             "price_dated": result.price_dated,
+            # What this session has already run up. It rides here rather than
+            # on an event of its own because the Rust host forwards only the
+            # events it knows about, and the button re-prices whenever
+            # anything changes - which is often enough for a figure that
+            # lives one press away, behind the settings button.
+            "spent_usd": self._spend.snapshot().usd,
         })
 
     def _book_utterances(

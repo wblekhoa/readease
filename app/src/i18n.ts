@@ -76,6 +76,62 @@ export const TEXT = {
   "voices.preview_while_reading": ["Đang đọc nên không nghe thử được - máy đọc mỗi lúc một giọng.", "No preview while reading - the engine speaks one thing at a time."],
   "voices.in_switcher": ["Đưa {name} vào danh sách đổi nhanh", "Keep {name} in the quick switcher"],
   "voices.marked": ["Đã chọn {count} giọng để đổi nhanh.", "{count} voices marked for quick switching."],
+  "voices.paid": ["Trả phí", "Paid"],
+  "cost.title": ["Giọng trả phí", "Paid voice"],
+  "cost.open": ["Chi phí và phạm vi", "Cost and scope"],
+  "cost.measuring": ["Đang tính…", "Working it out…"],
+  "cost.unavailable": ["chưa có giá", "no price yet"],
+  "cost.failed": [
+    "Chưa tính được giá cho giọng này, nên nút đọc còn khoá - sẽ không có chuyện tiêu tiền mà chưa biết bao nhiêu.",
+    "The price for this voice could not be worked out, so the read button stays locked - no spending before you know the sum.",
+  ],
+  "cost.scope": ["Đọc tới đâu", "How far to read"],
+  "cost.scope_chapters": ["{count} chương", "{count} chapters"],
+  "cost.scope_one": ["Chương này", "This chapter"],
+  "cost.scope_all": ["Hết sách", "To the end"],
+  "cost.detail": [
+    "{chars} ký tự · {chapters} chương · giá tham khảo {date}",
+    "{chars} characters · {chapters} chapters · price quoted {date}",
+  ],
+  "cost.units": ["≈ {units} {unit}", "≈ {units} {unit}"],
+  "cost.unit_characters": ["ký tự", "characters"],
+  "cost.unit_credits": ["credit", "credits"],
+  "cost.budget": ["Dừng lại khi đã tiêu", "Stop once spent"],
+  "cost.budget_off": ["Không đặt trần", "No ceiling"],
+  "cost.spent": ["Phiên này đã tiêu {usd}", "Spent this session: {usd}"],
+  "cost.free": ["Giọng trên máy - không tốn gì.", "The voice on this Mac - it costs nothing."],
+  "voiceerr.no_key": [
+    "Chưa có khoá cho giọng này. Thêm khoá trong phần giọng đọc, hoặc chọn giọng trên máy.",
+    "No key for this voice yet. Add one in the voice settings, or pick the voice on this Mac.",
+  ],
+  "voiceerr.bad_key": [
+    "Nhà cung cấp từ chối khoá này. Kiểm tra lại khoá trong phần giọng đọc.",
+    "The provider refused this key. Check it in the voice settings.",
+  ],
+  "voiceerr.quota": [
+    "Tài khoản bên đó đã hết lượt. Nạp thêm, hoặc đọc tiếp bằng giọng trên máy.",
+    "That account is out of credit. Top it up, or carry on with the voice on this Mac.",
+  ],
+  "voiceerr.rate_limit": [
+    "Gửi hơi nhanh. Đợi một chút rồi đọc tiếp.",
+    "Too fast for them. Wait a moment and read on.",
+  ],
+  "voiceerr.network": [
+    "Không nối được tới nhà cung cấp - chưa tốn gì cả.",
+    "Could not reach the provider - nothing was charged.",
+  ],
+  "voiceerr.provider_down": [
+    "Nhà cung cấp đang lỗi bên họ. Thử lại sau, hoặc dùng giọng trên máy.",
+    "The provider is broken on their side. Try later, or use the voice on this Mac.",
+  ],
+  "voiceerr.refused": [
+    "Nhà cung cấp từ chối đoạn này.",
+    "The provider refused this passage.",
+  ],
+  "voiceerr.budget": [
+    "Đã chạm trần chi tiêu bạn đặt. Nâng trần trong phần chi phí, hoặc đọc bằng giọng trên máy.",
+    "You have hit the ceiling you set. Raise it under cost, or read with the voice on this Mac.",
+  ],
   "voices.unavailable": [
     "Chưa lấy được danh sách giọng đọc - không phải máy này không có giọng nào.",
     "The voice list could not be fetched - this is not the same as having no voices.",

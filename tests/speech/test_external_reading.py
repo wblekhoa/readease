@@ -280,5 +280,45 @@ class EstimateMethodTests(unittest.TestCase):
         self.assertNotIn("usd", result)
 
 
+class CatalogueTests(unittest.TestCase):
+    """A paid voice is offered only when it could actually speak."""
+
+    def _voices(self, settings):
+        from tests.headless.test_server import FakeEngine, run_server
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(json.dumps(settings), encoding="utf-8")
+            reply = run_server(
+                [{"id": 1, "method": "voices"}], FakeEngine(), settings_path=path,
+            )[0]
+            return reply["result"]["voices"]
+
+    def test_without_a_key_the_catalogue_is_the_local_model_alone(self) -> None:
+        # Offering Alloy to somebody with no key would put the refusal AFTER
+        # the choice: they pick it, press read, and are told no.
+        voices = self._voices({})
+        self.assertTrue(voices)
+        self.assertTrue(all(voice["paid"] is False for voice in voices))
+
+    def test_with_a_key_the_paid_voices_join_it_below(self) -> None:
+        voices = self._voices({"openai_api_key": KEY})
+        paid = [voice for voice in voices if voice["paid"]]
+        self.assertTrue(paid)
+        # The local model stays first: it is the product, the rest is an
+        # option somebody went and switched on.
+        self.assertFalse(voices[0]["paid"])
+        self.assertTrue(all(voice["id"].startswith("openai:") for voice in paid))
+        self.assertTrue(all(voice["id"].count(":") == 2 for voice in paid))
+        # Both models are offered, because they are different prices.
+        self.assertEqual(
+            {voice["model"] for voice in paid}, {"tts-1", "tts-1-hd"},
+        )
+
+    def test_the_other_provider_stays_out_until_it_has_its_own_key(self) -> None:
+        voices = self._voices({"openai_api_key": KEY})
+        self.assertFalse(any(v["id"].startswith("elevenlabs") for v in voices))
+
+
 if __name__ == "__main__":
     unittest.main()
