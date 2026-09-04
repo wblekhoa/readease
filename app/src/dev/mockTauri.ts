@@ -290,12 +290,34 @@ function bookSteps(from: string | null): string[] {
 
 /** Stands in for settings.json - including the two keys carried over from the
  * Qt shell, so "it remembers my voice" can be looked at, not just believed. */
+/* The engine keeps these in a settings file that outlives the app, so the
+   harness keeps them somewhere that outlives a reload. Held in memory, a
+   reload would wipe the ceiling and the chosen voice and the preview would
+   answer "no" to "does this survive quitting?" - which is the opposite of
+   what the app does. */
+const SETTINGS_KEY = "readease.mock-settings";
+
 const SETTINGS: Record<string, string | number | null> = {
   tauri_selection_shortcut: "shift+super+t",
   ui_language: "vi",
   voice: "Thu Hà",
   rate: 1.25,
+  ...(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
+    } catch {
+      return {};
+    }
+  })(),
 };
+
+function rememberSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS));
+  } catch {
+    // A preview that cannot write still runs; it just forgets.
+  }
+}
 
 /* Apple Books, as the panel sees it: one already in the library, one to
  * import, one purchased (encrypted), one without highlights. Import and
@@ -449,6 +471,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "config.set":
       SETTINGS[String(params.key)] = params.value as string | number;
+      rememberSettings();
       return { saved: true };
     case "annotations.delete": {
       const index = ANNOTATIONS.findIndex((item) => item.id === params.annotation_id);
@@ -574,12 +597,18 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     return Promise.resolve(null);
   }
   if (command === "engine_request") {
-    return Promise.resolve({
-      result: engineRequest(
-        args.method as string,
-        (args.params as Record<string, unknown>) ?? {},
-      ),
-    });
+    const result = engineRequest(
+      args.method as string,
+      (args.params as Record<string, unknown>) ?? {},
+    );
+    if (args.method === "estimate") {
+      // The engine walks the whole book to count characters, which takes a
+      // moment. Answering instantly here would hide the button's own
+      // "Đang tính…" state, and a state nobody can see in the harness is a
+      // state nobody has looked at.
+      return new Promise((resolve) => setTimeout(() => resolve({ result }), 350));
+    }
+    return Promise.resolve({ result });
   }
   return Promise.resolve({ result: {} });
 }

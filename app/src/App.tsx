@@ -1262,7 +1262,12 @@ export default function App() {
           voicesError={voicesError}
           paidVoices={voices.filter((voice) => isPaidVoice(voice.id))}
           keysSet={keysSet}
+          scope={scope}
+          budget={budget}
+          spent={spent}
           onSaveKey={saveKey}
+          onScope={changeScope}
+          onBudget={changeBudget}
           onVoice={switchVoice}
           onRate={rememberRate}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}

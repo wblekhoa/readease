@@ -22,6 +22,7 @@ import { GroupedRow, GroupedSection } from "./patterns";
 import { CloseIcon, SpeakerIcon } from "./icons";
 import { AppTabs } from "./AppTabs";
 import { ProviderKeys } from "./ProviderKeys";
+import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf } from "./readingCost";
 import { ModelChoices } from "./ModelPanel";
 import {
@@ -42,7 +43,12 @@ export function SettingsPanel({
   voicesError,
   paidVoices,
   keysSet,
+  scope,
+  budget,
+  spent,
   onSaveKey,
+  onScope,
+  onBudget,
   onVoice,
   onRate,
   onManageVoices,
@@ -63,7 +69,16 @@ export function SettingsPanel({
   paidVoices: Voice[];
   /** Provider id → whether a key is stored. Never the key. */
   keysSet: Record<string, boolean>;
+  /* The same two limits the cost panel by the read button carries. They are
+     in both places on purpose (owner, 04/09): one is beside the price, the
+     other beside the key, and a person adjusting either is already looking
+     at the thing it governs. */
+  scope: number | null;
+  budget: number | null;
+  spent: number;
   onSaveKey: (provider: string, key: string) => Promise<boolean>;
+  onScope: (chapters: number | null) => void;
+  onBudget: (usd: number | null) => void;
   onVoice: (voiceId: string) => void;
   onRate: (rate: number) => void;
   onManageVoices: () => void;
@@ -199,6 +214,18 @@ export function SettingsPanel({
           ) : (
             <Notice className="mt-3 block">{text("key.none_yet")}</Notice>
           )}
+          {/* How far a press reads and where the money stops: the same two
+              controls the panel beside the read button carries, because
+              somebody setting a key up is exactly somebody deciding how much
+              of the book to spend on. */}
+          <ReadingLimits
+            scope={scope}
+            budget={budget}
+            spent={spent}
+            onScope={onScope}
+            onBudget={onBudget}
+            className="mt-3"
+          />
           {/* Said once, where the key is typed - not on the outside of the
               app, and not repeated on every screen that mentions a voice. */}
           <Notice className="mt-3 block">{text("key.local_only")}</Notice>

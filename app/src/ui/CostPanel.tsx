@@ -23,6 +23,81 @@ import { SCOPES, formatCount, formatUsd, type Estimate } from "./readingCost";
  * sum somebody would not mind losing. */
 const BUDGETS: readonly (number | null)[] = [0.25, 1, 5, null];
 
+/** How far one press reads, and where the money stops.
+ *
+ * Two settings, deliberately in TWO places: beside the read button, where
+ * the price is, and inside the voice panel's API tab, where the key and the
+ * voice are (owner, 04/09 - "để user tiện lợi có thể điều chỉnh ở nhiều nơi
+ * khác nhau"). One component, so the two places can never drift into two
+ * different behaviours - which is the usual cost of putting a control in two
+ * places, and the reason to pay it once here instead.
+ *
+ * Both persist: the scope in localStorage, the ceiling in the engine's
+ * settings file. Closing the panel or quitting the app changes neither.
+ */
+export function ReadingLimits({
+  scope,
+  budget,
+  spent,
+  onScope,
+  onBudget,
+  className = "",
+}: {
+  scope: number | null;
+  budget: number | null;
+  /** Dollars run up since the app opened - context for the ceiling. */
+  spent: number;
+  onScope: (chapters: number | null) => void;
+  onBudget: (usd: number | null) => void;
+  className?: string;
+}) {
+  return (
+    <GroupedSection className={className}>
+      <GroupedRow
+        title={text("cost.scope")}
+        trailing={
+          <Select
+            value={scope === null ? "all" : String(scope)}
+            onChange={(event) =>
+              onScope(event.target.value === "all" ? null : Number(event.target.value))
+            }
+          >
+            {SCOPES.map((chapters) => (
+              <option key={chapters ?? "all"} value={chapters === null ? "all" : chapters}>
+                {chapters === null
+                  ? text("cost.scope_all")
+                  : chapters === 1
+                    ? text("cost.scope_one")
+                    : text("cost.scope_chapters", { count: chapters })}
+              </option>
+            ))}
+          </Select>
+        }
+      />
+      <GroupedRow
+        title={text("cost.budget")}
+        /* The running total sits under the ceiling it is running towards -
+           a limit with no sense of how close you are is half a limit. */
+        subtitle={spent > 0 ? text("cost.spent", { usd: formatUsd(spent) }) : undefined}
+        trailing={
+          <Select
+            value={budget === null ? "off" : String(budget)}
+            onChange={(event) =>
+              onBudget(event.target.value === "off" ? null : Number(event.target.value))
+            }
+          >
+            {BUDGETS.map((usd) => (
+              <option key={usd ?? "off"} value={usd === null ? "off" : usd}>
+                {usd === null ? text("cost.budget_off") : formatUsd(usd)}
+              </option>
+            ))}
+          </Select>
+        }
+      />
+    </GroupedSection>
+  );
+}
+
 export function CostPanel({
   estimate,
   failed,
@@ -68,46 +143,14 @@ export function CostPanel({
         </IconButton>
       </div>
 
-      <GroupedSection className="mt-2">
-        <GroupedRow
-          title={text("cost.scope")}
-          trailing={
-            <Select
-              value={scope === null ? "all" : String(scope)}
-              onChange={(event) =>
-                onScope(event.target.value === "all" ? null : Number(event.target.value))
-              }
-            >
-              {SCOPES.map((chapters) => (
-                <option key={chapters ?? "all"} value={chapters === null ? "all" : chapters}>
-                  {chapters === null
-                    ? text("cost.scope_all")
-                    : chapters === 1
-                      ? text("cost.scope_one")
-                      : text("cost.scope_chapters", { count: chapters })}
-                </option>
-              ))}
-            </Select>
-          }
-        />
-        <GroupedRow
-          title={text("cost.budget")}
-          trailing={
-            <Select
-              value={budget === null ? "off" : String(budget)}
-              onChange={(event) =>
-                onBudget(event.target.value === "off" ? null : Number(event.target.value))
-              }
-            >
-              {BUDGETS.map((usd) => (
-                <option key={usd ?? "off"} value={usd === null ? "off" : usd}>
-                  {usd === null ? text("cost.budget_off") : formatUsd(usd)}
-                </option>
-              ))}
-            </Select>
-          }
-        />
-      </GroupedSection>
+      <ReadingLimits
+        scope={scope}
+        budget={budget}
+        spent={spent}
+        onScope={onScope}
+        onBudget={onBudget}
+        className="mt-2"
+      />
 
       {/* The detail the button deliberately does not carry. */}
       <Notice tone={failed ? "error" : "ok"} className="mt-3 block">
@@ -131,7 +174,6 @@ export function CostPanel({
               estimate.unit === "credits" ? "cost.unit_credits" : "cost.unit_characters",
             ),
           })}
-          {spent > 0 && ` · ${text("cost.spent", { usd: formatUsd(spent) })}`}
         </Notice>
       )}
     </Surface>
