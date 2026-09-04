@@ -388,6 +388,14 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
 - **Behavior**: "Đồng bộ tất cả" = nhập mọi cuốn nhập được rồi đồng bộ ghi chú mọi cuốn đã ghép có
   highlight. Ghi chú đồng bộ là GƯƠNG: thay toàn bộ hàng `source=applebooks` của cuốn đó — xoá bên
   Apple thì mất bên này. Esc đóng, trừ khi đang chạy.
+  **Hệ quả của "gương" mà menu chưa nói ra (đo 04/09, CHỜ CHỦ QUYẾT)**: `mode` không chỉ lọc thứ mang
+  sang, nó lọc luôn thứ đang giữ. Chọn *chỉ ghi chú* trên cuốn đã đồng bộ *cả hai* thì highlight không
+  kèm ghi chú **bị xoá khỏi ReadEase** — reply đếm nó là `skipped` (đường vào), không hề nói có thứ đang
+  giữ vừa bị bỏ đi, nên vỏ cũng không nói được cho người dùng. **Không mất dữ liệu**: Apple Books là
+  nguồn thật, đồng bộ lại *cả hai* là nó về đủ (đo: 2 → 1 → 2). Câu hỏi cho chủ: *chỉ ghi chú* nên đọc
+  là "chỉ MANG ghi chú sang" (lọc lần chuyển) hay "chỉ GIỮ ghi chú" (lọc tấm gương)? Hành vi hôm nay là
+  vế sau, và nay có test ghim (`test_a_narrower_sync_mode_also_drops_what_it_no_longer_covers`) để đổi
+  là một quyết định chứ không phải một tai nạn.
 - **Engine**: Apple giữ sách tự thêm dưới dạng THƯ MỤC `.epub` → nén tất định (mimetype trước, STORED,
   mốc thời gian cố định, bỏ `iTunesMetadata.plist`/`.DS_Store`/`__MACOSX`) để hash không đổi → importer
   sẵn có nhận ra cùng sách khi nhập lại. Bảng `apple_books_links(asset_id→book_id)` nhớ cuốn nào đã

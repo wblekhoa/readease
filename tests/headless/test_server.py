@@ -912,7 +912,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(row["progress_ratio"], 0.5)
         self.assertEqual(row["progress_chapter"], "Hai")
 
-    def _apple_fixture(self, root):
+    def _apple_fixture(self, root, *, extra_highlight: bool = False):
         """A tiny unpacked EPUB on disk, an Apple Books reader stub, and a repository."""
         from types import SimpleNamespace
         from vieneu_reader.integrations.apple_books import Annotation
@@ -930,7 +930,12 @@ class ProtocolTests(unittest.TestCase):
             Annotation("A1", 2, "epubcfi(/6/4!/4/2)", selected_text="Nội dung chương hai", note="hay", style=3),
             Annotation("A1", 2, "epubcfi(/6/4!/4/2)", selected_text="không có trong sách"),
             Annotation("A1", 3, "epubcfi(/6/4!/4/2)"),
-        )}
+        ) + ((
+            # A highlight with no note of its own - the kind a mode of
+            # "notes" does not carry. Off by default so the counts every
+            # other test asserts stay where they are.
+            Annotation("A1", 2, "epubcfi(/6/2!/4/2)", selected_text="Nội dung chương một", style=1),
+        ) if extra_highlight else ())}
         library = SimpleNamespace(
             books=lambda: (apple_book,),
             book=lambda asset_id: apple_book,
@@ -1092,6 +1097,57 @@ class ProtocolTests(unittest.TestCase):
                 FakeEngine(), repository=repository, service=service, notes_deps=deps,
             )[0]
             self.assertFalse(bad["ok"])
+
+    def test_a_narrower_sync_mode_also_drops_what_it_no_longer_covers(self) -> None:
+        # Pinning what HAPPENS, because until now nothing did, and what
+        # happens is easy to be surprised by: `sync_notes` replaces every
+        # `source=applebooks` row for the book, so a mode of "notes" does not
+        # merely decline to bring plain highlights over - it removes the ones
+        # an earlier "both" already brought.
+        #
+        # Nothing is lost: Apple Books is the source of truth, so syncing
+        # "both" again puts it straight back, which the last assertion proves.
+        # Whether the menu should read as "bring only notes" (a filter on the
+        # transfer) or "hold only notes" (a filter on the mirror) is the
+        # owner's call - this test says which one it is today, so a change
+        # would have to be a decision rather than an accident.
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root, extra_highlight=True)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            deps = {"library": library}
+            book_id = run_server(
+                [{"id": 1, "method": "applebooks.import", "params": {"asset_id": "A1"}}],
+                FakeEngine(), repository=repository, service=service, notes_deps=deps,
+            )[0]["result"]["book_id"]
+
+            def synced(mode):
+                reply = run_server(
+                    [{"id": 2, "method": "applebooks.sync_notes",
+                      "params": {"asset_id": "A1", "mode": mode}}],
+                    FakeEngine(), repository=repository, service=service, notes_deps=deps,
+                )[0]["result"]
+                held = [a.selected_text for a in repository.annotations_for(book_id)]
+                return reply, sorted(held)
+
+            reply, held = synced("both")
+            self.assertEqual(held, ["Nội dung chương hai", "Nội dung chương một"])
+            self.assertEqual(reply["matched"], 2)
+
+            reply, held = synced("notes")
+            self.assertEqual(held, ["Nội dung chương hai"])
+            # And the reply counts it as skipped-on-the-way-in. It does not
+            # say that one already here was removed, which is why the shell
+            # cannot tell the person either.
+            self.assertEqual((reply["matched"], reply["skipped"]), (1, 2))
+
+            _reply, held = synced("both")
+            self.assertEqual(held, ["Nội dung chương hai", "Nội dung chương một"])
 
     def test_a_deleted_highlight_does_not_come_back_on_the_next_sync(self) -> None:
         # The whole point of deleting: a sync is a mirror of Apple Books, so
