@@ -106,26 +106,41 @@ export function IconButton({
   onBlur,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  const [tip, setTip] = useState<{ centre: number; top: number } | null>(null);
-  const [box, setBox] = useState<{ left: number } | null>(null);
+  const [tip, setTip] = useState<
+    { centre: number; above: number; below: number } | null
+  >(null);
+  const [box, setBox] = useState<{ left: number; top: number } | null>(null);
   const bubble = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     if (!tip || !bubble.current) { setBox(null); return; }
     const width = bubble.current.offsetWidth;
+    const height = bubble.current.offsetHeight;
     const margin = 12;
+    // Below by default, ABOVE when below would run off the bottom. Buttons in
+    // the footer are the whole reason: their tooltip was drawn past the edge
+    // of the window and cropped, so the one control that most needed naming
+    // was the one whose name you could not read.
+    const fitsBelow = tip.below + height + margin <= window.innerHeight;
     setBox({
       left: Math.min(
         Math.max(tip.centre - width / 2, margin),
         Math.max(margin, window.innerWidth - width - margin),
       ),
+      top: fitsBelow ? tip.below : Math.max(margin, tip.above - height),
     });
   }, [tip]);
 
   const open = (element: HTMLElement) => {
     if (!title) return;
     const rect = element.getBoundingClientRect();
-    setTip({ centre: rect.left + rect.width / 2, top: rect.bottom + LAYER_GAP });
+    // Both candidates are recorded here; which one is used needs the
+    // bubble's own height, which only exists once it has rendered.
+    setTip({
+      centre: rect.left + rect.width / 2,
+      above: rect.top - LAYER_GAP,
+      below: rect.bottom + LAYER_GAP,
+    });
   };
 
   return (
@@ -146,7 +161,7 @@ export function IconButton({
           className="pointer-events-none fixed z-50 w-max max-w-[16rem] rounded-lg border border-edge-strong bg-paper px-2 py-1 text-xs leading-snug text-ink shadow-lifted"
           /* Hidden for the one frame before it has been measured, so it
              never appears in the wrong place first. */
-          style={{ left: box?.left ?? 0, top: tip.top, visibility: box ? "visible" : "hidden" }}
+          style={{ left: box?.left ?? 0, top: box?.top ?? 0, visibility: box ? "visible" : "hidden" }}
         >
           {title}
         </div>,
