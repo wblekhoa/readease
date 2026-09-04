@@ -134,7 +134,7 @@ class ExternalSpeechEngine:
         a provider; it is accepted and ignored so the seam stays one shape.
         """
 
-        bare = voice_id.split(":", 1)[1] if ":" in voice_id else voice_id
+        bare = voice_id.rsplit(":", 1)[-1]
         upsampler = Upsampler()
         remainder = b""
         for piece in self._provider.synthesize(text, bare):

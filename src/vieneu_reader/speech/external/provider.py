@@ -53,9 +53,16 @@ class ProviderVoice:
     model: str
 
     def as_voice(self, provider: str) -> Voice:
-        # Namespaced, because a provider's "Alloy" and the local catalogue
-        # must never collide in a shortlist or a cache key.
-        return Voice(id=f"{provider}:{self.id}", label=self.label)
+        """`provider:model:voice` - self-describing on purpose.
+
+        Namespaced because a provider's "Alloy" and the local catalogue must
+        never collide in a shortlist, a saved preference or a cache key. The
+        MODEL rides along because it sets the price, and an id that carries
+        its own price needs no second table to be looked up in: the estimate,
+        the spend meter and the request all read the same string.
+        """
+
+        return Voice(id=f"{provider}:{self.model}:{self.id}", label=self.label)
 
 
 class ExternalVoiceProvider(Protocol):

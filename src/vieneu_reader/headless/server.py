@@ -49,7 +49,16 @@ from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.importers.errors import BookImportError
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.speech.cache import AudioCache, audio_cache_key
-from vieneu_reader.storage.repository import LibraryRepository, Progress
+from vieneu_reader.speech.external.estimate import estimate_scope, scope_end
+from vieneu_reader.speech.external.pricing import price_for
+from vieneu_reader.speech.external.provider import ExternalVoiceError
+from vieneu_reader.speech.external.engine import ExternalSpeechEngine
+from vieneu_reader.speech.external.pricing import VoicePrice
+from vieneu_reader.speech.external.route import (
+    KEY_FOR_PROVIDER, model_of, pick_voice_route, provider_of,
+)
+from vieneu_reader.speech.external.spend import SpendMeter
+from vieneu_reader.storage.repository import LibraryRepository, Progress, StoredBook
 
 PROTOCOL_VERSION = 1
 
@@ -65,6 +74,37 @@ class ReadingEngine(Protocol):
     def stream(
         self, text: str, voice_id: str, settings: SynthesisSettings
     ) -> Iterator[AudioChunk]: ...
+
+
+def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
+    """Build the provider a voice names, on the key this Mac holds.
+
+    Kept out of the session so the session never touches a credential except
+    to hand it straight to the one module allowed to reach the network.
+    """
+
+    key = settings.get(KEY_FOR_PROVIDER.get(provider, ""))
+    if not key:
+        return None
+    if provider == "openai":
+        from vieneu_reader.speech.external.openai import OpenAIVoiceProvider
+
+        return OpenAIVoiceProvider(str(key), model=model_of(voice_id) or "tts-1")
+    return None
+
+
+def _start_at(utterances: "list[_Utterance]", wanted: object) -> int:
+    """Where a resume lands: the first thing said ABOUT that segment.
+
+    Which may be the cue for a picture placed before it, not the paragraph.
+    """
+
+    if not wanted:
+        return 0
+    for index, utterance in enumerate(utterances):
+        if utterance.segment_id == wanted:
+            return index
+    return 0
 
 
 def _silence(milliseconds: int) -> bytes:
@@ -129,6 +169,10 @@ class _Session:
         self._writer = writer
         self._engine = engine
         self._audio_cache = audio_cache
+        # Session-lived, in memory: "what have I run up since I opened the
+        # app" is the question, and nothing on disk should accumulate a
+        # record of what somebody has been reading.
+        self._spend = SpendMeter()
         self._repository = repository
         self._service = service
         self._settings_path = settings_path
@@ -195,6 +239,9 @@ class _Session:
         # 02/09) and cached after the first ask - cheap enough between chunks.
         "book.cover",
         "config.get", "config.set", "model.status", "notes.books",
+        # The read button re-prices itself as the reader changes scope, and
+        # they do that while listening.
+        "estimate",
         # Removing a highlight is one small write, and a person reads (and
         # tidies) while listening - deferring it until the chapter ends
         # would look like the button did nothing.
@@ -296,6 +343,8 @@ class _Session:
                 self._library_import(request_id, request.get("params") or {})
             elif method == "library.remove":
                 self._library_remove(request_id, request.get("params") or {})
+            elif method == "estimate":
+                self._estimate(request_id, request.get("params") or {})
             elif method == "book.open":
                 self._book_open(request_id, request.get("params") or {})
             elif method == "book.cover":
@@ -374,60 +423,139 @@ class _Session:
             # rate outside this range, so one must never be stored.
             self._fail(request_id, f"rate {rate} is outside 0.5-2.0")
             return
+        wanted = params.get("segment_id")
+        if not wanted:
+            progress = self._repository.load_progress(book_id)
+            wanted = progress.segment_id if progress else None
+        utterances, chapter_of = self._book_utterances(stored)
+        start = _start_at(utterances, wanted)
+        # How far this press of the button is allowed to reach. `None` is the
+        # whole book, which is what every reading did before paid voices
+        # existed and is still the default.
+        chapters = params.get("chapters")
+        end = scope_end(chapter_of, start, None if chapters is None else int(chapters))
+        self._speak(
+            request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
+            book_id=book_id,
+        )
+
+    def _estimate(self, request_id: Any, params: dict[str, Any]) -> None:
+        """What one press of the read button would cost, before it is pressed.
+
+        Exact, not indicative: a paid voice bills by the character and the
+        whole book is already on this machine, so this is arithmetic over the
+        very strings `_speak` will send. Nothing is requested from anybody to
+        answer it, and a local voice costs nothing to say so.
+        """
+
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        stored = self._repository.get_book(str(params.get("book_id") or ""))
+        if stored is None:
+            self._fail(request_id, f"unknown book: {params.get('book_id')}")
+            return
+        voice_id = str(params.get("voice_id") or "")
+        utterances, chapter_of = self._book_utterances(stored)
+        wanted = params.get("segment_id")
+        if not wanted:
+            progress = self._repository.load_progress(stored.book.id)
+            wanted = progress.segment_id if progress else None
+        start = _start_at(utterances, wanted)
+        raw_chapters = params.get("chapters")
+        chapters = None if raw_chapters is None else int(raw_chapters)
+
+        price = price_for(model_of(voice_id) or "")
+        if price is None:
+            # The local model. Saying "free" beats saying nothing: the button
+            # is waiting on an answer either way.
+            end = scope_end(chapter_of, start, chapters)
+            self._reply(request_id, {
+                "paid": False,
+                "chars": sum(len(u.text) for u in utterances[start:end]),
+                "utterances": end - start,
+                "chapters": len(set(chapter_of[start:end])),
+            })
+            return
+        result = estimate_scope(
+            [utterance.text for utterance in utterances],
+            chapter_of, start, chapters, price,
+        )
+        self._reply(request_id, {
+            "paid": True,
+            "provider": provider_of(voice_id),
+            "model": price.model,
+            "chars": result.chars,
+            "utterances": result.utterances,
+            "chapters": result.chapters,
+            "usd": result.usd,
+            "units": result.units,
+            "unit": result.unit,
+            "price_dated": result.price_dated,
+        })
+
+    def _book_utterances(
+        self, stored: StoredBook
+    ) -> tuple[list[_Utterance], list[int]]:
+        """Everything this book would say, and the chapter each bit is in.
+
+        ONE builder, two callers: the reading, and the estimate the button
+        shows before the reading is paid for. Built separately they would
+        drift - the button would be counting characters the engine never
+        sends, or missing ones it does - and the difference between those two
+        numbers is the difference between a price and a guess.
+        """
+
         segments: list[Segment] = [
             segment
             for chapter in stored.book.chapters
             for segment in chapter.segments
         ]
-        start = 0
-        wanted = params.get("segment_id")
-        if not wanted:
-            progress = self._repository.load_progress(book_id)
-            wanted = progress.segment_id if progress else None
+        chapter_of_segment: dict[str, int] = {
+            segment.id: index
+            for index, chapter in enumerate(stored.book.chapters)
+            for segment in chapter.segments
+        }
         cues: dict[str, list[tuple[str, str, int]]] = {}
         if self._service is not None:
             cues = _figure_cues(
                 self._service.presentation_for(stored.book, stored.managed_path)
             )
         utterances: list[_Utterance] = []
+        chapter_of: list[int] = []
+
+        def add(utterance: _Utterance, chapter: int) -> None:
+            utterances.append(utterance)
+            chapter_of.append(chapter)
+
         for index, segment in enumerate(segments):
             here = cues.get(segment.id, [])
+            chapter = chapter_of_segment[segment.id]
             for placement, figure_id, number in here:
                 if placement == "before":
-                    utterances.append(_Utterance(
+                    add(_Utterance(
                         text=FIGURE_CUE.format(number=number),
                         pause_after_ms=FIGURE_CUE_PAUSE_MS,
                         segment_id=segment.id,
                         figure_id=figure_id,
-                    ))
-            utterances.append(_Utterance(
+                    ), chapter)
+            add(_Utterance(
                 text=speakable_text(segment.text, segment.kind),
                 pause_after_ms=pause_after_ms(
                     segment,
                     segments[index + 1] if index + 1 < len(segments) else None,
                 ),
                 segment_id=segment.id,
-            ))
+            ), chapter)
             for placement, figure_id, number in here:
                 if placement == "after":
-                    utterances.append(_Utterance(
+                    add(_Utterance(
                         text=FIGURE_CUE.format(number=number),
                         pause_after_ms=FIGURE_CUE_PAUSE_MS,
                         segment_id=segment.id,
                         figure_id=figure_id,
-                    ))
-        if wanted:
-            # Resume at the first thing said ABOUT that segment - which may be
-            # the cue for a picture placed before it.
-            for index, utterance in enumerate(utterances):
-                if utterance.segment_id == wanted:
-                    start = index
-                    break
-        utterances = utterances[start:]
-        self._speak(
-            request_id, utterances, voice_id, rate, SynthesisSettings(),
-            book_id=book_id,
-        )
+                    ), chapter)
+        return utterances, chapter_of
 
     def _library_list(self, request_id: Any) -> None:
         if self._repository is None:
@@ -1104,8 +1232,52 @@ class _Session:
             "data": base64.b64encode(data).decode("ascii"),
         })
 
+    def _settings_document(self) -> dict[str, Any]:
+        from vieneu_reader.settings import load_settings
+
+        if self._settings_path is None:
+            return {}
+        return load_settings(self._settings_path)
+
+    def _budget(self, settings: dict[str, Any]) -> float | None:
+        raw = settings.get("external_voice_budget")
+        try:
+            limit = float(raw)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        return limit if limit > 0 else None
+
+    def _voice_engine(
+        self, voice_id: str, settings: dict[str, Any]
+    ) -> tuple[Any, "VoicePrice | None", str | None]:
+        """The engine for this voice, its price, and why not if not.
+
+        A paid voice that cannot be paid for is REFUSED by name rather than
+        quietly answered by the local model: hearing a different voice than
+        the one you picked, with no explanation, is worse than being told the
+        key is missing.
+        """
+
+        price = price_for(model_of(voice_id) or "")
+        self._spend.set_limit(self._budget(settings))
+        route = pick_voice_route(
+            voice_id,
+            keys=settings,
+            would_exceed_budget=(
+                price is not None and self._spend.snapshot().exhausted
+            ),
+        )
+        if route.kind == "local":
+            return self._engine, None, None
+        if route.kind == "blocked":
+            return None, price, route.reason
+        provider = _external_provider(route.provider or "", voice_id, settings)
+        if provider is None:
+            return None, price, "no_key"
+        return ExternalSpeechEngine(provider), price, None
+
     def _sentence_cache_key(
-        self, sentence: str, voice_id: str, settings: SynthesisSettings
+        self, engine: Any, sentence: str, voice_id: str, settings: SynthesisSettings
     ) -> str | None:
         """Where this sentence's audio lives, or None if nothing is cached.
 
@@ -1118,8 +1290,8 @@ class _Session:
 
         if self._audio_cache is None:
             return None
-        engine_version = getattr(self._engine, "engine_version", "")
-        model_revision = getattr(self._engine, "model_revision", "")
+        engine_version = getattr(engine, "engine_version", "")
+        model_revision = getattr(engine, "model_revision", "")
         if not engine_version:
             # A fake or a stub engine has no identity to key on; caching audio
             # under an empty name would let two of them collide.
@@ -1137,6 +1309,7 @@ class _Session:
 
     def _sentence_audio(
         self,
+        engine: Any,
         sentence: str,
         voice_id: str,
         settings: SynthesisSettings,
@@ -1149,19 +1322,20 @@ class _Session:
         again for every speed.
         """
 
-        key = self._sentence_cache_key(sentence, voice_id, settings)
+        key = self._sentence_cache_key(engine, sentence, voice_id, settings)
         if key is not None:
             assert self._audio_cache is not None
             cached = self._audio_cache.get(key)
             if cached is not None:
                 yield cached
                 return
-        for chunk in self._engine.stream(sentence, voice_id, settings):
+        for chunk in engine.stream(sentence, voice_id, settings):
             fresh.append(chunk)
             yield chunk
 
     def _remember_sentence(
         self,
+        engine: Any,
         sentence: str,
         voice_id: str,
         settings: SynthesisSettings,
@@ -1171,7 +1345,7 @@ class _Session:
 
         if not fresh or self._audio_cache is None:
             return
-        key = self._sentence_cache_key(sentence, voice_id, settings)
+        key = self._sentence_cache_key(engine, sentence, voice_id, settings)
         if key is None:
             return
         try:
@@ -1192,6 +1366,18 @@ class _Session:
         *,
         book_id: str | None = None,
     ) -> None:
+        # Which engine speaks this - the local model, or a provider on the
+        # reader's own key. Decided once, here, so the sentence loop below is
+        # the same road for both.
+        document = self._settings_document()
+        engine, price, blocked = self._voice_engine(voice_id, document)
+        if engine is None:
+            # Named, not silently swapped for the local voice: hearing a
+            # different voice than the one you chose, with no reason given,
+            # is the worse outcome.
+            self._fail(request_id, f"voice_unavailable: {blocked}")
+            return
+
         # Rate rides the same stretcher as the Qt app, so a 1.5× reading
         # sounds identical over the pipe. Rests are pure zeros: scaling
         # their length arithmetically is exact, so they skip the stretcher.
@@ -1251,8 +1437,15 @@ class _Session:
                     # WHOLE. Half a sentence in the cache would be handed back
                     # as a finished one for ever after.
                     fresh: list[AudioChunk] = []
+                    if price is not None:
+                        # The ceiling is asked BEFORE the characters go out.
+                        # A limit noticed on the way back is not a limit.
+                        cost = price.usd_for(len(sentence))
+                        if self._spend.would_exceed(cost):
+                            self._fail(request_id, "voice_unavailable: budget")
+                            return
                     for chunk in self._sentence_audio(
-                        sentence, voice_id, settings, fresh
+                        engine, sentence, voice_id, settings, fresh
                     ):
                         if self._stop_requested():
                             stopped = True
@@ -1267,7 +1460,20 @@ class _Session:
                                      from_voice=True)
                     if stopped:
                         break
-                    self._remember_sentence(sentence, voice_id, settings, fresh)
+                    self._remember_sentence(engine, sentence, voice_id, settings, fresh)
+                    if price is not None and fresh:
+                        # Only what was actually synthesised is counted: a
+                        # sentence answered from the cache cost nothing, and
+                        # a meter that charged for it would be lying.
+                        running = self._spend.add(
+                            len(sentence), price.usd_for(len(sentence))
+                        )
+                        self._send({
+                            "id": request_id,
+                            "event": "spend",
+                            "chars": running.chars,
+                            "usd": running.usd,
+                        })
                 if stretcher is not None:
                     # Drain per utterance: the tail lands before the rest that
                     # follows it, and a stop never strands buffered audio.
@@ -1281,6 +1487,11 @@ class _Session:
                 if utterance.pause_after_ms and not is_last:
                     emit(_silence(int(utterance.pause_after_ms / rate)),
                          from_voice=False)
+        except ExternalVoiceError as error:
+            # A word the shell can act on: a refused key, an empty account and
+            # a dropped connection are three different next steps.
+            self._fail(request_id, f"voice_failed: {error.code}: {error.message}")
+            return
         except Exception as error:  # noqa: BLE001 - the pipe must survive
             self._fail(request_id, f"read failed: {error}")
             return
