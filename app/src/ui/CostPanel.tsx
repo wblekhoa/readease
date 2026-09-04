@@ -42,6 +42,7 @@ export function ReadingLimits({
   onScope,
   onBudget,
   className = "",
+  bare = false,
 }: {
   scope: number | null;
   budget: number | null;
@@ -50,9 +51,13 @@ export function ReadingLimits({
   onScope: (chapters: number | null) => void;
   onBudget: (usd: number | null) => void;
   className?: string;
+  /** Rows only, for when these belong INSIDE a group that already has a
+   * heading - a section nested in a section draws a rule where there is no
+   * change of subject. */
+  bare?: boolean;
 }) {
-  return (
-    <GroupedSection className={className}>
+  const rows = (
+    <>
       <GroupedRow
         title={text("cost.scope")}
         trailing={
@@ -94,8 +99,10 @@ export function ReadingLimits({
           </Select>
         }
       />
-    </GroupedSection>
+    </>
   );
+  if (bare) return rows;
+  return <GroupedSection className={className}>{rows}</GroupedSection>;
 }
 
 export function CostPanel({

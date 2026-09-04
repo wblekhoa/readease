@@ -1119,7 +1119,16 @@ export default function App() {
                     nhiều thông tin ra ngoài, nếu cần thì ẩn chúng đi"). */}
                 {paidVoice && screen === "reader" && (
                   <IconButton
-                    onClick={() => setCostOpen((open) => !open)}
+                    onClick={() => {
+                      // One floating layer at a time. The settings panel and
+                      // this one both stand over the book in the same place,
+                      // so opening this on top of that put a panel where the
+                      // one underneath could not be read or reached - and
+                      // even the tooltip landed across it (owner, 04/09).
+                      setSettingsOpen(false);
+                      setVoicesOpen(false);
+                      setCostOpen((open) => !open);
+                    }}
                     aria-label={text("cost.open")}
                     title={text("cost.open")}
                     className={costOpen ? "text-ink" : ""}
@@ -1215,6 +1224,7 @@ export default function App() {
                   // panel where nobody can reach it.
                   if (previewing !== null) stopPreview();
                   setVoicesOpen(false);
+                  setCostOpen(false);
                   setSettingsOpen((value) => !value);
                 }}
                 aria-label={text("player.settings_open")}

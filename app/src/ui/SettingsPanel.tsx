@@ -23,7 +23,7 @@ import { CloseIcon, SpeakerIcon } from "./icons";
 import { AppTabs } from "./AppTabs";
 import { ProviderKeys } from "./ProviderKeys";
 import { ReadingLimits } from "./CostPanel";
-import { isPaidVoice, providerOf } from "./readingCost";
+import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
 import { ModelChoices } from "./ModelPanel";
 import {
   voiceDescription as describe,
@@ -137,7 +137,11 @@ export function SettingsPanel({
 
       {source === "local" ? (
         <>
-          <GroupedSection className="mt-3">
+          {/* Two named groups instead of a flat run of rows: what you read
+              WITH, then what it costs to have it here. Unlabelled groups
+              separated only by a dotted rule left a reader working out where
+              one concern ended (owner, 04/09: "phân cấp tốt hơn"). */}
+          <GroupedSection title={text("section.reading_local")} className="mt-3">
             {/* The control carries the voice's NAME only; what the voice is
                 like (gender · region · style) is the row's own line - the
                 full label in the select ran past the row and clipped its
@@ -181,6 +185,16 @@ export function SettingsPanel({
                 </Button>
               }
             />
+            <GroupedRow
+              title={text("player.speed")}
+              trailing={
+                <Select value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
+                  {rates.map((value) => (
+                    <option key={value} value={value}>{value}×</option>
+                  ))}
+                </Select>
+              }
+            />
           </GroupedSection>
           <h4 className="m-0 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-ink-mute">
             {text("model.quality")}
@@ -189,12 +203,29 @@ export function SettingsPanel({
         </>
       ) : (
         <>
-          <ProviderKeys keysSet={keysSet} onSaveKey={onSaveKey} />
+          {/* Two groups, and the split is the useful one: what you set up
+              ONCE, and how it reads every time. Four unlabelled runs of rows
+              separated by dotted rules made a reader work out where each
+              concern ended (owner, 04/09: "phân cấp tốt hơn"). */}
+          <ProviderKeys
+            title={text("section.keys")}
+            keysSet={keysSet}
+            onSaveKey={onSaveKey}
+          />
+          {/* Said once, directly under the keys it is about - not on the
+              outside of the app, and not on every screen that names a
+              voice. */}
+          <Notice className="mt-2 block">{text("key.local_only")}</Notice>
+
           {paidVoices.length > 0 ? (
-            <GroupedSection className="mt-3">
+            <GroupedSection title={text("section.reading_api")} className="mt-4">
               <GroupedRow
                 title={text("player.voice")}
-                subtitle={providerOf(voiceId) ?? undefined}
+                /* The provider's NAME, not its id: "openai" in a subtitle is
+                   an internal token wearing a label's clothes. */
+                subtitle={
+                  PROVIDERS.find((item) => item.id === providerOf(voiceId))?.label
+                }
                 trailing={
                   <Select
                     value={isPaidVoice(voiceId) ? voiceId : ""}
@@ -210,42 +241,36 @@ export function SettingsPanel({
                   </Select>
                 }
               />
+              {/* How far a press reads, where the money stops, and how fast -
+                  the three things that describe one reading, in one group.
+                  The first two are the same controls the panel beside the
+                  read button carries: somebody setting a key up is exactly
+                  somebody deciding how much of the book to spend on. */}
+              <ReadingLimits
+                scope={scope}
+                budget={budget}
+                spent={spent}
+                onScope={onScope}
+                onBudget={onBudget}
+                bare
+              />
+              <GroupedRow
+                title={text("player.speed")}
+                trailing={
+                  <Select value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
+                    {rates.map((value) => (
+                      <option key={value} value={value}>{value}×</option>
+                    ))}
+                  </Select>
+                }
+              />
             </GroupedSection>
           ) : (
-            <Notice className="mt-3 block">{text("key.none_yet")}</Notice>
+            <Notice className="mt-4 block">{text("key.none_yet")}</Notice>
           )}
-          {/* How far a press reads and where the money stops: the same two
-              controls the panel beside the read button carries, because
-              somebody setting a key up is exactly somebody deciding how much
-              of the book to spend on. */}
-          <ReadingLimits
-            scope={scope}
-            budget={budget}
-            spent={spent}
-            onScope={onScope}
-            onBudget={onBudget}
-            className="mt-3"
-          />
-          {/* Said once, where the key is typed - not on the outside of the
-              app, and not repeated on every screen that mentions a voice. */}
-          <Notice className="mt-3 block">{text("key.local_only")}</Notice>
         </>
       )}
 
-      {/* Speed belongs to the reading, not to whichever engine performs it,
-          so it sits under both tabs rather than being written twice. */}
-      <GroupedSection className="mt-4">
-        <GroupedRow
-          title={text("player.speed")}
-          trailing={
-            <Select value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
-              {rates.map((value) => (
-                <option key={value} value={value}>{value}×</option>
-              ))}
-            </Select>
-          }
-        />
-      </GroupedSection>
       </div>
     </Surface>
   );

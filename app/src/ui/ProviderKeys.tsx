@@ -17,9 +17,11 @@ import { GroupedRow, GroupedSection } from "./patterns";
 import { PROVIDERS } from "./readingCost";
 
 export function ProviderKeys({
+  title,
   keysSet,
   onSaveKey,
 }: {
+  title?: string;
   /** Provider id → whether a key is stored. Never the key itself. */
   keysSet: Record<string, boolean>;
   /** Saves, then reports whether the provider actually answered. */
@@ -53,7 +55,7 @@ export function ProviderKeys({
   };
 
   return (
-    <GroupedSection className="mt-3">
+    <GroupedSection title={title} className="mt-3">
       {PROVIDERS.map((provider) => (
         editing === provider.id ? (
           <div key={provider.id} className="flex flex-col gap-2 py-3.5">
