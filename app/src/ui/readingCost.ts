@@ -85,3 +85,16 @@ export function buttonCost(estimate: Estimate | null): string {
   if (estimate === null || !estimate.paid) return "";
   return formatUsd(estimate.usd);
 }
+
+/** The providers a key can be given to, in the order they are offered. */
+export const PROVIDERS: readonly { id: string; label: string; settingsKey: string }[] = [
+  { id: "openai", label: "OpenAI", settingsKey: "openai_api_key" },
+  { id: "elevenlabs", label: "ElevenLabs", settingsKey: "elevenlabs_api_key" },
+];
+
+/** Which provider a voice belongs to, or null for the model on this Mac. */
+export function providerOf(voiceId: string): string | null {
+  if (!isPaidVoice(voiceId)) return null;
+  const name = voiceId.split(":")[0];
+  return PROVIDERS.some((provider) => provider.id === name) ? name : null;
+}

@@ -188,13 +188,21 @@ const COVERS: Record<string, string> = {
 /* The real catalogue, names and all: a panel that lists twenty voices cannot
  * be judged against a fixture of two - the scroll, the switches and the
  * shortlist only behave like themselves at full length. */
+/* Paid voices join the catalogue only once their key is stored - the same
+   rule the engine follows (`_voice_catalogue`). Offering one to somebody
+   with no key would put the refusal after the choice: they pick it, press
+   read, and are told no. */
+const PAID_VOICES: Record<string, { id: string; label: string }[]> = {
+  openai_api_key: [
+    { id: "openai:tts-1:alloy", label: "Alloy · OpenAI" },
+    { id: "openai:tts-1-hd:nova", label: "Nova · OpenAI" },
+  ],
+  elevenlabs_api_key: [
+    { id: "elevenlabs:eleven_v3:rachel", label: "Rachel · ElevenLabs" },
+  ],
+};
+
 const VOICES = [
-  /* Two paid voices at the top of the catalogue, so the price-in-the-button
-     state can actually be looked at. Without them the whole paid path is a
-     screen nobody could reach in the preview - the same gap the 11 missing
-     handlers were (MOCK_AUDIT, 04/09). */
-  { id: "openai:tts-1:alloy", label: "Alloy · OpenAI" },
-  { id: "elevenlabs:eleven_v3:rachel", label: "Rachel · ElevenLabs" },
   { id: "Minh Đức", label: "Minh Đức - Nam · Bắc · Phong cách tin tức" },
   { id: "Phạm Tuyên", label: "Phạm Tuyên - Nam · Bắc · Phong cách tự nhiên" },
   { id: "Thái Sơn", label: "Thái Sơn - Nam · Nam · Phong cách kể chuyện" },
@@ -426,10 +434,19 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         backup: "~/Library/…/AEAnnotation.sqlite.bak",
       };
     }
-    case "config.get":
+    case "config.get": {
+      const key = String(params.key);
+      // A provider key is WRITE-ONLY over this pipe, in the harness for the
+      // same reason as in the engine: the shell may ask whether one is set
+      // and never what it is (server.py `_SECRET_CONFIG_KEYS`). A mock that
+      // handed the value back would teach the opposite of the contract.
+      if (key.endsWith("_api_key")) {
+        return { value: null, set: Boolean(SETTINGS[key]) };
+      }
       // Per KEY, not one answer for everything: answering "vi" to the
       // shortcut key made the keycaps render "VI" and looked like an app bug.
-      return { value: SETTINGS[String(params.key)] ?? null };
+      return { value: SETTINGS[key] ?? null };
+    }
     case "config.set":
       SETTINGS[String(params.key)] = params.value as string | number;
       return { saved: true };
@@ -497,7 +514,12 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     return Promise.resolve(listenerId);
   }
   if (command === "plugin:event|unlisten") return Promise.resolve();
-  if (command === "engine_voices") return Promise.resolve(VOICES);
+  if (command === "engine_voices") {
+    const paid = Object.entries(PAID_VOICES).flatMap(([key, list]) =>
+      SETTINGS[key] ? list : [],
+    );
+    return Promise.resolve([...VOICES, ...paid]);
+  }
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
   if (command === "set_selection_shortcut") return Promise.resolve(null);

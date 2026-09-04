@@ -20,6 +20,9 @@ import { text } from "../i18n";
 import { Button, IconButton, Notice, Select, Surface } from "./controls";
 import { GroupedRow, GroupedSection } from "./patterns";
 import { CloseIcon, SpeakerIcon } from "./icons";
+import { AppTabs } from "./AppTabs";
+import { ProviderKeys } from "./ProviderKeys";
+import { isPaidVoice, providerOf } from "./readingCost";
 import { ModelChoices } from "./ModelPanel";
 import {
   voiceDescription as describe,
@@ -37,6 +40,9 @@ export function SettingsPanel({
   reading,
   shortlisted,
   voicesError,
+  paidVoices,
+  keysSet,
+  onSaveKey,
   onVoice,
   onRate,
   onManageVoices,
@@ -51,6 +57,13 @@ export function SettingsPanel({
   shortlisted: number;
   /** Why the list is empty, when it is empty for a reason worth saying. */
   voicesError?: string | null;
+  /** Every voice a provider offers, whether or not it is in the shortlist -
+   * the shortlist is about the mid-reading switcher, not about which voices
+   * a person may choose from here. */
+  paidVoices: Voice[];
+  /** Provider id → whether a key is stored. Never the key. */
+  keysSet: Record<string, boolean>;
+  onSaveKey: (provider: string, key: string) => Promise<boolean>;
   onVoice: (voiceId: string) => void;
   onRate: (rate: number) => void;
   onManageVoices: () => void;
@@ -61,6 +74,13 @@ export function SettingsPanel({
   // Esc closes any layer that sits above the screen - the keyboard contract
   // in docs/readease-hig.md §4. Not while a build is being fetched: leaving
   // then would hide a running download behind a chip.
+  /* Two ways to be read to, and they are different enough to be different
+     places: a model on this Mac, or somebody's API on the reader's own key
+     (owner, 04/09). The panel opens on whichever the current voice belongs
+     to, so it never argues with what is already speaking. */
+  const [source, setSource] = useState(isPaidVoice(voiceId) ? "api" : "local");
+  const localVoices = voices.filter((voice) => !isPaidVoice(voice.id));
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose();
@@ -88,39 +108,106 @@ export function SettingsPanel({
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
-      <GroupedSection className="mt-3">
-        {/* The control carries the voice's NAME only; what the voice is like
-            (gender · region · style) is the row's own line - the full label
-            in the select ran past the row and clipped its title (owner,
-            02/09). */}
-        <GroupedRow
-          title={text("player.voice")}
-          subtitle={describe(voices.find((voice) => voice.id === voiceId)?.label)}
-          trailing={
-            <Select value={voiceId} className="max-w-[11rem]" onChange={(event) => onVoice(event.target.value)}>
-              {voices.map((voice) => (
-                <option key={voice.id} value={voice.id}>{name(voice.label) || voice.id}</option>
-              ))}
-            </Select>
-          }
+      <div className="mt-3">
+        <AppTabs
+          items={[
+            { value: "local", label: text("voices.source_local") },
+            { value: "api", label: text("voices.source_api") },
+          ]}
+          value={source}
+          onChange={setSource}
+          ariaLabel={text("voices.source")}
         />
-        {voicesError && (
-          <Notice tone="error" className="py-2">
-            {text("voices.unavailable")} ({voicesError})
-          </Notice>
-        )}
-        <GroupedRow
-          title={text("voices.title")}
-          subtitle={text("voices.marked", { count: shortlisted })}
-          trailing={
-            <Button size="sm" onClick={onManageVoices}>
-              {/* The same glyph the transport's switcher wears, so the
-                  speaker reads as "voices" wherever it turns up. */}
-              <SpeakerIcon />
-              {text("voices.manage")}
-            </Button>
-          }
-        />
+      </div>
+
+      {source === "local" ? (
+        <>
+          <GroupedSection className="mt-3">
+            {/* The control carries the voice's NAME only; what the voice is
+                like (gender · region · style) is the row's own line - the
+                full label in the select ran past the row and clipped its
+                title (owner, 02/09). */}
+            <GroupedRow
+              title={text("player.voice")}
+              subtitle={describe(localVoices.find((voice) => voice.id === voiceId)?.label)}
+              trailing={
+                <Select
+                  value={isPaidVoice(voiceId) ? "" : voiceId}
+                  className="max-w-[11rem]"
+                  onChange={(event) => onVoice(event.target.value)}
+                >
+                  {/* A paid voice is speaking, so no local one is chosen.
+                      The empty slot is NAMED rather than blank: a select
+                      showing nothing reads as broken, where "Chọn giọng…"
+                      reads as an invitation. */}
+                  {isPaidVoice(voiceId) && (
+                    <option value="" disabled>{text("voices.pick")}</option>
+                  )}
+                  {localVoices.map((voice) => (
+                    <option key={voice.id} value={voice.id}>{name(voice.label) || voice.id}</option>
+                  ))}
+                </Select>
+              }
+            />
+            {voicesError && (
+              <Notice tone="error" className="py-2">
+                {text("voices.unavailable")} ({voicesError})
+              </Notice>
+            )}
+            <GroupedRow
+              title={text("voices.title")}
+              subtitle={text("voices.marked", { count: shortlisted })}
+              trailing={
+                <Button size="sm" onClick={onManageVoices}>
+                  {/* The same glyph the transport's switcher wears, so the
+                      speaker reads as "voices" wherever it turns up. */}
+                  <SpeakerIcon />
+                  {text("voices.manage")}
+                </Button>
+              }
+            />
+          </GroupedSection>
+          <h4 className="m-0 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-ink-mute">
+            {text("model.quality")}
+          </h4>
+          <ModelChoices reading={reading} onBusy={setBusy} />
+        </>
+      ) : (
+        <>
+          <ProviderKeys keysSet={keysSet} onSaveKey={onSaveKey} />
+          {paidVoices.length > 0 ? (
+            <GroupedSection className="mt-3">
+              <GroupedRow
+                title={text("player.voice")}
+                subtitle={providerOf(voiceId) ?? undefined}
+                trailing={
+                  <Select
+                    value={isPaidVoice(voiceId) ? voiceId : ""}
+                    className="max-w-[11rem]"
+                    onChange={(event) => onVoice(event.target.value)}
+                  >
+                    {!isPaidVoice(voiceId) && (
+                      <option value="" disabled>{text("voices.pick")}</option>
+                    )}
+                    {paidVoices.map((voice) => (
+                      <option key={voice.id} value={voice.id}>{voice.label}</option>
+                    ))}
+                  </Select>
+                }
+              />
+            </GroupedSection>
+          ) : (
+            <Notice className="mt-3 block">{text("key.none_yet")}</Notice>
+          )}
+          {/* Said once, where the key is typed - not on the outside of the
+              app, and not repeated on every screen that mentions a voice. */}
+          <Notice className="mt-3 block">{text("key.local_only")}</Notice>
+        </>
+      )}
+
+      {/* Speed belongs to the reading, not to whichever engine performs it,
+          so it sits under both tabs rather than being written twice. */}
+      <GroupedSection className="mt-4">
         <GroupedRow
           title={text("player.speed")}
           trailing={
@@ -132,10 +219,6 @@ export function SettingsPanel({
           }
         />
       </GroupedSection>
-      <h4 className="m-0 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-ink-mute">
-        {text("model.quality")}
-      </h4>
-      <ModelChoices reading={reading} onBusy={setBusy} />
       </div>
     </Surface>
   );

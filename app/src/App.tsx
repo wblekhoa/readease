@@ -48,6 +48,7 @@ import { CostPanel } from "./ui/CostPanel";
 import {
   buttonCost,
   isPaidVoice,
+  PROVIDERS,
   rememberScope,
   storedScope,
   type Estimate,
@@ -195,6 +196,9 @@ export default function App() {
   const [budget, setBudget] = useState<number | null>(null);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [estimateFailed, setEstimateFailed] = useState(false);
+  /** Provider id → whether a key is stored. Never the key: the engine
+   *  answers `config.get` for these with the fact and nothing else. */
+  const [keysSet, setKeysSet] = useState<Record<string, boolean>>({});
   const [spent, setSpent] = useState(0);
   const [costOpen, setCostOpen] = useState(false);
   const [readingSize, setReadingSize] = useState(storedReadingSize);
@@ -285,6 +289,38 @@ export default function App() {
     setRate(value);
     remember("rate", value);
   }, [remember]);
+  const refreshKeys = useCallback(() => {
+    for (const provider of PROVIDERS) {
+      void invoke<{ result: { set?: boolean } }>("engine_request", {
+        method: "config.get",
+        params: { key: provider.settingsKey },
+      })
+        .then((reply) =>
+          setKeysSet((current) => ({ ...current, [provider.id]: reply.result.set === true })),
+        )
+        .catch(() => undefined);
+    }
+  }, []);
+
+  useEffect(refreshKeys, [refreshKeys]);
+
+  /** Save a key, then CHECK it by asking for the catalogue again.
+   *
+   * A provider that answers with no voices has not been set up, whatever the
+   * key looked like - and being told that while typing beats being told
+   * mid-chapter, when a reading somebody was waiting for stops instead. */
+  const saveKey = useCallback(async (provider: string, key: string) => {
+    await invoke("engine_request", {
+      method: "config.set",
+      params: { key: PROVIDERS.find((item) => item.id === provider)?.settingsKey, value: key },
+    });
+    const list = await invoke<Voice[]>("engine_voices").catch(() => [] as Voice[]);
+    const works = list.some((voice) => voice.id.startsWith(`${provider}:`));
+    setVoices(list);
+    setKeysSet((current) => ({ ...current, [provider]: works }));
+    return works;
+  }, []);
+
   const changeBudget = useCallback((usd: number | null) => {
     setBudget(usd);
     remember("external_voice_budget", usd === null ? "" : String(usd));
@@ -1186,6 +1222,9 @@ export default function App() {
           reading={reading !== "idle"}
           shortlisted={shortlist.length}
           voicesError={voicesError}
+          paidVoices={voices.filter((voice) => isPaidVoice(voice.id))}
+          keysSet={keysSet}
+          onSaveKey={saveKey}
           onVoice={switchVoice}
           onRate={rememberRate}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}

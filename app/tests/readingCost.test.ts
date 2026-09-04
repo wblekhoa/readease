@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buttonCost, formatCount, formatUsd, isPaidVoice, SCOPES, type Estimate } from "../src/ui/readingCost.ts";
+import { buttonCost, formatCount, formatUsd, isPaidVoice, providerOf, PROVIDERS, SCOPES, type Estimate } from "../src/ui/readingCost.ts";
 
 const paid = (usd: number): Estimate => ({
   paid: true, provider: "openai", model: "tts-1", chars: 1000, utterances: 3,
@@ -36,4 +36,19 @@ test("counts read the way Vietnamese writes them", () => {
 
 test("the scopes offered start narrow and end at the whole book", () => {
   assert.deepEqual([...SCOPES], [1, 2, 5, null]);
+});
+
+test("a voice says which provider it belongs to, or that it belongs to none", () => {
+  assert.equal(providerOf("openai:tts-1:alloy"), "openai");
+  assert.equal(providerOf("elevenlabs:eleven_v3:rachel"), "elevenlabs");
+  assert.equal(providerOf("Minh Đức"), null);
+  // A three-part id from somewhere we do not know is not ours to route.
+  assert.equal(providerOf("someone:some:thing"), null);
+});
+
+test("each provider names the settings key its credential lives under", () => {
+  assert.deepEqual(
+    PROVIDERS.map((provider) => provider.settingsKey),
+    ["openai_api_key", "elevenlabs_api_key"],
+  );
 });
