@@ -57,8 +57,35 @@ echo "==> building the app"
 
 [[ -d "$app" ]] || { echo "BUILD_FAILED: no bundle at $app" >&2; exit 1; }
 
-# Stamped BEFORE signing: touching Info.plist afterwards breaks the seal the
-# next step spends its whole existence earning.
+# Everything that writes into the bundle happens BEFORE signing: touching
+# Info.plist or Resources afterwards breaks the seal the sign step spends its
+# whole existence earning.
+
+# The licence and notices travel WITH the app. A binary handed to someone else
+# carries the terms it is given under; leaving them only in the repository puts
+# them where the person holding the app is not. Three static documents, true of
+# any build - the generated component manifest is still Qt-era work, and
+# PUBLIC_RELEASE_CHECKLIST.md names that gap rather than shipping a manifest
+# that names PySide6 and Nuitka as components of a bundle that has neither.
+echo "==> writing the licence payload"
+legal="$app/Contents/Resources/Legal"
+rm -rf "$legal"
+mkdir -p "$legal"
+for document in LICENSE NOTICE.md THIRD_PARTY_NOTICES.md; do
+  /usr/bin/install -m 0644 "$document" "$legal/$document"
+done
+
+echo "==> writing the provenance record"
+.venv/bin/python scripts/package-provenance.py --bundle "$app"
+
+# 32 MB nothing loads. Measured on this layout, not assumed: a real read
+# through the frozen engine gave the same 3 chunks and the same ok:true with
+# the dylib deleted. The bundle contract re-proves the linkage claim after
+# every build, so an ONNX Runtime that ever DOES link it fails the gate
+# instead of shipping an app that cannot speak.
+echo "==> dropping the ONNX Runtime dylib nothing links"
+./scripts/deduplicate-runtime-libraries.sh "$app"
+
 echo "==> stamping the build id ($build) into CFBundleVersion"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $version+$build" "$app/Contents/Info.plist"
 
@@ -75,6 +102,18 @@ fi
 # fine. It is reported, not gated: gating on it would demand notarization.
 echo "==> Gatekeeper says (rejection here is normal, Open Anyway clears it):"
 spctl -a -t exec -vv "$app" 2>&1 | sed 's/^/    /' || true
+
+# The bundle contract, run against the finished bundle rather than skipped.
+# These eight assertions were written for exactly this moment and had never
+# been pointed at a Tauri build: the first run found LSMinimumSystemVersion
+# saying 10.13 while the README promised macOS 15, no licence payload, and the
+# dead dylib above.
+echo "==> bundle contract"
+VIENEU_READER_BUNDLE_TEST=1 VIENEU_READER_BUNDLE_PATH="$project_root/$app" \
+  .venv/bin/python -m unittest tests.packaging.test_bundle_contract -q || {
+  echo "CONTRACT_FAILED: the bundle does not meet its own contract; not packaging" >&2
+  exit 1
+}
 
 mkdir -p "$out_dir"
 rm -f "$artifact"

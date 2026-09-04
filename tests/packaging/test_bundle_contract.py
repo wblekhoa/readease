@@ -86,43 +86,6 @@ class BundleContractTests(unittest.TestCase):
             text=True,
         )
 
-    def test_native_selection_helper_is_arm64_and_signed(self) -> None:
-        helper = BUNDLE / "Contents" / "MacOS" / "ReadEaseSelectionBridge"
-        native_library = (
-            BUNDLE
-            / "Contents"
-            / "MacOS"
-            / "libReadEaseSelectionNative.dylib"
-        )
-        self.assertTrue(helper.is_file())
-        self.assertTrue(native_library.is_file())
-        file_result = subprocess.run(
-            ["file", str(helper)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertIn("arm64", file_result.stdout)
-        library_result = subprocess.run(
-            ["file", str(native_library)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertIn("arm64", library_result.stdout)
-        subprocess.run(
-            ["codesign", "--verify", "--strict", str(helper)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        subprocess.run(
-            ["codesign", "--verify", "--strict", str(native_library)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
     def test_required_assets_are_bundled_but_models_are_not(self) -> None:
         notices = list(BUNDLE.rglob("THIRD_PARTY_NOTICES.md"))
         voice_assets = list(BUNDLE.rglob("voices_v3_turbo.json"))
@@ -143,16 +106,17 @@ class BundleContractTests(unittest.TestCase):
         self.assertEqual(len(phoneme_assets), 1)
         self.assertGreater(phoneme_assets[0].stat().st_size, 10_000_000)
         self.assertTrue(forbidden_model_names.isdisjoint(bundled_names))
-        self.assertTrue((BUNDLE / "Contents" / "MacOS" / "QtPdf").is_file())
         self.assertFalse(any("mupdf" in path.casefold() for path in bundle_paths))
-        for forbidden in (
-            "QtVirtualKeyboard",
-            "QtVirtualKeyboardQml",
-            "libqtvirtualkeyboardplugin.dylib",
-            "soxr_ext.so",
-            "_soundfile.py",
-        ):
+        # Qt's own names left with the Qt shell - the shipped bundle is Rust +
+        # WebKit + a PyInstaller sidecar and carries none of them. What stays
+        # is about the ENGINE, which did not change shells.
+        for forbidden in ("soxr_ext.so", "_soundfile.py"):
             self.assertFalse(any(forbidden in path for path in bundle_paths))
+        for absent in ("QtPdf", "QtVirtualKeyboard", "PySide6", "libshiboken"):
+            self.assertFalse(
+                any(absent in path for path in bundle_paths),
+                f"{absent} is Qt-era and must not be in a Tauri bundle",
+            )
 
     def test_onnxruntime_dylib_is_dropped_because_no_macho_links_it(self) -> None:
         shipped = [
@@ -179,35 +143,30 @@ class BundleContractTests(unittest.TestCase):
         self.assertGreater(machos, 0)
         self.assertEqual(linkers, [])
 
-    def test_bundle_contains_a_machine_auditable_license_payload(self) -> None:
-        legal = BUNDLE / "Contents" / "Resources" / "Legal"
-        required = {
-            "LICENSE",
-            "NOTICE.md",
-            "THIRD_PARTY_NOTICES.md",
-            "THIRD_PARTY_LICENSES.txt",
-            "THIRD_PARTY_MANIFEST.json",
-            "BINARY_DISTRIBUTION.md",
-        }
+    def test_bundle_carries_its_licence_and_notices(self) -> None:
+        """The three documents that are true of ANY build, in the bundle.
 
+        The fuller payload this once required - a generated
+        `THIRD_PARTY_MANIFEST.json` with per-component receipts - is bound to a
+        Nuitka compilation report, and the sidecar is PyInstaller now. Rather
+        than emit a manifest naming PySide6 and Nuitka as shipped components,
+        which would be a legal document that is simply false, the bundle
+        carries the static documents and the gap is named out loud here and in
+        PUBLIC_RELEASE_CHECKLIST.md. A manifest derived from the `.dist-info`
+        directories actually inside the frozen engine is the honest way to
+        restore it; that work has not been done.
+        """
+
+        legal = BUNDLE / "Contents" / "Resources" / "Legal"
+        required = {"LICENSE", "NOTICE.md", "THIRD_PARTY_NOTICES.md"}
+        self.assertTrue(legal.is_dir(), f"no licence payload at {legal}")
         self.assertEqual({path.name for path in legal.iterdir()}, required)
-        self.assertEqual(
-            (legal / "LICENSE").read_bytes(),
-            (ROOT / "LICENSE").read_bytes(),
-        )
-        self.assertEqual(
-            (legal / "NOTICE.md").read_bytes(),
-            (ROOT / "NOTICE.md").read_bytes(),
-        )
-        manifest = json.loads(
-            (legal / "THIRD_PARTY_MANIFEST.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(manifest["schema_version"], 1)
-        self.assertEqual(
-            manifest["source_license"],
-            "PolyForm-Noncommercial-1.0.0",
-        )
-        self.assertTrue(manifest["components"])
+        for name in sorted(required):
+            self.assertEqual(
+                (legal / name).read_bytes(),
+                (ROOT / name).read_bytes(),
+                f"{name} in the bundle differs from the one in the source tree",
+            )
 
     def test_bundle_contains_deterministic_nontracking_provenance(self) -> None:
         from vieneu_reader.provenance import provenance_payload

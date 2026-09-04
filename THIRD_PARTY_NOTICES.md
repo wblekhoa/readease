@@ -7,11 +7,17 @@ particular bundle.
 
 ReadEase first-party source and scaffold are available under
 PolyForm-Noncommercial-1.0.0. This does not change the licenses of the
-third-party components listed below. A supported macOS bundle selects the
-LGPL-3.0 path for Qt/PySide and QtPdf, and carries a generated `Legal` payload
-bound to its actual Nuitka compilation report. A local ad-hoc build is not yet
-a signed or notarized public release. The PDF importer does not bundle PyMuPDF
-or MuPDF.
+third-party components listed below.
+
+The shipped macOS bundle (2026-09-04 onwards) is the **Tauri** shell: a Rust
+host with a WebKit view, and the Python engine frozen by PyInstaller as a
+sidecar. It carries no Qt or PySide at all, so the LGPL-3.0 path those
+components needed no longer applies to it. It carries `LICENSE`, `NOTICE.md`
+and this file in `Contents/Resources/Legal`, and a static provenance record in
+`Contents/Resources/Provenance`. The generated component manifest described
+below is still bound to the older Nuitka build and is not regenerated for this
+one - `PUBLIC_RELEASE_CHECKLIST.md` names that gap. The bundle is ad-hoc
+signed, not notarized. The PDF importer does not bundle PyMuPDF or MuPDF.
 
 ## Primary components and model assets
 

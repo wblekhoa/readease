@@ -1,47 +1,78 @@
-# Public release checklist
+# Release checklist
 
-## Small-circle source sharing
+What we actually ship, as of 2026-09-04: **a `.zip` of `ReadEase.app`**, built by
+`scripts/build-release-app.sh`, ad-hoc signed, published by hand on GitHub
+Releases, installed by dragging into `/Applications`.
 
-- Run `scripts/export-public-source.py` to create a clean source folder and ZIP;
-  never share this workspace checkout or its history.
-- The recipient can Control-click **Install ReadEase.command** and choose
-  **Open**, or ask an AI assistant to run that file. The installer must pass its
-  Apple Silicon, macOS 15, disk-space, Xcode-tools, checksum, locked-build,
-  whole-bundle compatibility, signing-integrity, and launch gates.
-- This path is a local self-build for friends. It does not turn the ad-hoc
-  signed app into a public downloadable binary and does not replace Developer
-  ID/notarization or a final legal review.
+Everything below describes THAT path. The Qt/Nuitka checklist this file used to
+carry described a build we no longer make - it asked for a Nuitka compilation
+report, QtPdf, and `Install ReadEase.command`, none of which exist in the
+shipped app. Following it would have meant doing the wrong work carefully.
 
-## Source repository
+## Build the candidate
 
-- Create a new repository from one clean, allowlisted squash export. Do not
-  push this workspace's existing history, internal `ai-memory`, build archives,
-  or local planning documents.
-- Include only source, tests, build scripts, branding assets, public guides,
-  `uv.lock`, and the `legal` directory checked by
-  `scripts/audit-public-release.py --strict`.
-- Never include model weights, books, PDF/EPUB samples with uncertain rights,
-  database files, audio cache, `.env`, credentials, user paths, or personal
-  email metadata.
-- Describe the repository as source-available for noncommercial use, not open
-  source. Require the unmodified PolyForm Noncommercial 1.0.0 `LICENSE`, the
-  current source-matching `NOTICE.md`, and provenance marker in the source and
-  every distributed app.
-- State clearly that commercial use of the ReadEase-owned scaffold requires a
-  separate written license and that third-party/model licenses are unchanged.
-- Configure GitHub Security Advisories before making the repository public.
+```bash
+./scripts/build-release-app.sh
+```
 
-## Binary candidate
+One command, and it refuses to hand over a broken artifact. In order it:
 
-- Build once from the clean checkout and locked environment.
-- Verify the fresh Nuitka report contains neither PyMuPDF nor excluded cloning
-  dependencies, and the bundle contains QtPdf but no Qt Virtual Keyboard.
-- Require the generated `Contents/Resources/Legal` payload and matching report
-  hash, plus matching provenance in `Info.plist` and
-  `Contents/Resources/Provenance/READEASE_PROVENANCE.json`.
-- Run `scripts/audit-public-release.py --strict --bundle ... --report ...`.
-- Complete Developer ID signing, notarization, trademark review, model/voice
-  provenance review, and LGPL corresponding-source/relink review.
+1. rebuilds the engine sidecar if any Python source is newer than the frozen
+   binary (a stale sidecar ships silently otherwise);
+2. runs `pnpm tauri build`;
+3. writes the licence payload into `Contents/Resources/Legal` and the
+   provenance record into `Contents/Resources/Provenance`, plus the
+   `ReadEase*` keys in `Info.plist`;
+4. drops the ONNX Runtime dylib nothing links - 32 MB the recipient would
+   download for nothing;
+5. stamps `CFBundleVersion` as `<version>+<git sha>` so "did my update take?"
+   has an answer;
+6. re-signs ad hoc, then **verifies** - `tauri build` leaves a signature that
+   does not verify, and a downloaded copy of that is "damaged and can't be
+   opened", with no Open Anyway;
+7. runs the bundle contract (`tests/packaging/test_bundle_contract.py`)
+   against the finished bundle;
+8. packs with `ditto`, which preserves the signature and symlinks that
+   `zip` can lose.
 
-Creating the GitHub repository, publishing a Release, and notarization are
-external actions and require the publisher's explicit approval.
+Any of 6-7 failing stops the script before it packages anything.
+
+## What the recipient does
+
+1. Download the `.zip` from the Release and unzip it.
+2. Drag `ReadEase.app` into `/Applications`.
+3. First launch: Control-click the app → **Open** → **Open**. One prompt, once.
+   This is the ordinary un-notarized dialog, not the "damaged" one.
+4. Their library, progress, notes and downloaded voices live in
+   `~/Library/Application Support/VieNeu Reader/`, outside the bundle, so
+   dragging a new build over an old one is an upgrade and not a loss. The
+   store migrates forward on open; a store from a NEWER build is refused with
+   its own sentence rather than silently downgraded.
+
+Requirements the app now declares for itself: Apple Silicon, macOS 15+
+(`LSMinimumSystemVersion`, so an older Mac is refused by macOS instead of
+failing somewhere confusing).
+
+## Needs the owner - never done automatically
+
+- **Creating the GitHub Release and uploading the `.zip`.** The build script
+  prints the path, size and sha256 and stops there.
+- **Developer ID signing and notarization.** Deliberately not done: the owner
+  accepted one Control-click → Open as the cost. If that ever changes, it is a
+  separate lane with its own gates.
+- **Merging the release branch** into `main`.
+
+## Known gaps, named rather than forgotten
+
+- **The machine-auditable components manifest is not regenerated for this
+  build.** `scripts/package-license-payload.py` derives its component list from
+  a Nuitka compilation report, and the sidecar is PyInstaller now. The bundle
+  carries the three static, always-true documents (`LICENSE`, `NOTICE.md`,
+  `THIRD_PARTY_NOTICES.md`) plus the provenance record; the generated
+  `THIRD_PARTY_MANIFEST.json` and its receipts are still Qt-era work. The
+  bundle contract says so out loud rather than passing quietly.
+- **No notarization**, as above.
+- The legacy source-sharing path (`scripts/export-public-source.py`,
+  `Install ReadEase.command`) still exists and still builds the OLD Qt shell.
+  It is superseded by this document and goes away with the rest of the Qt
+  shell in P6.
