@@ -192,15 +192,74 @@ const COVERS: Record<string, string> = {
    rule the engine follows (`_voice_catalogue`). Offering one to somebody
    with no key would put the refusal after the choice: they pick it, press
    read, and are told no. */
+const FAIL = new URLSearchParams(window.location.search).get("fail");
+
+/** Which named failure a paid reading should produce: `?voicefail=quota`.
+ *
+ * Eight sentences were written for the engine's eight failure names and none
+ * of them had ever been on a screen - the footer printed the raw engine
+ * string. There is no way to make a real provider run out of credit on
+ * demand, so without a switch here, seven of the eight could only be read in
+ * `i18n.ts` and hoped about.
+ *
+ * `?keyfail=<code>` does the same for the moment a key is typed, and
+ * `?unreachable=<provider>` for a catalogue that could not be asked at all.
+ */
+const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
+const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
+const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
+
 const PAID_VOICES: Record<string, { id: string; label: string }[]> = {
+  // ONE model per provider, as the engine now lists them: the catalogue used
+  // to emit models x voices and the same nine names appeared twice at two
+  // prices. Which model is a setting; these ids carry whichever is chosen.
   openai_api_key: [
-    { id: "openai:tts-1:alloy", label: "Alloy · OpenAI" },
-    { id: "openai:tts-1-hd:nova", label: "Nova · OpenAI" },
+    { id: "openai:{model}:alloy", label: "Alloy · OpenAI" },
+    { id: "openai:{model}:nova", label: "Nova · OpenAI" },
   ],
   elevenlabs_api_key: [
-    { id: "elevenlabs:eleven_v3:rachel", label: "Rachel · ElevenLabs" },
+    { id: "elevenlabs:{model}:rachel", label: "Rachel · ElevenLabs" },
+    { id: "elevenlabs:{model}:antoni", label: "Antoni · ElevenLabs" },
   ],
 };
+
+/** The models `pricing.py` knows, by name only.
+ *
+ * The prices used to sit here too, beside each name. Nothing read them once
+ * the catalogue stopped shipping a price list, and a second copy of a price
+ * is a price that can quietly go wrong: the estimate below carries its own
+ * rate, and the real one lives in `pricing.py`. Names are all this needs -
+ * they decide which model a voice id is built with.
+ */
+const MODELS = [
+  { provider: "openai", model: "tts-1" },
+  { provider: "openai", model: "tts-1-hd" },
+  { provider: "elevenlabs", model: "eleven_flash_v2_5" },
+  { provider: "elevenlabs", model: "eleven_v3" },
+];
+
+const DEFAULT_MODEL: Record<string, string> = {
+  openai: "tts-1",
+  elevenlabs: "eleven_flash_v2_5",
+};
+
+function chosenModel(provider: string): string {
+  const stored = SETTINGS[`${provider}_model`];
+  const known = MODELS.some((entry) => entry.provider === provider && entry.model === stored);
+  return known ? String(stored) : DEFAULT_MODEL[provider];
+}
+
+function paidCatalogue(): { id: string; label: string }[] {
+  return Object.entries(PAID_VOICES).flatMap(([key, list]) => {
+    if (!SETTINGS[key]) return [];
+    const provider = key.replace("_api_key", "");
+    if (UNREACHABLE === provider) return [];
+    return list.map((voice) => ({
+      ...voice,
+      id: voice.id.replace("{model}", chosenModel(provider)),
+    }));
+  });
+}
 
 const VOICES = [
   { id: "Minh Đức", label: "Minh Đức - Nam · Bắc · Phong cách tin tức" },
@@ -374,7 +433,7 @@ const ANNOTATIONS = [
   { id: "applebooks:1", segment_id: "ch-1-seg-1", selected_text: "những phương án đầu tiên của họ đều nhanh chóng chìm vào quên lãng", note: "Đúng với dự án năm ngoái.", style: 3 },
   { id: "applebooks:2", segment_id: "ch-1-seg-1", selected_text: "Chỉ khi học cách nhìn vấn đề từ một góc khác", note: null, style: 1 },
   { id: "applebooks:3", segment_id: "ch-1-seg-3", selected_text: "số ứng dụng di động đã lên đến gần mười triệu", note: null, style: 2 },
-  { id: "applebooks:4", segment_id: "ch-1-seg-6", selected_text: "thao tác chụm hai ngón tay để thu phóng", note: "Chỗ này nên dẫn lại khi viết phần mở đầu: một thao tác nhỏ mà đổi hẳn cách người ta nghĩ về máy tính bỏ túi. Kiểm tra lại năm 2007 cho chắc.", style: 4 },
+  { id: "applebooks:4", segment_id: "ch-1-seg-6", selected_text: "thao tác chụm hai ngón tay để thu phóng", note: "Chỗ này nên dẫn lại khi viết phần mở đầu: một thao tác nhỏ mà đổi hẳn cách người ta nghĩ về máy tính bỏ túi. Kiểm tra lại năm 2007 cho chắc. Có thể mở bài bằng cảnh khán phòng im lặng mấy giây rồi vỡ oà - chi tiết đó ai cũng nhớ, nhưng ít người nhớ rằng trước đó đã có cả một thập kỷ nghiên cứu cảm ứng đa điểm không đi tới đâu.", style: 4 },
   { id: "applebooks:5", segment_id: "ch-0-seg-2", selected_text: "sản phẩm phải hoạt động", note: "Câu để mở bài.", style: 5 },
   { id: "applebooks:6", segment_id: "ch-3-seg-0", selected_text: "bỏ qua phần giá trị cộng thêm", note: null, style: 1 },
 ];
@@ -473,19 +532,52 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       SETTINGS[String(params.key)] = params.value as string | number;
       rememberSettings();
       return { saved: true };
+    case "config.verify_key": {
+      const provider = String(params.provider ?? "");
+      const value = String(params.value ?? "");
+      const key = `${provider}_api_key`;
+      if (!value) {
+        delete SETTINGS[key];
+        rememberSettings();
+        return { saved: true, ok: false, code: "no_key" };
+      }
+      if (KEY_FAIL) {
+        // NOT saved, exactly as the engine does it: a key the service
+        // refuses would otherwise sit there looking configured.
+        return { saved: false, ok: false, code: KEY_FAIL };
+      }
+      SETTINGS[key] = value;
+      rememberSettings();
+      return { saved: true, ok: true };
+    }
     case "annotations.delete": {
       const index = ANNOTATIONS.findIndex((item) => item.id === params.annotation_id);
       if (index >= 0) ANNOTATIONS.splice(index, 1);
       return { removed: index >= 0 };
     }
+    case "annotations.update": {
+      // The engine keeps the edit in its own table so a sync cannot undo
+      // it; here the list IS the store, so writing the note is the whole
+      // of it. What this reproduces is the answer the shell branches on:
+      // `updated: false` for a highlight that is no longer there, which is
+      // the state the box has to say something about rather than close on.
+      const item = ANNOTATIONS.find((entry) => entry.id === params.annotation_id);
+      const note = String(params.note ?? "").trim();
+      if (item) item.note = note || null;
+      return { updated: Boolean(item) };
+    }
     case "estimate": {
       const voice = String(params.voice_id ?? "");
-      const chapters = params.chapters === null || params.chapters === undefined
-        ? 3
-        : Number(params.chapters);
-      // Roughly a real chapter: enough that the money in the button is a
-      // number somebody would actually think about.
-      const chars = 11_800 * chapters;
+      const pasted = typeof params.text === "string" ? params.text : null;
+      const chapters = pasted !== null
+        ? 0
+        : params.chapters === null || params.chapters === undefined
+          ? 3
+          : Number(params.chapters);
+      // Pasted text is counted for real; a book is roughly a real chapter -
+      // enough that the money in the button is a number somebody would
+      // actually think about.
+      const chars = pasted !== null ? pasted.length : 11_800 * chapters;
       const paid = voice.split(":").length >= 3;
       if (!paid) {
         return { paid: false, chars, utterances: chapters * 9, chapters, spent_usd: 0 };
@@ -505,6 +597,16 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         spent_usd: 0.042,
       };
     }
+    case "voices":
+      return {
+        voices: [...VOICES, ...paidCatalogue()],
+        // No `models` list: the engine stopped sending one when it turned out
+        // no screen read it. A mock that offers more than the engine does
+        // teaches the harness a shape that does not exist.
+        unreachable: UNREACHABLE && SETTINGS[`${UNREACHABLE}_api_key`]
+          ? [{ provider: UNREACHABLE, code: "network" }]
+          : [],
+      };
     case "notes.books":
       return { books: NOTE_BOOKS };
     default:
@@ -520,7 +622,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
  * that state can only be produced by breaking the real engine, so it never
  * got looked at at all.
  */
-const FAIL = new URLSearchParams(window.location.search).get("fail");
+
 
 function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
   if (FAIL && (command === FAIL || args.method === FAIL)) {
@@ -538,10 +640,7 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   }
   if (command === "plugin:event|unlisten") return Promise.resolve();
   if (command === "engine_voices") {
-    const paid = Object.entries(PAID_VOICES).flatMap(([key, list]) =>
-      SETTINGS[key] ? list : [],
-    );
-    return Promise.resolve([...VOICES, ...paid]);
+    return Promise.resolve([...VOICES, ...paidCatalogue()]);
   }
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
@@ -582,10 +681,31 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     return Promise.resolve(null);
   }
   if (command === "read_book") {
+    // The refusal a PAID reading gets, on demand. The engine says
+    // `voice_failed: <code>: <detail>` for a provider that said no, and
+    // `voice_unavailable: <reason>` for one that was never asked because
+    // there is no key or our own ceiling stopped it - two different
+    // prefixes, and the shell has to name both.
+    if (VOICE_FAIL) {
+      const before = VOICE_FAIL === "no_key" || VOICE_FAIL === "budget";
+      return Promise.reject(
+        before
+          ? `voice_unavailable: ${VOICE_FAIL}`
+          : `voice_failed: ${VOICE_FAIL}: provider said no`,
+      );
+    }
     startMockReading(bookSteps((args.segmentId as string | null) ?? null));
     return Promise.resolve(null);
   }
   if (command === "read_text" || command === "read_selection_text") {
+    if (VOICE_FAIL) {
+      const before = VOICE_FAIL === "no_key" || VOICE_FAIL === "budget";
+      return Promise.reject(
+        before
+          ? `voice_unavailable: ${VOICE_FAIL}`
+          : `voice_failed: ${VOICE_FAIL}: provider said no`,
+      );
+    }
     const from = (args.segmentId as string | null) ?? null;
     const parts = ["part-0", "part-1", "part-2"];
     const start = from ? parts.indexOf(from) : 0;

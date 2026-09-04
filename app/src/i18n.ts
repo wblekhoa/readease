@@ -34,6 +34,7 @@ export const TEXT = {
     "Không mở được sách này. Sách vẫn còn trong thư viện - lần này ứng dụng chưa đọc được nội dung.",
     "This book would not open. It is still in your library - the app just could not read it this time.",
   ],
+  "reader.toc_title": ["Mục lục", "Contents"],
   "reader.toc_hide": ["Ẩn mục lục", "Hide contents"],
   "reader.toc_show": ["Hiện mục lục", "Show contents"],
   "reader.text_smaller": ["Chữ nhỏ hơn", "Smaller text"],
@@ -67,6 +68,18 @@ export const TEXT = {
   "notes.open": ["Highlight và ghi chú", "Highlights and notes"],
   "notes.count": ["{count} highlight", "{count} highlights"],
   "reader.note_open": ["Xem ghi chú", "Read this note"],
+  "reader.note_edit": ["Sửa ghi chú", "Edit this note"],
+  "reader.note_placeholder": ["Ghi chú của bạn…", "Your note…"],
+  "reader.note_save": ["Lưu", "Save"],
+  "reader.note_cancel": ["Huỷ", "Cancel"],
+  "reader.note_save_failed": [
+    "Chưa lưu được ghi chú - nội dung cũ vẫn còn nguyên.",
+    "The note could not be saved - the old one is still here.",
+  ],
+  "reader.note_gone": [
+    "Highlight này không còn nữa, nên ghi chú không lưu được.",
+    "That highlight is gone, so the note could not be saved.",
+  ],
   "voices.title": ["Danh sách giọng đọc", "Voices"],
   "voices.caption": ["Nghe thử, rồi bật những giọng bạn muốn đổi nhanh khi đang đọc.", "Listen, then switch on the voices you want to swap between while reading."],
   "voices.manage": ["Quản lý giọng…", "Manage voices…"],
@@ -96,6 +109,10 @@ export const TEXT = {
     "The key stays on this Mac at 0600, and never goes anywhere but that provider.",
   ],
   "key.checking": ["Đang kiểm…", "Checking…"],
+  "key.model": ["Mô hình", "Model"],
+  "key.model_price": ["{usd}/1k {unit}", "{usd}/1k {unit}"],
+  "unit.characters": ["ký tự", "characters"],
+  "unit.credits": ["credit", "credits"],
   "key.refused": [
     "Khoá này chưa dùng được - nhà cung cấp không trả về giọng nào.",
     "That key does not work yet - the provider returned no voices.",
@@ -107,6 +124,11 @@ export const TEXT = {
   "cost.title": ["Giọng trả phí", "Paid voice"],
   "cost.open": ["Chi phí và phạm vi", "Cost and scope"],
   "cost.measuring": ["Đang tính…", "Working it out…"],
+  /* The figure is a CEILING for the whole scope, not the cost of this one
+     press: a click on a paragraph carries the same scope and can start
+     anywhere inside it. Saying "tối đa" is what makes the number true for
+     every way of starting a reading (owner chose this, 04/09). */
+  "cost.at_most": ["tối đa {usd}", "up to {usd}"],
   "cost.unavailable": ["chưa có giá", "no price yet"],
   "cost.failed": [
     "Chưa tính được giá cho giọng này, nên nút đọc còn khoá - sẽ không có chuyện tiêu tiền mà chưa biết bao nhiêu.",
@@ -117,8 +139,12 @@ export const TEXT = {
   "cost.scope_one": ["Chương này", "This chapter"],
   "cost.scope_all": ["Hết sách", "To the end"],
   "cost.detail": [
-    "{chars} ký tự · {chapters} chương · giá tham khảo {date}",
-    "{chars} characters · {chapters} chapters · price quoted {date}",
+    "Nhiều nhất {chars} ký tự · {chapters} chương · giá tham khảo {date}",
+    "At most {chars} characters · {chapters} chapters · price quoted {date}",
+  ],
+  "cost.detail_text": [
+    "{chars} ký tự · giá tham khảo {date}",
+    "{chars} characters · price quoted {date}",
   ],
   "cost.units": ["≈ {units} {unit}", "≈ {units} {unit}"],
   "cost.unit_characters": ["ký tự", "characters"],

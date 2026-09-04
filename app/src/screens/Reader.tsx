@@ -21,7 +21,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
-import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface } from "../ui/controls";
+import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
@@ -172,6 +172,20 @@ function Figure({
   );
 }
 
+/** Where a bubble hangs beside the marker that opened it.
+ *
+ * Measured, not styled: the reader's text lives in CSS columns slid
+ * sideways by a transform, so anything parented to a paragraph is clipped
+ * or lands somewhere else. Both bubbles - the one you read and the one you
+ * type in - are drawn `fixed` from these numbers instead. */
+type Bubble = {
+  left?: number;
+  right?: number;
+  maxWidth: number;
+  top?: number;
+  bottom?: number;
+};
+
 export function Reader({
   bookId,
   currentSegment,
@@ -232,9 +246,19 @@ export function Reader({
    * frame that clips - a popover parented to the paragraph would be cut off
    * or land somewhere else entirely. Fixed positioning is measured against
    * the window, so neither the columns nor the transform can reach it. */
-  const [peek, setPeek] = useState<
-    { note: string; left?: number; right?: number; maxWidth: number; top?: number; bottom?: number } | null
+  const [peek, setPeek] = useState<({ note: string } & Bubble) | null>(null);
+  /* The same bubble, with a cursor in it. Separate state rather than a mode
+     on `peek`, because they answer to opposite things: the peek follows the
+     pointer and vanishes when it leaves, the editor stays until the person
+     is done with it. Both are open at once for one frame while the pointer
+     is still over the marker, so the peek is cleared when this opens. */
+  const [editing, setEditing] = useState<
+    ({ id: string; draft: string; error?: string } & Bubble) | null
   >(null);
+  const [saving, setSaving] = useState(false);
+  /* The contents row for the chapter being read, so opening the panel can put
+     it in front of the person instead of at the top of a long book. */
+  const here = useRef<HTMLDivElement>(null);
   const column = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const paged = mode === "pages";
@@ -346,7 +370,7 @@ export function Reader({
    * lines up with the window's right margin instead. Above the line when the
    * icon is low, so a long note is not cut off by the bottom of the window.
    */
-  const showPeek = useCallback((anchor: HTMLElement, note: string) => {
+  const place = useCallback((anchor: HTMLElement): Bubble => {
     const rect = anchor.getBoundingClientRect();
     const margin = 24;
     /** Under this, following the icon makes a column, not a bubble. */
@@ -358,13 +382,79 @@ export function Reader({
     const across = room >= narrowest
       ? { left: Math.max(margin, rect.left - 8), maxWidth: Math.min(widest, room + 8) }
       : { right: margin, maxWidth: Math.min(widest, window.innerWidth - margin * 2) };
-    setPeek({
-      note,
+    return {
       ...across,
       top: low ? undefined : rect.bottom + LAYER_GAP,
       bottom: low ? window.innerHeight - rect.top + LAYER_GAP : undefined,
-    });
+    };
   }, []);
+
+  const showPeek = useCallback((anchor: HTMLElement, note: string) => {
+    setPeek({ note, ...place(anchor) });
+  }, [place]);
+
+  /** Open the note for writing, where it sits.
+   *
+   * The peek goes first: the pointer is still on the marker that opened
+   * this, so both bubbles would otherwise be on screen at once, one of them
+   * unreachable behind the other. */
+  const editNote = useCallback((anchor: HTMLElement, id: string, note: string) => {
+    setPeek(null);
+    setNoteError(null);
+    setEditing({ id, draft: note, ...place(anchor) });
+  }, [place]);
+
+  /** Write one note down, and mean it.
+   *
+   * Optimistic, like the delete beside it and for the same reason: the
+   * words appear on the page at once. But the ENGINE is what makes it true
+   * - it keeps a record of the edit so the next Apple Books sync cannot
+   * overwrite the person's own words with the ones the highlight arrived
+   * with - and when it refuses, the page goes back to what is actually on
+   * disk and the box stays open, still holding what was typed, saying why.
+   * A note that only LOOKS saved is the outcome to avoid: the person closes
+   * the book believing they wrote something down.
+   *
+   * Up here, far from the box it serves, because it is a hook: written down
+   * beside the editor it crashed the reader the moment a book opened - the
+   * `!opened` return below comes first, so the hook count changed between
+   * renders. Same trap as the contents-panel effect further down.
+   */
+  const saveNote = useCallback((id: string, draft: string) => {
+    const note = draft.trim();
+    const before = (opened?.annotations ?? []).find((item) => item.id === id);
+    // Gone from under the box - deleted in the panel while this was open.
+    // Returning quietly would leave the button doing nothing at all, which
+    // is the one thing a save must never look like.
+    if (!before) {
+      setEditing((open) => open && { ...open, error: text("reader.note_gone") });
+      return;
+    }
+    if ((before.note ?? "") === note) { setEditing(null); return; }
+    const put = (value: string | null) => setOpened((book) => book && {
+      ...book,
+      annotations: (book.annotations ?? []).map((item) =>
+        item.id === id ? { ...item, note: value } : item),
+    });
+    const refuse = (message: string) => {
+      put(before.note ?? null);
+      setEditing((open) => open && { ...open, error: message });
+    };
+    setSaving(true);
+    put(note || null);
+    void invoke<{ result: { updated: boolean } }>("engine_request", {
+      method: "annotations.update",
+      params: { book_id: bookId, annotation_id: id, note },
+    }).then((reply) => {
+      // `updated: false` is not an error - it is this highlight being gone,
+      // removed in another window or by a sync while the box was open.
+      if (reply?.result?.updated) setEditing(null);
+      else refuse(text("reader.note_gone"));
+    }).catch((error) => {
+      console.error(error);
+      refuse(text("reader.note_save_failed"));
+    }).finally(() => setSaving(false));
+  }, [bookId, opened]);
 
   /** Show a place, in whichever mode is on. */
   const showSegment = useCallback((segmentId: string, source: PageReason) => {
@@ -508,6 +598,17 @@ export function Reader({
     return () => window.removeEventListener("keydown", onKey);
   }, [zoomed]);
 
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (event: KeyboardEvent) => {
+      // Escape abandons the edit. The note on disk is untouched, which is
+      // why this needs no confirmation: nothing has been written yet.
+      if (event.key === "Escape") setEditing(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing]);
+
   const highlightsBySegment = useMemo(() => {
     const map = new Map<string, BookAnnotation[]>();
     for (const item of opened?.annotations ?? []) {
@@ -515,6 +616,20 @@ export function Reader({
     }
     return map;
   }, [opened]);
+
+  /* ABOVE the early return below, where every hook in this component has to
+     live: this one was written down beside the panel it serves and crashed
+     the reader the moment a book opened - `!opened` returns before it, so the
+     hook count changed between renders.
+
+     `block: "center"` and not `nearest`: "nearest" leaves the row wherever it
+     happens to fall, including flush under the heading. Instant, not smooth -
+     the panel is not on screen yet when this runs, so there is nothing for an
+     animation to be seen doing. */
+  useEffect(() => {
+    if (!showToc) return;
+    here.current?.scrollIntoView({ block: "center" });
+  }, [showToc]);
 
   if (!opened) {
     // A book that will not open has to SAY so. Returning null whatever the
@@ -560,19 +675,27 @@ export function Reader({
           {/* The colour Books drew it in - the stylesheet turns the number
               into the wash. An unknown or absent number falls through to the
               yellow every highlight used to get. */}
-          <mark data-style={item.style || undefined}>{piece.text}</mark>
           {item.note && (
+            /* The note icon, wearing the colour of the highlight it
+               belongs to and outlined in the page's own colour so it reads
+               as sitting ON the wash rather than smudged into it. It sits
+               at the HEAD of the highlight, where a margin mark would be.
+               The colours are in index.css: `.note-nudge` takes the hue
+               from the same token the wash uses, at full strength. */
             <InlineIconButton
-              onClick={() => { setPeek(null); onNotes(true, item.id); }}
+              className="note-nudge"
+              data-style={item.style || undefined}
+              onClick={(event) => editNote(event.currentTarget, item.id, item.note ?? "")}
               onMouseEnter={(event) => showPeek(event.currentTarget, item.note!)}
               onFocus={(event) => showPeek(event.currentTarget, item.note!)}
               onMouseLeave={() => setPeek(null)}
               onBlur={() => setPeek(null)}
-              aria-label={text("reader.note_open")}
+              aria-label={text("reader.note_edit")}
             >
               <NoteIcon />
             </InlineIconButton>
           )}
+          <mark data-style={item.style || undefined}>{piece.text}</mark>
         </Fragment>
       );
     });
@@ -628,18 +751,35 @@ export function Reader({
   const contents = showToc && (
     <Surface
       edge="strong"
-      className={`absolute left-0 z-10 w-64 overflow-y-auto p-2 shadow-lifted ${
+      /* Built like NotesPanel, its sibling over the same page: a heading that
+         stays put, a way out that is not the toolbar, and only the list
+         scrolling under them. It used to be a bare box of rows - the one
+         panel in the app with no name on it and no close (owner, 04/09).
+         288 rather than 256, because a chapter title is a sentence and this
+         is the panel whose whole job is to show them. */
+      className={`flex flex-col overflow-hidden absolute left-0 z-10 w-72 shadow-lifted ${
         paged
           ? "top-0 max-h-full"
           : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
       }`}
     >
-      <nav>
+      <div className="flex shrink-0 items-center gap-2 px-4 pb-1 pt-3">
+        <h3 className="m-0 flex-1 text-sm font-bold">{text("reader.toc_title")}</h3>
+        <IconButton onClick={onHideToc} aria-label={text("aria.close")} title={text("aria.close")}>
+          <CloseIcon />
+        </IconButton>
+      </div>
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {opened.book.chapters.map((chapter, index) => (
           <ListRow
             key={chapter.id}
             dense
             active={chapter.id === activeChapter}
+            /* Where you are, brought to you. A book of eighty chapters opened
+               its contents at chapter one however deep you had read, and the
+               row that says "you are here" was the one off the bottom of the
+               panel. */
+            rowRef={chapter.id === activeChapter ? here : undefined}
             onPress={() => {
               if (paged) {
                 setChapterIndex(index);
@@ -650,7 +790,10 @@ export function Reader({
               onHideToc();
               if (reading) onReadFrom(chapter.segments[0].id);
             }}
-            title={<span className="truncate text-sm">{chapter.title}</span>}
+            /* Two lines, not one truncated to nothing: a title long enough to
+               be cut is the one carrying the most, and this list is read by
+               scanning it rather than by width. */
+            title={<span className="line-clamp-2 text-sm">{chapter.title}</span>}
           />
         ))}
       </nav>
@@ -715,10 +858,87 @@ export function Reader({
         maxWidth: peek.maxWidth,
       }}
     >
+      {/* Three lines and no more: this is a glance, not the note. A long
+          note that unrolled here covered the paragraph it belongs to, and
+          the whole of it is one click away in the box that opens. */}
       <Surface edge="strong" className="px-3 py-2 text-sm leading-relaxed shadow-lifted">
-        {peek.note}
+        {/* On a span of its own: `line-clamp` works by switching the
+            element to -webkit-box, and the card has a display of its own
+            that wins - on the card the rule was set and did nothing. */}
+        <span className="line-clamp-3">{peek.note}</span>
       </Surface>
     </div>
+  );
+
+  /* The note, open for writing, where the marker is.
+   *
+   * Not a dialog: the sentence it belongs to has to stay readable while the
+   * note about it is being written. The backdrop is there only to catch a
+   * click outside - it paints nothing, so the page underneath is entirely
+   * visible.
+   */
+  const noteEditor = editing && (
+    <>
+      <div
+        className="fixed inset-0 z-40"
+        onClick={() => setEditing(null)}
+        aria-hidden
+      />
+      <div
+        className="fixed z-50 w-max"
+        style={{
+          left: editing.left, right: editing.right,
+          top: editing.top, bottom: editing.bottom,
+          maxWidth: editing.maxWidth,
+        }}
+      >
+        <Surface edge="strong" className="flex w-[22rem] max-w-full flex-col gap-2 p-3 shadow-lifted">
+          <Textarea
+            autoFocus
+            rows={3}
+            value={editing.draft}
+            placeholder={text("reader.note_placeholder")}
+            aria-label={text("reader.note_edit")}
+            onChange={(event) => setEditing((open) => open && {
+              ...open, draft: event.target.value,
+            })}
+            onKeyDown={(event) => {
+              // Enter alone makes a paragraph - a note is prose. The
+              // shortcut is the one every macOS text box uses to send.
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                saveNote(editing.id, editing.draft);
+              }
+            }}
+          />
+          {editing.error && <Notice tone="error">{editing.error}</Notice>}
+          <div className="flex items-center justify-between gap-2">
+            {/* The panel is still the place to see every note at once, and
+                this was the only way in that knew WHICH note to show. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setEditing(null); onNotes(true, editing.id); }}
+            >
+              {text("notes.open")}
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+                {text("reader.note_cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={saving}
+                onClick={() => saveNote(editing.id, editing.draft)}
+              >
+                {text("reader.note_save")}
+              </Button>
+            </div>
+          </div>
+        </Surface>
+      </div>
+    </>
   );
 
   const pills = (
@@ -758,6 +978,7 @@ export function Reader({
           {contents}
           {notes}
           {notePeek}
+          {noteEditor}
           {pills}
         </div>
       ) : (
@@ -777,6 +998,7 @@ export function Reader({
             {contents}
             {notes}
             {notePeek}
+            {noteEditor}
             {pills}
           </div>
         </div>

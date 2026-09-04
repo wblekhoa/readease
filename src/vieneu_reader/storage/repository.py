@@ -22,7 +22,8 @@ SCHEMA_VERSION = 1
 # and they run in order.
 #
 # Empty on purpose, and that is not the same as absent. Everything added so
-# far - annotations, annotations_forgotten, apple_books_links - was ADDITIVE,
+# far - annotations, annotations_forgotten, annotations_edited,
+# apple_books_links - was ADDITIVE,
 # created by `CREATE TABLE IF NOT EXISTS` in `_create_schema`, which an older
 # build simply ignores; none of it needed a version bump. What was missing is
 # what happens the FIRST time a change is not additive, and the answer used
@@ -434,6 +435,17 @@ class LibraryRepository:
             )
             self._connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS annotations_edited (
+                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    annotation_id TEXT NOT NULL,
+                    note TEXT,
+                    edited_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (book_id, annotation_id)
+                )
+                """
+            )
+            self._connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS apple_books_links (
                     asset_id TEXT PRIMARY KEY,
                     book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE
@@ -604,6 +616,13 @@ class LibraryRepository:
         mirror of the other side - without a record of what was removed, the
         very next sync would put it all back. The filter lives here rather
         than at the caller so every path that writes annotations obeys it.
+
+        And except the notes rewritten HERE. Same argument, other direction:
+        a note edited in this app is not in Apple Books, so the mirror would
+        overwrite it with the original text on the next sync and the person
+        would watch their own words disappear. The edits are re-applied
+        AFTER the insert, for the same reason the tombstone filter sits in
+        this method: every path that writes annotations has to obey both.
         """
 
         with _database_errors(), self._lock, self._connection:
@@ -631,6 +650,55 @@ class LibraryRepository:
                     for item in items
                 ],
             )
+            self._connection.execute(
+                """
+                UPDATE annotations SET note = (
+                    SELECT note FROM annotations_edited
+                    WHERE book_id = annotations.book_id
+                      AND annotation_id = annotations.id
+                )
+                WHERE book_id = ? AND source = ? AND id IN (
+                    SELECT annotation_id FROM annotations_edited WHERE book_id = ?
+                )
+                """,
+                (book_id, source, book_id),
+            )
+
+    def edit_annotation(
+        self, book_id: str, annotation_id: str, note: str | None
+    ) -> bool:
+        """Rewrite one highlight's note, and remember that it was rewritten.
+
+        The record is what makes it survive: `replace_annotations` re-applies
+        it, so the next Apple Books sync cannot overwrite the person's own
+        words with the ones the highlight arrived with. An empty note is a
+        real answer - it means "I took my note back" - and is stored as NULL
+        with the record still present, which is how it is told apart from a
+        highlight that was never edited at all.
+
+        Answers whether there was a highlight to edit, so the shell can tell
+        "saved" from "that one is gone". Nothing is written when there is
+        not: an edit record for a row that cannot exist is rot.
+        """
+
+        note = (note or "").strip() or None
+        with _database_errors(), self._lock, self._connection:
+            cursor = self._connection.execute(
+                "UPDATE annotations SET note = ? WHERE book_id = ? AND id = ?",
+                (note, book_id, annotation_id),
+            )
+            if cursor.rowcount > 0:
+                self._connection.execute(
+                    """
+                    INSERT INTO annotations_edited(book_id, annotation_id, note)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(book_id, annotation_id)
+                    DO UPDATE SET note = excluded.note,
+                                  edited_at = CURRENT_TIMESTAMP
+                    """,
+                    (book_id, annotation_id, note),
+                )
+        return cursor.rowcount > 0
 
     def forget_annotation(self, book_id: str, annotation_id: str) -> bool:
         """Remove one highlight, and remember that it was removed.
@@ -646,6 +714,13 @@ class LibraryRepository:
                 """
                 INSERT OR IGNORE INTO annotations_forgotten(book_id, annotation_id)
                 VALUES (?, ?)
+                """,
+                (book_id, annotation_id),
+            )
+            self._connection.execute(
+                """
+                DELETE FROM annotations_edited
+                WHERE book_id = ? AND annotation_id = ?
                 """,
                 (book_id, annotation_id),
             )

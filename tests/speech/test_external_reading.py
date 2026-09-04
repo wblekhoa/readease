@@ -260,6 +260,31 @@ class EstimateMethodTests(unittest.TestCase):
         )
         self.assertEqual(estimate["chars"], spoken)
 
+    def test_the_quote_covers_the_chapter_even_when_you_resume_at_its_end(self) -> None:
+        # The whole point of the ceiling. Resuming at the LAST paragraph of a
+        # chapter used to quote that paragraph alone - and then a click back
+        # at the top of the same chapter, carrying the very same scope, spent
+        # several times the figure the person had been shown.
+        last = _BOOK.chapters[0].segments[-1].id
+        first = _BOOK.chapters[0].segments[0].id
+        at_end = self._run({"book_id": _BOOK.id, "segment_id": last,
+                            "voice_id": VOICE, "chapters": 1})["result"]
+        at_start = self._run({"book_id": _BOOK.id, "segment_id": first,
+                              "voice_id": VOICE, "chapters": 1})["result"]
+        self.assertEqual(at_end["chars"], at_start["chars"])
+        self.assertEqual(at_end["usd"], at_start["usd"])
+        self.assertEqual(at_end["chapters"], 1)
+
+    def test_the_whole_book_scope_quotes_the_whole_book_from_anywhere(self) -> None:
+        middle = _BOOK.chapters[1].segments[-1].id
+        start = _BOOK.chapters[0].segments[0].id
+        from_middle = self._run({"book_id": _BOOK.id, "segment_id": middle,
+                                 "voice_id": VOICE})["result"]
+        from_start = self._run({"book_id": _BOOK.id, "segment_id": start,
+                                "voice_id": VOICE})["result"]
+        self.assertEqual(from_middle["chars"], from_start["chars"])
+        self.assertEqual(from_middle["chapters"], 3)
+
     def test_more_chapters_costs_more_and_all_costs_most(self) -> None:
         one = self._run({"book_id": _BOOK.id, "segment_id": _first_segment(_BOOK),
                          "voice_id": VOICE, "chapters": 1})["result"]
@@ -270,6 +295,41 @@ class EstimateMethodTests(unittest.TestCase):
         self.assertLess(one["usd"], two["usd"])
         self.assertLess(two["usd"], every["usd"])
         self.assertEqual(every["chapters"], 3)
+
+    def test_pasted_text_is_priced_too_and_counts_what_will_be_sent(self) -> None:
+        # The case that needed it most: a paste can be 100,000 characters,
+        # which is one press of a button and ten dollars on the dearer
+        # voices, and this screen never had a number on it at all.
+        from vieneu_reader.domain.prosody import speakable_text
+        from vieneu_reader.headless.server import _text_utterances
+        from vieneu_reader.speech.contracts import SynthesisSettings
+
+        pasted = "Một đoạn văn để thử. " * 200
+        result = self._run({"text": pasted, "voice_id": VOICE})["result"]
+        self.assertTrue(result["paid"])
+        self.assertEqual(result["chapters"], 0)
+        self.assertGreater(result["usd"], 0)
+        # Counted over the strings the READING sends, not the raw paste:
+        # `speakable_text` rewrites on the way past, so counting the box
+        # would quote a number the bill then disagrees with.
+        expected = sum(
+            len(utterance.text)
+            for utterance in _text_utterances(pasted, SynthesisSettings())
+        )
+        self.assertEqual(result["chars"], expected)
+        self.assertNotEqual(speakable_text(pasted), "")
+
+    def test_a_local_voice_reading_pasted_text_is_free(self) -> None:
+        result = self._run({"text": "Một câu.", "voice_id": "Minh Đức"})["result"]
+        self.assertFalse(result["paid"])
+        self.assertGreater(result["chars"], 0)
+        self.assertNotIn("usd", result)
+
+    def test_an_empty_paste_prices_at_nothing_rather_than_failing(self) -> None:
+        # The shell asks while somebody is still typing.
+        result = self._run({"text": "", "voice_id": VOICE})["result"]
+        self.assertEqual(result["chars"], 0)
+        self.assertEqual(result["usd"], 0)
 
     def test_the_local_voice_answers_free_rather_than_nothing(self) -> None:
         # The button waits on an answer either way; silence would leave it
@@ -294,6 +354,17 @@ class CatalogueTests(unittest.TestCase):
             )[0]
             return reply["result"]["voices"]
 
+    def _unreachable(self, settings):
+        from tests.headless.test_server import FakeEngine, run_server
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(json.dumps(settings), encoding="utf-8")
+            reply = run_server(
+                [{"id": 1, "method": "voices"}], FakeEngine(), settings_path=path,
+            )[0]
+            return reply["result"].get("unreachable")
+
     def test_without_a_key_the_catalogue_is_the_local_model_alone(self) -> None:
         # Offering Alloy to somebody with no key would put the refusal AFTER
         # the choice: they pick it, press read, and are told no.
@@ -310,14 +381,196 @@ class CatalogueTests(unittest.TestCase):
         self.assertFalse(voices[0]["paid"])
         self.assertTrue(all(voice["id"].startswith("openai:") for voice in paid))
         self.assertTrue(all(voice["id"].count(":") == 2 for voice in paid))
-        # Both models are offered, because they are different prices.
+        # ONE model, not every model. The catalogue used to emit models x
+        # voices - 18 rows for OpenAI alone, the same nine names twice at two
+        # prices, which is a list nobody can scan and a choice nobody should
+        # have to make nine times. The model is a setting; the id still
+        # carries it, so the price is still readable off the id.
+        self.assertEqual({voice["model"] for voice in paid}, {"tts-1"})
+
+    def test_changing_the_model_changes_which_voices_are_offered(self) -> None:
+        cheap = self._voices({"openai_api_key": KEY})
+        dear = self._voices({"openai_api_key": KEY, "openai_model": "tts-1-hd"})
+        self.assertEqual({voice["model"] for voice in dear if voice["paid"]}, {"tts-1-hd"})
+        # Same voices, different price - so the ids differ in the middle and
+        # nothing that keyed off the old id can silently be charged the new
+        # rate.
         self.assertEqual(
-            {voice["model"] for voice in paid}, {"tts-1", "tts-1-hd"},
+            len([v for v in cheap if v["paid"]]), len([v for v in dear if v["paid"]])
         )
+        self.assertNotEqual(
+            {v["id"] for v in cheap if v["paid"]}, {v["id"] for v in dear if v["paid"]}
+        )
+
+    def test_a_model_this_build_does_not_know_falls_back_rather_than_asking_for_it(self) -> None:
+        # A settings file edited by hand, or written by a later build that had
+        # a model this one does not. Sending it anyway would be a request the
+        # provider refuses AND a price this app cannot quote.
+        voices = self._voices({"openai_api_key": KEY, "openai_model": "tts-9-imaginary"})
+        self.assertEqual({v["model"] for v in voices if v["paid"]}, {"tts-1"})
 
     def test_the_other_provider_stays_out_until_it_has_its_own_key(self) -> None:
         voices = self._voices({"openai_api_key": KEY})
         self.assertFalse(any(v["id"].startswith("elevenlabs") for v in voices))
+
+    def test_a_provider_that_cannot_be_reached_does_not_take_the_local_voices_with_it(self) -> None:
+        """The one that would have been found in the field, not in a test.
+
+        ElevenLabs' catalogue is a live authenticated call. Being on a train
+        used to raise out of the middle of building this list, so `voices`
+        failed entirely and the reader lost the LOCAL model too - the one
+        thing that needs no network and was working perfectly.
+        """
+
+        from vieneu_reader.headless import server
+
+        original = server._external_provider
+
+        class Unreachable:
+            name = "elevenlabs"
+            model = "eleven_flash_v2_5"
+
+            def voices(self):
+                raise ExternalVoiceError("network", "offline")
+
+            def synthesize(self, text, voice_id):  # pragma: no cover
+                raise AssertionError("never asked")
+
+            def cancel(self):
+                pass
+
+        server._external_provider = lambda provider, voice_id, settings: (
+            Unreachable() if provider == "elevenlabs" else None
+        )
+        try:
+            voices = self._voices({"elevenlabs_api_key": KEY})
+        finally:
+            server._external_provider = original
+
+        local = [voice for voice in voices if not voice["paid"]]
+        self.assertTrue(local, "the local model must survive a provider being unreachable")
+        # Not smuggled into the list as a voice with no name, either - every
+        # list in the app would have drawn that as an empty row.
+        self.assertTrue(all(voice["label"] for voice in voices))
+        self.assertFalse(any(voice["paid"] for voice in voices))
+
+    def test_a_provider_that_cannot_be_reached_says_so_beside_the_list(self) -> None:
+        """Reported, not swallowed. A provider that silently vanishes looks
+        exactly like one that was never configured."""
+
+        from vieneu_reader.headless import server
+
+        original = server._external_provider
+
+        class Unreachable:
+            name = "elevenlabs"
+            model = "eleven_flash_v2_5"
+
+            def voices(self):
+                raise ExternalVoiceError("quota", "no credit")
+
+            def synthesize(self, text, voice_id):  # pragma: no cover
+                raise AssertionError("never asked")
+
+            def cancel(self):
+                pass
+
+        server._external_provider = lambda provider, voice_id, settings: (
+            Unreachable() if provider == "elevenlabs" else None
+        )
+        try:
+            reported = self._unreachable({"elevenlabs_api_key": KEY})
+        finally:
+            server._external_provider = original
+        self.assertEqual(reported, [{"provider": "elevenlabs", "code": "quota"}])
+
+
+class VerifyKeyTests(unittest.TestCase):
+    """Saving a key and finding out whether it works are ONE act.
+
+    The shell used to save, re-list the catalogue and take "a paid voice
+    appeared" as proof. That is proof for a provider whose catalogue is a
+    live authenticated call, and no proof at all for one whose voices are a
+    constant - any non-empty string passed, and the app said it had checked.
+    """
+
+    def _ask(self, settings, params, *, verify_raises=None):
+        from tests.headless.test_server import FakeEngine, run_server
+        from vieneu_reader.headless import server
+
+        class Probe:
+            name = "openai"
+            model = "tts-1"
+
+            def voices(self):
+                return ()
+
+            def verify(self):
+                if verify_raises is not None:
+                    raise verify_raises
+
+            def synthesize(self, text, voice_id):  # pragma: no cover
+                raise AssertionError("never asked")
+
+            def cancel(self):
+                pass
+
+        original = server._external_provider
+        server._external_provider = lambda provider, voice_id, s: Probe()
+        try:
+            with TemporaryDirectory() as directory:
+                path = Path(directory) / "settings.json"
+                path.write_text(json.dumps(settings), encoding="utf-8")
+                reply = run_server(
+                    [{"id": 1, "method": "config.verify_key", "params": params}],
+                    FakeEngine(),
+                    settings_path=path,
+                )[0]
+                stored = json.loads(path.read_text(encoding="utf-8"))
+                return reply, stored
+        finally:
+            server._external_provider = original
+
+    def test_a_key_the_service_accepts_is_saved(self) -> None:
+        reply, stored = self._ask({}, {"provider": "openai", "value": KEY})
+        self.assertEqual(reply["result"], {"saved": True, "ok": True})
+        self.assertEqual(stored["openai_api_key"], KEY)
+
+    def test_a_key_the_service_refuses_is_NOT_saved(self) -> None:
+        reply, stored = self._ask(
+            {}, {"provider": "openai", "value": "wrong"},
+            verify_raises=ExternalVoiceError("bad_key", "refused"),
+        )
+        self.assertEqual(reply["result"], {"saved": False, "ok": False, "code": "bad_key"})
+        # Keeping it would leave the panel looking configured and fail again
+        # later, at the worst possible moment.
+        self.assertFalse(stored.get("openai_api_key"))
+
+    def test_the_reason_travels_so_the_shell_can_say_which_failure_it_was(self) -> None:
+        for code in ("bad_key", "quota", "network", "provider_down"):
+            with self.subTest(code=code):
+                reply, _ = self._ask(
+                    {}, {"provider": "openai", "value": KEY},
+                    verify_raises=ExternalVoiceError(code, "m"),
+                )
+                self.assertEqual(reply["result"]["code"], code)
+
+    def test_being_offline_does_not_wipe_a_key_that_was_already_working(self) -> None:
+        reply, stored = self._ask(
+            {"openai_api_key": KEY}, {"provider": "openai", "value": KEY},
+            verify_raises=ExternalVoiceError("network", "offline"),
+        )
+        self.assertFalse(reply["result"]["ok"])
+        self.assertEqual(stored["openai_api_key"], KEY)
+
+    def test_an_empty_value_clears_the_key_without_asking_anybody(self) -> None:
+        reply, stored = self._ask({"openai_api_key": KEY}, {"provider": "openai", "value": ""})
+        self.assertEqual(reply["result"]["code"], "no_key")
+        self.assertFalse(stored.get("openai_api_key"))
+
+    def test_the_key_never_comes_back_out(self) -> None:
+        reply, _ = self._ask({}, {"provider": "openai", "value": KEY})
+        self.assertNotIn(KEY, json.dumps(reply))
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
  * once. Building a screen means picking a pattern and pouring content in.
  * The written half lives in docs/readease-hig.md.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { IconButton, ProgressBar, Surface } from "./controls";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
 
@@ -70,6 +70,7 @@ export function ListRow({
   subtitle,
   trailing,
   onPress,
+  rowRef,
   active = false,
   dense = false,
 }: {
@@ -78,6 +79,9 @@ export function ListRow({
   subtitle?: ReactNode;
   trailing?: ReactNode;
   onPress?: () => void;
+  /** A handle on the row itself, for a list that has to bring one of its rows
+   * into view. */
+  rowRef?: RefObject<HTMLDivElement | null>;
   /** "You are here" - painted in `band`, the same token the reading line
    * uses, so the app only ever has one colour for current position. */
   active?: boolean;
@@ -86,10 +90,11 @@ export function ListRow({
   dense?: boolean;
 }) {
   const shape = dense
-    ? "rounded-[var(--ctl-radius)] px-2.5 py-1"
+    ? "rounded-[var(--ctl-radius)] px-2.5 py-1.5"
     : "rounded-2xl px-3 py-2";
   return (
     <div
+      ref={rowRef}
       className={`group flex items-center ${
         dense ? "rounded-[var(--ctl-radius)]" : "rounded-2xl pr-1.5"
       } transition-colors ${active ? "bg-band" : "hover:bg-wash"}`}
@@ -100,7 +105,7 @@ export function ListRow({
       >
         {leading && <span className="shrink-0 text-ink-mute">{leading}</span>}
         <span className="min-w-0 flex-1">
-          <span className="flex items-baseline gap-2">{title}</span>
+          <span className="flex items-baseline gap-2 min-w-0">{title}</span>
           {subtitle && (
             <span className="mt-0.5 block truncate text-xs text-ink-mute">
               {subtitle}

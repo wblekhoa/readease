@@ -8,7 +8,9 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from vieneu_reader.speech.external.estimate import ScopeEstimate, estimate_scope, scope_end  # noqa: E402
+from vieneu_reader.speech.external.estimate import (  # noqa: E402
+    ScopeEstimate, estimate_scope, scope_end, scope_start,
+)
 from vieneu_reader.speech.external.pricing import PRICES, price_for  # noqa: E402
 
 
@@ -36,6 +38,54 @@ class ScopeTests(unittest.TestCase):
 
     def test_a_start_past_the_end_buys_nothing(self) -> None:
         self.assertEqual(scope_end(CHAPTER_OF, 99, None), len(CHAPTER_OF))
+
+
+class CeilingTests(unittest.TestCase):
+    """The quote covers the whole scope, wherever inside it a reading starts."""
+
+    def test_it_backs_up_to_the_start_of_the_chapter_you_are_in(self) -> None:
+        # Chapter two is utterances 2..4. Resuming at 4 still quotes from 2,
+        # because a click on utterance 2 costs that much and carries the very
+        # same scope.
+        self.assertEqual(scope_start(CHAPTER_OF, 4, 1), 2)
+        self.assertEqual(scope_start(CHAPTER_OF, 2, 1), 2)
+
+    def test_more_chapters_still_start_at_the_one_you_are_in(self) -> None:
+        self.assertEqual(scope_start(CHAPTER_OF, 4, 2), 2)
+
+    def test_the_whole_book_starts_at_the_whole_book(self) -> None:
+        # With no ceiling on chapters, a click on the first paragraph reads
+        # everything - so everything is what the figure has to cover.
+        self.assertEqual(scope_start(CHAPTER_OF, 5, None), 0)
+
+    def test_a_ceiling_is_never_smaller_than_what_resuming_would_cost(self) -> None:
+        price = price_for("tts-1")
+        for start in range(len(CHAPTER_OF)):
+            for chapters in (1, 2, None):
+                resume = estimate_scope(TEXTS, CHAPTER_OF, start, chapters, price)
+                ceiling = estimate_scope(
+                    TEXTS, CHAPTER_OF,
+                    scope_start(CHAPTER_OF, start, chapters), chapters, price,
+                )
+                self.assertGreaterEqual(
+                    ceiling.chars, resume.chars,
+                    f"start={start} chapters={chapters}",
+                )
+
+    def test_the_ten_times_gap_this_was_written_for(self) -> None:
+        # A ten-paragraph chapter: resuming at the last one quoted $0.018
+        # while clicking the first cost $0.180 - the same scope, ten times
+        # the money, and only one of those numbers was ever on screen.
+        texts = ["x" * 1200] * 10
+        chapters = [0] * 10
+        price = price_for("tts-1")
+        self.assertEqual(estimate_scope(texts, chapters, 9, 1, price).usd, 0.018)
+        self.assertEqual(
+            estimate_scope(
+                texts, chapters, scope_start(chapters, 9, 1), 1, price
+            ).usd,
+            0.18,
+        )
 
 
 class EstimateTests(unittest.TestCase):

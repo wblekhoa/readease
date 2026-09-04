@@ -36,6 +36,7 @@ const BUDGETS: readonly (number | null)[] = [0.25, 1, 5, null];
  * settings file. Closing the panel or quitting the app changes neither.
  */
 export function ReadingLimits({
+  scoped = true,
   scope,
   budget,
   spent,
@@ -44,6 +45,8 @@ export function ReadingLimits({
   className = "",
   bare = false,
 }: {
+  /** False for pasted text, which has no chapters to scope by. */
+  scoped?: boolean;
   scope: number | null;
   budget: number | null;
   /** Dollars run up since the app opened - context for the ceiling. */
@@ -58,6 +61,7 @@ export function ReadingLimits({
 }) {
   const rows = (
     <>
+      {scoped && (
       <GroupedRow
         title={text("cost.scope")}
         trailing={
@@ -79,6 +83,7 @@ export function ReadingLimits({
           </Select>
         }
       />
+      )}
       <GroupedRow
         title={text("cost.budget")}
         /* The running total sits under the ceiling it is running towards -
@@ -108,6 +113,7 @@ export function ReadingLimits({
 export function CostPanel({
   estimate,
   failed,
+  scoped = true,
   scope,
   budget,
   spent,
@@ -119,6 +125,8 @@ export function CostPanel({
   estimate: Estimate | null;
   /** The count did not come back at all - a different thing from "not yet". */
   failed: boolean;
+  /** False for pasted text: no chapters, so no scope. */
+  scoped?: boolean;
   scope: number | null;
   budget: number | null;
   /** Dollars run up since the app opened. */
@@ -151,6 +159,7 @@ export function CostPanel({
       </div>
 
       <ReadingLimits
+        scoped={scoped}
         scope={scope}
         budget={budget}
         spent={spent}
@@ -167,11 +176,18 @@ export function CostPanel({
           ? text("cost.measuring")
           : !paid
             ? text("cost.free")
-            : text("cost.detail", {
-                chars: formatCount(estimate.chars),
-                chapters: estimate.chapters,
-                date: estimate.price_dated,
-              })}
+            : estimate.chapters === 0
+              // Pasted text has no chapters, and "0 chương" reads as a bug
+              // rather than as the absence of a thing.
+              ? text("cost.detail_text", {
+                  chars: formatCount(estimate.chars),
+                  date: estimate.price_dated,
+                })
+              : text("cost.detail", {
+                  chars: formatCount(estimate.chars),
+                  chapters: estimate.chapters,
+                  date: estimate.price_dated,
+                })}
       </Notice>
       {paid && estimate?.paid && (
         <Notice className="mt-1 block">

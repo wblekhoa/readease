@@ -22,6 +22,9 @@ from .provider import ExternalVoiceError, ProviderVoice
 from .secrets import redacted
 
 ENDPOINT = "https://api.openai.com/v1/audio/speech"
+#: Free, authenticated, and returns quickly - the standard way to ask "is
+#: this key real?" without buying any audio to find out.
+MODELS = "https://api.openai.com/v1/models"
 
 #: tts-1 / tts-1-hd take this set. The newer, token-billed models add more
 #: (ballad, verse, marin, cedar) and are deliberately not offered: they bill
@@ -72,6 +75,32 @@ class OpenAIVoiceProvider:
 
     def cancel(self) -> None:
         self._cancelled = True
+
+    def verify(self) -> None:
+        """Is this key usable? Raises `ExternalVoiceError` if not.
+
+        `voices()` above cannot answer that - the nine names are a constant
+        and never leave this machine - so the app used to accept ANY non-empty
+        string as an OpenAI key and tell the reader it had been checked. It
+        was then read time, mid-chapter, that found out. This asks the
+        cheapest authenticated question the API has instead.
+        """
+
+        request = urllib.request.Request(
+            MODELS,
+            headers={"Authorization": f"Bearer {self._key}"},
+            method="GET",
+        )
+        try:
+            response = self._opener(request)
+        except urllib.error.HTTPError as error:
+            raise self._from_status(error) from None
+        except (urllib.error.URLError, TimeoutError) as error:
+            raise ExternalVoiceError(
+                "network", redacted(getattr(error, "reason", error), self._key)
+            ) from None
+        with response:  # type: ignore[union-attr]
+            response.read()  # type: ignore[union-attr]
 
     def synthesize(self, text: str, voice_id: str) -> Iterator[bytes]:
         self._cancelled = False

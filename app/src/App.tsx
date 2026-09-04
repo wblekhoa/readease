@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AppTabs } from "./ui/AppTabs";
+import { readingFault, faultKey } from "./ui/voiceFault";
 import { GradientBlur, MenuButton, Toolbar } from "./ui/patterns";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SectionTitle, Select, Surface, Textarea } from "./ui/controls";
@@ -22,12 +24,13 @@ import {
   PauseIcon,
   PlayIcon,
   PreviousIcon,
-  SidebarIcon,
+  BookClosedIcon,
   StopIcon,
   PagesIcon,
   ScrollIcon,
   InfoIcon,
   SlidersIcon,
+  CoinIcon,
   SunIcon,
   MoonIcon,
   BookIcon,
@@ -89,6 +92,15 @@ function useAppearance(): [Theme, () => void] {
     setPreference(next);
   }, [theme]);
   return [theme, toggle];
+}
+
+/** Where a layer hung from a control gets pinned: the control's centre and
+ * its top edge, in viewport coordinates. Read once when the layer opens - a
+ * hover panel that outlived a scroll would be pointing at nothing anyway, and
+ * it closes when the pointer leaves. */
+function anchor(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  return { centre: rect.left + rect.width / 2, top: rect.top };
 }
 
 export default function App() {
@@ -225,7 +237,9 @@ export default function App() {
   /** "Take me to where reading would resume" - the stamp lets the same place
    * be asked for twice. */
   const [reveal, setReveal] = useState<{ segmentId: string; at: number } | null>(null);
-  const [resumeTip, setResumeTip] = useState(false);
+  /* Not a boolean: the panel is drawn in a PORTAL now (see the read button),
+     so it carries the anchor it was opened from. */
+  const [resumeTip, setResumeTip] = useState<{ centre: number; top: number } | null>(null);
   /* What a paid voice would cost this press of the button, and how far the
      press reaches. `null` estimate means "still counting", and the button
      stays disabled until it is not - the owner's rule (04/09): nobody spends
@@ -250,13 +264,30 @@ export default function App() {
   }, []);
 
   const paidVoice = isPaidVoice(voiceId);
+  /* Whether there is anything to put a price ON. An empty paste box is not
+     a reading that is still being counted - it is no reading at all, and a
+     button claiming "Đang tính…" over an empty box counts for ever. */
+  const pricing = paidVoice && (openBook !== null || content.trim().length > 0);
 
   /* Re-price whenever anything the price depends on moves: the book, where
      the voice would resume, which voice, how far. Every one of those changes
      the number in the button, so every one of them must invalidate it first
      - a stale price on a button that spends money is worse than no price. */
   useEffect(() => {
-    if (!openBook || !voiceId) {
+    // Priced on BOTH screens. A paste can be 100,000 characters, which is one
+    // press of a button and ten dollars on the dearer voices - it was the
+    // case that needed the number most and the one screen that never had it.
+    const params = openBook
+      ? {
+        book_id: openBook.id,
+        segment_id: position ?? openBook.segment_id ?? null,
+        voice_id: voiceId,
+        chapters: scope,
+      }
+      : content.trim()
+        ? { text: content, voice_id: voiceId }
+        : null;
+    if (!params || !voiceId) {
       setEstimate(null);
       return;
     }
@@ -265,12 +296,7 @@ export default function App() {
     setEstimateFailed(false);
     void invoke<{ result: Estimate & { spent_usd?: number } }>("engine_request", {
       method: "estimate",
-      params: {
-        book_id: openBook.id,
-        segment_id: position ?? openBook.segment_id ?? null,
-        voice_id: voiceId,
-        chapters: scope,
-      },
+      params,
     })
       .then((reply) => {
         if (!live) return;
@@ -287,7 +313,7 @@ export default function App() {
     return () => {
       live = false;
     };
-  }, [openBook, position, voiceId, scope]);
+  }, [openBook, position, voiceId, scope, content]);
 
   const changeScope = useCallback((chapters: number | null) => {
     setScope(chapters);
@@ -347,16 +373,26 @@ export default function App() {
    * A provider that answers with no voices has not been set up, whatever the
    * key looked like - and being told that while typing beats being told
    * mid-chapter, when a reading somebody was waiting for stops instead. */
+  /* The engine asks the PROVIDER whether this key works, and only saves it
+     if the answer is yes.
+
+     What this replaced: save it, re-list the catalogue, and take "a paid
+     voice appeared" as proof. That is proof for a provider whose catalogue
+     is a live authenticated call - and none at all for OpenAI, whose nine
+     voices are a constant that never leaves this Mac. Any non-empty string
+     was accepted and the panel said it had been checked; the first thing
+     that actually knew was a chapter half read (owner, 04/09). */
   const saveKey = useCallback(async (provider: string, key: string) => {
-    await invoke("engine_request", {
-      method: "config.set",
-      params: { key: PROVIDERS.find((item) => item.id === provider)?.settingsKey, value: key },
-    });
-    const list = await invoke<Voice[]>("engine_voices").catch(() => [] as Voice[]);
-    const works = list.some((voice) => voice.id.startsWith(`${provider}:`));
-    setVoices(list);
-    setKeysSet((current) => ({ ...current, [provider]: works }));
-    return works;
+    const result = await invoke<{ ok: boolean; code?: string }>("engine_request", {
+      method: "config.verify_key",
+      params: { provider, value: key },
+    }).catch(() => ({ ok: false, code: "network" }));
+    if (result.ok) {
+      const list = await invoke<Voice[]>("engine_voices").catch(() => [] as Voice[]);
+      setVoices(list);
+    }
+    setKeysSet((current) => ({ ...current, [provider]: result.ok }));
+    return { ok: result.ok, code: result.code ?? null };
   }, []);
 
   const changeBudget = useCallback((usd: number | null) => {
@@ -755,7 +791,7 @@ export default function App() {
                 title={showToc ? text("reader.toc_hide") : text("reader.toc_show")}
                 className={showToc ? "text-ink" : ""}
               >
-                <SidebarIcon />
+                <BookClosedIcon />
               </IconButton>
               {/* Only when the book carries something: a button that opens
                   an empty panel is a button that lies about the book. */}
@@ -777,40 +813,47 @@ export default function App() {
               </h2>
               {pageInfo && (
                 /* Where you are, on request: the page keeps nothing but the
-                   book (owner, 02/09). A hover or a focus shows it. */
-                <span className="group relative flex shrink-0">
-                  <IconButton aria-label={text("reader.page_info")} className="text-ink-faint hover:text-ink">
-                    <InfoIcon />
-                  </IconButton>
-                  <Surface
-                    edge="strong"
-                    /* Pinned to the WINDOW's left inset, under the header -
-                       not to the icon. The icon drifts with the length of the
-                       book's title, so anchoring to it overflows one edge or
-                       the other depending on where it lands, and no static
-                       left/right choice is right for both (owner, 03/09: it
-                       ran off the edge). Fixed positioning plus a width cap
-                       is the only version that cannot leave the screen. The
-                       cost is that it no longer points at the icon; it reads
-                       as a status line under the bar instead, which is what
-                       it is. */
-                    className="pointer-events-none fixed left-6 top-[calc(var(--shell-top-h)-0.25rem)] z-30 hidden max-w-[calc(100vw-3rem)] whitespace-nowrap px-3 py-1.5 text-xs leading-relaxed shadow-lifted group-hover:flex group-focus-within:flex items-center gap-1.5"
-                  >
-                    {pageInfo.page !== undefined && pageInfo.pages !== undefined && (
-                      <>
-                        <span className="font-semibold text-ink">
-                          {text("reader.page_of", { page: pageInfo.page, total: pageInfo.pages })}
+                   book (owner, 02/09). A hover or a focus shows it.
+
+                   Hung from the ICON, through the same measured-and-clamped
+                   tooltip every other icon button gets from controls.tsx. It
+                   used to be pinned to the window's left inset instead: the
+                   icon drifts with the length of the book's title, and back
+                   when the tooltip could only pick a static side, anchoring
+                   to it overflowed one edge or the other. Pinning cured the
+                   overflow by pointing at nothing - it landed a whole title's
+                   width away from the thing under the pointer (owner, 04/09:
+                   "bị chệch về bên trái thay vì nằm giữa icon hover").
+                   Measuring the button solves what choosing a side could not.
+
+                   Two lines, because the bubble is 16rem and this used to be
+                   a window-wide strip: the count and the percentage are short
+                   and belong together, a chapter title is a sentence and gets
+                   the line under them rather than a truncation. */
+                <IconButton
+                  aria-label={text("reader.page_info")}
+                  className="shrink-0 text-ink-faint hover:text-ink"
+                  title={
+                    <span className="block">
+                      <span className="block">
+                        {pageInfo.page !== undefined && pageInfo.pages !== undefined && (
+                          <>
+                            <span className="font-semibold text-ink">
+                              {text("reader.page_of", { page: pageInfo.page, total: pageInfo.pages })}
+                            </span>
+                            <span className="text-ink-faint"> · </span>
+                          </>
+                        )}
+                        <span className="text-ink-mute">
+                          {text("library.progress", { percent: pageInfo.percent })}
                         </span>
-                        <span className="text-ink-faint">·</span>
-                      </>
-                    )}
-                    {/* The part that gives when there is no room: a chapter
-                        title can be a sentence, the page number cannot. */}
-                    <span className="min-w-0 max-w-[22em] truncate text-ink">{pageInfo.chapterTitle}</span>
-                    <span className="text-ink-faint">·</span>
-                    <span className="text-ink-mute">{text("library.progress", { percent: pageInfo.percent })}</span>
-                  </Surface>
-                </span>
+                      </span>
+                      <span className="mt-0.5 block text-ink">{pageInfo.chapterTitle}</span>
+                    </span>
+                  }
+                >
+                  <InfoIcon />
+                </IconButton>
               )}
             </div>
           ) : (
@@ -982,6 +1025,27 @@ export default function App() {
       {showFooter && (
       <footer ref={footerBar} className="absolute inset-x-0 bottom-0 z-20">
         <GradientBlur edge="bottom" />
+        {/* A reading that stopped says WHY, in a whole sentence, across the
+            whole bar. It used to be a chip in the right-hand column under
+            `truncate`: the engine names its failures precisely and eight
+            sentences were written for those names, and what reached the
+            reader was `voice_failed: quota: You exceeded...` with the end cut
+            off. A failure that has just cost somebody money is the one thing
+            that has earned the room (owner's "đừng hiện quá nhiều thông tin"
+            is about what is FINE, not about what went wrong).
+
+            Outside `footerRow` on purpose: the panels hang off the measured
+            inset of the CONTROLS, so a wrapped error line must not push them
+            up. The bar's own height is observed, so it grows to fit. */}
+        {player.error && (() => {
+          const fault = readingFault(player.error);
+          const key = faultKey(fault);
+          return (
+            <div className="relative z-10 px-6 pt-3">
+              <Notice tone="error">{key ? text(key) : fault.raw}</Notice>
+            </div>
+          );
+        })()}
         {/* Same height as the header (76px): the frost's room sits on the
             inner edge of each bar - the header's bottom, the footer's top
             (owner, 02/09: "tương đồng với header"). */}
@@ -1049,43 +1113,87 @@ export default function App() {
                      group does not fire on the way up. */
                   <span
                     className="relative inline-flex"
-                    onMouseEnter={() => setResumeTip(true)}
-                    onMouseLeave={() => setResumeTip(false)}
-                    onFocusCapture={() => setResumeTip(true)}
-                    onBlurCapture={() => setResumeTip(false)}
+                    onMouseEnter={(event) => setResumeTip(anchor(event.currentTarget))}
+                    onMouseLeave={() => setResumeTip(null)}
+                    onFocusCapture={(event) => setResumeTip(anchor(event.currentTarget))}
+                    onBlurCapture={() => setResumeTip(null)}
                   >
                     <Button
+                      size="lg"
                       variant={selection ? "secondary" : "primary"}
                       /* A paid voice cannot be started until its price is
                          known: the owner's rule (04/09) is that the figure
                          lives IN this button, so pressing it before the
                          figure arrives would be spending money the button
                          had not yet quoted. */
-                      disabled={startDisabled || (paidVoice && screen === "reader" && estimate === null)}
+                      disabled={startDisabled || (pricing && estimate === null)}
                       onClick={() => {
                         if (screen === "reader") void readBookFrom(null);
                         else void startReading();
                       }}
                     >
-                      {screen !== "reader"
-                        ? text("paste.read")
-                        : pageInfo?.resumeChapterTitle
-                          ? text("player.play_resume")
-                          : pageInfo
-                            ? text("player.play_start")
-                            : text("player.play")}
-                      {paidVoice && screen === "reader" && (
-                        <span className="font-normal">
-                          {estimateFailed
-                            ? `· ${text("cost.unavailable")}`
-                            : estimate === null
-                              ? `· ${text("cost.measuring")}`
-                              : buttonCost(estimate) && `· ${buttonCost(estimate)}`}
-                        </span>
-                      )}
+                      {/* The same glyph the transport wears for "play", so
+                          the button that STARTS a reading and the control
+                          that resumes one say the same thing. Drawn in this
+                          app rather than imported: DOL sources icons from DS
+                          Studio's DsIcon and that registry is not consumable
+                          outside the DS repo (ui/icons.tsx, same gap note as
+                          ToggleButtonGroup). */}
+                      <PlayIcon />
+                      {/* The words travel together, inset 4px from the icon
+                          and from the edge. A `span` rather than the `div`
+                          asked for: a button may only contain phrasing
+                          content, and as a flex item the two lay out the
+                          same. It keeps the button's own `gap-1.5` inside
+                          itself, or grouping would close the space between
+                          the label and the figure. */}
+                      <span className="inline-flex items-center gap-1.5 px-1">
+                        {screen !== "reader"
+                          ? text("paste.read")
+                          : pageInfo?.resumeChapterTitle
+                            ? text("player.play_resume")
+                            : pageInfo
+                              ? text("player.play_start")
+                              : text("player.play")}
+                        {pricing && (
+                          <span className="font-normal">
+                            {estimateFailed
+                              ? `· ${text("cost.unavailable")}`
+                              : estimate === null
+                                ? `· ${text("cost.measuring")}`
+                                : buttonCost(estimate) &&
+                                /* "tối đa" only where there IS a scope to be
+                                   the ceiling OF. Pasted text has no chapters
+                                   and no click-to-read: the whole of it is
+                                   what gets read, so the figure is exact and
+                                   hedging it would overstate the doubt. */
+                                (estimate?.paid && estimate.chapters > 0
+                                  ? `· ${text("cost.at_most", { usd: buttonCost(estimate) })}`
+                                  : `· ${buttonCost(estimate)}`)}
+                          </span>
+                        )}
+                      </span>
                     </Button>
-                    {resumeTip && screen === "reader" && pageInfo?.resumeExcerpt && pageInfo.resumeSegmentId && (
-                      <span className="absolute bottom-full left-1/2 block -translate-x-1/2 pb-2">
+                    {resumeTip && screen === "reader" && pageInfo?.resumeExcerpt && pageInfo.resumeSegmentId && createPortal(
+                      /* Drawn on the BODY, hung from the button's measured
+                         top edge. Kept inside the footer it could never win:
+                         the cost and settings panels are siblings of
+                         `<footer>` at the same z and render after it, so 21px
+                         of this panel's head sat under an open one whatever
+                         z-index it was given - a child cannot outrank its own
+                         stacking context (owner, 04/09: "cho hover của button
+                         đọc đè lên trên cùng chứ đừng đổi popover"). The
+                         panels are left exactly as they are.
+
+                         Still a React child of the hovering span, so the
+                         pointer moving into it does not read as leaving the
+                         group; and `pb-2` still rides inside this element, so
+                         the 8px it has to cross on the way up belongs to the
+                         panel rather than to whatever is behind it. */
+                      <span
+                        className="fixed z-50 block -translate-x-1/2 -translate-y-full pb-2"
+                        style={{ left: resumeTip.centre, top: resumeTip.top }}
+                      >
                         <Surface
                           edge="strong"
                           className="w-[24rem] max-w-[calc(100vw-3rem)] p-3 shadow-lifted"
@@ -1096,7 +1204,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => {
-                              setResumeTip(false);
+                              setResumeTip(null);
                               setReveal({
                                 segmentId: pageInfo.resumeSegmentId!,
                                 at: Date.now(),
@@ -1110,14 +1218,15 @@ export default function App() {
                             </span>
                           </button>
                         </Surface>
-                      </span>
+                      </span>,
+                      document.body,
                     )}
                   </span>
                 )}
                 {/* Everything else about the money is one press away, not on
                     the outside of the app (owner, 04/09: "đừng hiện quá
                     nhiều thông tin ra ngoài, nếu cần thì ẩn chúng đi"). */}
-                {paidVoice && screen === "reader" && (
+                {pricing && (
                   <IconButton
                     onClick={() => {
                       // One floating layer at a time. The settings panel and
@@ -1133,7 +1242,7 @@ export default function App() {
                     title={text("cost.open")}
                     className={costOpen ? "text-ink" : ""}
                   >
-                    <SlidersIcon />
+                    <CoinIcon />
                   </IconButton>
                 )}
               </>
@@ -1210,11 +1319,6 @@ export default function App() {
             {reading !== "idle" && player.warming && (
               <Notice className="min-w-0 truncate whitespace-nowrap">{text("player.warming")}</Notice>
             )}
-            {player.error && (
-              <Notice tone="error" className="min-w-0 truncate">
-                {player.error}
-              </Notice>
-            )}
             {speechSettings && (
               <Button
                 variant="ghost"
@@ -1246,10 +1350,14 @@ export default function App() {
         </div>
       </footer>
       )}
-      {costOpen && paidVoice && screen === "reader" && (
+      {costOpen && pricing && (
         <CostPanel
           estimate={estimate}
           failed={estimateFailed}
+          /* Pasted text has no chapters, so there is no scope to choose -
+             the whole of what was pasted is what gets read. Hiding the row
+             beats offering a choice that does nothing. */
+          scoped={openBook !== null}
           scope={scope}
           budget={budget}
           spent={spent}

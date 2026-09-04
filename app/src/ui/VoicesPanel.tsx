@@ -17,6 +17,7 @@ import { IconButton, Notice, Surface, Switch } from "./controls";
 import { GroupedSection } from "./patterns";
 import { CloseIcon, SpeakerIcon, StopIcon } from "./icons";
 import { voiceDescription, voiceName, type Voice } from "./voiceShortlist";
+import { isPaidVoice } from "./readingCost";
 
 export function VoicesPanel({
   voices,
@@ -78,6 +79,22 @@ export function VoicesPanel({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2 text-sm font-medium">
                     {voiceName(voice.label) || voice.id}
+                    {/* Which of these cost money, said where they are CHOSEN.
+                        This panel listed a paid OpenAI voice and the model on
+                        this Mac in the same weight with nothing between them,
+                        so the first a reader knew was the figure appearing in
+                        the read button afterwards. The amount stays in that
+                        button - it depends on what is about to be read, and
+                        only the engine knows it - but which ones bill at all,
+                        and who bills, belongs here (owner, 04/09). */}
+                    {isPaidVoice(voice.id) && (
+                      <span className="rounded-full bg-band px-2 py-0.5 text-xs font-normal text-ink-mute">
+                        {/* "Trả phí" alone: the engine already builds these
+                            labels as "Alloy · OpenAI", so naming the provider
+                            again put OpenAI twice on one line. */}
+                        {text("voices.paid")}
+                      </span>
+                    )}
                     {voice.id === voiceId && (
                       <span className="text-xs font-normal text-ink-faint">{text("voices.in_use")}</span>
                     )}

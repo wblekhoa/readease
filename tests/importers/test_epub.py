@@ -174,6 +174,213 @@ class EpubImportTests(unittest.TestCase):
         self.assertEqual(second.anchor_segment_id, imported.segments[2].id)
         self.assertNotEqual(first.id, second.id)
 
+    def test_footnotes_are_carried_with_the_sentence_that_references_them(self):
+        """A note has to know WHERE it belongs, not just that it exists.
+
+        The endnote itself lives at the back of the book; the number lives
+        mid-paragraph. Read as it is stored, the voice says "sáu" in the
+        middle of a clause and the note arrives eighty pages later. So the
+        offset of the number in the STORED text is what is extracted here -
+        the position the reading later uses to finish the sentence first.
+        """
+
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:epub="http://www.idpf.org/2007/ops"><body>
+        <h1>Một</h1>
+        <p>Nên đọc thứ gì tiếp theo<a class="noteref" epub:type="noteref"
+        id="ref-6" href="chu-thich.xhtml#note-6">6</a> - dù bị ép đọc.</p>
+        </body></html>"""
+        notes = """<html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:epub="http://www.idpf.org/2007/ops"><body>
+        <section epub:type="endnotes"><ol>
+        <li id="note-6" epub:type="endnote"><p><strong>6.</strong> Benoit
+        Mandelbrot nhớ về giai đoạn ấy.</p><a class="backlink"
+        href="chapter-1.xhtml#ref-6">\u21a9</a></li>
+        </ol></section></body></html>"""
+        path = make_epub(
+            self.root,
+            spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            extra_members={"OEBPS/chu-thich.xhtml": notes.encode("utf-8")},
+        )
+
+        book = import_epub(path)
+        segment = book.chapters[0].segments[1]
+        found = load_epub_presentation(path, book).chapters[0].notes
+
+        self.assertEqual(len(found), 1)
+        note = found[0]
+        self.assertEqual(note.label, "6")
+        self.assertEqual(note.anchor_segment_id, segment.id)
+        # The offset points at the number inside the text as STORED - the
+        # one contract everything downstream leans on.
+        self.assertEqual(
+            segment.text[note.offset:note.offset + note.length], "6"
+        )
+        # Its own number and its way home are furniture for the eye.
+        self.assertEqual(note.text, "Benoit Mandelbrot nhớ về giai đoạn ấy.")
+
+    def test_a_notes_own_backlink_is_not_read_as_another_reference(self):
+        """The link home looks exactly like a reference, and is not one.
+
+        It is a numbered link between the same two files. Treated as a
+        reference it would attach the note to itself, inside the endnotes
+        chapter, and the reading would say it twice.
+        """
+
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:epub="http://www.idpf.org/2007/ops"><body>
+        <h1>Một</h1>
+        <p>Có chú thích<a epub:type="noteref" id="ref-1"
+        href="chapter-2.xhtml#note-1">1</a>.</p>
+        </body></html>"""
+        notes = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Chú thích</h1>
+        <p id="note-1"><a href="chapter-1.xhtml#ref-1"><sup>1</sup></a>
+        Lời chú thích.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root,
+            chapter_overrides={"chapter-1": chapter, "chapter-2": notes},
+        )
+
+        book = import_epub(path)
+        presentation = load_epub_presentation(path, book)
+
+        self.assertEqual(len(presentation.chapters[0].notes), 1)
+        self.assertEqual(presentation.chapters[0].notes[0].text, "Lời chú thích.")
+        # The endnotes chapter itself carries no references of its own.
+        self.assertEqual(presentation.chapters[1].notes, ())
+
+    def test_an_older_book_marks_its_references_with_a_superscript_link(self):
+        # No `epub:type` anywhere: the shape says it instead - a bare number
+        # set as a superscript that links somewhere.
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1>
+        <p>Một câu<sup><a href="ghi-chu.xhtml#fn1">1</a></sup> có chú.</p>
+        </body></html>"""
+        notes = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <p id="fn1">1. Chú thích kiểu cũ.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root,
+            spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            extra_members={"OEBPS/ghi-chu.xhtml": notes.encode("utf-8")},
+        )
+
+        book = import_epub(path)
+        found = load_epub_presentation(path, book).chapters[0].notes
+
+        self.assertEqual([note.text for note in found], ["Chú thích kiểu cũ."])
+
+    def test_a_number_inside_the_link_is_found_and_two_in_one_paragraph_line_up(self):
+        """`<a><sup>6</sup></a>` - the commonest EPUB 3 shape of all.
+
+        Read as the anchor's own text the number comes back empty, and then
+        two things go wrong at once and neither shows: the digit stays in
+        the sentence for the voice to read, and every LATER reference in the
+        paragraph points one character short of its own number - at the
+        space beside it. Both are silent, because the text still rebuilds to
+        exactly what was stored.
+        """
+
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:epub="http://www.idpf.org/2007/ops"><body>
+        <h1>Một</h1>
+        <p>Câu đầu<a epub:type="noteref" id="ref-1"
+        href="ghi-chu.xhtml#note-1"><sup>1</sup></a> rồi câu sau<a
+        epub:type="noteref" id="ref-2"
+        href="ghi-chu.xhtml#note-2"><sup>2</sup></a>.</p>
+        </body></html>"""
+        notes = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <p id="note-1">1. Chú thích một.</p>
+        <p id="note-2">2. 10 năm sau, chú thích hai.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root,
+            spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            extra_members={"OEBPS/ghi-chu.xhtml": notes.encode("utf-8")},
+        )
+
+        book = import_epub(path)
+        segment = book.chapters[0].segments[1]
+        found = load_epub_presentation(path, book).chapters[0].notes
+
+        self.assertEqual(len(found), 2)
+        for note in found:
+            # Each offset slices its OWN number out of the stored text.
+            self.assertEqual(
+                segment.text[note.offset:note.offset + note.length], note.label
+            )
+        self.assertEqual([note.label for note in found], ["1", "2"])
+        # And a note that opens with a number of its own keeps it: stripping
+        # "1" off "10 năm sau" would leave "0 năm sau".
+        self.assertEqual(found[1].text, "10 năm sau, chú thích hai.")
+
+    def test_a_reference_that_points_at_the_number_still_finds_the_note(self):
+        """Half the library points at the little number, not at the note.
+
+        `<p class="footnote"><a id="fn1a">1</a> iPhone ra mắt…` - the id is
+        on the marker INSIDE the paragraph. Read literally, the note comes
+        back as "1", the number is then stripped off as its own label, and
+        what is left is nothing: fifty-eight notes in one of the owner's
+        books resolved to empty and were silently dropped.
+        """
+
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1>
+        <p>Một câu<sup><a id="fn1" href="ghi-chu.xhtml#fn1a">1</a></sup>.</p>
+        </body></html>"""
+        notes = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <p class="footnote"><a id="fn1a" href="chapter-1.xhtml#fn1"><sup>1</sup></a>
+        iPhone ra mắt tháng 6 năm 2007.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root,
+            spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            extra_members={"OEBPS/ghi-chu.xhtml": notes.encode("utf-8")},
+        )
+
+        book = import_epub(path)
+        found = load_epub_presentation(path, book).chapters[0].notes
+
+        self.assertEqual(
+            [note.text for note in found], ["iPhone ra mắt tháng 6 năm 2007."]
+        )
+
+    def test_a_reference_pointing_nowhere_is_dropped_rather_than_guessed(self):
+        # A note read after the wrong sentence is worse than one not read:
+        # the listener trusts what they hear to belong where they heard it.
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:epub="http://www.idpf.org/2007/ops"><body>
+        <h1>Một</h1>
+        <p>Câu đầu<a epub:type="noteref" href="khong-co.xhtml#note-1">1</a>.</p>
+        <p>Câu sau<a epub:type="noteref" id="ref-2"
+        href="chu-thich.xhtml#note-2">2</a>.</p>
+        </body></html>"""
+        notes = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <p id="note-2">2. Chú thích thứ hai.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root,
+            spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            extra_members={"OEBPS/chu-thich.xhtml": notes.encode("utf-8")},
+        )
+
+        book = import_epub(path)
+        found = load_epub_presentation(path, book).chapters[0].notes
+
+        # The missing one leaves a hole; the one after it keeps ITS place.
+        self.assertEqual([note.label for note in found], ["2"])
+        self.assertEqual(found[0].text, "Chú thích thứ hai.")
+        self.assertEqual(
+            found[0].anchor_segment_id, book.chapters[0].segments[2].id
+        )
+
     def test_figure_at_chapter_start_anchors_before_first_text_segment(self):
         chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
         <img src="images/cover.png" alt="Minh họa mở đầu"/>

@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from collections.abc import Sequence
+
 from vieneu_reader.domain.models import Segment, SegmentJoint
 
 SENTENCE_ENDINGS = frozenset(".!?…")
@@ -335,9 +337,132 @@ def drop_note_marks(text: str) -> str:
 
     They are for the eye - the page keeps them - and spoken they land as a
     stray "ba" in the middle of a sentence, glued to the word before it.
+
+    Only the SUPERSCRIPT glyphs, and that is not the whole problem: a book
+    whose references are ordinary digits inside a link ("tiếp theo 6 - dù")
+    reads them as numbers, and no character here can tell that "6" from any
+    other. Those are removed by position instead - see `speak_with_notes`,
+    which knows where each reference is because the note it points at was
+    found with it.
     """
 
     return _NOTE_MARK.sub("", text)
+
+
+#: Punctuation that should not be left stranded behind a removed reference
+#: number: "(tương lai) 2 ." has to close as "(tương lai)." and not "…) .".
+_CLINGING = ".,;:!?…)]}»”’"
+
+
+def _text_without_labels(
+    text: str, marks: Sequence[tuple[int, int]]
+) -> tuple[str, tuple[int, ...]]:
+    """The sentence without its reference numbers, and where they had been.
+
+    The number is for the eye. Left in, the voice reads "sáu" in the middle
+    of a clause, glued to the word before it - and now that the note itself
+    is spoken, the number is not even the pointer it was on paper.
+    """
+
+    kept: list[str] = []
+    positions: list[int] = []
+    cursor = 0
+    for offset, length in marks:
+        kept.append(text[cursor:offset])
+        positions.append(sum(len(piece) for piece in kept))
+        cursor = offset + length
+    kept.append(text[cursor:])
+    joined = "".join(kept)
+
+    # Close the gap the number left - a doubled space, or a space now
+    # standing in front of the punctuation that used to follow the number -
+    # and carry the positions across the same edit.
+    out: list[str] = []
+    moved: list[int] = []
+    at = 0
+    for index, character in enumerate(joined):
+        while at < len(positions) and positions[at] == index:
+            moved.append(len(out))
+            at += 1
+        if character == " ":
+            if not out or out[-1] == " ":
+                continue
+            ahead = index + 1
+            while ahead < len(joined) and joined[ahead] == " ":
+                ahead += 1
+            # Looks PAST the gap the number left, so "lai) 2 ." closes as
+            # "lai)." and not "lai) .".
+            if ahead < len(joined) and joined[ahead] in _CLINGING:
+                continue
+        out.append(character)
+    while at < len(positions):
+        moved.append(len(out))
+        at += 1
+
+    clean = "".join(out)
+    lead = len(clean) - len(clean.lstrip())
+    trimmed = clean.strip()
+    return trimmed, tuple(
+        min(max(position - lead, 0), len(trimmed)) for position in moved
+    )
+
+
+def sentence_end_at_or_after(text: str, position: int) -> int:
+    """Where the sentence holding ``position`` finishes.
+
+    A note belongs to a sentence, not to a word: read at the number itself
+    it cuts the clause in half, and the listener loses both halves. So the
+    sentence is finished first and the note follows it whole.
+    """
+
+    for index in range(min(position, len(text)), len(text)):
+        if text[index] in SENTENCE_ENDINGS:
+            end = index + 1
+            while end < len(text) and text[end] in _TRAILING_CLOSERS:
+                end += 1
+            return end
+    return len(text)
+
+
+def speak_with_notes(
+    text: str, notes: Sequence[tuple[int, int, str]]
+) -> tuple[tuple[str, bool], ...]:
+    """One segment's text broken into what the voice says, in order.
+
+    Each piece is ``(text, is_note)``. Notes attached to the same sentence
+    come out after it in the order the page prints them; a segment with no
+    notes comes back as itself, so the caller has one path, not two.
+    """
+
+    if not notes:
+        # Untouched, not stripped: `speakable_text` decides what a segment
+        # says, and the estimate re-derives its number from that same
+        # function. Trimming here would make the price and the reading
+        # disagree by however much whitespace the book happened to carry.
+        return ((text, False),) if text.strip() else ()
+    clean, positions = _text_without_labels(text, [(at, size) for at, size, _ in notes])
+    cuts = [sentence_end_at_or_after(clean, position) for position in positions]
+    pieces: list[tuple[str, bool]] = []
+    cursor = 0
+    index = 0
+    while index < len(cuts):
+        here = cuts[index]
+        same = index
+        while same < len(cuts) and cuts[same] == here:
+            same += 1
+        chunk = clean[cursor:here].strip()
+        if chunk:
+            pieces.append((chunk, False))
+        for order in range(index, same):
+            body = notes[order][2].strip()
+            if body:
+                pieces.append((body, True))
+        cursor = here
+        index = same
+    tail = clean[cursor:].strip()
+    if tail:
+        pieces.append((tail, False))
+    return tuple(pieces)
 
 
 def speakable_text(text: str, kind: str = "paragraph") -> str:

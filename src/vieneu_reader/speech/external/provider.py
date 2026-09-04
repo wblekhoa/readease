@@ -85,5 +85,14 @@ class ExternalVoiceProvider(Protocol):
         it is finished. Raises ExternalVoiceError, never a bare HTTP error.
         """
 
+    def verify(self) -> None:
+        """Ask the service whether this credential works. Raises on no.
+
+        Separate from `voices()` because for one provider the catalogue is a
+        constant and proves nothing, and for the other it IS the check. The
+        shell needs an answer it can trust the moment a key is typed, not at
+        read time with a chapter half spoken.
+        """
+
     def cancel(self) -> None:
         """Abandon whatever is in flight. Called when the reader stops."""

@@ -12,6 +12,7 @@
  */
 import { useState } from "react";
 import { text } from "../i18n";
+import { readingFault, faultKey } from "./voiceFault";
 import { Button, Input, Notice } from "./controls";
 import { GroupedRow, GroupedSection } from "./patterns";
 import { PROVIDERS } from "./readingCost";
@@ -25,12 +26,19 @@ export function ProviderKeys({
   /** Provider id → whether a key is stored. Never the key itself. */
   keysSet: Record<string, boolean>;
   /** Saves, then reports whether the provider actually answered. */
-  onSaveKey: (provider: string, key: string) => Promise<boolean>;
+  /** Whether the provider accepted it, and - when it did not - which
+   * refusal it was, so the row can say something the reader can act on
+   * rather than one blanket "no". */
+  onSaveKey: (provider: string, key: string) => Promise<{ ok: boolean; code: string | null }>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  /** Which refusal - "wrong key" and "out of credit" send a person to two
+   * different places, and being told the first when it was the second gets
+   * a working key replaced for nothing. */
+  const [why, setWhy] = useState<string | null>(null);
 
   const start = (provider: string) => {
     setEditing(provider);
@@ -42,12 +50,13 @@ export function ProviderKeys({
     setBusy(true);
     setRefused(null);
     try {
-      const ok = await onSaveKey(provider, draft.trim());
+      const { ok, code } = await onSaveKey(provider, draft.trim());
       if (ok) {
         setEditing(null);
         setDraft("");
       } else {
         setRefused(provider);
+        setWhy(code);
       }
     } finally {
       setBusy(false);
@@ -87,7 +96,13 @@ export function ProviderKeys({
               </Button>
             </div>
             {refused === provider.id && (
-              <Notice tone="error">{text("key.refused")}</Notice>
+              <Notice tone="error">
+                {(() => {
+                  const fault = readingFault(`voice_failed: ${why ?? ""}`);
+                  const named = faultKey(fault);
+                  return named ? text(named) : text("key.refused");
+                })()}
+              </Notice>
             )}
           </div>
         ) : (

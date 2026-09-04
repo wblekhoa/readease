@@ -280,6 +280,9 @@ _TEXT: dict[str, tuple[str, str]] = {
     # because the coverage test rightly counts speech as text put in front of
     # a person; the voice itself is Vietnamese whatever the UI language.
     "reader.figure_cue": ("Xem hình {number}.", "See figure {number}."),
+    # Same reason, and the same two words every time: what the voice says
+    # before it reads a footnote out loud.
+    "reader.note_cue": ("Nói thêm, {text}", "Also, {text}"),
     "reader.figure_unavailable": (
         "Không thể hiển thị hình này.",
         "This figure cannot be displayed.",
@@ -514,6 +517,7 @@ _RUNTIME_EN: dict[str, str] = {
     "Chương EPUB chứa quá nhiều hình ảnh.": "The EPUB chapter contains too many images.",
     "EPUB chứa đường dẫn hình ảnh không hợp lệ.": "The EPUB contains an invalid image path.",
     "EPUB tạo ra quá nhiều hình ảnh đọc.": "The EPUB produces too many readable images.",
+    "EPUB có quá nhiều chú thích.": "The EPUB contains too many footnotes.",
     "Nguồn EPUB được quản lý không còn an toàn.": "The managed EPUB source is no longer safe.",
     "Spine EPUB không còn khớp bản sách đã nhập.": "The EPUB spine no longer matches the imported book.",
     "Nguồn EPUB được quản lý đã thay đổi.": "The managed EPUB source has changed.",

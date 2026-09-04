@@ -786,6 +786,194 @@ class ProtocolTests(unittest.TestCase):
             )
         # A second-chapter picture starts again at 1 - that is the promise.
 
+    def test_reading_a_book_says_a_footnote_after_the_sentence_it_belongs_to(self) -> None:
+        """A footnote is written for an eye that can glance down and come back.
+
+        An ear cannot. So the number is not spoken, the sentence carrying it
+        is finished first, and then the note is announced and read - "Nói
+        thêm, …" (owner, 04/09). The pieces stay on the anchor's segment id,
+        the way a figure cue does, so following-along and resuming are
+        unchanged.
+        """
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([(
+                "Một",
+                [
+                    ("Nên đọc thứ gì tiếp theo 6 - dù bị ép đọc. Câu sau.",
+                     "paragraph"),
+                    ("Đoạn không có chú.", "paragraph"),
+                ],
+            )])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            anchor_segment = book.chapters[0].segments[0]
+            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+                chapter_id=book.chapters[0].id,
+                figures=(),
+                notes=(SimpleNamespace(
+                    id="note-a",
+                    label="6",
+                    chapter_id=book.chapters[0].id,
+                    anchor_segment_id=anchor_segment.id,
+                    offset=25,
+                    length=1,
+                    text="Benoit Mandelbrot nhớ về giai đoạn ấy.",
+                ),),
+            )])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            replies = run_server([
+                {"id": 92, "method": "read.book",
+                 "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service)
+
+            # Joined, because an utterance is still cut into sentences on
+            # the way to the engine - that splitting is not what is being
+            # pinned here, the ORDER is.
+            spoken = [text for text, _voice in engine.requests]
+            cue = "Nói thêm, Benoit Mandelbrot nhớ về giai đoạn ấy."
+            self.assertEqual(
+                " ".join(spoken),
+                "Nên đọc thứ gì tiếp theo - dù bị ép đọc. "
+                f"{cue} Câu sau. Đoạn không có chú.",
+            )
+            # The number itself is never said: it is a pointer for the eye,
+            # and the thing it pointed at has just been read out loud.
+            self.assertNotIn("6", " ".join(spoken))
+            self.assertEqual(spoken.index(cue) + 1, spoken.index("Câu sau."))
+            # Three utterances, one place in the book: the shell follows the
+            # segment, so the paragraph does not jump while the note is read.
+            positions = [r for r in replies if r.get("event") == "position"]
+            self.assertEqual(
+                [p["segment_id"] for p in positions][:3],
+                [anchor_segment.id] * 3,
+            )
+
+    def test_a_note_read_in_place_is_not_read_again_at_the_back_of_the_book(self) -> None:
+        """The notes chapter is the SAME words, a second time, with no
+        sentence left to belong to.
+
+        Once a note has been spoken where its number stood, reading it again
+        at the end costs the same characters over (a real book: 29,320 of
+        them) and gives a listener eighty paragraphs of context-free
+        footnote (owner, 04/09: "đọc lại … mất ngữ cảnh và cũng chả có giá
+        trị gì"). The paragraphs stay on the page - they are the book - the
+        voice just does not say them twice.
+        """
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([
+                ("Một", [("Câu có chú thích 1 ở đây.", "paragraph")]),
+                ("Chú thích", [
+                    ("Chú thích", "heading"),
+                    ("1. Lời chú thích.", "paragraph"),
+                ]),
+            ])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            anchor_segment = book.chapters[0].segments[0]
+            notes_chapter = book.chapters[1]
+            presentation = SimpleNamespace(chapters=[
+                SimpleNamespace(
+                    chapter_id=book.chapters[0].id,
+                    figures=(),
+                    notes=(SimpleNamespace(
+                        id="note-a", label="1",
+                        chapter_id=book.chapters[0].id,
+                        anchor_segment_id=anchor_segment.id,
+                        offset=17, length=1,
+                        text="Lời chú thích.",
+                    ),),
+                    spoken_elsewhere=(),
+                ),
+                SimpleNamespace(
+                    chapter_id=notes_chapter.id,
+                    figures=(),
+                    notes=(),
+                    spoken_elsewhere=(notes_chapter.segments[1].id,),
+                ),
+            ])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            run_server([
+                {"id": 93, "method": "read.book",
+                 "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service)
+
+            spoken = " ".join(text for text, _voice in engine.requests)
+            self.assertEqual(
+                spoken, "Câu có chú thích ở đây. Nói thêm, Lời chú thích."
+            )
+            # Its own heading goes too: a chapter that WAS the notes has
+            # nothing left to announce.
+            self.assertNotIn("Chú thích.", spoken.replace("Nói thêm, ", ""))
+
+    def test_reading_from_a_note_already_read_carries_on_instead_of_restarting(self) -> None:
+        """A finger on a paragraph means "read from here", never "start over".
+
+        A suppressed segment has no utterance of its own, and the resume
+        used to answer "not found" with 0 - the top of the book. On a book
+        somebody is eight hours into, that is the worst answer available.
+        """
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([("Một", [
+                ("Đoạn đầu.", "paragraph"),
+                ("Đoạn đã đọc rồi.", "paragraph"),
+                ("Đoạn sau.", "paragraph"),
+            ])])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            first, hidden, after = book.chapters[0].segments
+            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+                chapter_id=book.chapters[0].id,
+                figures=(), notes=(),
+                spoken_elsewhere=(hidden.id,),
+            )])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            run_server([
+                {"id": 94, "method": "read.book", "params": {
+                    "book_id": book.id, "voice_id": "adam",
+                    "segment_id": hidden.id,
+                }},
+            ], engine, repository=repository, service=service)
+
+            self.assertEqual(
+                [text for text, _voice in engine.requests], ["Đoạn sau."]
+            )
+
     def test_book_open_lists_figures_and_book_figure_serves_bytes(self) -> None:
         """EPUB figures ride the same pipe: refs inline in book.open, bytes
         lazily per figure - a whole art book must not sit inside one reply."""
@@ -1217,6 +1405,51 @@ class ProtocolTests(unittest.TestCase):
             self.assertFalse(reply["result"]["removed"])
 
             bad = call(2, {"book_id": book_id})
+            self.assertFalse(bad["ok"])
+
+    def test_a_note_written_here_is_not_overwritten_by_the_next_sync(self) -> None:
+        # The mirror runs the other way too: the highlight comes from Apple
+        # Books, so a note rewritten in this app is not over there, and a
+        # wholesale replace would put the original text back while the
+        # person watched. Same tombstone argument, opposite direction.
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, library = self._apple_fixture(root)
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            deps = {"library": library}
+            def call(n, method, params):
+                return run_server(
+                    [{"id": n, "method": method, "params": params}],
+                    FakeEngine(), repository=repository, service=service,
+                    notes_deps=deps,
+                )[0]
+            book_id = call(1, "applebooks.import", {"asset_id": "A1"})["result"]["book_id"]
+            call(2, "applebooks.sync_notes", {"asset_id": "A1"})
+            carried = repository.annotations_for(book_id)
+            self.assertTrue(carried)
+
+            saved = call(3, "annotations.update", {
+                "book_id": book_id, "annotation_id": carried[0].id,
+                "note": "chữ của tôi",
+            })
+            self.assertTrue(saved["result"]["updated"])
+
+            call(4, "applebooks.sync_notes", {"asset_id": "A1"})
+            kept = {item.id: item.note for item in repository.annotations_for(book_id)}
+            self.assertEqual(kept[carried[0].id], "chữ của tôi")
+
+            missing = call(5, "annotations.update", {
+                "book_id": book_id, "annotation_id": "khong-co", "note": "x",
+            })
+            self.assertTrue(missing["ok"])
+            self.assertFalse(missing["result"]["updated"])
+
+            bad = call(6, "annotations.update", {"book_id": book_id})
             self.assertFalse(bad["ok"])
 
     def test_apple_books_refuses_what_it_cannot_read(self) -> None:

@@ -22,6 +22,7 @@ from vieneu_reader.domain.presentation import (
     BookPresentation,
     ChapterPresentation,
     FigureRef,
+    NoteRef,
 )
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_paragraph
 
@@ -47,6 +48,24 @@ from .errors import CorruptBookError
 
 
 MAX_FIGURE_OCCURRENCES = 20_000
+#: A book with more references than this is not a book with footnotes.
+MAX_NOTE_OCCURRENCES = 5_000
+#: A note longer than this stopped being a note: read aloud in the middle of
+#: a paragraph it buries the sentence it was meant to help. Measured against
+#: the owner's two annotated books - 138 notes, median 254 characters, one
+#: outlier at 1,546 - so this clears every real note and still refuses an
+#: essay. Over the line the block is NOT truncated and NOT spoken inline; it
+#: stays a paragraph, read where the book put it. Cutting it would lose the
+#: tail twice over, since a note read inline is then not read again.
+MAX_NOTE_CHARS = 2_000
+
+#: Private-use characters wrapped around a reference's label while the text
+#: is being rebuilt, so its position survives the same whitespace collapsing
+#: the stored text went through. They never reach a screen or a voice: the
+#: text is compared to the stored segment only AFTER they come out, and that
+#: comparison is what proves the position is right.
+_NOTE_OPEN = "\ue000"
+_NOTE_CLOSE = "\ue001"
 MAX_ASSETS_PER_REQUEST = 2_000
 MAX_COVER_BYTES = 8_000_000
 _COVER_MEDIA_TYPES = {"image/png", "image/gif", "image/jpeg", "image/svg+xml"}
@@ -61,6 +80,9 @@ _GENERIC_ALT_TEXT = frozenset(
 @dataclass(frozen=True, slots=True)
 class _TextEvent:
     text: str
+    #: Its words have already been read, as a footnote, at the sentence that
+    #: referenced it. The block stays on the page; the voice skips it.
+    spoken: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,7 +167,18 @@ def _image_event(
     )
 
 
-def _chapter_events(root: ElementTree.Element) -> tuple[_Event, ...]:
+def _chapter_events(
+    root: ElementTree.Element,
+    spoken_blocks: frozenset[int] = frozenset(),
+) -> tuple[_Event, ...]:
+    """Every readable block in one chapter, in order.
+
+    `spoken_blocks` holds the identities of the blocks whose words have
+    already been read as footnotes, where they belonged. They still make
+    segments - they are on the page, and a person can point at them - but
+    the voice has said them once already.
+    """
+
     events: list[_Event] = []
     occurrence = 0
 
@@ -184,7 +217,7 @@ def _chapter_events(root: ElementTree.Element) -> tuple[_Event, ...]:
         if tag in _READING_TAGS:
             text = _visible_inner_text(element)
             if text:
-                events.append(_TextEvent(text))
+                events.append(_TextEvent(text, id(element) in spoken_blocks))
             events.extend(images_within(element, ancestor_classes))
             return
         normalized = normalize_paragraph(element.text or "")
@@ -210,6 +243,247 @@ def _chapter_events(root: ElementTree.Element) -> tuple[_Event, ...]:
 
     visit(root, frozenset())
     return tuple(events)
+
+
+@dataclass(frozen=True, slots=True)
+class _NoteSource:
+    """One reference found in a chapter, before its note has been read."""
+
+    #: The anchor's own id, if it has one - what the note links BACK to.
+    ref_id: str
+    label: str
+    href: str
+
+
+def _attributes(element: ElementTree.Element) -> dict[str, str]:
+    return {_local_name(key): value for key, value in element.attrib.items()}
+
+
+def _is_noteref(anchor: ElementTree.Element, parent_tag: str) -> bool:
+    """Is this link a footnote reference, or just a link?
+
+    Two shapes, both in the owner's library. EPUB 3 says so outright
+    (`epub:type="noteref"`, or ARIA's `doc-noteref`); older books say it by
+    typography - a bare number set as a superscript that links somewhere.
+
+    The second rule is deliberately narrow. A note's own way-back link is
+    also a numbered link between the same two files, and reading it as a
+    reference would attach a note to itself: it fails here because there the
+    number is INSIDE the anchor (`<a><sup>1</sup></a>`) rather than the
+    anchor inside the superscript, and because a link with no digits in it
+    is not a reference at all.
+    """
+
+    attributes = _attributes(anchor)
+    if "#" not in attributes.get("href", ""):
+        return False
+    kinds = " ".join(
+        attributes.get(name, "") for name in ("type", "role", "class")
+    ).lower()
+    if "noteref" in kinds:
+        return True
+    label = _visible_inner_text(anchor)
+    return parent_tag == "sup" and label.isdigit()
+
+
+def _mark_noterefs(root: ElementTree.Element) -> tuple[_NoteSource, ...]:
+    """Wrap every reference's number in sentinels, in reading order.
+
+    The tree is edited rather than measured, because the number's position
+    has to survive `_visible_inner_text` and the whitespace collapsing after
+    it - and the only thing that reliably survives those is a character that
+    goes through them. What comes back is the references in document order,
+    which is the same order the sentinels appear in the rebuilt text.
+    """
+
+    found: list[_NoteSource] = []
+
+    def visit(element: ElementTree.Element, parent_tag: str) -> None:
+        tag = _local_name(element.tag)
+        if tag in _IGNORED_TAGS or _is_hidden(element):
+            return
+        if tag == "a" and _is_noteref(element, parent_tag):
+            if len(found) >= MAX_NOTE_OCCURRENCES:
+                raise CorruptBookError("EPUB có quá nhiều chú thích.")
+            attributes = _attributes(element)
+            # The number is often a CHILD, not the anchor's own text:
+            # `<a epub:type="noteref"><sup>6</sup></a>` is the commonest
+            # EPUB 3 shape. Read whole, then flattened - a sentinel pair
+            # wrapped around nothing would leave the digit in the text for
+            # the voice to read AND push every later reference in the
+            # paragraph one character off its own number.
+            label = _visible_inner_text(element)
+            if not label:
+                return
+            element.text = f"{_NOTE_OPEN}{label}{_NOTE_CLOSE}"
+            for child in list(element):
+                element.remove(child)
+            found.append(
+                _NoteSource(
+                    ref_id=attributes.get("id", ""),
+                    label=label,
+                    href=attributes.get("href", ""),
+                )
+            )
+            return
+        for child in element:
+            visit(child, tag)
+
+    visit(root, "")
+    return tuple(found)
+
+
+def _note_body_text(element: ElementTree.Element, back_id: str) -> str:
+    """The note's own words: no number, no way back.
+
+    The link home is furniture for a finger. Spoken it lands as a stray
+    arrow or a repeat of the number, so an anchor pointing at the reference
+    that sent us here is dropped whole - by its target, not by its class,
+    which every publisher spells differently.
+    """
+
+    def pieces(node: ElementTree.Element) -> Iterator[str]:
+        tag = _local_name(node.tag)
+        if tag in _IGNORED_TAGS or _is_hidden(node):
+            return
+        if tag == "a" and back_id:
+            target = _attributes(node).get("href", "")
+            if target.rsplit("#", 1)[-1] == back_id and "#" in target:
+                # Still yield what followed it - the note's first words
+                # often sit in the anchor's tail.
+                return
+        yield node.text or ""
+        for child in node:
+            yield from pieces(child)
+            yield child.tail or ""
+
+    return normalize_paragraph(" ".join(pieces(element)))
+
+
+def _without_leading_label(text: str, label: str) -> str:
+    """Drop the note's own number: the ear already heard it announced."""
+
+    body = text.lstrip()
+    # `startswith` alone turns a note that opens "10 năm sau" into "0 năm
+    # sau" when the reference happened to be number 1.
+    if label and body.startswith(label) and not body[len(label):len(label) + 1].isdigit():
+        body = body[len(label):].lstrip()
+        while body[:1] in (".", ")", ":", "-", "\u2013", "\u2014"):
+            body = body[1:].lstrip()
+    return body
+
+
+#: Where a note's words actually live. A reference does not always point at
+#: the block holding the note - very often it points at the little number
+#: INSIDE it (`<p class="footnote"><a id="…fn1a">1</a> iPhone was…`), and
+#: reading the anchor alone gives back the number and nothing else.
+_NOTE_BLOCKS = frozenset(
+    {"p", "li", "aside", "blockquote", "div", "section", "dd", "td"}
+)
+
+
+def _element_by_id(
+    root: ElementTree.Element, wanted: str
+) -> ElementTree.Element | None:
+    """The block a reference points into, not just the thing it points at."""
+
+    parents = {child: parent for parent in root.iter() for child in parent}
+    found = next(
+        (
+            element
+            for element in root.iter()
+            if _attributes(element).get("id") == wanted
+        ),
+        None,
+    )
+    if found is None:
+        return None
+    node: ElementTree.Element | None = found
+    while node is not None and _local_name(node.tag) not in _NOTE_BLOCKS:
+        if _local_name(node.tag) in ("body", "html"):
+            return found
+        node = parents.get(node)
+    if node is None:
+        return found
+    # A book that hangs every note off one `<div>` would otherwise make the
+    # first reference swallow all of them - and then suppress the lot as
+    # "already read". A block that big is not one note.
+    if len(_visible_inner_text(node)) > MAX_NOTE_CHARS:
+        return found
+    return node
+
+
+def _resolved_notes(
+    archive: ZipFile,
+    content_member: str,
+    sources: tuple[_NoteSource, ...],
+    documents: dict[str, ElementTree.Element | None],
+    consumed: set[int] | None = None,
+) -> tuple[str, ...]:
+    """Read each reference's note. One entry per source, "" when unreadable.
+
+    Position matters more than completeness here: the list is paired with
+    the sentinels by index, so a note that cannot be found has to leave a
+    hole rather than shift every note after it onto the wrong sentence.
+    """
+
+    notes: list[str] = []
+    for source in sources:
+        member, _, fragment = source.href.partition("#")
+        try:
+            target_member = (
+                _resolve_href(content_member, member) if member else content_member
+            )
+        except CorruptBookError:
+            notes.append("")
+            continue
+        if target_member not in documents:
+            try:
+                documents[target_member] = _parse_xml(
+                    _read_member(archive, target_member), "EPUB note"
+                )
+            except (CorruptBookError, KeyError, OSError):
+                documents[target_member] = None
+        root = documents[target_member]
+        element = _element_by_id(root, fragment) if root is not None else None
+        if element is None:
+            notes.append("")
+            continue
+        body = _without_leading_label(
+            _note_body_text(element, source.ref_id), source.label
+        ).strip()
+        if len(body) > MAX_NOTE_CHARS:
+            # Left alone entirely: it keeps its place in the book and gets
+            # read there, whole.
+            notes.append("")
+            continue
+        if body and consumed is not None:
+            # Remembered by identity, so the pass that builds the segments
+            # can tell the voice it has already said this one.
+            consumed.add(id(element))
+        notes.append(body)
+    return tuple(notes)
+
+
+def _strip_sentinels(text: str) -> tuple[str, tuple[tuple[int, int], ...]]:
+    """The text as it is stored, and where each reference's label sits in it."""
+
+    clean: list[str] = []
+    marks: list[tuple[int, int]] = []
+    length = 0
+    start: int | None = None
+    for character in text:
+        if character == _NOTE_OPEN:
+            start = length
+            continue
+        if character == _NOTE_CLOSE:
+            if start is not None:
+                marks.append((start, length - start))
+            start = None
+            continue
+        clean.append(character)
+        length += 1
+    return "".join(clean), tuple(marks)
 
 
 def _resolve_image_href(content_member: str, href: str) -> str:
@@ -308,9 +582,10 @@ def _prepared_events(
     content_root: ElementTree.Element,
     image_manifest: dict[str, str],
     dimensions: dict[str, tuple[int, int] | None],
+    spoken_blocks: frozenset[int] = frozenset(),
 ) -> tuple[_PreparedEvent, ...]:
     prepared: list[_PreparedEvent] = []
-    for event in _chapter_events(content_root):
+    for event in _chapter_events(content_root, spoken_blocks):
         if isinstance(event, _TextEvent):
             prepared.append(event)
             continue
@@ -357,15 +632,51 @@ def _chapter_presentation(
     book: BookDocument,
     chapter: Chapter,
     events: tuple[_PreparedEvent, ...],
+    note_bodies: tuple[str, ...],
     *,
     first_figure_number: int,
 ) -> tuple[ChapterPresentation, int]:
     generated_text: list[str] = []
     image_anchors: list[tuple[_AcceptedImage, int | None]] = []
+    note_marks: list[tuple[int, int, int]] = []
+    spoken_indexes: list[int] = []
     previous_segment_index: int | None = None
     for event in events:
         if isinstance(event, _TextEvent):
-            parts = split_paragraph(event.text, max_chars=SPEECH_SEGMENT_MAX_CHARS)
+            # The sentinels come OUT before the split, so a reference cannot
+            # change where a long paragraph breaks. Their positions are then
+            # carried into whichever part they landed in.
+            clean, marks = _strip_sentinels(event.text)
+            parts = split_paragraph(clean, max_chars=SPEECH_SEGMENT_MAX_CHARS)
+            base = len(generated_text)
+            normalized = normalize_paragraph(clean)
+            cursor = 0
+            spans: list[tuple[int, int, int]] = []
+            for offset, part in enumerate(parts):
+                at = normalized.find(part, cursor)
+                if at < 0:
+                    spans = []
+                    break
+                spans.append((base + offset, at, at + len(part)))
+                cursor = at + len(part)
+            for start, size in marks:
+                # The sentinels were placed in the pre-normalized text; the
+                # collapse can only have removed whitespace BEFORE them, so
+                # the label is found by name inside the part it fell in.
+                placed = next(
+                    (
+                        (index, start - begin)
+                        for index, begin, end in spans
+                        if begin <= start < end
+                    ),
+                    None,
+                )
+                if placed is not None:
+                    note_marks.append((placed[0], placed[1], size))
+                else:
+                    note_marks.append((-1, -1, size))
+            if event.spoken:
+                spoken_indexes.extend(range(base, base + len(parts)))
             generated_text.extend(parts)
             if parts:
                 previous_segment_index = len(generated_text) - 1
@@ -411,7 +722,36 @@ def _chapter_presentation(
             )
         )
         next_number += 1
-    return ChapterPresentation(chapter.id, tuple(figures)), next_number
+
+    notes: list[NoteRef] = []
+    for order, (segment_index, offset, size) in enumerate(note_marks):
+        body = note_bodies[order] if order < len(note_bodies) else ""
+        if not body or segment_index < 0:
+            # A note nobody can read, or one whose place could not be found:
+            # dropped rather than guessed. A note read after the wrong
+            # sentence is worse than a note not read at all.
+            continue
+        segment = chapter.segments[segment_index]
+        notes.append(
+            NoteRef(
+                id=stable_id(book.id, chapter.id, "note", str(order)),
+                label=segment.text[offset:offset + size],
+                chapter_id=chapter.id,
+                anchor_segment_id=segment.id,
+                offset=offset,
+                length=size,
+                text=body,
+            )
+        )
+    return (
+        ChapterPresentation(
+            chapter.id,
+            tuple(figures),
+            tuple(notes),
+            tuple(chapter.segments[index].id for index in spoken_indexes),
+        ),
+        next_number,
+    )
 
 
 @contextmanager
@@ -531,7 +871,40 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
             for member, media_type in manifest.values()
             if media_type.startswith("image/")
         }
-        content_cache: dict[str, tuple[_PreparedEvent, ...]] = {}
+        content_cache: dict[
+            str, tuple[tuple[_PreparedEvent, ...], tuple[str, ...]]
+        ] = {}
+        # ONE parsed tree per member, shared by both passes. A note's block
+        # has to be the very object the second pass walks, or "already read"
+        # cannot be recognised when the segments are built.
+        roots: dict[str, ElementTree.Element | None] = {}
+        spoken_blocks: set[int] = set()
+        note_bodies_by_member: dict[str, tuple[str, ...]] = {}
+        members = [
+            manifest[item_id][0]
+            for item_id in spine
+            if manifest.get(item_id) is not None
+            and manifest[item_id][1] == "application/xhtml+xml"
+        ]
+        # Pass one: find every reference and read the note it points at.
+        # Whole-spine first, because a note can live in the same file as its
+        # reference, or in a file the spine reaches long before or after it.
+        for member in members:
+            if member in note_bodies_by_member:
+                continue
+            if member not in roots:
+                roots[member] = _parse_xml(
+                    _read_member(archive, member), "EPUB chapter"
+                )
+            root = roots[member]
+            if root is None:
+                note_bodies_by_member[member] = ()
+                continue
+            sources = _mark_noterefs(root)
+            note_bodies_by_member[member] = _resolved_notes(
+                archive, member, sources, roots, spoken_blocks
+            )
+        frozen_blocks = frozenset(spoken_blocks)
         dimensions: dict[str, tuple[int, int] | None] = {}
         presentations: list[ChapterPresentation] = []
         chapter_index = 0
@@ -541,17 +914,25 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
             if item is None or item[1] != "application/xhtml+xml":
                 continue
             member = item[0]
-            events = content_cache.get(member)
-            if events is None:
-                root = _parse_xml(_read_member(archive, member), "EPUB chapter")
+            cached = content_cache.get(member)
+            if cached is None:
+                root = roots.get(member)
+                if root is None:
+                    root = _parse_xml(
+                        _read_member(archive, member), "EPUB chapter"
+                    )
+                    roots[member] = root
                 events = _prepared_events(
                     archive,
                     member,
                     root,
                     image_manifest,
                     dimensions,
+                    frozen_blocks,
                 )
-                content_cache[member] = events
+                cached = (events, note_bodies_by_member.get(member, ()))
+                content_cache[member] = cached
+            events, note_bodies = cached
             text_exists = any(isinstance(event, _TextEvent) for event in events)
             if not text_exists:
                 continue
@@ -561,6 +942,7 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
                 book,
                 book.chapters[chapter_index],
                 events,
+                note_bodies,
                 first_figure_number=next_figure_number,
             )
             presentations.append(presentation)

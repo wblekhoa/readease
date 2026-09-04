@@ -76,7 +76,7 @@ export function SettingsPanel({
   scope: number | null;
   budget: number | null;
   spent: number;
-  onSaveKey: (provider: string, key: string) => Promise<boolean>;
+  onSaveKey: (provider: string, key: string) => Promise<{ ok: boolean; code: string | null }>;
   onScope: (chapters: number | null) => void;
   onBudget: (usd: number | null) => void;
   onVoice: (voiceId: string) => void;
@@ -215,7 +215,7 @@ export function SettingsPanel({
           {/* Said once, directly under the keys it is about - not on the
               outside of the app, and not on every screen that names a
               voice. */}
-          <Notice className="mt-2 block">{text("key.local_only")}</Notice>
+          <Notice fine className="mt-2 block">{text("key.local_only")}</Notice>
 
           {paidVoices.length > 0 ? (
             <GroupedSection title={text("section.reading_api")}>

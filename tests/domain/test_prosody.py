@@ -10,9 +10,11 @@ from vieneu_reader.domain.prosody import (
     final_punctuation,
     pause_after_ms,
     selection_pause_ms,
+    speak_with_notes,
     speakable_text,
     split_sentences,
     unshout,
+    _text_without_labels,
 )
 
 
@@ -442,3 +444,99 @@ class EnumeratorTests(unittest.TestCase):
     def test_a_plural_bracket_and_a_roman_numeral_are_left_alone(self) -> None:
         self.assertEqual(speakable_text("the book(s) in (ii) above"), "the book(s) in (ii) above")
 
+
+
+class NoteSpeechTests(unittest.TestCase):
+    """A footnote is written for an eye that can look down and come back.
+
+    An ear cannot. Read at the number the note cuts a clause in half; read
+    at the back of the book it arrives eighty times over, detached from
+    every sentence that needed it; read not at all, the number is still
+    spoken as a stray "sáu" glued to the word before it. So: finish the
+    sentence, announce the note, read it, carry on.
+    """
+
+    def pieces(self, text, notes):
+        return speak_with_notes(text, notes)
+
+    def test_a_note_is_read_after_the_sentence_that_carries_it(self) -> None:
+        # The owner's own example: the number sits mid-sentence, before a
+        # dash clause, so the sentence finishes before the note starts.
+        text = "Nên đọc thứ gì tiếp theo 6 - dù bị ép đọc. Câu sau."
+        self.assertEqual(
+            self.pieces(text, [(25, 1, "Benoit Mandelbrot đã viết vậy.")]),
+            (
+                ("Nên đọc thứ gì tiếp theo - dù bị ép đọc.", False),
+                ("Benoit Mandelbrot đã viết vậy.", True),
+                ("Câu sau.", False),
+            ),
+        )
+
+    def test_the_number_never_reaches_the_voice(self) -> None:
+        # It used to: `drop_note_marks` only ever removed the superscript
+        # GLYPHS, and a book whose references are ordinary digits in a link
+        # had the voice read "sáu" in the middle of the clause.
+        spoken, _ = _text_without_labels("người 6 nói vậy", [(6, 1)])
+        self.assertEqual(spoken, "người nói vậy")
+
+    def test_punctuation_closes_up_behind_the_number(self) -> None:
+        # "(tương lai) 2 ." has to end as "(tương lai)." - a space left
+        # hanging in front of a full stop is a stumble in the voice.
+        spoken, _ = _text_without_labels("hướng tới tương lai) 2 .", [(21, 1)])
+        self.assertEqual(spoken, "hướng tới tương lai).")
+
+    def test_a_note_at_the_end_of_a_paragraph_follows_it(self) -> None:
+        self.assertEqual(
+            self.pieces("Cả đoạn kết thúc ở đây. 7", [(24, 1, "Ghi chú cuối.")]),
+            (("Cả đoạn kết thúc ở đây.", False), ("Ghi chú cuối.", True)),
+        )
+
+    def test_two_notes_in_one_sentence_come_out_in_the_printed_order(self) -> None:
+        self.assertEqual(
+            self.pieces(
+                "Một câu 1 và 2 cùng một câu. Câu sau.",
+                [(8, 1, "Ghi A."), (13, 1, "Ghi B.")],
+            ),
+            (
+                ("Một câu và cùng một câu.", False),
+                ("Ghi A.", True),
+                ("Ghi B.", True),
+                ("Câu sau.", False),
+            ),
+        )
+
+    def test_two_notes_in_different_sentences_each_follow_their_own(self) -> None:
+        self.assertEqual(
+            self.pieces(
+                "Câu một 1 xong. Câu hai 2 xong.",
+                [(8, 1, "Ghi A."), (24, 1, "Ghi B.")],
+            ),
+            (
+                ("Câu một xong.", False),
+                ("Ghi A.", True),
+                ("Câu hai xong.", False),
+                ("Ghi B.", True),
+            ),
+        )
+
+    def test_a_sentence_that_never_ends_still_finishes_before_the_note(self) -> None:
+        # A heading, or a paragraph the publisher left without a full stop:
+        # the note goes after all of it rather than after nothing.
+        self.assertEqual(
+            self.pieces("Tiêu đề có chú thích 3", [(21, 1, "Ghi chú.")]),
+            (("Tiêu đề có chú thích", False), ("Ghi chú.", True)),
+        )
+
+    def test_a_segment_with_no_notes_is_left_exactly_as_it_was(self) -> None:
+        self.assertEqual(
+            self.pieces("Không có chú thích nào.", []),
+            (("Không có chú thích nào.", False),),
+        )
+
+    def test_a_note_with_no_words_is_not_announced(self) -> None:
+        # An unreadable note leaves a hole rather than a "Nói thêm," with
+        # nothing after it.
+        self.assertEqual(
+            self.pieces("Câu có chú thích 4 rỗng.", [(17, 1, "  ")]),
+            (("Câu có chú thích rỗng.", False),),
+        )

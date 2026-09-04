@@ -1,305 +1,372 @@
 import { useId } from "react";
 
-/** The two glyphs the library row needs.
+/** The product's icon set, drawn in the **bulk** manner (owner, 04/09).
  *
- * DOL canon sources icons from DS Studio's DsIcon; this app ships outside
- * that repo, so the registry is not consumable here (same gap note as
- * ToggleButtonGroup). These two are drawn to its geometry instead: 16px grid,
- * 1.5 stroke, round caps, currentColor.
+ * Bulk means two fills of the SAME colour: a mass at 40% that carries the
+ * silhouette, and a detail at full strength on top. One colour, so every
+ * icon still takes `currentColor` and follows the theme; two weights, so a
+ * glyph reads as an object rather than as an outline.
+ *
+ * **24 grid, rendered at 20.** The old set was drawn on a 16 grid at 1.5
+ * stroke and rendered at 16. Bulk is designed for 24 and a two-tone glyph
+ * squeezed into 16 loses its lighter layer to a grey smudge - the owner
+ * looked at both sizes side by side and chose 20 (04/09). Two places still
+ * need 16 and force it themselves in controls.tsx: an icon inside a line of
+ * text, which must not push the line apart, and a small button, which has
+ * only 28px to put one in.
+ *
+ * Drawn here rather than imported. DOL canon sources icons from DS Studio's
+ * DsIcon, and that registry is not consumable outside the DS repo (same gap
+ * as ToggleButtonGroup); `@dol/icons-library` is not a dependency of this
+ * app. Every glyph below is drawn in this file.
+ *
+ * They are a SET, so weight and proportion are decided across the set and
+ * not per glyph: reworking one in isolation is how a set stops looking like
+ * one. `CloseIcon` and `SlidersIcon` are the evidence - both had to be
+ * redrawn after being looked at next to the others at the real size.
  */
 
-const base = {
-  width: 16,
-  height: 16,
-  viewBox: "0 0 16 16",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.5,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
+const bulk = {
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "currentColor",
   "aria-hidden": true,
 };
 
+/** The 40% layer. A constant so no icon quietly picks its own weight. */
+const MASS = 0.4;
+
 export function BookIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M2.5 3.2c1.8-.9 3.6-.9 5.5.2 1.9-1.1 3.7-1.1 5.5-.2v9.3c-1.8-.9-3.6-.9-5.5.2-1.9-1.1-3.7-1.1-5.5-.2V3.2Z" />
-      <path d="M8 3.4v9.3" />
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M22 4.1v12.4c0 1-.8 1.9-1.8 2-2 .2-4.9 1.2-6.7 2.2-.3.2-.7-.1-.7-.5V4.5c0-.2.1-.4.3-.5 1.8-1 4.8-2 6.9-2.2C21.1 1.7 22 2.6 22 3.7v.4Z" />
+      <path d="M11.2 4v16.2c0 .4-.4.7-.7.5-1.8-1-4.7-2-6.7-2.2-1-.1-1.8-1-1.8-2V3.7c0-1.1.9-2 2-1.9 2.1.2 5.1 1.2 6.9 2.2.2.1.3.3.3.5v-.5Z" />
     </svg>
   );
 }
 
 export function CloseIcon({ className }: { className?: string }) {
+  /* Single layer on purpose. A bare mark has nothing to be the mass OF, and
+     the filled square this started as read like a heavy chip sitting in a
+     panel header rather than a way out of it. Bulk sets keep marks like this
+     one-weight too. */
   return (
-    <svg {...base} className={className}>
-      <path d="M4 4l8 8M12 4l-8 8" />
+    <svg {...bulk} className={className}>
+      <path d="M13.4 12l5-5a1 1 0 1 0-1.4-1.4l-5 5-5-5A1 1 0 0 0 5.6 7l5 5-5 5A1 1 0 1 0 7 18.4l5-5 5 5a1 1 0 0 0 1.4-1.4l-5-5Z" />
     </svg>
   );
 }
 
 export function TrashIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M2.8 4.3h10.4M6.3 4.3V3c0-.4.3-.8.8-.8h1.8c.5 0 .8.4.8.8v1.3M4.2 4.3l.6 8.2c0 .7.6 1.2 1.2 1.2h4c.6 0 1.2-.5 1.2-1.2l.6-8.2" />
-      <path d="M6.6 6.9v4.2M9.4 6.9v4.2" />
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M20.4 6.4c-1.8-.2-3.6-.3-5.4-.4v-.6c0-1-.1-1.6-.4-2-.4-.5-1.1-.6-2.3-.6h-.6c-1.2 0-1.9.1-2.3.6-.3.4-.4 1-.4 2v.6c-1.8.1-3.6.2-5.4.4l-.5.1a.8.8 0 0 0 .1 1.5h.1c5.2-.5 10.4-.3 15.6.2h.1a.8.8 0 0 0 .1-1.5l-.7-.3Z" />
+      <path d="M19.4 9.3a.9.9 0 0 0-.7-.3H5.3a.9.9 0 0 0-.9 1l.6 9.4c.1 1.7.3 3.6 3.9 3.6h6.2c3.6 0 3.8-1.9 3.9-3.6l.6-9.4a.9.9 0 0 0-.2-.7ZM14 18.2h-4a.8.8 0 0 1 0-1.5h4a.8.8 0 0 1 0 1.5Zm1-4H9a.8.8 0 0 1 0-1.5h6a.8.8 0 0 1 0 1.5Z" />
     </svg>
   );
 }
 
 export function ChevronLeftIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M10 3.5 5.5 8l4.5 4.5" />
-    </svg>
-  );
-}
-
-/** Two panes, the left one filled: the contents list toggling in and out. */
-export function SidebarIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="2.2" y="3" width="11.6" height="10" rx="2" />
-      <path d="M6.4 3v10" />
-    </svg>
-  );
-}
-
-/* Media glyphs read better filled than stroked - the transport is the one
- * place the app borrows a language everybody already knows. */
-const solid = {
-  width: 16,
-  height: 16,
-  viewBox: "0 0 16 16",
-  fill: "currentColor",
-  "aria-hidden": true,
-};
-
-export function PlayIcon() {
-  return (
-    <svg {...solid}>
-      <path d="M4.8 3.3c0-.6.7-1 1.2-.6l6 4.1c.5.3.5 1 0 1.3l-6 4.2c-.5.4-1.2 0-1.2-.6V3.3Z" />
-    </svg>
-  );
-}
-
-export function PauseIcon() {
-  return (
-    <svg {...solid}>
-      <rect x="4" y="3" width="3" height="10" rx="1.2" />
-      <rect x="9" y="3" width="3" height="10" rx="1.2" />
-    </svg>
-  );
-}
-
-export function StopIcon() {
-  return (
-    <svg {...solid}>
-      <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="2" />
-    </svg>
-  );
-}
-
-export function PreviousIcon() {
-  return (
-    <svg {...solid}>
-      <rect x="3" y="3.4" width="2.2" height="9.2" rx="1" />
-      <path d="M12.6 4.1c0-.6-.7-.9-1.1-.5L6.7 7.4a.8.8 0 0 0 0 1.2l4.8 3.8c.4.4 1.1 0 1.1-.5V4.1Z" />
-    </svg>
-  );
-}
-
-export function NextIcon() {
-  return (
-    <svg {...solid}>
-      <rect x="10.8" y="3.4" width="2.2" height="9.2" rx="1" />
-      <path d="M3.4 4.1c0-.6.7-.9 1.1-.5l4.8 3.8a.8.8 0 0 1 0 1.2l-4.8 3.8c-.4.4-1.1 0-1.1-.5V4.1Z" />
+    <svg {...bulk} className={className}>
+      <path d="M14.7 20.7c-.2 0-.4-.1-.6-.2l-6.5-6.5a2.8 2.8 0 0 1 0-4l6.5-6.5a.8.8 0 0 1 1.1 1.1l-6.5 6.5c-.5.5-.5 1.3 0 1.8l6.5 6.5a.8.8 0 0 1-.5 1.3Z" />
     </svg>
   );
 }
 
 export function ChevronRightIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M6 3.5 10.5 8 6 12.5" />
-    </svg>
-  );
-}
-
-/** Two pages side by side: the paginated reading mode. */
-export function PagesIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="2" y="3" width="5.2" height="10" rx="1.2" />
-      <rect x="8.8" y="3" width="5.2" height="10" rx="1.2" />
-    </svg>
-  );
-}
-
-/** Lines running off the bottom: the continuous scroll mode. */
-export function ScrollIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M3 3.5h10M3 6.5h10M3 9.5h10M3 12.5h6" />
-    </svg>
-  );
-}
-
-/** A small "i" in a ring: secondary information on request. */
-export function InfoIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <circle cx="8" cy="8" r="5.8" />
-      <path d="M8 7.2v3.6M8 5.2v.2" />
-    </svg>
-  );
-}
-
-/** Three sliders: the settings the reader may want to open. */
-export function SlidersIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M3 4.5h6.2M11.8 4.5H13M3 8h1.6M7.2 8H13M3 11.5h8M13.6 11.5H13" />
-      <circle cx="10.6" cy="4.5" r="1.4" />
-      <circle cx="5.8" cy="8" r="1.4" />
-      <circle cx="12.2" cy="11.5" r="1.4" />
-    </svg>
-  );
-}
-
-export function SunIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <circle cx="8" cy="8" r="3" />
-      <path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1" />
-    </svg>
-  );
-}
-
-export function MoonIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8Z" />
-    </svg>
-  );
-}
-
-/** A clipboard with lines: pasted text. */
-export function ClipboardIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="3.5" y="3" width="9" height="11" rx="1.6" />
-      <path d="M6 3V2.4h4V3M6 7.5h4M6 10h2.6" />
-    </svg>
-  );
-}
-
-/** An I-beam over a line of text: reading whatever is selected elsewhere. */
-export function CursorTextIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M2.5 8h4M9.5 8h4" />
-      <path d="M8 2.8v10.4M6.4 2.8h3.2M6.4 13.2h3.2" />
-    </svg>
-  );
-}
-
-/** Two pages with an arrow between: notes moving from one book to another. */
-export function TransferIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="2" y="3" width="4.6" height="10" rx="1.2" />
-      <rect x="9.4" y="3" width="4.6" height="10" rx="1.2" />
-      <path d="M6.6 8h2.8M8.2 6.8 9.4 8l-1.2 1.2" />
-    </svg>
-  );
-}
-
-/** A small note card: a highlight that carries the person's own words. */
-export function NoteIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M3 3.5h10v6.2L9.8 13H3V3.5Z" />
-      <path d="M9.8 13V9.7H13M5.5 6.5h5M5.5 9h3" />
-    </svg>
-  );
-}
-
-/** Apple Books' shelf glyph: an open book with a bookmark. */
-export function ShelfIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M2.5 3.5h4.2c.8 0 1.3.5 1.3 1.3v8.4c-.4-.6-.9-.9-1.6-.9H2.5V3.5ZM13.5 3.5H9.3c-.8 0-1.3.5-1.3 1.3v8.4c.4-.6.9-.9 1.6-.9h3.9V3.5Z" />
-      <path d="M11 3.5v4l-1-.8-1 .8v-4" />
-    </svg>
-  );
-}
-
-export function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M3.2 8.4 6.5 11.6 12.8 4.6" />
-    </svg>
-  );
-}
-
-export function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="3.2" y="7" width="9.6" height="6.6" rx="1.6" />
-      <path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" />
-    </svg>
-  );
-}
-
-/** An arrow down into a tray: bring the book in. */
-export function ImportIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M8 2.5v7.4M5.2 7.2 8 10l2.8-2.8" />
-      <path d="M2.8 10.4v1.8c0 .7.6 1.3 1.3 1.3h7.8c.7 0 1.3-.6 1.3-1.3v-1.8" />
-    </svg>
-  );
-}
-
-/** Two arrows chasing: bring the highlights over again. */
-export function SyncIcon({ className }: { className?: string }) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M13 6.8A5.2 5.2 0 0 0 3.6 5.4M3 9.2a5.2 5.2 0 0 0 9.4 1.4" />
-      <path d="M13 2.8v4h-4M3 13.2v-4h4" />
+    <svg {...bulk} className={className}>
+      <path d="M9.3 20.7a.8.8 0 0 1-.5-1.3l6.5-6.5c.5-.5.5-1.3 0-1.8L8.8 4.6a.8.8 0 0 1 1.1-1.1l6.5 6.5c1.1 1.1 1.1 2.9 0 4l-6.5 6.5c-.2.1-.4.2-.6.2Z" />
     </svg>
   );
 }
 
 export function ChevronDownIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M3.5 6 8 10.5 12.5 6" />
+    <svg {...bulk} className={className}>
+      <path d="M12 15.7c-.7 0-1.4-.3-2-.8l-5.6-5.6a.8.8 0 0 1 1.1-1.1l5.6 5.6c.5.5 1.3.5 1.8 0l5.6-5.6a.8.8 0 0 1 1.1 1.1L14 14.9c-.6.5-1.3.8-2 .8Z" />
     </svg>
   );
 }
 
-/** A speaker with one wave: hear this voice. */
+export function PlayIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M4.5 12V6.9c0-3.2 2.3-4.5 5-2.9l4.4 2.6 4.4 2.5c2.7 1.6 2.7 4.2 0 5.8l-4.4 2.5-4.4 2.6c-2.7 1.6-5 .3-5-2.9V12Z" />
+      <path d="M18.3 8.6 13.9 6.1 9.5 3.5C7.6 2.4 6 3 5.5 4.6c1 .2 2 .7 3 1.3l4.4 2.6 4.4 2.5c1 .6 1.8 1.3 2.3 2.1.9-1.6.3-3.5-1.3-4.5Z" />
+    </svg>
+  );
+}
+
+export function PauseIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M10.7 4v16c0 1.1-.5 1.5-1.7 1.5H5.7C4.5 21.5 4 21.1 4 20V4c0-1.1.5-1.5 1.7-1.5H9c1.2 0 1.7.4 1.7 1.5Z" />
+      <path d="M20 4v16c0 1.1-.5 1.5-1.7 1.5H15c-1.2 0-1.7-.4-1.7-1.5V4c0-1.1.5-1.5 1.7-1.5h3.3c1.2 0 1.7.4 1.7 1.5Z" />
+    </svg>
+  );
+}
+
+export function StopIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M16.2 2H7.8C4.2 2 2 4.2 2 7.8v8.4C2 19.8 4.2 22 7.8 22h8.4c3.6 0 5.8-2.2 5.8-5.8V7.8C22 4.2 19.8 2 16.2 2Z" />
+      <path d="M15 8.3v7.4c0 .9-.4 1.3-1.3 1.3h-3.4c-.9 0-1.3-.4-1.3-1.3V8.3C9 7.4 9.4 7 10.3 7h3.4c.9 0 1.3.4 1.3 1.3Z" />
+    </svg>
+  );
+}
+
+export function PreviousIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M19.5 12v5.1c0 3.2-2.3 4.5-5 2.9l-4.4-2.6-4.4-2.5c-2.7-1.6-2.7-4.2 0-5.8l4.4-2.5 4.4-2.6c2.7-1.6 5-.3 5 2.9V12Z" />
+      <path d="M4.7 20.4a.8.8 0 0 1-.8-.8V4.4a.8.8 0 0 1 1.6 0v15.2c0 .4-.4.8-.8.8Z" />
+    </svg>
+  );
+}
+
+export function NextIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M4.5 12V6.9c0-3.2 2.3-4.5 5-2.9l4.4 2.6 4.4 2.5c2.7 1.6 2.7 4.2 0 5.8l-4.4 2.5-4.4 2.6c-2.7 1.6-5 .3-5-2.9V12Z" />
+      <path d="M19.3 20.4a.8.8 0 0 1-.8-.8V4.4a.8.8 0 0 1 1.6 0v15.2c0 .4-.4.8-.8.8Z" />
+    </svg>
+  );
+}
+
+/** The table of contents: a closed book, from the DOL icon library (owner
+ * picked it, 04/09). Distinct from `BookIcon`, which is the OPEN book naming
+ * the library tab - one is a place to go, this one is what a book has inside.
+ * It replaced a sidebar glyph that described the PANEL rather than what the
+ * panel holds.
+ *
+ * Also redrawn once against the library's geometry: the first pass ran the
+ * cover to the full 24 box and butted the page block against it in a straight
+ * line. The cover is inset (3.5 to 20.5) and the block NOTCHES into it on the
+ * left, which is what gives the two parts a join instead of a seam.
+ */
+export function BookClosedIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path
+        opacity={MASS}
+        d="M20.5 7v8H6.4a2.9 2.9 0 0 0-2.9 2.9V7c0-4 1-5 5-5h7c4 0 5 1 5 5Z"
+      />
+      <path d="M20.5 15v3.5a3.5 3.5 0 0 1-3.5 3.5H7a3.5 3.5 0 0 1-3.5-3.5v-.6A2.9 2.9 0 0 1 6.4 15h14.1Z" />
+      <path d="M16 7.75H8a.75.75 0 0 1 0-1.5h8a.75.75 0 0 1 0 1.5Zm-3 3.5H8a.75.75 0 0 1 0-1.5h5a.75.75 0 0 1 0 1.5Z" />
+    </svg>
+  );
+}
+
+export function PagesIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M10.8 3.5v17c0 1-.9 1.7-1.9 1.5-1.6-.2-3.2-.6-4.6-1.2-1-.4-1.6-1.4-1.6-2.5V5.2c0-1.6 1.4-2.7 3-2.5 1.1.1 2.2.4 3.3.7.9.3 1.8 1.1 1.8 2.1Z" />
+      <path d="M21.3 5.2v13.1c0 1.1-.6 2.1-1.6 2.5-1.4.6-3 1-4.6 1.2-1 .2-1.9-.5-1.9-1.5v-17c0-1 .9-1.8 1.8-2.1 1.1-.3 2.2-.6 3.3-.7 1.6-.2 3 .9 3 2.5Z" />
+    </svg>
+  );
+}
+
+export function ScrollIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M17 2H7C4.2 2 3 3.6 3 6v12c0 2.4 1.2 4 4 4h10c2.8 0 4-1.6 4-4V6c0-2.4-1.2-4-4-4Z" />
+      <path d="M16.5 8.8h-9a.8.8 0 0 1 0-1.6h9a.8.8 0 0 1 0 1.6Zm0 4h-9a.8.8 0 0 1 0-1.6h9a.8.8 0 0 1 0 1.6Zm-4 4h-5a.8.8 0 0 1 0-1.6h5a.8.8 0 0 1 0 1.6Z" />
+    </svg>
+  );
+}
+
+export function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
+      <path d="M12 13.4a.8.8 0 0 1-.8-.8V8a.8.8 0 0 1 1.6 0v4.6c0 .4-.4.8-.8.8Zm0 3.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Z" />
+    </svg>
+  );
+}
+
+export function SlidersIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M21 6.8H3a1 1 0 0 1 0-2h18a1 1 0 0 1 0 2Zm0 6.2H3a1 1 0 0 1 0-2h18a1 1 0 0 1 0 2Zm0 6.2H3a1 1 0 0 1 0-2h18a1 1 0 0 1 0 2Z" />
+      <path d="M15.5 8.7a2.9 2.9 0 1 1 0-5.8 2.9 2.9 0 0 1 0 5.8Zm-7 6.2a2.9 2.9 0 1 1 0-5.8 2.9 2.9 0 0 1 0 5.8Zm8.5 6.2a2.9 2.9 0 1 1 0-5.8 2.9 2.9 0 0 1 0 5.8Z" />
+    </svg>
+  );
+}
+
+export function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 18.2a6.2 6.2 0 1 0 0-12.4 6.2 6.2 0 0 0 0 12.4Z" />
+      <path d="M12 4.3a.8.8 0 0 1-.8-.8V2a.8.8 0 0 1 1.6 0v1.5c0 .4-.4.8-.8.8Zm0 18a.8.8 0 0 1-.8-.8v-1.5a.8.8 0 0 1 1.6 0v1.5c0 .4-.4.8-.8.8ZM21.5 12.8H20a.8.8 0 0 1 0-1.6h1.5a.8.8 0 0 1 0 1.6Zm-17.5 0H2.5a.8.8 0 0 1 0-1.6H4a.8.8 0 0 1 0 1.6ZM18.4 6.4a.8.8 0 0 1-.6-1.4l1-1a.8.8 0 0 1 1.1 1.1l-1 1c-.1.2-.3.3-.5.3ZM4.6 20.2a.8.8 0 0 1-.6-1.4l1-1a.8.8 0 0 1 1.1 1.1l-1 1c-.1.2-.3.3-.5.3Zm14.8 0c-.2 0-.4-.1-.6-.2l-1-1a.8.8 0 0 1 1.1-1.1l1 1a.8.8 0 0 1-.5 1.3ZM5.6 6.4c-.2 0-.4-.1-.6-.2l-1-1a.8.8 0 0 1 1.1-1.1l1 1a.8.8 0 0 1-.5 1.3Z" />
+    </svg>
+  );
+}
+
+export function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M21.5 14.9a9.8 9.8 0 0 1-12.4-12 .9.9 0 0 0-1.2-1.1A10.9 10.9 0 0 0 12 22.9a10.9 10.9 0 0 0 10.6-6.8.9.9 0 0 0-1.1-1.2Z" />
+      <path d="M18.2 6.3l1-.4-1-.4-.4-1-.4 1-1 .4 1 .4.4 1 .4-1Z" />
+    </svg>
+  );
+}
+
+export function ClipboardIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M17 4.2h-1.4c.1.3.1.6.1.9v1.1c0 1.1-.9 2-2 2h-3.4c-1.1 0-2-.9-2-2V5.1c0-.3 0-.6.1-.9H7c-2.2 0-4 1.8-4 4v9.7c0 2.2 1.8 4 4 4h10c2.2 0 4-1.8 4-4V8.2c0-2.2-1.8-4-4-4Z" />
+      <path d="M14.2 5.1v1.1c0 .5-.4.9-.9.9h-3.4c-.5 0-.9-.4-.9-.9V5.1c0-1.1.9-2 2-2h1.2c1.1 0 2 .9 2 2Z" />
+    </svg>
+  );
+}
+
+export function CursorTextIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 21.5a.8.8 0 0 1-.8-.8V3.3a.8.8 0 0 1 1.6 0v17.4c0 .4-.4.8-.8.8Z" />
+      <path d="M15 4.3h-6a.8.8 0 0 1 0-1.6h6a.8.8 0 0 1 0 1.6Zm0 17h-6a.8.8 0 0 1 0-1.6h6a.8.8 0 0 1 0 1.6Z" />
+    </svg>
+  );
+}
+
+export function TransferIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M20.5 8.5H6.2a.8.8 0 0 1 0-1.6h14.3a.8.8 0 0 1 0 1.6Zm-2.7 8.6H3.5a.8.8 0 0 1 0-1.6h14.3a.8.8 0 0 1 0 1.6Z" />
+      <path d="M8.4 11.6a.8.8 0 0 1-.6-.2L4.2 7.8a.8.8 0 0 1 0-1.1l3.6-3.6a.8.8 0 0 1 1.1 1.1L5.9 7.2l3 3a.8.8 0 0 1-.5 1.4Zm7.2 9.3a.8.8 0 0 1-.6-1.4l3-3-3-3a.8.8 0 0 1 1.1-1.1l3.6 3.6a.8.8 0 0 1 0 1.1l-3.6 3.6c-.1.1-.3.2-.5.2Z" />
+    </svg>
+  );
+}
+
+/** Notes and highlights: the sticky note from the DOL icon library, in bulk
+ * (owner picked it, 04/09).
+ *
+ * Two earlier drawings were thrown away. Bulk with two lines on a rounded
+ * rectangle was `ScrollIcon` minus one line, and the two stand a few pixels
+ * apart in the same header. Line weight fixed that by leaving the manner of
+ * the set - and cost something in NotesPanel, where an outline note read
+ * quieter beside the filled highlight pen, backwards for the row that carries
+ * more.
+ *
+ * A third was thrown away for being WRONG: the peel was drawn as a square
+ * corner filling a mid-point notch. Measured against the library's own
+ * geometry, the note's outer corner turns on a radius nearly twice the
+ * square's own (8.9 against 5) and the notch sits at 13.1, not the middle -
+ * that big outer arc is the whole reason it reads as paper lifting rather
+ * than as a tile with a bite out of it (owner, 04/09: "tôi thấy nó sai sai").
+ * Body and fold share the notch exactly, reversed, so they nest with no seam.
+ */
+export function NoteIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path
+        opacity={MASS}
+        d="M22 7v3.9a2.2 2.2 0 0 1-2.2 2.2h-2.2a4.5 4.5 0 0 0-4.5 4.5v2.2a2.2 2.2 0 0 1-2.2 2.2H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5Z"
+      />
+      <path d="M22 10.9v2.2a8.9 8.9 0 0 1-8.9 8.9h-2.2a2.2 2.2 0 0 0 2.2-2.2v-2.2a4.5 4.5 0 0 1 4.5-4.5h2.2a2.2 2.2 0 0 0 2.2-2.2Z" />
+    </svg>
+  );
+}
+
+/** What a reading will cost and how much of the book to spend it on (owner,
+ * 04/09: "tìm một icon chi phí/phạm vi khác liên quan đến lưu lượng hoặc
+ * cost").
+ *
+ * A coin. Three other readings were weighed first: a gauge, which
+ * this app cannot use because it HAS a reading speed and a dial beside a play
+ * button is read as that one; a wallet, whose silhouette at 20 is a grey
+ * rounded square - the flap that makes a wallet a wallet does not survive the
+ * size, and the clasp turned it into a price tag (both were drawn and looked
+ * at, at 20, before being thrown away); and `SlidersIcon`, which is
+ * already the settings opener standing in the same bar. A disc with a figure
+ * on it is the one money glyph that still reads at 16.
+ *
+ * The mark is stroked rather than filled, on purpose: bulk is a rule about
+ * COLOUR - one, at two weights - not about paint mode, and a hand-filled "S"
+ * at this size closes up into a blob.
+ */
+export function CoinIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
+      <path d="M12 5.2a.9.9 0 0 1 .9.9v11.8a.9.9 0 0 1-1.8 0V6.1a.9.9 0 0 1 .9-.9Z" />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        d="M15 9.4c0-1.3-1.3-2.3-3-2.3s-3 1-3 2.3 1.3 2.1 3 2.3 3 1 3 2.3-1.3 2.3-3 2.3-3-1-3-2.3"
+      />
+    </svg>
+  );
+}
+
+export function ShelfIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M8.4 2H5.6C4 2 3.2 2.8 3.2 4.4v15.2c0 1.6.8 2.4 2.4 2.4h2.8c1.6 0 2.4-.8 2.4-2.4V4.4C10.8 2.8 10 2 8.4 2Z" />
+      <path d="M18 2h-2.4c-1.6 0-2.4.8-2.4 2.4v15.2c0 1.6.8 2.4 2.4 2.4H18c1.6 0 2.4-.8 2.4-2.4V4.4C20.4 2.8 19.6 2 18 2Zm-.2 8.5h-2a.8.8 0 0 1 0-1.6h2a.8.8 0 0 1 0 1.6Z" />
+    </svg>
+  );
+}
+
+export function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
+      <path d="M10.6 15.6c-.2 0-.4-.1-.6-.2l-2.4-2.4a.8.8 0 0 1 1.1-1.1l1.9 1.9 4.7-4.7a.8.8 0 0 1 1.1 1.1l-5.2 5.2c-.2.1-.4.2-.6.2Z" />
+    </svg>
+  );
+}
+
+export function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M17.5 9.6h-11c-2 0-3.5 1.5-3.5 3.5v5.4c0 2 1.5 3.5 3.5 3.5h11c2 0 3.5-1.5 3.5-3.5v-5.4c0-2-1.5-3.5-3.5-3.5Z" />
+      <path d="M7 9.1V7.7C7 4.6 7.9 2 12 2c3.7 0 5 1.8 5 4.6v2.5h-1.6V6.5c0-2-.9-2.9-3.4-2.9-2.7 0-3.4 1.3-3.4 4.1v1.4H7Zm5 8.9a1.6 1.6 0 1 1 0-3.2 1.6 1.6 0 0 1 0 3.2Z" />
+    </svg>
+  );
+}
+
+export function ImportIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M20.5 14.7v2.2c0 2.8-1.6 4-4 4h-9c-2.4 0-4-1.2-4-4v-2.2a.8.8 0 0 1 1.6 0v2.2c0 1.9.8 2.4 2.4 2.4h9c1.6 0 2.4-.5 2.4-2.4v-2.2a.8.8 0 0 1 1.6 0Z" />
+      <path d="M12 16.1c-.2 0-.4-.1-.6-.2l-3.5-3.5a.8.8 0 0 1 1.1-1.1l2.2 2.2V3.3a.8.8 0 0 1 1.6 0v10.2l2.2-2.2a.8.8 0 0 1 1.1 1.1l-3.5 3.5c-.2.1-.4.2-.6.2Z" />
+    </svg>
+  );
+}
+
+export function SyncIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M21 12a9 9 0 0 1-14.9 6.8.8.8 0 0 1 1-1.2A7.4 7.4 0 0 0 19.4 12a.8.8 0 0 1 1.6 0ZM3 12a9 9 0 0 1 14.9-6.8.8.8 0 0 1-1 1.2A7.4 7.4 0 0 0 4.6 12a.8.8 0 0 1-1.6 0Z" />
+      <path d="M18.6 2.6a.8.8 0 0 1 .8.8v3.3h-3.3a.8.8 0 0 1 0-1.6h1.7V3.4c0-.4.4-.8.8-.8ZM5.4 21.4a.8.8 0 0 1-.8-.8v-3.3h3.3a.8.8 0 0 1 0 1.6H6.2v1.7c0 .4-.4.8-.8.8Z" />
+    </svg>
+  );
+}
+
 export function SpeakerIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M8.2 2.8 4.8 5.6H2.6v4.8h2.2l3.4 2.8z" />
-      <path d="M11 5.8a3.2 3.2 0 0 1 0 4.4" />
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M14.5 4.1v15.8c0 1.9-1.4 2.7-3.1 1.8l-4.4-2.5c-.3-.2-.7-.3-1-.3H4c-2 0-3-1-3-3v-3.8c0-2 1-3 3-3h2c.3 0 .7-.1 1-.3l4.4-2.5c1.7-.9 3.1-.1 3.1 1.8Z" />
+      <path d="M18.4 16.9a.8.8 0 0 1-.6-1.3c1.7-2 1.7-5.2 0-7.2a.8.8 0 0 1 1.2-1c2.1 2.6 2.1 6.6 0 9.2-.2.2-.4.3-.6.3Zm2.5 2.9a.8.8 0 0 1-.6-1.3c3-3.6 3-9.4 0-13a.8.8 0 0 1 1.2-1c3.4 4.1 3.4 10.9 0 15-.2.2-.4.3-.6.3Z" />
     </svg>
   );
 }
 
-/** Two lines of text with a marker stroke under them: a highlight with no
- * note. Its pair is NoteIcon - together they say, at a glance down a list,
- * which rows carry something to read and which are just a passage kept. */
 export function HighlightIcon({ className }: { className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M3 4.2h10M3 7.4h6" />
-      <path d="M3.2 11.2h7.6" strokeWidth={3} />
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M20.2 3.8a3.9 3.9 0 0 0-5.5 0l-8.5 8.5c-.3.3-.5.7-.6 1.1l-.9 4.4c-.1.6.4 1.1 1 1l4.4-.9c.4-.1.8-.3 1.1-.6l8.5-8.5a3.9 3.9 0 0 0 0-5.5Z" />
+      <path d="M20 22H4a.8.8 0 0 1 0-1.6h16a.8.8 0 0 1 0 1.6Z" />
     </svg>
   );
 }
+
 
 /** The Apple Books app mark.
  *

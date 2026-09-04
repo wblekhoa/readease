@@ -55,6 +55,11 @@
      each element's own height-default. Set it here, override per cluster with
      <Cluster>; never hand a control its own radius. */
   --ctl-radius: 0.75rem;
+  /* The one control a screen is FOR gets a rounder corner than the row of
+     controls around it - the same reason it is taller. A TOKEN beside its
+     sibling rather than a number typed into the button, because the rule
+     above is that no control hands itself a radius (owner, 04/09). */
+  --ctl-radius-lg: 1rem;
   /* How far a floating layer sits from the thing that opened it. It was 4px
      under a menu, 6 under a tooltip and 8 under a panel - three values for
      one relationship (owner, 03/09). JS-positioned layers use 8 to match. */
@@ -206,6 +211,19 @@
     );
     background-size: 8px 2px;
     background-repeat: repeat-x;
+    transition: opacity 120ms;
+  }
+  /* A row under the pointer takes both of its rules with it: the one above it
+     is its own `::before`, the one below it belongs to the NEXT row. A dotted
+     rule running into a rounded wash cuts the corner it is sitting in, and
+     the bigger the corner the more it shows (owner, 04/09). Interactive
+     children only - a settings row that does nothing on hover should not
+     make the list twitch as the pointer crosses it. */
+  & > :is(button, a):hover::before,
+  & > :is(button, a):hover + *::before,
+  & > :is(button, a):focus-visible::before,
+  & > :is(button, a):focus-visible + *::before {
+    opacity: 0;
   }
 }
 
@@ -396,3 +414,56 @@ mark {
   border-radius: 0.2em;
   padding: 0 0.05em;
 }
+
+/* The note marker sitting at the head of a highlight.
+ *
+ * It wears the colour of the highlight it belongs to, so the eye pairs them
+ * without being told - but at FULL strength, not the wash's. The
+ * `--color-highlight-*` tokens are alpha (30-48%): that is right for ink
+ * laid over text, and at 16px it made an icon nobody could see (owner,
+ * 04/09 about the panel, again 04/09 here: "không quá nhạt để dễ thấy").
+ * `rgb(from … r g b / 1)` takes the token's own hue and drops the
+ * transparency, so there is still ONE definition of "the yellow of a yellow
+ * highlight" - going up to a solid DS tier would have changed the hue as
+ * well as the strength. No fallback declaration: the minifier drops one
+ * that a later declaration overrides anyway, and the app asks for macOS 15,
+ * whose WebKit has had relative colour for two releases.
+ *
+ * The outline is the page's own colour, four one-pixel shadows around the
+ * glyph's shape: on top of a wash, an icon with no edge reads as a smudge
+ * in it rather than as a thing sitting on it. White on the light paper,
+ * dark on the dark one - it is the page showing through, not white paint. */
+.note-nudge {
+  color: rgb(from var(--color-highlight) r g b / 1);
+  filter:
+    drop-shadow(1px 0 0 var(--color-paper))
+    drop-shadow(-1px 0 0 var(--color-paper))
+    drop-shadow(0 1px 0 var(--color-paper))
+    drop-shadow(0 -1px 0 var(--color-paper));
+}
+.note-nudge[data-style="1"] { color: rgb(from var(--color-highlight-green) r g b / 1); }
+.note-nudge[data-style="2"] { color: rgb(from var(--color-highlight-blue) r g b / 1); }
+.note-nudge[data-style="3"] { color: rgb(from var(--color-highlight-yellow) r g b / 1); }
+.note-nudge[data-style="4"] { color: rgb(from var(--color-highlight-pink) r g b / 1); }
+.note-nudge[data-style="5"] { color: rgb(from var(--color-highlight-purple) r g b / 1); }
+
+/* In the notes list a mark is not ink laid over a page being read - it is the
+   SAMPLE that says which highlight this row IS, a phrase or two wide on a
+   card rather than a run across a page. The haze tier is the DS's strongest
+   ALPHA (30%; the ramp stops there), and at that size on the dark paper it
+   went pale (owner, 04/09: "hơi nhạt, khó nhìn").
+
+   Painted twice rather than swapped for a solid tier: the same token as fill
+   and again as image, so the alpha compounds and the HUE cannot drift. Going
+   up to a solid tier would have, because these ramps are not one colour at
+   two strengths - success haze is rgb(60,202,73) and success primary is
+   rgb(0,137,54), a different green. The reading page is deliberately left
+   alone: there a mark really is ink over text that has to stay readable. */
+.mark-sample mark {
+  background-image: linear-gradient(var(--color-highlight), var(--color-highlight));
+}
+.mark-sample mark[data-style="1"] { background-image: linear-gradient(var(--color-highlight-green), var(--color-highlight-green)); }
+.mark-sample mark[data-style="2"] { background-image: linear-gradient(var(--color-highlight-blue), var(--color-highlight-blue)); }
+.mark-sample mark[data-style="3"] { background-image: linear-gradient(var(--color-highlight-yellow), var(--color-highlight-yellow)); }
+.mark-sample mark[data-style="4"] { background-image: linear-gradient(var(--color-highlight-pink), var(--color-highlight-pink)); }
+.mark-sample mark[data-style="5"] { background-image: linear-gradient(var(--color-highlight-purple), var(--color-highlight-purple)); }

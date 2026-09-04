@@ -73,7 +73,7 @@ export function NotesPanel({
          to the list and not to the whole panel; `overflow-hidden` on the
          frame keeps it inside the rounded corner instead of running past it
          (owner, 03/09). */
-      className={`absolute left-0 z-10 flex w-[23rem] flex-col overflow-hidden shadow-lifted ${
+      className={`mark-sample absolute left-0 z-10 flex w-[23rem] flex-col overflow-hidden shadow-lifted ${
         paged
           ? "top-0 max-h-full"
           : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
@@ -123,7 +123,7 @@ export function NotesPanel({
                 type="button"
                 ref={item.id === focusId ? focused : undefined}
                 onClick={() => onNavigate(item.segment_id)}
-                className={`group -mx-2 flex gap-2.5 rounded-lg px-2 py-3 text-left hover-wash ${
+                className={`group -mx-2 flex gap-2.5 rounded-[var(--ctl-radius)] px-2 py-3 text-left hover-wash ${
                   item.id === focusId ? "bg-wash" : ""
                 }`}
               >

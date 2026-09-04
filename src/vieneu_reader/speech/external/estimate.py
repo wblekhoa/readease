@@ -56,6 +56,33 @@ def scope_end(chapter_of: Sequence[int], start: int, chapters: int | None) -> in
     return end
 
 
+def scope_start(chapter_of: Sequence[int], start: int, chapters: int | None) -> int:
+    """The earliest utterance a reading inside this scope could begin at.
+
+    The price on the button is a CEILING, not the cost of one particular
+    press (owner, 04/09). A person does not only press the button - they
+    click a paragraph, and a click carries the same scope, so clicking back
+    at the top of the chapter they are halfway through costs several times
+    what resuming would. Measured on a ten-paragraph chapter: $0.018 from the
+    last paragraph, $0.180 from the first - the same scope, ten times the
+    money, and only one of those numbers was ever shown.
+
+    Quoting from the scope's own start makes the figure true for every way
+    of starting a reading inside it. It overstates a resume near the end,
+    which is the safe direction to be wrong in.
+    """
+
+    if chapters is None:
+        return 0
+    if not chapter_of or start >= len(chapter_of):
+        return start
+    here = chapter_of[start]
+    first = start
+    while first > 0 and chapter_of[first - 1] == here:
+        first -= 1
+    return first
+
+
 def estimate_scope(
     texts: Sequence[str],
     chapter_of: Sequence[int],

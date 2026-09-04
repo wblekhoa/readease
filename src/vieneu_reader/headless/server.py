@@ -40,6 +40,7 @@ from vieneu_reader.domain.prosody import (
     SENTENCE_PAUSE_MS,
     pause_after_ms,
     selection_pause_ms,
+    speak_with_notes,
     speakable_text,
     split_sentences,
 )
@@ -49,8 +50,10 @@ from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.importers.errors import BookImportError
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.speech.cache import AudioCache, audio_cache_key
-from vieneu_reader.speech.external.estimate import estimate_scope, scope_end
-from vieneu_reader.speech.external.pricing import PRICES, price_for
+from vieneu_reader.speech.external.estimate import (
+    estimate_scope, scope_end, scope_start,
+)
+from vieneu_reader.speech.external.pricing import PRICES, PRICES_FETCHED, price_for
 from vieneu_reader.speech.external.provider import ExternalVoiceError
 from vieneu_reader.speech.external.engine import ExternalSpeechEngine
 from vieneu_reader.speech.external.pricing import VoicePrice
@@ -76,6 +79,35 @@ class ReadingEngine(Protocol):
     ) -> Iterator[AudioChunk]: ...
 
 
+#: One model per provider at a time, chosen in settings. The alternative was
+#: measured and rejected: the catalogue used to emit MODELS x VOICES, which is
+#: 18 rows for OpenAI alone and 2N for an ElevenLabs library - a list nobody
+#: can scan, in which the same voice appears twice at two prices. The id stays
+#: `provider:model:voice` so the estimate, the cache key and the spend meter
+#: still read the price off the id itself; only the catalogue narrows.
+MODEL_KEY_FOR_PROVIDER = {
+    "openai": "openai_model",
+    "elevenlabs": "elevenlabs_model",
+}
+DEFAULT_MODEL_FOR_PROVIDER = {
+    "openai": "tts-1",
+    # The model whose published language list names Vietnamese, and half the
+    # price of v3 [fetched 2026-09-04]. A default that cannot say the language
+    # this app exists for is not a default.
+    "elevenlabs": "eleven_flash_v2_5",
+}
+
+
+def chosen_model(provider: str, settings: dict) -> str:
+    """The model this Mac is set to use with a provider."""
+
+    stored = settings.get(MODEL_KEY_FOR_PROVIDER.get(provider, ""))
+    known = {price.model for price in PRICES if price.provider == provider}
+    if isinstance(stored, str) and stored in known:
+        return stored
+    return DEFAULT_MODEL_FOR_PROVIDER.get(provider, "")
+
+
 def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
     """Build the provider a voice names, on the key this Mac holds.
 
@@ -86,17 +118,64 @@ def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
     key = settings.get(KEY_FOR_PROVIDER.get(provider, ""))
     if not key:
         return None
+    model = model_of(voice_id) or chosen_model(provider, settings)
     if provider == "openai":
         from vieneu_reader.speech.external.openai import OpenAIVoiceProvider
 
-        return OpenAIVoiceProvider(str(key), model=model_of(voice_id) or "tts-1")
+        return OpenAIVoiceProvider(str(key), model=model)
+    if provider == "elevenlabs":
+        from vieneu_reader.speech.external.elevenlabs import ElevenLabsVoiceProvider
+
+        return ElevenLabsVoiceProvider(str(key), model=model)
     return None
 
 
-def _start_at(utterances: "list[_Utterance]", wanted: object) -> int:
+def _text_utterances(text: str, settings: SynthesisSettings) -> list[_Utterance]:
+    """Pasted or captured text, shaped exactly as the reading will send it.
+
+    ONE builder, two callers - the reading and the estimate that prices it,
+    the same rule a book's utterances follow. Counting `text` itself would
+    quote a number the bill then disagrees with: `speakable_text` lowers
+    shouted runs and rewrites ordinals on the way past.
+
+    Each part is addressable, exactly as a book's segments are. Nothing is
+    stored for a plain read (no book_id reaches `_speak`, so no progress
+    row) - the id exists so a reading can be RESUMED at the part it had
+    reached, which is what changing the voice mid-way does.
+    """
+
+    parts = split_transient_parts(text, settings.max_chars)
+    if not parts:
+        return []
+    spoken = tuple(speakable_text(part.text) for part in parts)
+    return [
+        _Utterance(
+            text=spoken[index],
+            pause_after_ms=(
+                selection_pause_ms(spoken[index], parts[index + 1].joint)
+                if index + 1 < len(parts)
+                else 0
+            ),
+            segment_id=f"part-{index}",
+        )
+        for index in range(len(parts))
+    ]
+
+
+def _start_at(
+    utterances: "list[_Utterance]",
+    wanted: object,
+    order: "list[str] | None" = None,
+) -> int:
     """Where a resume lands: the first thing said ABOUT that segment.
 
     Which may be the cue for a picture placed before it, not the paragraph.
+
+    Some segments say nothing of their own - a footnote whose words were
+    already read at the sentence that referenced it. Pointing at one has to
+    carry on from the next thing that DOES speak: falling back to 0, as this
+    did for anything it could not find, would silently restart the book from
+    the beginning under a finger that meant "read from here".
     """
 
     if not wanted:
@@ -104,7 +183,27 @@ def _start_at(utterances: "list[_Utterance]", wanted: object) -> int:
     for index, utterance in enumerate(utterances):
         if utterance.segment_id == wanted:
             return index
-    return 0
+    if not order or str(wanted) not in order:
+        return 0
+    speaks = {utterance.segment_id for utterance in utterances}
+    for later in order[order.index(str(wanted)) + 1:]:
+        if later in speaks:
+            return next(
+                index
+                for index, utterance in enumerate(utterances)
+                if utterance.segment_id == later
+            )
+    # Nothing after it has anything to say: the reading is over, which is
+    # the truth, and not the top of the book.
+    return len(utterances)
+
+
+def _reading_order(book: Any) -> list[str]:
+    """Every segment id, in the order the book reads."""
+
+    return [
+        segment.id for chapter in book.chapters for segment in chapter.segments
+    ]
 
 
 def _silence(milliseconds: int) -> bytes:
@@ -131,6 +230,16 @@ class _Utterance:
 FIGURE_CUE = "Xem hình {number}."
 FIGURE_CUE_PAUSE_MS = 600
 
+# What the voice says before a footnote, and the beat after it. On paper a
+# small number sends the eye down the page and back; an ear has no such move,
+# so the note is read where it belongs - after the sentence that carries the
+# number - and it has to be ANNOUNCED, or it arrives as a non-sequitur in the
+# middle of a paragraph. Two words, because a longer preamble said before
+# eighty notes becomes the thing you hear instead of the notes (owner,
+# 04/09: "nói thêm").
+NOTE_CUE = "Nói thêm, {text}"
+NOTE_CUE_PAUSE_MS = 450
+
 
 def _figure_cues(presentation: Any) -> dict[str, list[tuple[str, str, int]]]:
     """Per anchor segment: (placement, figure_id, number-within-chapter).
@@ -146,6 +255,24 @@ def _figure_cues(presentation: Any) -> dict[str, list[tuple[str, str, int]]]:
                 (figure.placement, figure.id, number)
             )
     return cues
+
+
+def _note_marks(presentation: Any) -> dict[str, list[tuple[int, int, str]]]:
+    """Per anchor segment: (offset, label length, the note's own words).
+
+    Ordered by where the number falls, because that is the order the page
+    prints them in and the order a listener has to hear them.
+    """
+
+    marks: dict[str, list[tuple[int, int, str]]] = {}
+    for chapter in presentation.chapters:
+        for note in getattr(chapter, "notes", ()):
+            marks.setdefault(note.anchor_segment_id, []).append(
+                (note.offset, note.length, note.text)
+            )
+    for found in marks.values():
+        found.sort()
+    return marks
 
 
 class _PreparationCancelled(Exception):
@@ -238,14 +365,14 @@ class _Session:
         # A cover is a zip read (EPUB) or a 21 ms page render (PDF, measured
         # 02/09) and cached after the first ask - cheap enough between chunks.
         "book.cover",
-        "config.get", "config.set", "model.status", "notes.books",
+        "config.get", "config.set", "config.verify_key", "model.status", "notes.books",
         # The read button re-prices itself as the reader changes scope, and
         # they do that while listening.
         "estimate",
-        # Removing a highlight is one small write, and a person reads (and
-        # tidies) while listening - deferring it until the chapter ends
-        # would look like the button did nothing.
-        "annotations.delete",
+        # Removing or rewriting a highlight is one small write, and a
+        # person reads (and tidies) while listening - deferring it until the
+        # chapter ends would look like the button did nothing.
+        "annotations.delete", "annotations.update",
     })
 
     def _stop_requested(self) -> bool:
@@ -301,7 +428,20 @@ class _Session:
                     "sample_rate": SAMPLE_RATE,
                 })
             elif method == "voices":
-                self._reply(request_id, {"voices": self._voice_catalogue()})
+                catalogue, unreachable = self._voice_catalogue()
+                # A provider that could not be ASKED is not the same as one
+                # that offers nothing, and neither is a voice. It travels
+                # beside the list so the shell can say which is which.
+                #
+                # The per-model price list used to ride along here as well.
+                # No shell ever read it, and a payload nobody reads is a
+                # claim nobody checks. The picker that would need it waits
+                # until a voice has actually been listened to; `chosen_model`
+                # still decides which model a read uses, and that part is
+                # live and tested.
+                self._reply(request_id, {
+                    "voices": catalogue, "unreachable": unreachable,
+                })
             elif method == "read":
                 self._read(request_id, request.get("params") or {})
             elif method == "read.book":
@@ -314,6 +454,8 @@ class _Session:
                 self._applebooks_sync_notes(request_id, request.get("params") or {})
             elif method == "annotations.delete":
                 self._annotations_delete(request_id, request.get("params") or {})
+            elif method == "annotations.update":
+                self._annotations_update(request_id, request.get("params") or {})
             elif method == "notes.books":
                 self._notes_books(request_id)
             elif method == "notes.plan":
@@ -324,6 +466,8 @@ class _Session:
                 self._config_get(request_id, request.get("params") or {})
             elif method == "config.set":
                 self._config_set(request_id, request.get("params") or {})
+            elif method == "config.verify_key":
+                self._config_verify_key(request_id, request.get("params") or {})
             elif method == "model.status":
                 self._model_status(request_id)
             elif method == "model.prepare":
@@ -363,27 +507,10 @@ class _Session:
         voice_id = str(params.get("voice_id") or "")
         rate = float(params.get("rate") or 1.0)
         settings = SynthesisSettings()
-        parts = split_transient_parts(text, settings.max_chars)
-        if not parts:
+        utterances = _text_utterances(text, settings)
+        if not utterances:
             self._fail(request_id, "text is empty")
             return
-        spoken = tuple(speakable_text(part.text) for part in parts)
-        # Each part is addressable, exactly as a book's segments are. Nothing
-        # is stored for a plain read (no book_id reaches _speak, so no
-        # progress row) - the id exists so a reading can be RESUMED at the
-        # part it had reached, which is what changing the voice mid-way does.
-        utterances = [
-            _Utterance(
-                text=spoken[index],
-                pause_after_ms=(
-                    selection_pause_ms(spoken[index], parts[index + 1].joint)
-                    if index + 1 < len(parts)
-                    else 0
-                ),
-                segment_id=f"part-{index}",
-            )
-            for index in range(len(parts))
-        ]
         wanted = str(params.get("segment_id") or "")
         if wanted:
             for index, utterance in enumerate(utterances):
@@ -423,7 +550,7 @@ class _Session:
             progress = self._repository.load_progress(book_id)
             wanted = progress.segment_id if progress else None
         utterances, chapter_of = self._book_utterances(stored)
-        start = _start_at(utterances, wanted)
+        start = _start_at(utterances, wanted, _reading_order(stored.book))
         # How far this press of the button is allowed to reach. `None` is the
         # whole book, which is what every reading did before paid voices
         # existed and is still the default.
@@ -448,28 +575,36 @@ class _Session:
             {"id": voice.id, "label": voice.label, "paid": False}
             for voice in self._engine.voices()
         ]
+        unreachable: list[dict[str, Any]] = []
         settings = self._settings_document()
         for provider in sorted(KEY_FOR_PROVIDER):
             if not settings.get(KEY_FOR_PROVIDER[provider]):
                 continue
-            for price in PRICES:
-                if price.provider != provider:
-                    continue
-                voice_id = f"{provider}:{price.model}:x"
-                external = _external_provider(provider, voice_id, settings)
-                if external is None:
-                    continue
-                catalogue.extend(
-                    {
-                        "id": voice.as_voice(provider).id,
-                        "label": voice.as_voice(provider).label,
-                        "paid": True,
-                        "provider": provider,
-                        "model": price.model,
-                    }
-                    for voice in external.voices()
-                )
-        return catalogue
+            model = chosen_model(provider, settings)
+            external = _external_provider(provider, f"{provider}:{model}:x", settings)
+            if external is None:
+                continue
+            try:
+                offered = external.voices()
+            except ExternalVoiceError as error:
+                # ElevenLabs' catalogue is a NETWORK call, unlike OpenAI's
+                # constant. Letting it out of here took the whole catalogue
+                # with it - including the local voices, which need nothing
+                # and were working. The provider drops out and says why; the
+                # reader keeps the voices that were never in question.
+                unreachable.append({"provider": provider, "code": error.code})
+                continue
+            catalogue.extend(
+                {
+                    "id": voice.as_voice(provider).id,
+                    "label": voice.as_voice(provider).label,
+                    "paid": True,
+                    "provider": provider,
+                    "model": model,
+                }
+                for voice in offered
+            )
+        return catalogue, unreachable
 
     def _estimate(self, request_id: Any, params: dict[str, Any]) -> None:
         """What one press of the read button would cost, before it is pressed.
@@ -480,6 +615,41 @@ class _Session:
         answer it, and a local voice costs nothing to say so.
         """
 
+        voice_id = str(params.get("voice_id") or "")
+        price = price_for(model_of(voice_id) or "")
+
+        # Pasted text is priced too, and it is the case that most needed it:
+        # a paste can be 100,000 characters, which is one press of a button
+        # and ten dollars on the dearer voices. There are no chapters in it,
+        # so there is no scope to apply - the whole of what was pasted is
+        # what gets read.
+        if not params.get("book_id"):
+            utterances = _text_utterances(
+                str(params.get("text") or ""), SynthesisSettings()
+            )
+            chars = sum(len(utterance.text) for utterance in utterances)
+            if price is None:
+                self._reply(request_id, {
+                    "paid": False, "chars": chars,
+                    "utterances": len(utterances), "chapters": 0,
+                    "spent_usd": self._spend.snapshot().usd,
+                })
+                return
+            self._reply(request_id, {
+                "paid": True,
+                "provider": provider_of(voice_id),
+                "model": price.model,
+                "chars": chars,
+                "utterances": len(utterances),
+                "chapters": 0,
+                "usd": round(price.usd_for(chars), 4),
+                "units": price.units_for(chars),
+                "unit": price.unit,
+                "price_dated": PRICES_FETCHED,
+                "spent_usd": self._spend.snapshot().usd,
+            })
+            return
+
         if self._repository is None:
             self._fail(request_id, "no library on this server")
             return
@@ -487,17 +657,20 @@ class _Session:
         if stored is None:
             self._fail(request_id, f"unknown book: {params.get('book_id')}")
             return
-        voice_id = str(params.get("voice_id") or "")
         utterances, chapter_of = self._book_utterances(stored)
         wanted = params.get("segment_id")
         if not wanted:
             progress = self._repository.load_progress(stored.book.id)
             wanted = progress.segment_id if progress else None
-        start = _start_at(utterances, wanted)
+        resume = _start_at(utterances, wanted, _reading_order(stored.book))
         raw_chapters = params.get("chapters")
         chapters = None if raw_chapters is None else int(raw_chapters)
+        # The CEILING of the scope, not the cost of resuming: a click on a
+        # paragraph carries the same scope and can start anywhere inside it,
+        # so a figure measured from the resume point is a figure that only
+        # one of the ways to start a reading actually pays.
+        start = scope_start(chapter_of, resume, chapters)
 
-        price = price_for(model_of(voice_id) or "")
         if price is None:
             # The local model. Saying "free" beats saying nothing: the button
             # is waiting on an answer either way.
@@ -556,10 +729,35 @@ class _Session:
             for segment in chapter.segments
         }
         cues: dict[str, list[tuple[str, str, int]]] = {}
+        notes: dict[str, list[tuple[int, int, str]]] = {}
+        already_said: set[str] = set()
         if self._service is not None:
-            cues = _figure_cues(
-                self._service.presentation_for(stored.book, stored.managed_path)
+            presentation = self._service.presentation_for(
+                stored.book, stored.managed_path
             )
+            cues = _figure_cues(presentation)
+            notes = _note_marks(presentation)
+            already_said = {
+                segment_id
+                for chapter in presentation.chapters
+                for segment_id in getattr(chapter, "spoken_elsewhere", ())
+            }
+            if already_said:
+                # A chapter that WAS the notes has nothing left to say. Its
+                # title alone, spoken into the silence at the end of a book,
+                # announces a chapter that never arrives.
+                for chapter_model in stored.book.chapters:
+                    body = [
+                        segment
+                        for segment in chapter_model.segments
+                        if segment.kind != "heading"
+                    ]
+                    if body and all(
+                        segment.id in already_said for segment in body
+                    ):
+                        already_said.update(
+                            segment.id for segment in chapter_model.segments
+                        )
         utterances: list[_Utterance] = []
         chapter_of: list[int] = []
 
@@ -568,6 +766,13 @@ class _Session:
             chapter_of.append(chapter)
 
         for index, segment in enumerate(segments):
+            if segment.id in already_said:
+                # The endnote at the back of the book, or the small print at
+                # the foot of the chapter: its words were read at the
+                # sentence that needed them. Read again here they arrive
+                # with no sentence to belong to (owner, 04/09: "đọc lại …
+                # mất ngữ cảnh và cũng chả có giá trị gì").
+                continue
             here = cues.get(segment.id, [])
             chapter = chapter_of_segment[segment.id]
             for placement, figure_id, number in here:
@@ -578,14 +783,37 @@ class _Session:
                         segment_id=segment.id,
                         figure_id=figure_id,
                     ), chapter)
-            add(_Utterance(
-                text=speakable_text(segment.text, segment.kind),
-                pause_after_ms=pause_after_ms(
-                    segment,
-                    segments[index + 1] if index + 1 < len(segments) else None,
-                ),
-                segment_id=segment.id,
-            ), chapter)
+            after_segment = pause_after_ms(
+                segment,
+                segments[index + 1] if index + 1 < len(segments) else None,
+            )
+            # Notes turn one segment into several utterances - the same thing
+            # a figure cue already does - so the follow-along, the estimate
+            # and the resume all keep working on `segment_id` alone. Only the
+            # LAST piece carries the segment's own pause: put it on an inner
+            # one and there is a paragraph-sized hole mid-paragraph.
+            # `or` the segment back in: every segment has to produce at
+            # least one utterance, or it is a place the reading cannot be
+            # resumed from.
+            pieces = speak_with_notes(
+                segment.text, notes.get(segment.id, [])
+            ) or ((segment.text, False),)
+            for order, (piece, is_note) in enumerate(pieces):
+                last = order == len(pieces) - 1
+                spoken = (
+                    NOTE_CUE.format(text=speakable_text(piece))
+                    if is_note
+                    else speakable_text(piece, segment.kind)
+                )
+                add(_Utterance(
+                    text=spoken,
+                    pause_after_ms=(
+                        after_segment
+                        if last
+                        else NOTE_CUE_PAUSE_MS if is_note else SENTENCE_PAUSE_MS
+                    ),
+                    segment_id=segment.id,
+                ), chapter)
             for placement, figure_id, number in here:
                 if placement == "after":
                     add(_Utterance(
@@ -929,6 +1157,29 @@ class _Session:
         removed = self._repository.forget_annotation(book_id, annotation_id)
         self._reply(request_id, {"removed": removed})
 
+    def _annotations_update(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Rewrite one highlight's note.
+
+        The repository keeps the edit, so the next Apple Books sync will not
+        overwrite the person's own words with the ones the highlight came
+        with. `updated` is false when there is no such highlight any more -
+        the shell needs to tell that from a note that saved.
+        """
+
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        annotation_id = str(params.get("annotation_id") or "")
+        if not book_id or not annotation_id:
+            self._fail(request_id, "book_id and annotation_id are required")
+            return
+        note = params.get("note")
+        updated = self._repository.edit_annotation(
+            book_id, annotation_id, None if note is None else str(note)
+        )
+        self._reply(request_id, {"updated": updated})
+
     def _notes_books(self, request_id: Any) -> None:
         deps = self._notes()
         try:
@@ -1061,6 +1312,8 @@ class _Session:
         "voice",
         "rate",
         "external_voice_budget",
+        "openai_model",
+        "elevenlabs_model",
     }) | _SECRET_CONFIG_KEYS
 
     def _config_get(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -1088,6 +1341,51 @@ class _Session:
             return
         update_settings(self._settings_path, {key: params.get("value")})
         self._reply(request_id, {"saved": True})
+
+    def _config_verify_key(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Save a provider credential, then ask the provider whether it works.
+
+        Saving and checking are one request because they are one act: the
+        shell used to save, re-list the catalogue, and treat "some paid voice
+        appeared" as proof. That is proof for ElevenLabs, whose catalogue is
+        a live authenticated call - and no proof at all for OpenAI, whose
+        nine voices are a constant that never leaves this machine. Any
+        non-empty string was accepted and reported as checked; the first
+        thing that actually knew was a chapter half read.
+
+        An empty value clears the key, which needs no check.
+        """
+
+        from vieneu_reader.settings import update_settings
+
+        provider = str(params.get("provider") or "")
+        key_name = KEY_FOR_PROVIDER.get(provider)
+        if key_name is None or self._settings_path is None:
+            self._fail(request_id, f"unknown provider: {provider}")
+            return
+        value = str(params.get("value") or "")
+        if not value:
+            update_settings(self._settings_path, {key_name: ""})
+            self._reply(request_id, {"saved": True, "ok": False, "code": "no_key"})
+            return
+
+        settings = dict(self._settings_document())
+        settings[key_name] = value
+        model = chosen_model(provider, settings)
+        external = _external_provider(provider, f"{provider}:{model}:x", settings)
+        if external is None:
+            self._fail(request_id, f"unknown provider: {provider}")
+            return
+        try:
+            external.verify()
+        except ExternalVoiceError as error:
+            # NOT saved. A key the service refuses is not a setting worth
+            # keeping - it would sit there looking configured and fail again
+            # at the worst moment.
+            self._reply(request_id, {"saved": False, "ok": False, "code": error.code})
+            return
+        update_settings(self._settings_path, {key_name: value})
+        self._reply(request_id, {"saved": True, "ok": True})
 
     def _model_status(self, request_id: Any) -> None:
         engine = self._engine

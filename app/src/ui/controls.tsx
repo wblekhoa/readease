@@ -28,7 +28,7 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
  * than by class. Kept in step with the token in index.css by hand: there is
  * one relationship here, and it should not read as three. */
 export const LAYER_GAP = 12;
-type Size = "md" | "sm";
+type Size = "lg" | "md" | "sm";
 
 /* Hover/press come from the `hover-wash` utility in index.css: a wash painted
  * OVER the control's fill. Swapping the fill for the alpha wash (the old
@@ -45,8 +45,17 @@ const BUTTON_BASE =
  * button next to a 30px select used to differ by 4px of corner - visible,
  * and exactly what the owner flagged. */
 const BUTTON_SIZE: Record<Size, string> = {
+  /* The one button a screen is FOR - the one that starts a reading. Its own
+     step rather than a bigger `md`, because `md` is every other button in
+     the product and the point here is that this one is not one of them. */
+  /* 12px, not the 16 the other tiers carry: the only `lg` in the product
+     leads with an icon, and a glyph needs less air against the edge than a
+     word does. The word gets its 16 back from a 4px inset on the label group
+     at the call site, so the two sides of the button end up unequal on
+     purpose (owner, 04/09). */
+  lg: "h-9 rounded-[var(--ctl-radius-lg)] px-3 text-sm",
   md: "h-[30px] rounded-[var(--ctl-radius)] px-4 text-sm",
-  sm: "h-7 rounded-[var(--ctl-radius)] px-2.5 text-sm",
+  sm: "h-7 rounded-[var(--ctl-radius)] px-2.5 text-sm [&_svg]:h-4 [&_svg]:w-4",
 };
 
 /* Disabled is always ink-faint, never opacity: fading a bordered control also
@@ -105,7 +114,14 @@ export function IconButton({
   onFocus,
   onBlur,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> & {
+  /* Wider than the DOM attribute on purpose: `title` never reaches the
+     button - it is destructured out and drawn here - so it can be a whole
+     line rather than a string. The reader's "where you are" is a page count,
+     a chapter and a percentage set in three weights, and it had grown its own
+     floating panel for want of this (App.tsx, owner 04/09). */
+  title?: ReactNode;
+}) {
   const [tip, setTip] = useState<
     { centre: number; above: number; below: number } | null
   >(null);
@@ -158,7 +174,15 @@ export function IconButton({
         <div
           ref={bubble}
           role="tooltip"
-          className="pointer-events-none fixed z-50 w-max max-w-[16rem] rounded-lg border border-edge-strong bg-paper px-2 py-1 text-xs leading-snug text-ink shadow-lifted"
+          /* The corner and the inset of a `Surface edge="strong"`, spelled out
+             rather than composed: `Surface` forwards neither a ref nor a
+             style, and this one is measured and placed. Matching it is not a
+             preference - the note peek in Reader.tsx is the same kind of
+             object, a small bubble that appears under the pointer, and it IS
+             a Surface. This one had been left on an 8px corner and a 4px
+             inset, tighter than anything else that floats (owner, 04/09:
+             "radius còn tròn hơn và padding cần thoáng hơn"). */
+          className="pointer-events-none fixed z-50 w-max max-w-[16rem] rounded-2xl border border-edge-strong bg-paper px-3 py-2 text-xs leading-snug text-ink shadow-lifted"
           /* Hidden for the one frame before it has been measured, so it
              never appears in the wrong place first. */
           style={{ left: box?.left ?? 0, top: box?.top ?? 0, visibility: box ? "visible" : "hidden" }}
@@ -188,7 +212,10 @@ export function InlineIconButton({
   return (
     <button
       type="button"
-      className={`ml-0.5 inline-flex translate-y-[0.1em] items-center justify-center rounded p-0.5 align-baseline text-ink-mute transition-colors hover:text-ink ${className}`}
+      /* The set renders at 20 now; here it does not. A 20px glyph inside a
+         paragraph pushes the line apart, which is the one thing this control
+         exists to avoid. */
+      className={`ml-0.5 inline-flex translate-y-[0.1em] items-center justify-center rounded p-0.5 align-baseline text-ink-mute transition-colors hover:text-ink [&_svg]:h-4 [&_svg]:w-4 ${className}`}
       onClick={(event) => {
         event.stopPropagation();
         onClick?.(event);
@@ -307,16 +334,22 @@ export function Surface({
 /** One-line outcome: quiet when fine, danger-toned when not. */
 export function Notice({
   tone = "ok",
+  fine = false,
   children,
   className = "",
 }: {
   tone?: "ok" | "error";
+  /** Fine print: 12px and italic, for the aside that qualifies a control
+   * rather than telling somebody something happened. A separate flag and not
+   * a className, because `text-xs` handed in from outside would fight the
+   * `text-sm` in here and the winner would depend on stylesheet order. */
+  fine?: boolean;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <p
-      className={`m-0 text-sm leading-relaxed ${
+      className={`m-0 leading-relaxed ${fine ? "text-xs italic" : "text-sm"} ${
         tone === "error" ? "font-medium text-danger" : "text-ink-mute"
       } ${className}`}
     >
