@@ -141,7 +141,7 @@ export function SettingsPanel({
               WITH, then what it costs to have it here. Unlabelled groups
               separated only by a dotted rule left a reader working out where
               one concern ended (owner, 04/09: "phân cấp tốt hơn"). */}
-          <GroupedSection title={text("section.reading_local")} className="mt-3">
+          <GroupedSection title={text("section.reading_local")}>
             {/* The control carries the voice's NAME only; what the voice is
                 like (gender · region · style) is the row's own line - the
                 full label in the select ran past the row and clipped its
@@ -196,7 +196,7 @@ export function SettingsPanel({
               }
             />
           </GroupedSection>
-          <h4 className="m-0 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-ink-mute">
+          <h4 className="m-0 mb-1.5 mt-6 text-xs font-semibold uppercase tracking-wide text-ink-mute">
             {text("model.quality")}
           </h4>
           <ModelChoices reading={reading} onBusy={setBusy} />
@@ -218,7 +218,7 @@ export function SettingsPanel({
           <Notice className="mt-2 block">{text("key.local_only")}</Notice>
 
           {paidVoices.length > 0 ? (
-            <GroupedSection title={text("section.reading_api")} className="mt-4">
+            <GroupedSection title={text("section.reading_api")}>
               <GroupedRow
                 title={text("player.voice")}
                 /* The provider's NAME, not its id: "openai" in a subtitle is

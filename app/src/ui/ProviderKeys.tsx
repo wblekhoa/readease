@@ -55,7 +55,7 @@ export function ProviderKeys({
   };
 
   return (
-    <GroupedSection title={title} className="mt-3">
+    <GroupedSection title={title}>
       {PROVIDERS.map((provider) => (
         editing === provider.id ? (
           <div key={provider.id} className="flex flex-col gap-2 py-3.5">

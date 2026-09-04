@@ -102,7 +102,7 @@ export function NotesPanel({
           <GroupedSection
             key={group.chapterId}
             title={group.chapterTitle}
-            className="mt-3 [--dot-inset:0.5rem]"
+            className="[--dot-inset:0.5rem]"
           >
             {group.items.map((item) => (
               confirming === item.id ? (

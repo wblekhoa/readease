@@ -136,7 +136,13 @@ export function GroupedSection({
   roomy?: boolean;
 }) {
   return (
-    <section className={className}>
+    /* A TITLED section starts a new subject, so it opens a wider gap above
+       itself than the rows inside it ever have between them - 24px above the
+       heading against 6px below it, which is what binds the heading to the
+       rows it names rather than to the group before it (owner, 04/09:
+       "phân cấp bằng spacing rõ hơn"). The margin lives here so six call
+       sites cannot each pick their own. */
+    <section className={`${title ? "mt-6" : ""} ${className}`}>
       {title && (
         <h3 className={`m-0 text-xs font-semibold uppercase tracking-wide text-ink-mute ${roomy ? "mb-2.5" : "mb-1.5"}`}>
           {title}
