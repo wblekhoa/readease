@@ -337,6 +337,39 @@ hợp lệ, reducer về idle, trong khi lượt mới đang chạy → hiện n
 tự phục hồi ở tương tác kế tiếp. Cách sửa sạch: `fire()` trả id, `reading:done` mang id, UI bỏ
 qua done của thế hệ đã bị thay — việc đó mở rộng hợp đồng sự kiện nên thuộc vòng khác.
 
+## Điều khiển luồng thật và tiến độ theo tai (2026-09-05)
+
+Audit sản phẩm 05/09 tìm ra hai lỗi ranh giới còn sót sau vòng 02/09, sửa cùng ngày (receipt hai phía,
+kế hoạch: `Apps/ai-memory/plans/readease-playback-reliability.md`):
+
+**F1 — pause làm treo mọi request.** `sync_channel(48)` đầy khi player pause (drain không tiêu thụ), luồng
+đọc stdout kẹt ở `send`, và mọi reply (`model.status`, danh sách giọng, lưu config) nằm sau audio trong cùng
+stdout tới khi timeout 30 s. Dừng thì tự lành (`clear()` trước khi gửi) nên chỉ request-không-phải-dừng kẹt.
+Sửa bằng **tín dụng frame**, không phải hold/resume bật-tắt: mọi tràn queue khi pause là chặn vĩnh viễn, nên
+ràng buộc phải chính xác.
+- `fire()` chèn `"window": ENGINE_WINDOW` (= 47, chừa 1 chỗ cho frame `Done`) vào params của `read`/`read.book`.
+- Engine (`_speak(window=…)`) không viết quá số frame còn tín dụng (chunk LẪN position đều chiếm chỗ); hết thì
+  chờ trong `_await_credit()` nhưng vẫn trả lời nhóm `_INLINE_WHILE_STREAMING` và tôn trọng `stop`. Không có
+  `window` ⇒ như cũ; đóng stdin ⇒ bỏ giới hạn (batch caller).
+- Drain trả 1 tín dụng mỗi frame lấy khỏi channel, gắn `read_id`, gửi xuống stdin engine dạng thông báo không
+  `id`: `{"method":"audio.credit","params":{"id":…,"frames":1}}`. Frame epoch cũ không được cấp; tín dụng lạc
+  id bị engine bỏ.
+
+**F2 — tiến độ ghi trước khi nghe, `done` trước khi phát hết.** `save_progress` nằm ngay sau khi phát
+`position`, tức lúc DỰNG; `reading:done` phát lúc reply cuối tới, khi vài câu còn trong loa. Sửa:
+- Drain phát `reading:position` và gửi `{"method":"progress.reached","params":{"id":…,"segment_id":…}}` xuống
+  engine; engine chỉ `save_progress` khi nhận ack, với `(book_id, rate, voice_id)` của lượt đọc đó (ack muộn sau
+  reply đi qua `_dispatch`). Không ack ⇒ không ghi.
+- Reply cuối của lượt thành `Frame::Done` đi qua hàng đợi; drain chờ `Player::len() == 0` (rodio 0.22.2:
+  `sound_count` giảm khi sound PHÁT XONG) rồi mới `tray(false)` + `reading:done`. Epoch đổi ⇒ bỏ (Dừng vốn không
+  phát done). Hậu quả cố ý: vỏ giữ "đang đọc" tới câu cuối; lỗi engine giữa chừng báo sau khi audio đã xếp hàng
+  phát hết (pause thì sau resume).
+
+**Receipt**: Python `FlowControlReceipts` (nhân quả, không đo giờ: ping được trả lời khi kẹt ⇒ đúng `window` frame),
+`ListeningProgressReceipts`; Rust 6 test trên seam `AudioSink`/`Shell`/`Feedback` (drain + pump chạy không thiết bị,
+không subprocess); `tests/headless/test_shell_contract.py` đối chiếu literal hai nguồn. Chưa chạy native với data
+root tạm (Phase 3).
+
 ## Đối chiếu parity với vỏ Qt (2026-09-02)
 
 Cách soi: liệt kê bề mặt app cũ (13 module UI, 5026 dòng + `ui/controller.py` 847 dòng +

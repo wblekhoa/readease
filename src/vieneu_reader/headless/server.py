@@ -19,6 +19,21 @@ A read streams `{"id": 3, "event": "chunk", "seq": n, "from_voice": bool,
 "pcm": <base64 float32 mono>, "sample_rate": 48000}` frames and finishes with
 a normal reply. Silence between sentences is a frame like any other, so the
 shell needs no prosody knowledge at all.
+
+Flow control is the shell's to ask for. A read carrying `"window": n` gets at
+most n frames (chunks and positions alike) before the shell must hand back
+room with `{"method": "audio.credit", "params": {"id": 3, "frames": 1}}` -
+one credit per frame it has taken off its queue. While the window is spent
+the engine waits, still answering the quick requests, so a paused player
+never blocks a `model.status`. A read without a window streams as fast as it
+can, and closing stdin releases the window too - batch callers do exactly
+that. Neither `audio.credit` nor `progress.reached` carries an `id`, and
+neither gets a reply.
+
+Listening progress is written on the shell's word, not the engine's: the
+engine emits `position` when it SYNTHESISES an utterance, and the shell
+sends `{"method": "progress.reached", "params": {"id": 3, "segment_id": s}}`
+when the ear gets there. Only then is the book's progress saved.
 """
 
 from __future__ import annotations
@@ -312,6 +327,16 @@ class _Session:
         self._requests: SimpleQueue = SimpleQueue()
         self._deferred: list[dict] = []
         self._eof = False
+        # Frames the shell still has room for during the current reading;
+        # None when the shell asked for no window (or stdin has closed).
+        self._credits: int | None = None
+        self._credit_read: Any = None
+        # A stop seen while waiting for room: honoured at the next check.
+        self._stop_pending = False
+        # What each recent reading was of, so a `progress.reached` for it -
+        # which may land after its reply - can be written with the right
+        # rate and voice. Bounded: only the last few readings matter.
+        self._listening: dict[Any, tuple[str, float, str]] = {}
         pump = threading.Thread(
             target=self._pump, args=(reader,), daemon=True
         )
@@ -383,28 +408,78 @@ class _Session:
         reading finishes; the loop exits afterwards.
         """
         while not self._requests.empty():
-            item = self._requests.get()
-            if item is _EOF:
-                self._eof = True
-                continue
-            try:
-                request = json.loads(item)
-            except json.JSONDecodeError:
-                self._send({"id": None, "ok": False, "error": "invalid json"})
-                continue
-            method = request.get("method")
-            if method == "stop":
-                self._reply(request.get("id"), {"stopped": True})
-                return True
-            if method in self._INLINE_WHILE_STREAMING:
-                request_id = request.get("id")
-                try:
-                    self._dispatch(method, request_id, request)
-                except Exception as error:  # noqa: BLE001 - same net as run()
-                    self._fail(request_id, f"{method} failed: {error}")
-                continue
-            self._deferred.append(request)
+            self._absorb(self._requests.get())
+        if self._stop_pending:
+            self._stop_pending = False
+            return True
         return False
+
+    def _absorb(self, item: Any) -> None:
+        """One line off stdin while a reading streams."""
+        if item is _EOF:
+            self._eof = True
+            return
+        try:
+            request = json.loads(item)
+        except json.JSONDecodeError:
+            self._send({"id": None, "ok": False, "error": "invalid json"})
+            return
+        method = request.get("method")
+        if method == "stop":
+            self._reply(request.get("id"), {"stopped": True})
+            self._stop_pending = True
+        elif method == "audio.credit":
+            self._take_credit(request.get("params") or {})
+        elif method == "progress.reached":
+            self._progress_reached(request.get("params") or {})
+        elif method in self._INLINE_WHILE_STREAMING:
+            request_id = request.get("id")
+            try:
+                self._dispatch(method, request_id, request)
+            except Exception as error:  # noqa: BLE001 - same net as run()
+                self._fail(request_id, f"{method} failed: {error}")
+        else:
+            self._deferred.append(request)
+
+    def _await_credit(self) -> bool:
+        """Wait until the shell has room for one more frame.
+
+        False means a stop arrived while waiting: the frame must not go out.
+        Blocking here is the whole point - the shell's queue is bounded, and
+        an engine that kept writing would be the one blocking the pipe, with
+        every reply stuck behind its audio. Closing stdin releases the wait,
+        so a batch caller that never sends credits still gets its audio.
+        """
+        while (
+            self._credits is not None and self._credits <= 0
+            and not self._eof and not self._stop_pending
+        ):
+            self._absorb(self._requests.get())
+        if self._stop_pending:
+            return False
+        if self._credits is not None and not self._eof:
+            self._credits -= 1
+        return True
+
+    def _take_credit(self, params: dict[str, Any]) -> None:
+        # A credit for a reading that is over (the shell drains what a stop
+        # left behind) must not top up the one that follows it.
+        if self._credits is None or params.get("id") != self._credit_read:
+            return
+        self._credits += int(params.get("frames") or 1)
+
+    def _progress_reached(self, params: dict[str, Any]) -> None:
+        heard = self._listening.get(params.get("id"))
+        segment_id = params.get("segment_id")
+        if heard is None or not segment_id or self._repository is None:
+            return
+        book_id, rate, voice_id = heard
+        self._repository.save_progress(Progress(
+            book_id=book_id,
+            segment_id=str(segment_id),
+            playback_rate=rate,
+            voice_id=voice_id,
+        ))
 
     def run(self) -> None:
         while True:
@@ -493,6 +568,14 @@ class _Session:
             elif method == "stop":
                 # Nothing is playing; saying so beats silence.
                 self._reply(request_id, {"stopped": False})
+            elif method == "audio.credit":
+                # Room handed back after the reading it was for has ended.
+                # Nothing to top up, and no reply: it carries no id.
+                self._take_credit(request.get("params") or {})
+            elif method == "progress.reached":
+                # The ear reaches the last utterances after the reply has
+                # gone out, so this lands here as often as mid-stream.
+                self._progress_reached(request.get("params") or {})
             else:
                 self._fail(request_id, f"unknown method: {method}")
 
@@ -520,7 +603,10 @@ class _Session:
             else:
                 self._fail(request_id, f"unknown part: {wanted}")
                 return
-        self._speak(request_id, utterances, voice_id, rate, settings)
+        self._speak(
+            request_id, utterances, voice_id, rate, settings,
+            window=params.get("window"),
+        )
 
     def _read_book(self, request_id: Any, params: dict[str, Any]) -> None:
         if self._repository is None:
@@ -533,10 +619,11 @@ class _Session:
             return
         voice_id = str(params.get("voice_id") or "")
         if not voice_id:
-            # Progress is written at every position, BEFORE the voice is ever
-            # asked to speak - so a request the voice would reject later must
-            # be rejected here, or it leaves a row the library refuses to load
-            # (an empty voice made library.list fail for every book, 02/09).
+            # Progress is written with this voice once the shell reports the
+            # ear reaching a position - so a request the voice would reject
+            # must be rejected here, or it leaves a row the library refuses
+            # to load (an empty voice made library.list fail for every book,
+            # 02/09).
             self._fail(request_id, "voice_id is required")
             return
         rate = float(params.get("rate") or 1.0)
@@ -558,7 +645,7 @@ class _Session:
         end = scope_end(chapter_of, start, None if chapters is None else int(chapters))
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
-            book_id=book_id,
+            book_id=book_id, window=params.get("window"),
         )
 
     def _voice_catalogue(self) -> list[dict[str, Any]]:
@@ -1715,6 +1802,7 @@ class _Session:
         settings: SynthesisSettings,
         *,
         book_id: str | None = None,
+        window: Any = None,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
@@ -1735,9 +1823,20 @@ class _Session:
         seq = 0
         voiced = 0
         stopped = False
+        # The shell's window for this reading, if it asked for one. Credits
+        # from a previous reading die with it.
+        self._credits = None if window is None else int(window)
+        self._credit_read = request_id
+        self._stop_pending = False
+        if book_id is not None:
+            self._listening[request_id] = (book_id, rate, voice_id)
+            while len(self._listening) > 4:
+                del self._listening[next(iter(self._listening))]
 
         def emit(pcm: bytes, *, from_voice: bool) -> None:
             nonlocal seq, voiced
+            if not self._await_credit():
+                return
             self._send({
                 "id": request_id,
                 "event": "chunk",
@@ -1765,16 +1864,16 @@ class _Session:
                     }
                     if utterance.figure_id is not None:
                         where["figure_id"] = utterance.figure_id
+                    # A position rides the shell's queue like a chunk does,
+                    # so it spends a credit like one. Progress is NOT saved
+                    # here: the engine is minutes ahead of the ear, and what
+                    # was written at this point used to resume a restart
+                    # past content nobody had heard. The shell says when the
+                    # ear arrives (`progress.reached`).
+                    if not self._await_credit():
+                        stopped = True
+                        break
                     self._send(where)
-                    if book_id is not None and self._repository is not None:
-                        # Progress follows the voice, exactly like the Qt
-                        # coordinator: reopening lands where reading stopped.
-                        self._repository.save_progress(Progress(
-                            book_id=book_id,
-                            segment_id=utterance.segment_id,
-                            playback_rate=rate,
-                            voice_id=voice_id,
-                        ))
                 sentences = split_sentences(utterance.text)
                 if not sentences and utterance.text.strip():
                     sentences = (utterance.text,)
@@ -1845,6 +1944,10 @@ class _Session:
         except Exception as error:  # noqa: BLE001 - the pipe must survive
             self._fail(request_id, f"read failed: {error}")
             return
+        # A stop that arrived on the last frame was answered; nothing is left
+        # for it to cut short, and it must not cut the next reading instead.
+        self._stop_pending = False
+        self._credits = None
         self._reply(request_id, {
             "frames": seq,
             "voiced_frames": voiced,

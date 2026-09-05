@@ -8,6 +8,7 @@ and a stop that actually stops.
 from __future__ import annotations
 
 import base64
+import contextlib
 import io
 import json
 import os
@@ -248,17 +249,17 @@ class ProtocolTests(unittest.TestCase):
             )
             self.assertEqual(longest, SAMPLE_RATE * expected_ms // 1000)
 
-            progress = repository.load_progress(BOOK_ID)
-            self.assertIsNotNone(progress)
-            self.assertEqual(progress.segment_id, flat[-1].id)
-            self.assertEqual(progress.voice_id, "adam")
+            # Production alone remembers nothing: no shell reported the ear
+            # reaching any of these positions, so a restart must not resume
+            # past content nobody heard (F2 of the 05/09 audit).
+            self.assertIsNone(repository.load_progress(BOOK_ID))
 
     def test_read_book_without_a_voice_writes_no_progress(self) -> None:
-        """Progress is saved at every position before the voice speaks, so a
-        request the voice would reject must be refused up front. On 02/09 a
-        probe with no voice_id left a row with an empty voice - and the
-        library loader, which requires one, then failed library.list for
-        every book."""
+        """Progress is saved with the reading's voice when the shell reports
+        the ear reaching a position, so a request the voice would reject must
+        be refused up front. On 02/09 a probe with no voice_id left a row with
+        an empty voice - and the library loader, which requires one, then
+        failed library.list for every book."""
         from vieneu_reader.storage.repository import LibraryRepository
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -1681,3 +1682,294 @@ class ProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ListeningProgressReceipts(unittest.TestCase):
+    """F2 of the 05/09 product audit: who says a position was HEARD.
+
+    `read.book` used to write progress the moment it EMITTED a position,
+    before the engine had produced a single frame for that utterance. With
+    no player in the loop at all, every segment was persisted and the read
+    reported success - so a restart resumed past content nobody heard.
+
+    Now the engine does not persist LISTENING progress during PRODUCTION.
+    The shell, which owns the ear, says `progress.reached` for a position
+    when playback gets there, and only then is the book's progress written -
+    with the rate and voice of the reading that position belongs to. Pinned
+    red on 05/09 (`expectedFailure`), green with the fix the same day.
+    Goal contract: Apps/ai-memory/plans/readease-playback-reliability.md.
+    """
+
+    def _library(self, root, repository_class=None):
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        repository = (repository_class or LibraryRepository)(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
+        book = build_book([
+            ("Một", [("Đoạn một của chương đầu.", "paragraph"),
+                      ("Đoạn hai của chương đầu.", "paragraph")]),
+        ])
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        repository.add_book(book, source)
+        flat = [segment for chapter in book.chapters for segment in chapter.segments]
+        return repository, flat
+
+    def test_the_shell_reporting_the_ear_writes_progress_for_that_reading(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            repository, flat = self._library(Path(directory))
+            replies = run_server(
+                [{"id": 21, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.25}},
+                 # The shell's word, mid-stream: the ear got to the first one.
+                 {"method": "progress.reached",
+                  "params": {"id": 21, "segment_id": flat[0].id}}],
+                FakeEngine(chunks_per_sentence=1), repository=repository,
+            )
+
+            self.assertTrue(replies[-1]["ok"])
+            # No reply to the report: it carried no id and asked nothing.
+            self.assertEqual([r for r in replies if r.get("id") is None], [])
+            progress = repository.load_progress(BOOK_ID)
+            self.assertIsNotNone(progress)
+            self.assertEqual(progress.segment_id, flat[0].id)
+            self.assertEqual(progress.playback_rate, 1.25)
+            self.assertEqual(progress.voice_id, "adam")
+
+    def test_a_report_for_another_reading_writes_nothing(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            repository, flat = self._library(Path(directory))
+            replies = run_server(
+                [{"id": 22, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam"}},
+                 {"method": "progress.reached",
+                  "params": {"id": 99, "segment_id": flat[0].id}}],
+                FakeEngine(chunks_per_sentence=1), repository=repository,
+            )
+
+            self.assertTrue(replies[-1]["ok"])
+            self.assertIsNone(repository.load_progress(BOOK_ID))
+
+    def test_a_report_arriving_after_the_reply_still_lands(self) -> None:
+        """The ear reaches the last utterances after the engine has replied,
+        so the report for them comes through the idle dispatcher, not the
+        streaming poll."""
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            repository, flat = self._library(Path(directory))
+            engine = FakeEngine(chunks_per_sentence=1)
+            with _live_server(engine, repository=repository) as (requests, replies):
+                _say(requests, {"id": 23, "method": "read.book",
+                                "params": {"book_id": BOOK_ID, "voice_id": "adam"}})
+                _until(replies, lambda m: m.get("id") == 23 and "ok" in m)
+                self.assertIsNone(repository.load_progress(BOOK_ID))
+
+                _say(requests, {"method": "progress.reached",
+                                "params": {"id": 23, "segment_id": flat[1].id}})
+                # A ping after it proves the report was processed before the
+                # assertion runs, rather than racing it.
+                _say(requests, {"id": 24, "method": "ping"})
+                _until(replies, lambda m: m.get("id") == 24)
+                progress = repository.load_progress(BOOK_ID)
+                self.assertIsNotNone(progress)
+                self.assertEqual(progress.segment_id, flat[1].id)
+
+    def test_read_book_does_not_persist_listening_progress_during_production(self) -> None:
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        class Recording(LibraryRepository):
+            def __init__(self, path):
+                super().__init__(path)
+                self.saves = []
+
+            def save_progress(self, progress):
+                self.saves.append(progress.segment_id)
+                super().save_progress(progress)
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = Recording(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
+            book = build_book([
+                ("Một", [("Đoạn một của chương đầu.", "paragraph"),
+                          ("Đoạn hai của chương đầu.", "paragraph")]),
+            ])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+
+            replies = run_server(
+                [{"id": 21, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+                FakeEngine(chunks_per_sentence=1), repository=repository,
+            )
+
+            self.assertTrue(replies[-1]["ok"])
+            # Nothing was played - there is no player here - so nothing was
+            # heard, so nothing should have been remembered as heard.
+            self.assertEqual(
+                repository.saves, [],
+                f"progress was persisted during production for {repository.saves}",
+            )
+
+
+@contextlib.contextmanager
+def _live_server(engine, **kwargs):
+    """serve() on a pipe that stays open, the way the shell drives it.
+
+    Yields (requests, replies). On exit stdin is closed and the replies are
+    drained until the server finishes, so a reading still streaming when a
+    test is done ends cleanly instead of writing into a closed pipe.
+    """
+    request_read, request_write = os.pipe()
+    reply_read, reply_write = os.pipe()
+    reader = os.fdopen(request_read, "r")
+    writer = os.fdopen(reply_write, "w")
+    requests = os.fdopen(request_write, "w")
+    replies = os.fdopen(reply_read, "r")
+
+    def run() -> None:
+        try:
+            serve(reader, writer, engine, **kwargs)
+        finally:
+            writer.close()
+
+    server = threading.Thread(target=run, daemon=True)
+    server.start()
+    try:
+        yield requests, replies
+    finally:
+        requests.close()
+        for _ in replies:
+            pass
+        server.join(timeout=10)
+        replies.close()
+        reader.close()
+
+
+def _say(requests, request: dict) -> None:
+    requests.write(json.dumps(request) + "\n")
+    requests.flush()
+
+
+def _until(replies, done) -> list[dict]:
+    """Every line up to and including the first one `done` accepts."""
+    seen: list[dict] = []
+    while True:
+        line = replies.readline()
+        if not line:
+            raise AssertionError(f"server closed before: {seen}")
+        message = json.loads(line)
+        seen.append(message)
+        if done(message):
+            return seen
+
+
+def _frames(messages) -> int:
+    return sum(1 for m in messages if m.get("event") in {"chunk", "position"})
+
+
+class FlowControlReceipts(unittest.TestCase):
+    """F1 of the 05/09 product audit, the engine's half.
+
+    The shell's audio queue is bounded, and while the player is paused it
+    drains nothing. An engine that kept writing frames filled that queue,
+    the shell's reader blocked on it, and every reply - `model.status`, the
+    voice list, a config save - sat behind the audio in the same stdout
+    until the 30 s timeout. To the person: pause, then the app hangs.
+
+    So the shell asks for a `window`, and the engine writes no more frames
+    than it has been given room for. Waiting for room is not deafness: the
+    quick requests are still answered from the wait. These tests are
+    CAUSAL, not timed - a reply to a later request proves the earlier lines
+    were processed, and the frame count at that moment is the claim.
+    """
+
+    WINDOW = 2
+    TEXT = "Câu một. Câu hai. Câu ba. Câu bốn."
+
+    @contextlib.contextmanager
+    def _stalled(self):
+        """A reading that has spent its window and is waiting for room."""
+        with _live_server(FakeEngine(chunks_per_sentence=3)) as (requests, replies):
+            _say(requests, {"id": 3, "method": "read",
+                            "params": {"text": self.TEXT, "voice_id": "adam",
+                                       "window": self.WINDOW}})
+            seen: list[dict] = []
+            while _frames(seen) < self.WINDOW:
+                seen.extend(_until(replies, lambda m: True))
+            yield requests, replies, seen
+
+    def test_a_spent_window_still_answers_quick_requests(self) -> None:
+        with self._stalled() as (requests, replies, seen):
+            _say(requests, {"id": 4, "method": "ping"})
+            more = _until(replies, lambda m: m.get("id") == 4)
+            self.assertTrue(more[-1]["ok"])
+            # The ping was answered, so stdin was being read - and not one
+            # frame beyond the window went out while it was.
+            self.assertEqual(_frames(seen) + _frames(more), self.WINDOW)
+
+    def test_one_credit_releases_one_frame(self) -> None:
+        with self._stalled() as (requests, replies, seen):
+            _say(requests, {"method": "audio.credit", "params": {"id": 3, "frames": 1}})
+            _say(requests, {"id": 5, "method": "ping"})
+            first = _until(replies, lambda m: m.get("id") == 5)
+            # The credit and the ping can be absorbed in the same poll, in
+            # which case the ping is answered BEFORE the frame the credit
+            # buys goes out. A second ping closes that window: by its reply
+            # the credit has been spent, and spent exactly once.
+            _say(requests, {"id": 6, "method": "ping"})
+            second = _until(replies, lambda m: m.get("id") == 6)
+            self.assertEqual(_frames(first) + _frames(second), 1)
+            # No reply to the credit itself.
+            self.assertEqual([m for m in first + second if m.get("id") is None], [])
+
+    def test_a_credit_for_another_reading_buys_nothing(self) -> None:
+        with self._stalled() as (requests, replies, seen):
+            _say(requests, {"method": "audio.credit", "params": {"id": 99, "frames": 5}})
+            _say(requests, {"id": 6, "method": "ping"})
+            more = _until(replies, lambda m: m.get("id") == 6)
+            self.assertEqual(_frames(more), 0)
+
+    def test_a_stop_while_waiting_for_room_ends_the_reading(self) -> None:
+        with self._stalled() as (requests, replies, seen):
+            _say(requests, {"id": 7, "method": "stop"})
+            more = _until(replies, lambda m: m.get("id") == 3 and "ok" in m)
+            stop = next(m for m in more if m.get("id") == 7)
+            self.assertTrue(stop["result"]["stopped"])
+            self.assertTrue(more[-1]["result"]["stopped"])
+            self.assertEqual(_frames(more), 0)
+
+    def test_quick_requests_while_stalled_answer_within_the_budget(self) -> None:
+        """Q2 of the goal contract (owner, 05/09): a request sent while the
+        player is paused answers in under 500 ms at p95. Before the window,
+        it answered when the reading ended - or never."""
+        with self._stalled() as (requests, replies, seen):
+            latencies = []
+            for n in range(20):
+                began = time.monotonic()
+                _say(requests, {"id": 100 + n, "method": "ping"})
+                _until(replies, lambda m, n=n: m.get("id") == 100 + n)
+                latencies.append(time.monotonic() - began)
+            latencies.sort()
+            p95 = latencies[int(len(latencies) * 0.95) - 1]
+            self.assertLess(p95, 0.5, f"p95 {p95 * 1000:.0f} ms; all {[round(l * 1000) for l in latencies]}")
+
+    def test_closing_stdin_releases_the_window(self) -> None:
+        """A batch caller writes one read and closes: it must still get the
+        whole reading, credits or not."""
+        with self._stalled() as (requests, replies, seen):
+            requests.close()
+            more = _until(replies, lambda m: m.get("id") == 3 and "ok" in m)
+            self.assertFalse(more[-1]["result"]["stopped"])
+            self.assertGreater(_frames(seen) + _frames(more), self.WINDOW)
