@@ -518,13 +518,12 @@ class EpubImportTests(unittest.TestCase):
         self.assertIsNone(other.duplicate_of)
         self.assertEqual(other.label, "Hình 1.4")
 
-    def test_two_companion_survivors_with_an_annotation_between_are_two_figures(self):
-        """Krug's layout: every original has an ADJACENT companion, so the
-        companion rule keeps only the copies - and then each surviving image
-        is class-marked. Two of them in a row, separated only by the first
-        one's annotation, are two different pictures, not a copy: a copy can
-        only repeat an original. Found by the audit, 05/09 (one false
-        duplicate in Krug that would have silenced a real figure's cue).
+    def test_two_companion_pairs_with_an_annotation_between_are_two_figures(self):
+        """Krug's layout, two figures in a row: original, copy, annotation,
+        original, copy, annotation. A copy repeats the ORIGINAL right before
+        it; the second original is class-free and so never a copy of the
+        first pair. Found by the audit, 05/09, as a false duplicate that
+        would have silenced a real figure's cue.
         """
         chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
         <h1>Một</h1>
@@ -552,8 +551,14 @@ class EpubImportTests(unittest.TestCase):
         book = import_epub(path)
         figures = load_epub_presentation(path, book).chapters[0].figures
 
-        self.assertEqual([f.asset_path.rsplit("/", 1)[1] for f in figures], ["a-vi.png", "b-vi.png"])
-        self.assertEqual([f.duplicate_of for f in figures], [None, None])
+        self.assertEqual(
+            [f.asset_path.rsplit("/", 1)[1] for f in figures],
+            ["a.png", "a-vi.png", "b.png", "b-vi.png"],
+        )
+        a, a_vi, b, b_vi = figures
+        # Each copy repeats ITS original; the second original is not a copy
+        # of the first copy, whatever sits between them.
+        self.assertEqual([f.duplicate_of for f in figures], [None, a.id, None, b.id])
 
     def test_a_label_only_paragraph_above_the_picture_is_its_caption(self):
         """"Minh họa 11" on its own line above the picture (Thiên Nga Đen)."""
@@ -618,7 +623,10 @@ class EpubImportTests(unittest.TestCase):
         with self.assertRaisesRegex(CorruptBookError, "không an toàn"):
             load_epub_assets(path, ("../outside.png",))
 
-    def test_localized_companion_replaces_immediately_preceding_original(self):
+    def test_an_adjacent_localized_companion_is_kept_beside_its_original_as_a_duplicate(self):
+        """Krug's layout. The companion used to replace the original on the
+        page; now every translated copy is treated alike - shown after its
+        original, numbered with it, announced never."""
         chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
         <h1>Một</h1>
         <div class="image"><img src="images/original.png" alt="Image"/></div>
@@ -642,9 +650,13 @@ class EpubImportTests(unittest.TestCase):
 
         figures = load_epub_presentation(path, book).chapters[0].figures
 
-        self.assertEqual(len(figures), 1)
-        self.assertEqual(figures[0].asset_path, "OEBPS/images/localized.png")
-        self.assertEqual(figures[0].alt_text, "Sơ đồ tiếng Việt")
+        self.assertEqual(
+            [f.asset_path for f in figures],
+            ["OEBPS/images/original.png", "OEBPS/images/localized.png"],
+        )
+        self.assertIsNone(figures[0].duplicate_of)
+        self.assertEqual(figures[1].duplicate_of, figures[0].id)
+        self.assertEqual(figures[1].alt_text, "Sơ đồ tiếng Việt")
 
     def test_repeated_spine_member_gets_distinct_chapter_scoped_occurrences(self):
         chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>

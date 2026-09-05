@@ -565,26 +565,6 @@ def _image_dimensions(payload: bytes, media_type: str) -> tuple[int, int] | None
     return None
 
 
-def _prefer_localized_companions(
-    events: tuple[_PreparedEvent, ...],
-) -> tuple[_PreparedEvent, ...]:
-    selected: list[_PreparedEvent] = []
-    last_image_index: int | None = None
-    for event in events:
-        if isinstance(event, _TextEvent):
-            selected.append(event)
-            last_image_index = None
-            continue
-        if event.is_companion and last_image_index is not None:
-            previous = selected[last_image_index]
-            if isinstance(previous, _AcceptedImage) and not previous.is_companion:
-                selected[last_image_index] = event
-                continue
-        selected.append(event)
-        last_image_index = len(selected) - 1
-    return tuple(selected)
-
-
 def _prepared_events(
     archive: ZipFile,
     content_member: str,
@@ -635,7 +615,7 @@ def _prepared_events(
                 is_localized=event.is_localized,
             )
         )
-    return _prefer_localized_companions(tuple(prepared))
+    return tuple(prepared)
 
 
 def _caption_of(
@@ -680,11 +660,15 @@ def _repeats_previous(
     a caption between them all the time. Between the two pictures there may
     be nothing but the first one's caption and a translator's annotation.
 
-    And the picture it repeats must itself be an ORIGINAL. Where the
-    companion rule has already replaced an original with its adjacent copy
-    (Krug's layout), every surviving image is class-marked; a page of such
-    screenshots, each followed by its annotation, would otherwise chain into
-    one "figure" (found by the audit over the owner's library, 05/09).
+    And the picture it repeats must itself be an ORIGINAL: two class-marked
+    copies in a row, separated only by the first one's annotation, are two
+    different pictures (found by the audit over the owner's library, 05/09).
+
+    An adjacent companion (Krug's layout, `bs-image-companion` right after
+    the original) used to REPLACE the original on the page. It is now kept
+    and marked like every other copy: one policy for every book, and the
+    page keeps everything a reader might want to look back at (owner,
+    05/09: "giữ hiển thị đầy đủ để user có thể xem lại").
     """
     if previous is None or not (image.is_localized or image.is_companion):
         return False
