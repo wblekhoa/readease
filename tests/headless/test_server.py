@@ -510,7 +510,14 @@ class ProtocolTests(unittest.TestCase):
                  {"id": 51, "method": "config.get",
                   "params": {"key": "tauri_selection_shortcut"}},
                  {"id": 52, "method": "config.get",
-                  "params": {"key": "password"}}],
+                  "params": {"key": "password"}},
+                 # The shell writes this one on every voice toggle and reads
+                 # it back on every launch; it round-trips like the rest.
+                 {"id": 53, "method": "config.set",
+                  "params": {"key": "voice_shortlist",
+                              "value": '["Adam","Trúc Ly"]'}},
+                 {"id": 54, "method": "config.get",
+                  "params": {"key": "voice_shortlist"}}],
                 FakeEngine(), settings_path=settings,
             )
 
@@ -519,6 +526,46 @@ class ProtocolTests(unittest.TestCase):
         # An open key-value store over a pipe is an attack surface; only the
         # keys the shell actually owns exist.
         self.assertFalse(replies[2]["ok"])
+        self.assertTrue(replies[3]["ok"])
+        self.assertEqual(replies[4]["result"]["value"], '["Adam","Trúc Ly"]')
+
+    def test_every_config_key_the_shell_asks_for_is_a_known_key(self) -> None:
+        """The allow-list has to cover what the shell actually sends.
+
+        `voice_shortlist` was sent on every launch and was not in the set, so
+        the engine answered "unknown config key" - and the shell, which reads
+        a refusal as a result, threw inside its voice-loading chain and put
+        "could not fetch the voice list" on screen under a voice list it had
+        already fetched (owner, 05/09). Two symptoms, one missing string.
+
+        Nothing else could catch it: MOCK_AUDIT counts methods, not keys, and
+        the harness answers config.get for any key at all - so the shell was
+        tested against a store more permissive than the engine.
+        """
+        import re
+        from pathlib import Path
+
+        from vieneu_reader.headless.server import _Session
+
+        source_root = Path(__file__).resolve().parents[2] / "app" / "src"
+        asked: dict[str, str] = {}
+        for path in source_root.rglob("*.ts*"):
+            text = path.read_text(encoding="utf-8")
+            for match in re.finditer(r'key: "([a-z_]+)"', text):
+                asked.setdefault(match.group(1), str(path))
+            # `remember("voice_shortlist", …)` is the same request wearing a
+            # helper, and was the shape that got away.
+            for match in re.finditer(r'remember\(\s*"([a-z_]+)"', text):
+                asked.setdefault(match.group(1), str(path))
+
+        self.assertIn("voice_shortlist", asked, "the shell stopped asking for it")
+        unknown = {key: where for key, where in asked.items()
+                   if key not in _Session._CONFIG_KEYS}
+        self.assertEqual(
+            unknown, {},
+            "the shell sends config keys the engine refuses: "
+            + ", ".join(f"{key} ({where})" for key, where in sorted(unknown.items())),
+        )
 
     def test_model_prepare_streams_progress_then_finishes(self) -> None:
         engine = FakeEngine()

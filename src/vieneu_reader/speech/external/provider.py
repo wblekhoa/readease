@@ -29,6 +29,7 @@ ErrorCode = Literal[
     "refused",        # they understood and said no (moderation, bad input)
     "budget",         # OUR ceiling, not theirs: nothing was sent
 ]
+VoiceGender = Literal["male", "female"]
 
 
 class ExternalVoiceError(Exception):
@@ -51,6 +52,16 @@ class ProviderVoice:
     id: str
     label: str
     model: str
+    # Languages the provider has VERIFIED this voice in, as BCP-47 tags
+    # ("vi", "en"). Empty means the provider did not say - which is what
+    # OpenAI's constant catalogue and an older ElevenLabs entry both look
+    # like - and must never be read as "cannot". A voice this app marks as
+    # Vietnamese is one somebody at the provider checked; a voice it leaves
+    # unmarked is one nobody has asked about.
+    languages: tuple[str, ...] = ()
+    # Provider-supplied metadata only. `None` is deliberately "unknown": a
+    # voice name or preview is not evidence of somebody's gender.
+    gender: VoiceGender | None = None
 
     def as_voice(self, provider: str) -> Voice:
         """`provider:model:voice` - self-describing on purpose.

@@ -18,6 +18,7 @@ import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
   ReactNode,
+  Ref,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
@@ -307,9 +308,12 @@ export function Surface({
   className = "",
   edge = "field",
   radius = "surface",
+  ref,
 }: {
   children: ReactNode;
   className?: string;
+  /** For a floating layer that has to know whether a click landed inside it. */
+  ref?: Ref<HTMLDivElement>;
   /** `field`: the fallback hairline that disappears where the fill already
    * separates (dark). `strong`: a real stroke for a layer that floats over
    * content and must read as an object on both papers - a tooltip (owner
@@ -322,6 +326,7 @@ export function Surface({
 }) {
   return (
     <div
+      ref={ref}
       className={`border bg-paper ${radius === "sheet" ? "rounded-3xl" : "rounded-2xl"} ${
         edge === "strong" ? "border-edge-strong" : "border-edge-field"
       } ${className}`}

@@ -332,6 +332,141 @@ def speak_enumerators(text: str) -> str:
     return _ENUMERATOR.sub(lambda m: f"{m.group(1)},", spoken)
 
 
+# Web addresses. A URL is written for a reader who can copy it; spoken
+# whole it is unusable - "w w w chấm flickr chấm com gạch chéo photos gạch
+# chéo…" - and the owner asked for the site to be named instead (05/09).
+#
+# So: the scheme goes, "www" goes, the PATH goes, and what is left is said
+# with "chấm" for the dots, behind the words "địa chỉ" so the listener knows
+# a link is being named rather than a word being spelled. The page keeps the
+# address in full; only the voice shortens it.
+#
+# 165 addresses in the owner's library. The final label has to be a real
+# top-level domain or nothing is a link: the same sweep matched "1.000/năm"
+# as a domain the moment that rule was missing.
+_LINK_TLDS = frozenset({
+    "com", "org", "net", "edu", "gov", "info", "io", "co", "me", "app",
+    "dev", "ai", "tv", "blog", "news", "xyz",
+    "vn", "uk", "us", "is", "ly", "ch", "de", "fr", "jp", "cn", "au", "ca",
+})
+_LINK = re.compile(
+    r"(?<![\w@/.])(?:https?://)?"
+    r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}"
+    r"(?:/[^\s<>]*)?"
+)
+_LINK_TAIL = ".,;:!?…)]}»”’\"'"
+#: Words that already announce a link. "tại địa chỉ www.x.com" must not
+#: become "tại địa chỉ địa chỉ x chấm com".
+_LINK_ANNOUNCED = ("địa chỉ", "đường dẫn", "trang", "website", "url", "link")
+
+
+def speak_links(text: str) -> str:
+    """Say the site a link points at, not the link."""
+
+    def spoken(match: "re.Match[str]") -> str:
+        hit = match.group(0)
+        tail = ""
+        while hit and hit[-1] in _LINK_TAIL:
+            tail = hit[-1] + tail
+            hit = hit[:-1]
+        host = re.sub(r"^https?://", "", hit).split("/", 1)[0]
+        host = re.sub(r"^www\d*\.", "", host, flags=re.IGNORECASE)
+        labels = [label for label in host.split(".") if label]
+        if len(labels) < 2 or labels[-1].lower() not in _LINK_TLDS:
+            return match.group(0)
+        said = " chấm ".join(labels)
+        before = match.string[:match.start()].rstrip().lower()
+        if any(before.endswith(word) for word in _LINK_ANNOUNCED):
+            return f"{said}{tail}"
+        return f"địa chỉ {said}{tail}"
+
+    return _LINK.sub(spoken, text)
+
+
+# Roman numerals after a division word: "Phần II" is a number the author
+# WROTE as a number, and the voice read it as the letter - "phần y" (owner,
+# 05/09). Sixty-one of them in the library, every single one behind "Phần".
+#
+# The cue word is the whole safety of this. A bare uppercase [IVXLC] run is
+# not a numeral in any useful sense: the same sweep found "OS X" six times,
+# and initials like "Catherine V" - both would become numbers under a rule
+# that only looked at the letters. So a numeral is only a numeral when a
+# word that names a division of a book stands in front of it.
+_ROMAN_CUES = (
+    "phần", "chương", "quyển", "tập", "mục", "hồi", "kỳ", "phụ lục",
+    "chapter", "part", "book", "volume", "section", "appendix",
+)
+_ROMAN_NUMERAL = re.compile(
+    r"\b(" + "|".join(_ROMAN_CUES) + r")(\s+)([IVXLC]+)\b",
+    re.IGNORECASE,
+)
+_ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
+
+
+def cardinal_words(number: int) -> str:
+    """'một' … 'chín mươi chín'; anything else stays a digit for the model."""
+    if number < 1 or number > 99:
+        return str(number)
+    if number < 10:
+        return _UNITS[number]
+    tens, unit = divmod(number, 10)
+    head = "mười" if tens == 1 else f"{_UNITS[tens]} mươi"
+    if unit == 0:
+        return head
+    if unit == 1:
+        tail = "một" if tens == 1 else "mốt"
+    elif unit == 5:
+        tail = "lăm"
+    else:
+        tail = _UNITS[unit]
+    return f"{head} {tail}"
+
+
+def roman_value(token: str) -> int | None:
+    """The number a Roman numeral spells, or None if it does not spell one.
+
+    Checked by writing the answer back out: "IIII" and "VV" parse to 4 and
+    10 under a naive sum, and neither is a numeral anybody wrote. Only a
+    token that round-trips is treated as one.
+    """
+
+    total = 0
+    previous = 0
+    for character in reversed(token):
+        value = _ROMAN_VALUES.get(character)
+        if value is None:
+            return None
+        total = total - value if value < previous else total + value
+        previous = max(previous, value)
+    if total < 1 or total > 399:
+        return None
+    return total if _roman_form(total) == token else None
+
+
+def _roman_form(number: int) -> str:
+    out = []
+    for value, glyph in (
+        (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+        (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+    ):
+        while number >= value:
+            out.append(glyph)
+            number -= value
+    return "".join(out)
+
+
+def speak_roman_numerals(text: str) -> str:
+    """"Phần II" → "Phần hai" for the voice; the page keeps its "II"."""
+
+    def spoken(match: "re.Match[str]") -> str:
+        number = roman_value(match.group(3))
+        if number is None:
+            return match.group(0)
+        return f"{match.group(1)}{match.group(2)}{cardinal_words(number)}"
+
+    return _ROMAN_NUMERAL.sub(spoken, text)
+
+
 def drop_note_marks(text: str) -> str:
     """Take the footnote superscripts out of what the voice says.
 
@@ -471,9 +606,17 @@ def speakable_text(text: str, kind: str = "paragraph") -> str:
     Bullet glyphs derail the voice (one probe read two words for four
     seconds), so they are dropped; a heading left without any terminal
     punctuation tends to end mid-air, so it is spoken with a final period.
+
+    Two more things the eye reads and the ear cannot: a Roman numeral after
+    a division word ("Phần II"), which came out as a letter, and a web
+    address, which came out spelled character by character.
     """
 
-    spoken = spell_ordinal_marks(unshout(speak_enumerators(drop_note_marks(text))))
+    # Roman numerals BEFORE unshout: "II" is all-caps and vowel-less, and a
+    # de-shouted "ii" is no longer a numeral anything can recognise.
+    spoken = drop_note_marks(text)
+    spoken = speak_roman_numerals(speak_enumerators(spoken))
+    spoken = spell_ordinal_marks(unshout(speak_links(spoken)))
     stripped = spoken.lstrip()
     while stripped and stripped[0] in _BULLET_GLYPHS:
         stripped = stripped[1:].lstrip()

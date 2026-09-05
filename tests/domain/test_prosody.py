@@ -10,6 +10,8 @@ from vieneu_reader.domain.prosody import (
     final_punctuation,
     pause_after_ms,
     selection_pause_ms,
+    speak_links,
+    speak_roman_numerals,
     speak_with_notes,
     speakable_text,
     split_sentences,
@@ -540,3 +542,73 @@ class NoteSpeechTests(unittest.TestCase):
             self.pieces("Câu có chú thích 4 rỗng.", [(17, 1, "  ")]),
             (("Câu có chú thích rỗng.", False),),
         )
+
+
+class RomanNumeralTests(unittest.TestCase):
+    """"Phần II" is a number the author wrote as a number.
+
+    The shipped build read it as the letter - "phần y" (owner, 05/09). The
+    library has 61 of them and every one is behind "Phần".
+    """
+
+    def test_a_division_word_makes_the_letters_a_number(self) -> None:
+        self.assertEqual(
+            speak_roman_numerals("Phần I và Phần II liên kết chặt chẽ với nhau."),
+            "Phần một và Phần hai liên kết chặt chẽ với nhau.",
+        )
+        self.assertEqual(speak_roman_numerals("Chương XIV"), "Chương mười bốn")
+        self.assertEqual(speak_roman_numerals("Phần XXI"), "Phần hai mươi mốt")
+
+    def test_letters_without_a_division_word_stay_letters(self) -> None:
+        # Both of these are in the owner's library, and both would become
+        # numbers under a rule that only looked at the capitals.
+        self.assertEqual(speak_roman_numerals("OS X là hệ điều hành"), "OS X là hệ điều hành")
+        self.assertEqual(speak_roman_numerals("Catherine V của Nga"), "Catherine V của Nga")
+
+    def test_a_run_that_is_not_a_numeral_is_left_alone(self) -> None:
+        # "IIII" sums to 4 and "VV" to 10; neither is a numeral anyone wrote.
+        self.assertEqual(speak_roman_numerals("Phần IIII"), "Phần IIII")
+        self.assertEqual(speak_roman_numerals("Phần VV"), "Phần VV")
+
+    def test_the_page_is_not_touched(self) -> None:
+        text = "Phần II"
+        speak_roman_numerals(text)
+        self.assertEqual(text, "Phần II")
+
+
+class LinkTests(unittest.TestCase):
+    """A URL is written to be copied; spoken whole it is unusable."""
+
+    def test_the_site_is_named_and_the_path_is_dropped(self) -> None:
+        self.assertEqual(
+            speak_links("Bạn có thể tìm chúng trên Flickr tại www.flickr.com/photos/rosenfeldmedia/sets/."),
+            "Bạn có thể tìm chúng trên Flickr tại địa chỉ flickr chấm com.",
+        )
+        self.assertEqual(speak_links("rosenfeldmedia.com/books/"), "địa chỉ rosenfeldmedia chấm com")
+
+    def test_the_scheme_and_every_www_go(self) -> None:
+        self.assertEqual(
+            speak_links("http://www.apa.org/pubs/journals/tra/index.aspx"),
+            "địa chỉ apa chấm org",
+        )
+        # www8, in the library. Stripping only "www." leaves the digit behind.
+        self.assertEqual(
+            speak_links("https://www8.gsb.columbia.edu/newsroom/newsn/1957/x"),
+            "địa chỉ gsb chấm columbia chấm edu",
+        )
+
+    def test_the_sentence_keeps_its_full_stop(self) -> None:
+        self.assertEqual(speak_links("Xem svpg.com."), "Xem địa chỉ svpg chấm com.")
+
+    def test_a_link_already_announced_is_not_announced_twice(self) -> None:
+        self.assertEqual(
+            speak_links("tại địa chỉ www.wiley.com/go/permissions."),
+            "tại địa chỉ wiley chấm com.",
+        )
+        self.assertEqual(speak_links("ở trang svpg.com."), "ở trang svpg chấm com.")
+
+    def test_things_that_only_look_like_addresses_are_left_alone(self) -> None:
+        # Both of these appeared in the sweep the moment the top-level domain
+        # was not checked: a price with a slash, and an abbreviation.
+        self.assertEqual(speak_links("Giá là 1.000/năm."), "Giá là 1.000/năm.")
+        self.assertEqual(speak_links("Anh ấy nói v.v. rồi đi."), "Anh ấy nói v.v. rồi đi.")

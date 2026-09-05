@@ -56,6 +56,7 @@ import {
   storedScope,
   type Estimate,
 } from "./ui/readingCost";
+import { keyVerdict, type KeyReply } from "./ui/keyVerdict";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
@@ -383,16 +384,18 @@ export default function App() {
      was accepted and the panel said it had been checked; the first thing
      that actually knew was a chapter half read (owner, 04/09). */
   const saveKey = useCallback(async (provider: string, key: string) => {
-    const result = await invoke<{ ok: boolean; code?: string }>("engine_request", {
-      method: "config.verify_key",
-      params: { provider, value: key },
-    }).catch(() => ({ ok: false, code: "network" }));
-    if (result.ok) {
+    const reply = await invoke<KeyReply>(
+      "engine_request",
+      { method: "config.verify_key", params: { provider, value: key } },
+    ).catch(() => null);
+    // Which `ok` counts is decided in keyVerdict, which has tests on it.
+    const { ok, code } = keyVerdict(reply);
+    if (ok) {
       const list = await invoke<Voice[]>("engine_voices").catch(() => [] as Voice[]);
       setVoices(list);
     }
-    setKeysSet((current) => ({ ...current, [provider]: result.ok }));
-    return { ok: result.ok, code: result.code ?? null };
+    setKeysSet((current) => ({ ...current, [provider]: ok }));
+    return { ok, code };
   }, []);
 
   const changeBudget = useCallback((usd: number | null) => {
@@ -1240,6 +1243,7 @@ export default function App() {
                     }}
                     aria-label={text("cost.open")}
                     title={text("cost.open")}
+                    data-popover-trigger
                     className={costOpen ? "text-ink" : ""}
                   >
                     <CoinIcon />
@@ -1333,6 +1337,9 @@ export default function App() {
                 }}
                 aria-label={text("player.settings_open")}
                 title={text("player.settings_open")}
+                /* It toggles, so the outside-click that closes the panel has
+                   to leave this button alone - see `useDismiss`. */
+                data-popover-trigger
                 className={`shrink-0 ${settingsOpen ? "text-ink" : ""}`}
               >
                 <SlidersIcon />
@@ -1378,7 +1385,17 @@ export default function App() {
           reading={reading !== "idle"}
           shortlisted={shortlist.length}
           voicesError={voicesError}
-          paidVoices={voices.filter((voice) => isPaidVoice(voice.id))}
+          /* The shortlist governs here too. This used to hand the panel
+             every paid voice the account owns - forty-five of them for an
+             ElevenLabs account with cloned voices - so the API tab dumped
+             the account into a native select while the tab beside it showed
+             a curated five. One list means one list everywhere (owner,
+             03/09); the way to add to it is Quản lý giọng, in both tabs. */
+          paidVoices={offeredVoices(voices, shortlist, voiceId).filter((voice) => isPaidVoice(voice.id))}
+          /* Whether the account HAS any, which is a different question from
+             whether any is on the list - it decides which sentence the empty
+             API tab says. */
+          paidAvailable={voices.some((voice) => isPaidVoice(voice.id))}
           keysSet={keysSet}
           scope={scope}
           budget={budget}
@@ -1389,12 +1406,14 @@ export default function App() {
           onVoice={switchVoice}
           onRate={rememberRate}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
-          onClose={() => {
-            setSettingsOpen(false);
-            invoke<Voice[]>("engine_voices")
-              .then(setVoices)
-              .catch(() => undefined);
-          }}
+          /* Just close. This used to re-list the catalogue on the way out,
+             in case a key had been added while the panel was open - but
+             `saveKey` already re-lists the moment a key is accepted, and
+             ElevenLabs' catalogue is a live network call with no cache
+             behind it. Now that a click on the book closes this panel, that
+             would be a request to their servers every time somebody
+             dismissed it. */
+          onClose={() => setSettingsOpen(false)}
         />
       )}
       {voicesOpen && (

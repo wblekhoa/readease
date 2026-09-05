@@ -10,6 +10,14 @@ use tauri::Manager;
 struct Voice {
     id: String,
     label: String,
+    /// Languages the provider has verified the voice in (BCP-47). Empty is
+    /// "did not say" - the local model and OpenAI both arrive empty - and
+    /// the shell must never draw that as "cannot".
+    languages: Vec<String>,
+    /// Provider-supplied gender metadata when known. Missing remains
+    /// unknown; the shell must not infer it from a voice name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    gender: Option<String>,
 }
 
 type Engine = Arc<EngineClient>;
@@ -48,6 +56,16 @@ fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String>
         .map(|voice| Voice {
             id: voice["id"].as_str().unwrap_or_default().to_string(),
             label: voice["label"].as_str().unwrap_or_default().to_string(),
+            languages: voice["languages"]
+                .as_array()
+                .map(|tags| {
+                    tags.iter()
+                        .filter_map(|tag| tag.as_str())
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default(),
+            gender: voice["gender"].as_str().map(str::to_string),
         })
         .collect();
     Ok(voices)

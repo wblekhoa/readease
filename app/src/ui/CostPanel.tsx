@@ -11,10 +11,9 @@
  * the same way - a floating layer in this app behaves the same wherever it
  * came from.
  */
-import { useEffect } from "react";
 import { text } from "../i18n";
 import { IconButton, Notice, Select, Surface } from "./controls";
-import { GroupedRow, GroupedSection } from "./patterns";
+import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
 import { CloseIcon } from "./icons";
 import { SCOPES, formatCount, formatUsd, type Estimate } from "./readingCost";
 
@@ -135,13 +134,9 @@ export function CostPanel({
   onBudget: (usd: number | null) => void;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Its own button is the middle of the footer, so this one is already over
+  // what opened it; what it lacked was getting out of the way on a click.
+  const panel = useDismiss(onClose);
 
   const paid = estimate?.paid === true;
 
@@ -149,6 +144,7 @@ export function CostPanel({
     <Surface
       edge="strong"
       radius="sheet"
+      ref={panel}
       className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 w-[26rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 p-6 shadow-lifted"
     >
       <div className="flex items-center gap-2">

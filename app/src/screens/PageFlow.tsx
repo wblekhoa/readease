@@ -63,6 +63,20 @@ export function PageFlow({
    * or the window changes, the chapter reflows and this is what stays on
    * screen - the way Apple Books keeps your place through a resize. */
   const anchor = useRef<string | null>(null);
+  /* "Take me to the END of this chapter" outlives the first measurement.
+   *
+   * Turning back from a chapter's first page asks for the previous
+   * chapter's LAST page. That page number is `views - 1`, and `views` is
+   * counted the instant the new chapter mounts - before the flow has its
+   * final height, when the whole chapter is still one tall column and the
+   * count reads 1. The answer was therefore 0, the FIRST page, and the
+   * recount that learns the true count a frame later had nothing to aim
+   * at: an "__end__" target deliberately leaves no anchor. So one press of
+   * "previous page" skipped a whole chapter backwards (owner, 05/09).
+   *
+   * The intent is kept instead of thrown away, and every recount re-aims
+   * at the end until the reader turns a page themselves. */
+  const wantEnd = useRef(false);
   const layoutKey = useRef("");
 
   // The page box is whatever the shell leaves between its bars.
@@ -119,6 +133,7 @@ export function PageFlow({
       // turn a page: a picture landing a moment later reflows the chapter,
       // and the page must re-find this segment, not the first one it saw.
       anchor.current = target.segmentId === "__end__" ? null : target.segmentId;
+      wantEnd.current = target.segmentId === "__end__";
       setAnimate(false);
       setView(showing(target.segmentId, total));
       onTargetReached();
@@ -159,7 +174,11 @@ export function PageFlow({
     const recount = () => {
       const total = countViews();
       setViews(total);
-      if (anchor.current) {
+      if (wantEnd.current) {
+        // Asked for the end, and the end has just moved: follow it.
+        reason.current = "reflow";
+        setView(total - 1);
+      } else if (anchor.current) {
         reason.current = "reflow";
         setView(showing(anchor.current, total));
       }
@@ -174,6 +193,8 @@ export function PageFlow({
 
   const turn = useCallback((delta: 1 | -1) => {
     reason.current = "turn";
+    // Their own hand outranks any place the app was still aiming for.
+    wantEnd.current = false;
     setAnimate(true);
     if (delta === 1) {
       if (view + 1 < views) setView(view + 1);

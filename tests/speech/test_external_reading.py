@@ -575,3 +575,76 @@ class VerifyKeyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CatalogueLanguageTests(unittest.TestCase):
+    """The catalogue carries what a provider vouches for, and nothing more."""
+
+    def _voices_with(self, provider_object):
+        from tests.headless.test_server import FakeEngine, run_server
+        from vieneu_reader.headless import server
+
+        original = server._external_provider
+        server._external_provider = lambda provider, voice_id, settings: (
+            provider_object if provider == "elevenlabs" else None
+        )
+        try:
+            with TemporaryDirectory() as directory:
+                path = Path(directory) / "settings.json"
+                path.write_text(json.dumps({"elevenlabs_api_key": KEY}), encoding="utf-8")
+                reply = run_server(
+                    [{"id": 1, "method": "voices"}], FakeEngine(), settings_path=path,
+                )[0]
+                return reply["result"]["voices"]
+        finally:
+            server._external_provider = original
+
+    def test_verified_languages_reach_the_shell_as_a_plain_list(self) -> None:
+        class Vouching:
+            name = "elevenlabs"
+            model = "eleven_flash_v2_5"
+
+            def voices(self):
+                return (
+                    ProviderVoice(id="nhu", label="Nhu · ElevenLabs", model=self.model, languages=("vi", "en")),
+                    ProviderVoice(id="rob", label="Rob · ElevenLabs", model=self.model),
+                )
+
+            def synthesize(self, text, voice_id):  # pragma: no cover
+                raise AssertionError("never asked")
+
+            def cancel(self):
+                pass
+
+        paid = [voice for voice in self._voices_with(Vouching()) if voice["paid"]]
+        self.assertEqual([voice["languages"] for voice in paid], [["vi", "en"], []])
+        # JSON-plain: the shell reads a list, not a tuple's repr.
+        self.assertIsInstance(paid[0]["languages"], list)
+
+    def test_the_local_model_carries_no_claim_either_way(self) -> None:
+        # The local voices ARE Vietnamese, but the field is what a PROVIDER
+        # verified; the shell knows the local model from `paid: False`.
+        local = [voice for voice in self._voices_with(None) if not voice["paid"]]
+        self.assertTrue(local)
+        self.assertTrue(all("languages" not in voice for voice in local))
+
+    def test_known_provider_gender_reaches_the_shell_without_inference(self) -> None:
+        class Labelled:
+            name = "elevenlabs"
+            model = "eleven_flash_v2_5"
+
+            def voices(self):
+                return (
+                    ProviderVoice(id="nhu", label="Nhu · ElevenLabs", model=self.model, gender="female"),
+                    ProviderVoice(id="rob", label="Rob · ElevenLabs", model=self.model),
+                )
+
+            def synthesize(self, text, voice_id):  # pragma: no cover
+                raise AssertionError("never asked")
+
+            def cancel(self):
+                pass
+
+        paid = [voice for voice in self._voices_with(Labelled()) if voice["paid"]]
+        self.assertEqual(paid[0]["gender"], "female")
+        self.assertNotIn("gender", paid[1])

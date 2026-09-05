@@ -601,6 +601,12 @@ class _Session:
                     "paid": True,
                     "provider": provider,
                     "model": model,
+                    # Which languages the provider vouches for. Empty is
+                    # "did not say", never "cannot": OpenAI's list says
+                    # nothing about any of its voices, and they all speak
+                    # Vietnamese after a fashion.
+                    "languages": list(voice.languages),
+                    **({"gender": voice.gender} if voice.gender else {}),
                 }
                 for voice in offered
             )
@@ -1310,6 +1316,13 @@ class _Session:
         "tauri_selection_shortcut",
         "ui_language",
         "voice",
+        # Which voices the switcher offers. The shell writes this through
+        # config.set like every other preference; leaving it out of this set
+        # meant the engine answered "unknown config key" to a key the shell
+        # asks for on every launch - and the shell read that refusal as a
+        # result, crashed its own voice-loading chain, and blamed the
+        # catalogue it had already loaded (owner, 05/09).
+        "voice_shortlist",
         "rate",
         "external_voice_budget",
         "openai_model",

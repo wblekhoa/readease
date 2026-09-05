@@ -209,7 +209,7 @@ const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
 
-const PAID_VOICES: Record<string, { id: string; label: string }[]> = {
+const PAID_VOICES: Record<string, { id: string; label: string; languages?: string[]; gender?: "male" | "female" }[]> = {
   // ONE model per provider, as the engine now lists them: the catalogue used
   // to emit models x voices and the same nine names appeared twice at two
   // prices. Which model is a setting; these ids carry whichever is chosen.
@@ -218,8 +218,11 @@ const PAID_VOICES: Record<string, { id: string; label: string }[]> = {
     { id: "openai:{model}:nova", label: "Nova · OpenAI" },
   ],
   elevenlabs_api_key: [
-    { id: "elevenlabs:{model}:rachel", label: "Rachel · ElevenLabs" },
-    { id: "elevenlabs:{model}:antoni", label: "Antoni · ElevenLabs" },
+    // `languages` is what ElevenLabs verified; Rachel was never checked in
+    // anything and arrives with none, which the panel must NOT read as "no".
+    { id: "elevenlabs:{model}:rachel", label: "Rachel · ElevenLabs", languages: [], gender: "female" },
+    { id: "elevenlabs:{model}:antoni", label: "Antoni · ElevenLabs", languages: ["en"], gender: "male" },
+    { id: "elevenlabs:{model}:nhu", label: "Nhu - calm and confident · ElevenLabs", languages: ["vi", "en"], gender: "female" },
   ],
 };
 
@@ -249,7 +252,7 @@ function chosenModel(provider: string): string {
   return known ? String(stored) : DEFAULT_MODEL[provider];
 }
 
-function paidCatalogue(): { id: string; label: string }[] {
+function paidCatalogue(): { id: string; label: string; languages?: string[]; gender?: "male" | "female" }[] {
   return Object.entries(PAID_VOICES).flatMap(([key, list]) => {
     if (!SETTINGS[key]) return [];
     const provider = key.replace("_api_key", "");

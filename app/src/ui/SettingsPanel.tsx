@@ -15,10 +15,10 @@
  * the start, so it stays disabled rather than promising what the engine will
  * not do.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Select, Surface } from "./controls";
-import { GroupedRow, GroupedSection } from "./patterns";
+import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
 import { CloseIcon, SpeakerIcon } from "./icons";
 import { AppTabs } from "./AppTabs";
 import { ProviderKeys } from "./ProviderKeys";
@@ -42,6 +42,7 @@ export function SettingsPanel({
   shortlisted,
   voicesError,
   paidVoices,
+  paidAvailable,
   keysSet,
   scope,
   budget,
@@ -67,6 +68,8 @@ export function SettingsPanel({
    * the shortlist is about the mid-reading switcher, not about which voices
    * a person may choose from here. */
   paidVoices: Voice[];
+  /** The account offers paid voices, whether or not any is on the list. */
+  paidAvailable: boolean;
   /** Provider id → whether a key is stored. Never the key. */
   keysSet: Record<string, boolean>;
   /* The same two limits the cost panel by the read button carries. They are
@@ -96,13 +99,9 @@ export function SettingsPanel({
   const [source, setSource] = useState(isPaidVoice(voiceId) ? "api" : "local");
   const localVoices = voices.filter((voice) => !isPaidVoice(voice.id));
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [busy, onClose]);
+  // Escape and a click on the book both put it away; neither does while a
+  // key is being checked, which is the one moment closing loses work.
+  const panel = useDismiss(onClose, !busy);
 
   return (
     /* Capped at the room between the bars, and only the BODY scrolls: with
@@ -114,7 +113,13 @@ export function SettingsPanel({
       /* Sheet tier, not card: this floats over the book and stands on its
          own, which is what the guideline's 24 is for (owner, 03/09). */
       radius="sheet"
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 flex layer-capped w-[26rem] -translate-x-1/2 flex-col overflow-hidden shadow-lifted"
+      ref={panel}
+      /* Over its OWN button, not over the middle of the window. The button
+         is the last thing in the footer's right-hand cluster, so the panel's
+         right edge sits at the same 24px inset the row is padded by and the
+         two line up without measuring anything (owner, 05/09: it used to
+         open across the screen from the button that opened it). */
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("player.settings")}</h3>
@@ -217,7 +222,7 @@ export function SettingsPanel({
               voice. */}
           <Notice fine className="mt-2 block">{text("key.local_only")}</Notice>
 
-          {paidVoices.length > 0 ? (
+          {paidVoices.length > 0 || paidAvailable ? (
             <GroupedSection title={text("section.reading_api")}>
               <GroupedRow
                 title={text("player.voice")}
@@ -230,6 +235,7 @@ export function SettingsPanel({
                   <Select
                     value={isPaidVoice(voiceId) ? voiceId : ""}
                     className="max-w-[11rem]"
+                    disabled={paidVoices.length === 0}
                     onChange={(event) => onVoice(event.target.value)}
                   >
                     {!isPaidVoice(voiceId) && (
@@ -239,6 +245,24 @@ export function SettingsPanel({
                       <option key={voice.id} value={voice.id}>{voice.label}</option>
                     ))}
                   </Select>
+                }
+              />
+              {/* The same way in as the tab beside it. An empty list here is
+                  not an error - it is a list nobody has chosen from yet, and
+                  the row says so instead of the old "no key yet", which with
+                  a working key was simply untrue. */}
+              <GroupedRow
+                title={paidVoices.length === 0 ? text("voices.none_api") : text("voices.title")}
+                subtitle={
+                  paidVoices.length === 0
+                    ? text("voices.none_api_hint")
+                    : text("voices.marked", { count: paidVoices.length })
+                }
+                trailing={
+                  <Button size="sm" onClick={onManageVoices}>
+                    <SpeakerIcon />
+                    {text("voices.manage")}
+                  </Button>
                 }
               />
               {/* How far a press reads, where the money stops, and how fast -

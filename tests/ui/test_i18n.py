@@ -54,6 +54,20 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
             r"\b(mục|điểm|phần|khoản|ý|câu|trường hợp|phương án|lựa chọn)\s+\(([a-z])\)",
         ),
         ("domain/prosody.py", "cđ"),
+        # The division words a Roman numeral can stand behind. Matcher data
+        # for Vietnamese book text, like the two rules above - an English
+        # build reading a Vietnamese book still has to know that "Phần II"
+        # is a number.
+        *(("domain/prosody.py", cue) for cue in (
+            "chương", "quyển", "tập", "mục", "hồi", "kỳ", "phụ lục",
+        )),
+        # What the voice SAYS in place of a web address, in the language of
+        # the book it is reading. Not shown anywhere; there is no screen to
+        # translate it on.
+        ("domain/prosody.py", "đường dẫn"),
+        ("domain/prosody.py", "địa chỉ"),
+        ("domain/prosody.py", "địa chỉ "),
+        ("domain/prosody.py", " chấm "),
     }
 )
 

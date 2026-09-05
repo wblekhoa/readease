@@ -64,6 +64,56 @@ BY_STATUS = {
 Opener = Callable[[urllib.request.Request], object]
 
 
+def _verified_languages(entry: dict) -> tuple[str, ...]:
+    """The languages ElevenLabs itself vouches for on one voice.
+
+    `verified_languages` is the documented v2 field [fetched 2026-09-05]: a
+    list of objects, each with a required `language` (BCP-47) and the
+    `model_id` it was verified on, plus optional accent/locale/preview_url.
+    `labels` is NOT used - it is a free-form map the account owner types
+    into, and "language" there is whatever they felt like writing.
+
+    Lower-cased and de-duplicated in order of appearance; a malformed entry
+    contributes nothing rather than a bogus tag. A cloned voice that was
+    never verified comes back empty, which the catalogue reads as unknown.
+
+    Taken across ALL models on purpose, although each entry names the model
+    it was verified on: a voice checked in Vietnamese on eleven_v3 speaks
+    Vietnamese on eleven_flash_v2_5 too - language support is a property of
+    the model family, not of one model - so filtering by the model chosen in
+    settings would hide voices that work. The badge therefore says "vouched
+    for in Vietnamese", not "vouched for on the model you picked".
+    """
+
+    raw = entry.get("verified_languages")
+    if not isinstance(raw, list):
+        return ()
+    seen: list[str] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        tag = str(item.get("language") or "").strip().lower()
+        if tag and tag not in seen:
+            seen.append(tag)
+    return tuple(seen)
+
+
+def _gender(entry: dict) -> str | None:
+    """A documented ElevenLabs gender label, when it is unambiguous.
+
+    Voice labels are account metadata. Unlike language verification they are
+    not a provider quality claim, but ElevenLabs explicitly supports gender
+    as a voice-search label. Only the two values the app can represent are
+    accepted; names and free-form descriptions are never interpreted.
+    """
+
+    labels = entry.get("labels")
+    if not isinstance(labels, dict):
+        return None
+    value = str(labels.get("gender") or "").strip().lower()
+    return value if value in {"male", "female"} else None
+
+
 class ElevenLabsVoiceProvider:
     def __init__(
         self,
@@ -130,6 +180,8 @@ class ElevenLabsVoiceProvider:
                         id=identifier,
                         label=f"{entry.get('name') or identifier} · ElevenLabs",
                         model=self._model,
+                        languages=_verified_languages(entry),
+                        gender=_gender(entry),
                     )
                 )
                 if len(found) >= MAX_VOICES:

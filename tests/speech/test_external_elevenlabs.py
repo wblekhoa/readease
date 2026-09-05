@@ -256,3 +256,63 @@ class OpenAIVerifyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerifiedLanguageTests(unittest.TestCase):
+    """Which voices ElevenLabs itself vouches for in Vietnamese.
+
+    An account with forty-five cloned and stock voices, most of them English
+    character voices, reached the panel with nothing to tell them apart
+    (owner, 05/09). The provider knows: `verified_languages` on each voice
+    is the documented v2 field [fetched 2026-09-05]. `labels` is not used -
+    it is free text the account owner types.
+    """
+
+    def _voices(self, entries):
+        payload = {"voices": entries, "has_more": False, "next_page_token": ""}
+
+        def handler(request):
+            return io.BytesIO(json.dumps(payload).encode())
+
+        return ElevenLabsVoiceProvider(KEY, opener=handler).voices()
+
+    def test_verified_languages_ride_along_lower_cased_in_order_without_repeats(self) -> None:
+        voices = self._voices([{
+            "voice_id": "id-Nhu",
+            "name": "Nhu",
+            "verified_languages": [
+                {"language": "VI", "model_id": "eleven_v3", "accent": "northern"},
+                {"language": "en", "model_id": "eleven_v3"},
+                {"language": "vi", "model_id": "eleven_flash_v2_5"},
+            ],
+        }])
+        self.assertEqual(voices[0].languages, ("vi", "en"))
+
+    def test_a_voice_nobody_verified_says_nothing_rather_than_no(self) -> None:
+        # A cloned voice with no verification, an entry with the field null,
+        # and one where the field is garbage: all "did not say".
+        voices = self._voices([
+            {"voice_id": "a", "name": "A"},
+            {"voice_id": "b", "name": "B", "verified_languages": None},
+            {"voice_id": "c", "name": "C", "verified_languages": "vi"},
+            {"voice_id": "d", "name": "D", "verified_languages": [{"model_id": "x"}, "vi", {"language": ""}]},
+        ])
+        self.assertEqual([voice.languages for voice in voices], [(), (), (), ()])
+
+    def test_labels_are_not_trusted_as_languages(self) -> None:
+        # "language" in labels is whatever the owner typed; it does not make
+        # a voice Vietnamese.
+        voices = self._voices([{
+            "voice_id": "a", "name": "A", "labels": {"language": "vi"},
+        }])
+        self.assertEqual(voices[0].languages, ())
+
+    def test_documented_gender_label_is_normalized_but_never_guessed(self) -> None:
+        voices = self._voices([
+            {"voice_id": "a", "name": "A", "labels": {"gender": "Female"}},
+            {"voice_id": "b", "name": "B", "labels": {"gender": " male "}},
+            {"voice_id": "c", "name": "C", "labels": {"gender": "neutral"}},
+            {"voice_id": "d", "name": "D", "labels": "female"},
+            {"voice_id": "e", "name": "Male-sounding name"},
+        ])
+        self.assertEqual([voice.gender for voice in voices], ["female", "male", None, None, None])

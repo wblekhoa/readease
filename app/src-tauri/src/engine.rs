@@ -339,14 +339,33 @@ impl EngineClient {
         writeln!(stdin, "{line}").map_err(|error| format!("engine write: {error}"))
     }
 
+    /// Ask the engine something and wait for its answer.
+    ///
+    /// A REFUSAL COMES BACK AS `Err`. The engine answers every request with
+    /// `{"ok": true, "result": …}` or `{"ok": false, "error": …}`, and this
+    /// used to hand both to the caller as `Ok(envelope)` - so a refusal
+    /// arrived in the webview looking like a success with no `result`, and
+    /// `reply.result.value` threw. That is how one missing config key
+    /// ("voice_shortlist", 05/09) crashed the voice-loading chain and put
+    /// "could not fetch the voice list" under a list that had loaded fine.
+    ///
+    /// Every caller on the far side already has a `.catch` for a failed
+    /// request. This makes those catches true: the harness has always
+    /// modelled engine failure as a rejection, and now the real boundary
+    /// does the same thing.
     pub fn request(&self, method: &str, params: Value) -> Result<Value, String> {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let (sender, receiver) = channel();
         self.pending.lock().unwrap().insert(id, sender);
         self.send(id, method, params)?;
-        receiver
+        let reply = receiver
             .recv_timeout(Duration::from_secs(30))
-            .map_err(|_| format!("engine timeout on {method}"))
+            .map_err(|_| format!("engine timeout on {method}"))?;
+        if reply["ok"] == Value::Bool(false) {
+            let said = reply["error"].as_str().unwrap_or("no reason given");
+            return Err(format!("engine refused {method}: {said}"));
+        }
+        Ok(reply)
     }
 
     /// Start a reading, cancelling whatever was being read.

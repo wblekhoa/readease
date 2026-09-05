@@ -433,6 +433,41 @@ export function BookTile({
   );
 }
 
+/** Escape, or a click anywhere outside, closes a floating panel.
+ *
+ * Every panel here already closed on Escape and on its own ✕. Neither is
+ * where a hand goes: the reader clicks back onto the book and expects the
+ * panel to get out of the way (owner, 05/09). Returns the ref to put on the
+ * panel - a click inside it is not a click outside.
+ *
+ * The button that OPENED the panel is exempt, because it toggles: closing on
+ * its mousedown and reopening on its click would leave the panel stuck open
+ * and the button apparently dead. Mark such a button `data-popover-trigger`.
+ */
+export function useDismiss(onClose: () => void, enabled = true) {
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target || panel.current?.contains(target)) return;
+      if (target.closest("[data-popover-trigger]")) return;
+      onClose();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [enabled, onClose]);
+  return panel;
+}
+
+
 /** An icon button that opens a short list of choices under it.
  *
  * The first item is the default, marked as such; choosing anything closes
