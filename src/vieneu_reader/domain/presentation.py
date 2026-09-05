@@ -3,7 +3,33 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Literal
+
+#: A caption (or alt) that opens with the book's own figure label: "Hình
+#: 1.1.", "Ảnh 3 -", "Minh họa 11", "Figure 2-4", "Fig. 7". The number is
+#: mandatory, or "Hình ảnh này…" would pass. Separators inside the number
+#: are what print uses: 1.3, 2-4, 2–4.
+_FIGURE_LABEL = re.compile(
+    r"^\s*(hình|ảnh|minh họa|figure|fig\.?)\s*(\d+(?:[.\-–]\d+)*[a-z]?)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def figure_label(text: str | None) -> tuple[str, str] | None:
+    """The book's own label at the start of `text`, as (label, number).
+
+    "Hình 1.1. Trải nghiệm…" → ("Hình 1.1", "1.1"). None when the text does
+    not open with one. A book that numbers its figures is telling the reader
+    what to call them; the shell and the voice should not invent a second
+    numbering beside it.
+    """
+    match = _FIGURE_LABEL.match(text or "")
+    if match is None:
+        return None
+    word, number = match.group(1), match.group(2)
+    # Keep the book's word as written, minus a trailing period on "Fig.".
+    return f"{word.rstrip('.')} {number}", number
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +46,19 @@ class FigureRef:
     alt_is_generic: bool
     width: int | None
     height: int | None
+    #: The book's own label for this figure ("Hình 1.1"), read off its
+    #: caption or alt. None when the book does not number it, and the
+    #: shell counts per chapter instead.
+    label: str | None = None
+    #: The segment that IS this figure's caption - the figcaption beside
+    #: it, or a paragraph opening with its label. The voice reads that
+    #: caption as the figure's announcement instead of saying "Xem hình".
+    caption_segment_id: str | None = None
+    #: The figure this one repeats: a translated copy of the picture right
+    #: before it (BookStudio's `bs-localized-image`), separated only by the
+    #: caption or an annotation. The page shows both, so a reader can
+    #: compare; the voice announces the picture once and numbers it once.
+    duplicate_of: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

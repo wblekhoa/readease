@@ -17,8 +17,11 @@ import { columnAt, layoutPages, viewCount, viewStart, type PageLayout } from "..
 /** Why a page came on screen. "turn" is the reader's own hand; everything
  * else is the app taking them somewhere, which never counts as wandering. */
 export type PageReason = "open" | "voice" | "contents" | "figure" | "turn" | "reflow" | "idle";
-/** "__end__" as the segment id opens the chapter on its last page. */
-export type PageTarget = { segmentId: string; source: PageReason };
+/** "__end__" as the segment id opens the chapter on its last page. A
+ * `figureId` aims at the picture itself: its anchor paragraph can end one
+ * page while the picture opens the next, and "Xem hình" with no picture in
+ * sight is what the reader hears then (owner, 05/09). */
+export type PageTarget = { segmentId: string; source: PageReason; figureId?: string };
 
 export function PageFlow({
   chapterIndex,
@@ -109,11 +112,14 @@ export function PageFlow({
     return viewCount(columns, layout.cols);
   }, [layout]);
 
-  /** The view that shows `segmentId` ("__end__" = the chapter's last). */
-  const showing = useCallback((segmentId: string, total: number) => {
+  /** The view that shows `segmentId` ("__end__" = the chapter's last), or
+   * the picture `figureId` when one is named and is on the page. */
+  const showing = useCallback((segmentId: string, total: number, figureId?: string) => {
     if (!layout) return 0;
     if (segmentId === "__end__") return total - 1;
-    const element = flow.current?.querySelector(`[data-segment="${segmentId}"]`);
+    const element =
+      (figureId ? flow.current?.querySelector(`[data-figure="${figureId}"]`) : null) ??
+      flow.current?.querySelector(`[data-segment="${segmentId}"]`);
     const column = element ? columnOf(element) : 0;
     return Math.min(total - 1, viewStart(column, layout.cols) / layout.cols);
   }, [layout, columnOf]);
@@ -135,7 +141,7 @@ export function PageFlow({
       anchor.current = target.segmentId === "__end__" ? null : target.segmentId;
       wantEnd.current = target.segmentId === "__end__";
       setAnimate(false);
-      setView(showing(target.segmentId, total));
+      setView(showing(target.segmentId, total, target.figureId));
       onTargetReached();
     } else if (reflowed && anchor.current) {
       reason.current = "reflow";

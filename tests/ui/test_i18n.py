@@ -68,6 +68,25 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/prosody.py", "địa chỉ"),
         ("domain/prosody.py", "địa chỉ "),
         ("domain/prosody.py", " chấm "),
+        # The figure-label matcher: the words a Vietnamese (or English) book
+        # opens a caption with - "Hình 1.1.", "Figure 3". Matcher data for
+        # book text, never shown; an English build reading a Vietnamese book
+        # still has to recognise "Hình 1.1" as the book's own label.
+        (
+            "domain/presentation.py",
+            r"^\s*(hình|ảnh|minh họa|figure|fig\.?)\s*(\d+(?:[.\-–]\d+)*[a-z]?)(?!\w)",
+        ),
+        # The content-pattern detectors: a translator's image annotation and
+        # a prose reference to a numbered figure. Matcher data for book text.
+        (
+            "domain/content_patterns.py",
+            r"^\s*(chú giải ảnh|mô tả ảnh|image description)\s*:",
+        ),
+        (
+            "domain/content_patterns.py",
+            r"\(\s*(?:xem\s+)?(?:hình|ảnh|minh họa|figure|fig\.?)\s*"
+            r"(\d+(?:[.\-–]\d+)*[a-z]?)\s*\)",
+        ),
     }
 )
 

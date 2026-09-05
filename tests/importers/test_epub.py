@@ -404,6 +404,178 @@ class EpubImportTests(unittest.TestCase):
         self.assertEqual(figure.placement, "before")
         self.assertEqual(figure.anchor_segment_id, chapter_model.segments[0].id)
 
+    def test_a_captioned_figure_carries_the_books_own_label(self):
+        """The book names its figures; the reader must not name them again.
+
+        Four shapes seen in the owner's library: a figcaption after the
+        picture, a figcaption above it, a plain paragraph opening with the
+        label right after the picture (books without <figure>), and a
+        picture whose only label is in its alt. Only the first three have a
+        caption segment; all four have the book's label. A picture with a
+        nameless alt and no caption has neither.
+        """
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1>
+        <p>Đoạn mở (xem Hình 1.1).</p>
+        <figure><img src="images/a.png" alt="Hình 1.1. Sơ đồ đầu."/>
+        <figcaption>Hình 1.1. Sơ đồ đầu.</figcaption></figure>
+        <p>Đoạn giữa.</p>
+        <figure><figcaption>Hình 1.2 – Ảnh phía trên chú thích.</figcaption>
+        <img src="images/b.png" alt="Ảnh"/></figure>
+        <p>Đoạn ba.</p>
+        <img src="images/c.png" alt="Sơ đồ ba"/>
+        <p>Hình 1.3: Chú thích là một đoạn thường.</p>
+        <p>Đoạn bốn.</p>
+        <img src="images/d.png" alt="Figure 4 - Only the alt names it"/>
+        <p>Đoạn năm.</p>
+        <img src="images/e.png" alt="Một tấm ảnh không số"/>
+        <p>Đoạn cuối. Hình 1.3 cho thấy điều đó.</p>
+        </body></html>"""
+        images = {
+            f"images/{name}.png": (make_png(320, 200), "image/png")
+            for name in "abcde"
+        }
+        path = make_epub(
+            self.root, spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter}, image_entries=images,
+        )
+
+        book = import_epub(path)
+        segments = book.chapters[0].segments
+        by_text = {segment.text: segment for segment in segments}
+        figures = load_epub_presentation(path, book).chapters[0].figures
+
+        self.assertEqual(len(figures), 5)
+        a, b, c, d, e = figures
+        self.assertEqual(a.label, "Hình 1.1")
+        self.assertEqual(a.caption_segment_id, by_text["Hình 1.1. Sơ đồ đầu."].id)
+        self.assertEqual(b.label, "Hình 1.2")
+        self.assertEqual(
+            b.caption_segment_id,
+            by_text["Hình 1.2 – Ảnh phía trên chú thích."].id,
+        )
+        self.assertEqual(c.label, "Hình 1.3")
+        self.assertEqual(
+            c.caption_segment_id,
+            by_text["Hình 1.3: Chú thích là một đoạn thường."].id,
+        )
+        self.assertEqual(d.label, "Figure 4")
+        self.assertIsNone(d.caption_segment_id)
+        self.assertIsNone(e.label)
+        self.assertIsNone(e.caption_segment_id)
+        # The prose that merely MENTIONS a figure is never taken for its
+        # caption, and "Hình ảnh" without a number is not a label.
+        self.assertEqual(
+            [f.caption_segment_id for f in figures].count(
+                by_text["Đoạn cuối. Hình 1.3 cho thấy điều đó."].id
+            ),
+            0,
+        )
+
+    def test_a_translated_copy_after_the_caption_is_kept_and_marked_as_a_duplicate(self):
+        """The structure the owner's translated books actually have: the
+        original <figure> with its figcaption, then a `bs-localized-image`
+        block holding the Vietnamese copy and an annotation paragraph. The
+        copy is not adjacent to the original (the caption sits between), so
+        the companion rule does not replace it - and must not: the owner
+        wants both on the page. It is kept, marked as a duplicate, and
+        inherits the caption and label. A different figure right after a
+        caption is NOT a duplicate, whatever its alt says.
+        """
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1>
+        <p>Đoạn đầu.</p>
+        <figure><img src="images/a.png" alt="Hình 1.3. Sơ đồ."/>
+        <figcaption>Hình 1.3. Sơ đồ.</figcaption></figure>
+        <div class="bs-localized-image-block"><img class="bs-localized-image"
+          src="images/a-vi.png" alt="Hình 1.3 đã Việt hóa."/>
+        <p class="bs-image-annotation">Chú giải ảnh: Sơ đồ cho thấy ba lớp.</p></div>
+        <figure><img src="images/b.png" alt="Hình 1.3. Sơ đồ."/>
+        <figcaption>Hình 1.4. Một hình khác, alt sao chép nhầm.</figcaption></figure>
+        <p>Đoạn cuối.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root, spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            image_entries={
+                f"images/{name}.png": (make_png(320, 200), "image/png")
+                for name in ("a", "a-vi", "b")
+            },
+        )
+
+        book = import_epub(path)
+        by_text = {s.text: s for s in book.chapters[0].segments}
+        figures = load_epub_presentation(path, book).chapters[0].figures
+
+        self.assertEqual(len(figures), 3)
+        original, copy, other = figures
+        self.assertIsNone(original.duplicate_of)
+        self.assertEqual(copy.duplicate_of, original.id)
+        self.assertEqual(copy.label, "Hình 1.3")
+        self.assertEqual(copy.caption_segment_id, by_text["Hình 1.3. Sơ đồ."].id)
+        self.assertEqual(copy.asset_path, "OEBPS/images/a-vi.png")
+        # Same alt as the original, but a real figure of its own.
+        self.assertIsNone(other.duplicate_of)
+        self.assertEqual(other.label, "Hình 1.4")
+
+    def test_two_companion_survivors_with_an_annotation_between_are_two_figures(self):
+        """Krug's layout: every original has an ADJACENT companion, so the
+        companion rule keeps only the copies - and then each surviving image
+        is class-marked. Two of them in a row, separated only by the first
+        one's annotation, are two different pictures, not a copy: a copy can
+        only repeat an original. Found by the audit, 05/09 (one false
+        duplicate in Krug that would have silenced a real figure's cue).
+        """
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1>
+        <p>Đoạn đầu.</p>
+        <div class="image"><img src="images/a.png" alt="Image"/></div>
+        <div class="bs-image-localized-block">
+          <div class="image bs-image-companion"><img src="images/a-vi.png" alt="Truyện tranh, khung một"/></div>
+          <p class="bs-image-annotation">Chú giải ảnh: khung một.</p>
+        </div>
+        <div class="image"><img src="images/b.png" alt="Image"/></div>
+        <div class="bs-image-localized-block">
+          <div class="image bs-image-companion"><img src="images/b-vi.png" alt="Truyện tranh, khung hai"/></div>
+          <p class="bs-image-annotation">Chú giải ảnh: khung hai.</p>
+        </div>
+        <p>Đoạn cuối.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root, spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            image_entries={
+                f"images/{name}.png": (make_png(320, 200), "image/png")
+                for name in ("a", "a-vi", "b", "b-vi")
+            },
+        )
+        book = import_epub(path)
+        figures = load_epub_presentation(path, book).chapters[0].figures
+
+        self.assertEqual([f.asset_path.rsplit("/", 1)[1] for f in figures], ["a-vi.png", "b-vi.png"])
+        self.assertEqual([f.duplicate_of for f in figures], [None, None])
+
+    def test_a_label_only_paragraph_above_the_picture_is_its_caption(self):
+        """"Minh họa 11" on its own line above the picture (Thiên Nga Đen)."""
+        chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1>
+        <p>Minh họa 11 cho thấy đường cong rủi ro mà tác giả bàn ở trên.</p>
+        <p>Minh họa 11</p>
+        <img src="images/a.png" alt="Image"/>
+        <p>Đoạn sau.</p>
+        </body></html>"""
+        path = make_epub(
+            self.root, spine=("chapter-1",),
+            chapter_overrides={"chapter-1": chapter},
+            image_entries={"images/a.png": (make_png(320, 200), "image/png")},
+        )
+        book = import_epub(path)
+        by_text = {s.text: s for s in book.chapters[0].segments}
+        figure, = load_epub_presentation(path, book).chapters[0].figures
+
+        self.assertEqual(figure.label, "Minh họa 11")
+        self.assertEqual(figure.caption_segment_id, by_text["Minh họa 11"].id)
+
     def test_generic_alt_is_kept_for_large_images_but_tiny_generic_art_is_suppressed(self):
         chapter = """<html xmlns="http://www.w3.org/1999/xhtml"><body>
         <h1>Một</h1>

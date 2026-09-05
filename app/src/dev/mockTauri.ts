@@ -72,6 +72,11 @@ const FIGURES: Record<number, Array<Record<string, unknown>>> = {
       alt: "Ba mảng sản phẩm: True Search, Thrive và Synthesis",
       number: 1,
       alt_is_generic: false,
+      // A book that numbers its own figures: the page shows ITS label and
+      // leaves the caption (the paragraph after the picture) to speak for
+      // itself - no "Hình 1 · …" line repeating it.
+      label: "Hình 2.1",
+      caption_segment_id: "ch-1-seg-4",
     },
   ],
   2: [

@@ -51,6 +51,7 @@ from typing import Any, Iterator, Protocol, TextIO
 import numpy as np
 
 from vieneu_reader.domain.models import AudioChunk, Segment, Voice
+from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
     SENTENCE_PAUSE_MS,
     pause_after_ms,
@@ -256,20 +257,59 @@ NOTE_CUE = "Nói thêm, {text}"
 NOTE_CUE_PAUSE_MS = 450
 
 
-def _figure_cues(presentation: Any) -> dict[str, list[tuple[str, str, int]]]:
-    """Per anchor segment: (placement, figure_id, number-within-chapter).
+@dataclass(frozen=True)
+class _FigureCue:
+    placement: str
+    figure_id: str
+    #: What the voice says: the book's own number ("1.3") when the caption
+    #: or alt carries one, else the figure's count within its chapter.
+    number: str
+    #: The segment that captions this figure, if the book gave it one. The
+    #: caption is then the announcement - no "Xem hình" on top of it.
+    caption_segment_id: str | None
+
+
+def _figure_cues(presentation: Any) -> dict[str, list[_FigureCue]]:
+    """Per anchor segment, the figures announced there.
 
     Numbered per CHAPTER, not per book: the domain's running count is right
     for a print index, but "Xem hình 187" is not something a listener can
-    hold in their head, and "Xem hình 3" is (owner's call, 2026-09-02).
+    hold in their head, and "Xem hình 3" is (owner's call, 2026-09-02). A
+    book that numbers its own figures wins over both: "Xem hình 1.3" is
+    what the text beside it says (owner, 05/09).
     """
-    cues: dict[str, list[tuple[str, str, int]]] = {}
+    cues: dict[str, list[_FigureCue]] = {}
     for chapter in presentation.chapters:
-        for number, figure in enumerate(chapter.figures, start=1):
-            cues.setdefault(figure.anchor_segment_id, []).append(
-                (figure.placement, figure.id, number)
-            )
+        for figure, number in _figure_numbers(chapter.figures):
+            if figure.duplicate_of is not None:
+                # A translated copy of the picture just announced. The page
+                # shows it; the voice has nothing new to say about it.
+                continue
+            labelled = figure_label(figure.label)
+            cues.setdefault(figure.anchor_segment_id, []).append(_FigureCue(
+                placement=figure.placement,
+                figure_id=figure.id,
+                number=labelled[1] if labelled else str(number),
+                caption_segment_id=figure.caption_segment_id,
+            ))
     return cues
+
+
+def _figure_numbers(figures: Any) -> list[tuple[Any, int]]:
+    """Each figure with its number within the chapter; a copy shares the
+    number of the picture it repeats, so the page and the voice agree."""
+    numbered: list[tuple[Any, int]] = []
+    by_id: dict[str, int] = {}
+    count = 0
+    for figure in figures:
+        if figure.duplicate_of is not None and figure.duplicate_of in by_id:
+            number = by_id[figure.duplicate_of]
+        else:
+            count += 1
+            number = count
+        by_id[figure.id] = number
+        numbered.append((figure, number))
+    return numbered
 
 
 def _note_marks(presentation: Any) -> dict[str, list[tuple[int, int, str]]]:
@@ -821,7 +861,7 @@ class _Session:
             for index, chapter in enumerate(stored.book.chapters)
             for segment in chapter.segments
         }
-        cues: dict[str, list[tuple[str, str, int]]] = {}
+        cues: dict[str, list[_FigureCue]] = {}
         notes: dict[str, list[tuple[int, int, str]]] = {}
         already_said: set[str] = set()
         if self._service is not None:
@@ -853,6 +893,17 @@ class _Session:
                         )
         utterances: list[_Utterance] = []
         chapter_of: list[int] = []
+        # Figures whose caption does the announcing: the caption's first
+        # utterance carries the figure, so the picture still comes into view
+        # as the ear reaches it, and the voice does not say "Xem hình 1"
+        # right before reading "Hình 1.1. …" (owner, 05/09: three
+        # announcements for one picture).
+        captioned: dict[str, str] = {
+            cue.caption_segment_id: cue.figure_id
+            for here in cues.values()
+            for cue in here
+            if cue.caption_segment_id is not None
+        }
 
         def add(utterance: _Utterance, chapter: int) -> None:
             utterances.append(utterance)
@@ -868,13 +919,13 @@ class _Session:
                 continue
             here = cues.get(segment.id, [])
             chapter = chapter_of_segment[segment.id]
-            for placement, figure_id, number in here:
-                if placement == "before":
+            for cue in here:
+                if cue.placement == "before" and cue.caption_segment_id is None:
                     add(_Utterance(
-                        text=FIGURE_CUE.format(number=number),
+                        text=FIGURE_CUE.format(number=cue.number),
                         pause_after_ms=FIGURE_CUE_PAUSE_MS,
                         segment_id=segment.id,
-                        figure_id=figure_id,
+                        figure_id=cue.figure_id,
                     ), chapter)
             after_segment = pause_after_ms(
                 segment,
@@ -906,14 +957,15 @@ class _Session:
                         else NOTE_CUE_PAUSE_MS if is_note else SENTENCE_PAUSE_MS
                     ),
                     segment_id=segment.id,
+                    figure_id=captioned.get(segment.id) if order == 0 else None,
                 ), chapter)
-            for placement, figure_id, number in here:
-                if placement == "after":
+            for cue in here:
+                if cue.placement == "after" and cue.caption_segment_id is None:
                     add(_Utterance(
-                        text=FIGURE_CUE.format(number=number),
+                        text=FIGURE_CUE.format(number=cue.number),
                         pause_after_ms=FIGURE_CUE_PAUSE_MS,
                         segment_id=segment.id,
-                        figure_id=figure_id,
+                        figure_id=cue.figure_id,
                     ), chapter)
         return utterances, chapter_of
 
@@ -1564,8 +1616,18 @@ class _Session:
                         # shell hides it instead of captioning a picture
                         # with the word Image.
                         "alt_is_generic": bool(figure.alt_is_generic),
+                        # The book's own label ("Hình 1.1") and the segment
+                        # that captions the picture, when the book gave it
+                        # one: the shell shows the book's label and does
+                        # not repeat a caption that is already on the page.
+                        "label": figure.label,
+                        "caption_segment_id": figure.caption_segment_id,
+                        # A translated copy of the picture before it: shown
+                        # (a reader may want to compare), numbered with the
+                        # original, never announced twice.
+                        "duplicate_of": figure.duplicate_of,
                     }
-                    for number, figure in enumerate(chapter.figures, start=1)
+                    for figure, number in _figure_numbers(chapter.figures)
                 ]
         self._reply(request_id, {
             "book": {

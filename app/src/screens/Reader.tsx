@@ -62,6 +62,15 @@ type BookFigure = {
   number: number;
   /** "Image", "img_01" and friends: an alt that names nothing. Hidden. */
   alt_is_generic: boolean;
+  /** The book's own label ("Hình 1.1") when it numbers its figures; then
+   * the page shows that, not a second numbering of ours. */
+  label?: string | null;
+  /** The paragraph that captions this picture, when the book has one. Its
+   * words are already on the page, so the figure does not repeat them. */
+  caption_segment_id?: string | null;
+  /** A translated copy of the picture just before it. Shown, so the two
+   * can be compared; it shares that picture's number and label. */
+  duplicate_of?: string | null;
 };
 type BookChapter = {
   id: string;
@@ -135,8 +144,10 @@ function Figure({
     if (cued && !paged) holder.current?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [cued, paged]);
 
-  const alt = figure.alt_is_generic ? "" : figure.alt ?? "";
-  const label = text("reader.figure_label", { n: figure.number });
+  // A caption on the page says it all; an alt that repeats it under the
+  // picture is the same sentence twice (owner, 05/09).
+  const alt = figure.alt_is_generic || figure.caption_segment_id ? "" : figure.alt ?? "";
+  const label = figure.label ?? text("reader.figure_label", { n: figure.number });
 
   return (
     <figure
@@ -485,15 +496,18 @@ export function Reader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSegment, following, paged, showSegment]);
 
-  // The voice announced a picture: on pages, show the page it is anchored to.
+  // The voice announced a picture: on pages, show the page the PICTURE is
+  // on. Its anchor paragraph can be on this page while the picture opens
+  // the next - aiming at the paragraph left the reader hearing "Xem hình"
+  // with no picture in sight (owner, 05/09).
   useEffect(() => {
     if (!paged || !currentFigure || !following || !opened) return;
     const figure = opened.book.chapters.flatMap((c) => c.figures).find((f) => f.id === currentFigure);
-    if (figure && !shown.includes(figure.anchor_segment_id)) {
-      showSegment(figure.anchor_segment_id, "figure");
-    }
+    if (!figure) return;
+    setChapterIndex(chapterOf(figure.anchor_segment_id));
+    setTarget({ segmentId: figure.anchor_segment_id, source: "figure", figureId: figure.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFigure, paged, following, opened, showSegment]);
+  }, [currentFigure, paged, following, opened, chapterOf]);
 
   const [pageIndex, setPageIndex] = useState<{ page: number; pages: number } | null>(null);
   const onPageShown = useCallback((ids: string[], reason: PageReason, page: number, pages: number) => {

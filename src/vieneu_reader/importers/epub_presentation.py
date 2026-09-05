@@ -17,12 +17,14 @@ import posixpath
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
-from vieneu_reader.domain.models import BookDocument, Chapter, stable_id
+from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
+from vieneu_reader.domain.content_patterns import is_image_annotation
 from vieneu_reader.domain.presentation import (
     BookPresentation,
     ChapterPresentation,
     FigureRef,
     NoteRef,
+    figure_label,
 )
 from vieneu_reader.domain.segmenter import normalize_paragraph, split_paragraph
 
@@ -92,6 +94,11 @@ class _ImageEvent:
     alt_text: str | None
     alt_is_generic: bool
     is_companion: bool
+    #: BookStudio's newer mark for a translated copy of the picture before
+    #: it (`bs-localized-image`, in a `bs-localized-image-block`). Unlike a
+    #: companion it does NOT replace the original on the page - it is kept
+    #: and marked `duplicate_of`, so the reader sees both and hears one.
+    is_localized: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +111,7 @@ class _AcceptedImage:
     is_companion: bool
     width: int | None
     height: int | None
+    is_localized: bool = False
 
 
 _Event = _TextEvent | _ImageEvent
@@ -164,6 +172,7 @@ def _image_event(
         alt_text=alt_text,
         alt_is_generic=_generic_alt(alt_text),
         is_companion="bs-image-companion" in classes,
+        is_localized=bool(classes & {"bs-localized-image", "bs-localized-image-block"}),
     )
 
 
@@ -623,9 +632,73 @@ def _prepared_events(
                 is_companion=event.is_companion,
                 width=width,
                 height=height,
+                is_localized=event.is_localized,
             )
         )
     return _prefer_localized_companions(tuple(prepared))
+
+
+def _caption_of(
+    segments: tuple[Segment, ...], previous_index: int | None
+) -> Segment | None:
+    """The segment that captions the image placed after `previous_index`.
+
+    First the block right after the picture - a figcaption, or a paragraph
+    opening with the book's own label ("Hình 1.3. …"), which is how books
+    without <figure> caption their art. Failing that, a figcaption right
+    before it: some layouts put the caption above. A plain paragraph above
+    is never taken - "Hình 1.3 cho thấy…" can open ordinary prose.
+    """
+    following = 0 if previous_index is None else previous_index + 1
+    if following < len(segments):
+        candidate = segments[following]
+        if candidate.kind == "caption" or figure_label(candidate.text):
+            return candidate
+    if previous_index is not None:
+        above = segments[previous_index]
+        # A figcaption above, or a paragraph that is nothing BUT the label
+        # ("Minh họa 11") - never prose that merely opens with one.
+        if above.kind == "caption" or (
+            figure_label(above.text) and len(above.text.split()) <= 8
+        ):
+            return above
+    return None
+
+
+def _repeats_previous(
+    segments: tuple[Segment, ...],
+    previous: FigureRef | None,
+    previous_image: _AcceptedImage | None,
+    previous_anchor: int | None,
+    image: _AcceptedImage,
+    anchor: int | None,
+) -> bool:
+    """Is `image` a translated copy of the figure just before it?
+
+    Class-marked only (`bs-localized-image` / `bs-image-companion`): alt
+    equality is not a signal - two different figures sit side by side with
+    a caption between them all the time. Between the two pictures there may
+    be nothing but the first one's caption and a translator's annotation.
+
+    And the picture it repeats must itself be an ORIGINAL. Where the
+    companion rule has already replaced an original with its adjacent copy
+    (Krug's layout), every surviving image is class-marked; a page of such
+    screenshots, each followed by its annotation, would otherwise chain into
+    one "figure" (found by the audit over the owner's library, 05/09).
+    """
+    if previous is None or not (image.is_localized or image.is_companion):
+        return False
+    if previous_image is None or previous_image.is_localized or previous_image.is_companion:
+        return False
+    start = 0 if previous_anchor is None else previous_anchor + 1
+    stop = 0 if anchor is None else anchor + 1
+    for segment in segments[start:stop]:
+        if segment.id == previous.caption_segment_id:
+            continue
+        if is_image_annotation(segment.text):
+            continue
+        return False
+    return True
 
 
 def _chapter_presentation(
@@ -690,6 +763,8 @@ def _chapter_presentation(
 
     figures: list[FigureRef] = []
     next_number = first_figure_number
+    previous_anchor: int | None = None
+    previous_image: _AcceptedImage | None = None
     for image, previous_index in image_anchors:
         if len(figures) + first_figure_number > MAX_FIGURE_OCCURRENCES:
             raise CorruptBookError("EPUB tạo ra quá nhiều hình ảnh đọc.")
@@ -699,6 +774,27 @@ def _chapter_presentation(
         else:
             anchor = chapter.segments[previous_index]
             placement = "after"
+        caption = _caption_of(chapter.segments, previous_index)
+        labelled = figure_label(caption.text if caption is not None else None)
+        if labelled is None:
+            labelled = figure_label(image.alt_text)
+        original = figures[-1] if figures else None
+        duplicate_of: str | None = None
+        if _repeats_previous(
+            chapter.segments, original, previous_image, previous_anchor,
+            image, previous_index,
+        ):
+            assert original is not None
+            # The copy inherits the original's caption and label: one
+            # picture, shown twice, named once.
+            duplicate_of = original.id
+            caption = next(
+                (s for s in chapter.segments if s.id == original.caption_segment_id),
+                None,
+            )
+            labelled = figure_label(original.label)
+        previous_anchor = previous_index
+        previous_image = image
         figures.append(
             FigureRef(
                 id=stable_id(
@@ -719,6 +815,9 @@ def _chapter_presentation(
                 alt_is_generic=image.alt_is_generic,
                 width=image.width,
                 height=image.height,
+                label=labelled[0] if labelled else None,
+                caption_segment_id=caption.id if caption is not None else None,
+                duplicate_of=duplicate_of,
             )
         )
         next_number += 1

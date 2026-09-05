@@ -792,12 +792,14 @@ class ProtocolTests(unittest.TestCase):
                     anchor_segment_id=first.id, placement="after",
                     media_type="image/png", alt_text="Image",
                     alt_is_generic=True, asset_path="a.png",
+                    label=None, caption_segment_id=None, duplicate_of=None,
                 ),
                 SimpleNamespace(
                     id="fig-b", number=42, chapter_id=book.chapters[0].id,
                     anchor_segment_id=second.id, placement="before",
                     media_type="image/png", alt_text="Sơ đồ thật",
                     alt_is_generic=False, asset_path="b.png",
+                    label=None, caption_segment_id=None, duplicate_of=None,
                 ),
             )
             presentation = SimpleNamespace(chapters=[SimpleNamespace(
@@ -833,6 +835,175 @@ class ProtocolTests(unittest.TestCase):
                 [None, "fig-a", "fig-b", None],
             )
         # A second-chapter picture starts again at 1 - that is the promise.
+
+    def test_a_book_that_numbers_its_own_figures_is_not_numbered_again(self) -> None:
+        """Three announcements for one picture (owner, 05/09): the voice said
+        "Xem hình 1", the page said "Hình 1 · Hình 1.1. …", and then the
+        caption "Hình 1.1. …" was read as a paragraph. The book had already
+        named the figure. So: a figure with a caption is announced BY its
+        caption - no cue in front of it, and the caption's position carries
+        the figure so the picture still comes into view as the ear gets
+        there. A figure whose only label is in its alt keeps a cue, but with
+        the book's number: "Xem hình 1.2", not "Xem hình 2".
+        """
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([(
+                "Một",
+                [("Đoạn đầu (xem Hình 1.1).", "paragraph"),
+                 ("Hình 1.1. Sơ đồ thứ nhất.", "caption"),
+                 ("Đoạn hai.", "paragraph")],
+            )])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            prose, caption, more = book.chapters[0].segments
+            figures = (
+                SimpleNamespace(
+                    id="fig-a", number=1, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=prose.id, placement="after",
+                    media_type="image/png", alt_text="Hình 1.1. Sơ đồ thứ nhất.",
+                    alt_is_generic=False, asset_path="a.png",
+                    label="Hình 1.1", caption_segment_id=caption.id,
+                    duplicate_of=None,
+                ),
+                SimpleNamespace(
+                    id="fig-b", number=2, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=more.id, placement="after",
+                    media_type="image/png", alt_text="Hình 1.2. Không có chú thích.",
+                    alt_is_generic=False, asset_path="b.png",
+                    label="Hình 1.2", caption_segment_id=None,
+                    duplicate_of=None,
+                ),
+            )
+            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+                chapter_id=book.chapters[0].id, figures=figures,
+            )])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            replies = run_server([
+                {"id": 92, "method": "book.open", "params": {"book_id": book.id}},
+                {"id": 93, "method": "read.book",
+                 "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service)
+
+            opened = replies[0]["result"]["book"]["chapters"][0]["figures"]
+            self.assertEqual(
+                [(f["label"], f["caption_segment_id"]) for f in opened],
+                [("Hình 1.1", caption.id), ("Hình 1.2", None)],
+            )
+            spoken = [text for text, _voice in engine.requests]
+            # The caption is read as the book wrote it - split into its
+            # sentences like any paragraph - and NOT preceded by "Xem hình".
+            self.assertEqual(spoken, [
+                "Đoạn đầu (xem Hình 1.1).",
+                "Hình 1.1.", "Sơ đồ thứ nhất.",
+                "Đoạn hai.",
+                "Xem hình 1.2.",
+            ])
+            positions = [r for r in replies if r.get("event") == "position"]
+            self.assertEqual(
+                [(p["segment_id"], p.get("figure_id")) for p in positions],
+                [(prose.id, None), (caption.id, "fig-a"), (more.id, None),
+                 (more.id, "fig-b")],
+            )
+
+    def test_a_translated_copy_of_a_picture_is_shown_but_announced_once(self) -> None:
+        """BookStudio books carry the original figure and, after its caption,
+        a translated copy plus an "image annotation" paragraph. The owner
+        wants the page to keep everything (05/09: "giữ hiển thị đầy đủ để
+        user có thể xem lại") and the voice to be lean: one announcement,
+        one number shared by both pictures, and the caption's position
+        pointing at the ORIGINAL so the page comes to the first picture.
+        """
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([(
+                "Một",
+                [("Đoạn đầu.", "paragraph"),
+                 ("Hình 1.3. Sơ đồ.", "caption"),
+                 ("Chú giải ảnh: Sơ đồ cho thấy ba lớp.", "paragraph"),
+                 ("Đoạn sau.", "paragraph")],
+            )])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            prose, caption, annotation, after = book.chapters[0].segments
+            figures = (
+                SimpleNamespace(
+                    id="fig-orig", number=1, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=prose.id, placement="after",
+                    media_type="image/png", alt_text="Hình 1.3. Sơ đồ.",
+                    alt_is_generic=False, asset_path="a.png",
+                    label="Hình 1.3", caption_segment_id=caption.id, duplicate_of=None,
+                ),
+                SimpleNamespace(
+                    id="fig-copy", number=2, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=caption.id, placement="after",
+                    media_type="image/png", alt_text="Hình 1.3 đã Việt hóa.",
+                    alt_is_generic=False, asset_path="a.vi.png",
+                    label="Hình 1.3", caption_segment_id=caption.id, duplicate_of="fig-orig",
+                ),
+                SimpleNamespace(
+                    id="fig-next", number=3, chapter_id=book.chapters[0].id,
+                    anchor_segment_id=after.id, placement="after",
+                    media_type="image/png", alt_text="Image",
+                    alt_is_generic=True, asset_path="b.png",
+                    label=None, caption_segment_id=None, duplicate_of=None,
+                ),
+            )
+            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+                chapter_id=book.chapters[0].id, figures=figures,
+            )])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            replies = run_server([
+                {"id": 94, "method": "book.open", "params": {"book_id": book.id}},
+                {"id": 95, "method": "read.book",
+                 "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service)
+
+            opened = replies[0]["result"]["book"]["chapters"][0]["figures"]
+            # All three are on the page; the copy shares the original's
+            # number, and the picture after them is number 2, not 3.
+            self.assertEqual(
+                [(f["id"], f["number"], f["duplicate_of"]) for f in opened],
+                [("fig-orig", 1, None), ("fig-copy", 1, "fig-orig"), ("fig-next", 2, None)],
+            )
+            spoken = [text for text, _voice in engine.requests]
+            # The annotation is read once, as prose (it is the only
+            # description a listener gets); the copy adds nothing spoken.
+            self.assertEqual(spoken, [
+                "Đoạn đầu.",
+                "Hình 1.3.", "Sơ đồ.",
+                "Chú giải ảnh:", "Sơ đồ cho thấy ba lớp.",
+                "Đoạn sau.",
+                "Xem hình 2.",
+            ])
+            positions = [r for r in replies if r.get("event") == "position"]
+            self.assertEqual(
+                [(p["segment_id"], p.get("figure_id")) for p in positions],
+                [(prose.id, None), (caption.id, "fig-orig"), (annotation.id, None),
+                 (after.id, None), (after.id, "fig-next")],
+            )
 
     def test_reading_a_book_says_a_footnote_after_the_sentence_it_belongs_to(self) -> None:
         """A footnote is written for an eye that can glance down and come back.
@@ -1042,6 +1213,7 @@ class ProtocolTests(unittest.TestCase):
                 id="fig-1", number=1, chapter_id=book.chapters[0].id,
                 anchor_segment_id=segment.id, placement="after",
                 media_type="image/png", alt_text="Sơ đồ", alt_is_generic=False,
+                label=None, caption_segment_id=None, duplicate_of=None,
                 # Deliberately NOT the id: a fixture where the two are the
                 # same string cannot tell a correct lookup from the wrong one.
                 asset_path="OEBPS/images/one.png",
@@ -1077,6 +1249,7 @@ class ProtocolTests(unittest.TestCase):
             "id": "fig-1", "anchor_segment_id": segment.id,
             "placement": "after", "alt": "Sơ đồ",
             "number": 1, "alt_is_generic": False,
+            "label": None, "caption_segment_id": None, "duplicate_of": None,
         }])
         served = replies[1]["result"]
         self.assertEqual(served["media_type"], "image/png")
