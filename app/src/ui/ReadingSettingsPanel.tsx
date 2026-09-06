@@ -156,9 +156,11 @@ export function ReadingSettingsPanel({
              are controls; these are a form, and a grey field behind a form
              that already sits inside a panel is one container too many
              (owner, 06/09: "box xám ở đây cũng không cần thiết, nó bị
-             thừa"). A hairline opens the section, and each setting is a
-             labelled line at the panel's own inset. */
-          <div className="mt-4 flex flex-col gap-5 border-t border-edge pt-4">
+             thừa"). A dotted rule opens the section instead - it separates
+             without drawing a second edge the way a solid hairline does
+             (owner, 06/09) - and each setting is a labelled line at the
+             panel's own inset. */
+          <div className="mt-4 flex flex-col gap-5 border-t border-dotted border-edge-strong pt-4">
             <label className="flex flex-col gap-2">
               <span className="flex items-baseline justify-between">
                 <span className="text-sm text-ink">{text("settings.line_spacing")}</span>
