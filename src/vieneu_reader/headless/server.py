@@ -373,6 +373,9 @@ class _Session:
         self._credit_read: Any = None
         # A stop seen while waiting for room: honoured at the next check.
         self._stop_pending = False
+        # Whether the reading in progress is allowed to leave audio on disk.
+        # Set per reading by `_speak`; false until one starts.
+        self._cache_reading = False
         # What each recent reading was of, so a `progress.reached` for it -
         # which may land after its reply - can be written with the right
         # rate and voice. Bounded: only the last few readings matter.
@@ -1783,7 +1786,11 @@ class _Session:
     def _sentence_cache_key(
         self, engine: Any, sentence: str, voice_id: str, settings: SynthesisSettings
     ) -> str | None:
-        """Where this sentence's audio lives, or None if nothing is cached.
+        """Where this sentence's audio lives, or None if it must not be kept.
+
+        The one door to the audio cache - both the lookup and the write go
+        through it - so the rule about WHICH readings may use disk is stated
+        once, here, and a later call site cannot forget it.
 
         Keyed on what the SOUND depends on: the sentence as it will be sent,
         the voice, and who is speaking it. `engine_version`/`model_revision`
@@ -1792,7 +1799,10 @@ class _Session:
         engines with different versions, which is what the key is for.
         """
 
-        if self._audio_cache is None:
+        if self._audio_cache is None or not self._cache_reading:
+            # Both directions, not just the write: a lookup touches the
+            # entry's mtime for the LRU, which is a persistent mark left by
+            # a reading that promised to leave none.
             return None
         engine_version = getattr(engine, "engine_version", "")
         model_revision = getattr(engine, "model_revision", "")
@@ -1895,6 +1905,13 @@ class _Session:
         self._credits = None if window is None else int(window)
         self._credit_read = request_id
         self._stop_pending = False
+        # Only a reading OF A BOOK may leave audio on disk. Pasted text and
+        # text read from a selection are transient - PRIVACY.md promises they
+        # are "not added to the library or persistent audio cache", and a
+        # person reading a selection out of their mail or their notes has not
+        # asked this app to keep it. `book_id` is exactly the difference: the
+        # library path passes one, `read` never does.
+        self._cache_reading = book_id is not None
         if book_id is not None:
             self._listening[request_id] = (book_id, rate, voice_id)
             while len(self._listening) > 4:
