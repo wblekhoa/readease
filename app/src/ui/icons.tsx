@@ -15,15 +15,20 @@ import { useId } from "react";
  * text, which must not push the line apart, and a small button, which has
  * only 28px to put one in.
  *
- * Drawn here rather than imported. DOL canon sources icons from DS Studio's
+ * Inlined rather than imported. DOL canon sources icons from DS Studio's
  * DsIcon, and that registry is not consumable outside the DS repo (same gap
- * as ToggleButtonGroup); `@dol/icons-library` is not a dependency of this
- * app. Every glyph below is drawn in this file.
+ * as ToggleButtonGroup); no icon package is a dependency of this app. So the
+ * glyphs are copied in, as drawn in their source, and only the ones the
+ * source has no equivalent for are drawn here: the A pair that sets reading
+ * size, and the half-lit disc for "follow the Mac". Redrawing a glyph the
+ * source already has produced a lopsided book and an off-balance stop, and
+ * cost two rounds each (owner, 06/09: "tìm đúng … chứ đừng tự vẽ").
  *
  * They are a SET, so weight and proportion are decided across the set and
  * not per glyph: reworking one in isolation is how a set stops looking like
- * one. `CloseIcon` and `SlidersIcon` are the evidence - both had to be
- * redrawn after being looked at next to the others at the real size.
+ * one - which is the other half of the reason for copying rather than
+ * drawing. `CloseIcon` is the one deliberate exception: the source's close
+ * is a circled cross, and a panel closes with the bare mark Books uses.
  */
 
 const bulk = {
@@ -40,8 +45,8 @@ const MASS = 0.4;
 export function BookIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M22 4.1v12.4c0 1-.8 1.9-1.8 2-2 .2-4.9 1.2-6.7 2.2-.3.2-.7-.1-.7-.5V4.5c0-.2.1-.4.3-.5 1.8-1 4.8-2 6.9-2.2C21.1 1.7 22 2.6 22 3.7v.4Z" />
-      <path d="M11.2 4v16.2c0 .4-.4.7-.7.5-1.8-1-4.7-2-6.7-2.2-1-.1-1.8-1-1.8-2V3.7c0-1.1.9-2 2-1.9 2.1.2 5.1 1.2 6.9 2.2.2.1.3.3.3.5v-.5Z" />
+      <path opacity={MASS} d="M12 5.302v16.03c-.17 0-.35-.03-.49-.11l-.04-.02c-1.92-1.05-5.27-2.15-7.44-2.44l-.29-.04c-.96-.12-1.74-1.02-1.74-1.98V4.662c0-1.19.97-2.09 2.16-1.99 2.1.17 5.28 1.23 7.06 2.34l.25.15c.15.09.34.14.53.14Z" />
+      <path d="M22 4.67v12.07c0 .96-.78 1.86-1.74 1.98l-.33.04c-2.18.29-5.54 1.4-7.46 2.46-.13.08-.29.11-.47.11V5.3c.19 0 .38-.05.53-.14l.17-.11c1.78-1.12 4.97-2.19 7.07-2.37h.06c1.19-.1 2.17.79 2.17 1.99ZM7.75 9.238H5.5c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h2.25c.41 0 .75.34.75.75s-.34.75-.75.75ZM8.5 12.238h-3c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h3c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
     </svg>
   );
 }
@@ -61,8 +66,9 @@ export function CloseIcon({ className }: { className?: string }) {
 export function TrashIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M20.4 6.4c-1.8-.2-3.6-.3-5.4-.4v-.6c0-1-.1-1.6-.4-2-.4-.5-1.1-.6-2.3-.6h-.6c-1.2 0-1.9.1-2.3.6-.3.4-.4 1-.4 2v.6c-1.8.1-3.6.2-5.4.4l-.5.1a.8.8 0 0 0 .1 1.5h.1c5.2-.5 10.4-.3 15.6.2h.1a.8.8 0 0 0 .1-1.5l-.7-.3Z" />
-      <path d="M19.4 9.3a.9.9 0 0 0-.7-.3H5.3a.9.9 0 0 0-.9 1l.6 9.4c.1 1.7.3 3.6 3.9 3.6h6.2c3.6 0 3.8-1.9 3.9-3.6l.6-9.4a.9.9 0 0 0-.2-.7ZM14 18.2h-4a.8.8 0 0 1 0-1.5h4a.8.8 0 0 1 0 1.5Zm1-4H9a.8.8 0 0 1 0-1.5h6a.8.8 0 0 1 0 1.5Z" />
+      <path d="M21.07 5.23c-1.61-.16-3.22-.28-4.84-.37v-.01l-.22-1.3c-.15-.92-.37-2.3-2.71-2.3h-2.62c-2.33 0-2.55 1.32-2.71 2.29l-.21 1.28c-.93.06-1.86.12-2.79.21l-2.04.2c-.42.04-.72.41-.68.82.04.41.4.71.82.67l2.04-.2c5.24-.52 10.52-.32 15.82.21h.08c.38 0 .71-.29.75-.68a.766.766 0 0 0-.69-.82Z" />
+      <path d="M19.23 8.14c-.24-.25-.57-.39-.91-.39H5.68c-.34 0-.68.14-.91.39-.23.25-.36.59-.34.94l.62 10.26c.11 1.52.25 3.42 3.74 3.42h6.42c3.49 0 3.63-1.89 3.74-3.42l.62-10.25c.02-.36-.11-.7-.34-.95Z" />
+      <path d="M9.58 17a.75.75 0 0 1 .75-.75h3.33a.75.75 0 0 1 0 1.5h-3.33a.75.75 0 0 1-.75-.75ZM8.75 13a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Z" />
     </svg>
   );
 }
@@ -70,7 +76,8 @@ export function TrashIcon({ className }: { className?: string }) {
 export function ChevronLeftIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path d="M14.7 20.7c-.2 0-.4-.1-.6-.2l-6.5-6.5a2.8 2.8 0 0 1 0-4l6.5-6.5a.8.8 0 0 1 1.1 1.1l-6.5 6.5c-.5.5-.5 1.3 0 1.8l6.5 6.5a.8.8 0 0 1-.5 1.3Z" />
+      <path opacity={MASS} d="M10.77 8.52l5.05 3.79v5.61c0 .96-1.16 1.44-1.84.76L8.8 13.51a2.13 2.13 0 010-3.01l1.97-1.98z" />
+      <path d="M15.82 6.08v6.23l-5.05-3.79 3.21-3.21c.68-.67 1.84-.19 1.84.77z" />
     </svg>
   );
 }
@@ -78,7 +85,8 @@ export function ChevronLeftIcon({ className }: { className?: string }) {
 export function ChevronRightIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path d="M9.3 20.7a.8.8 0 0 1-.5-1.3l6.5-6.5c.5-.5.5-1.3 0-1.8L8.8 4.6a.8.8 0 0 1 1.1-1.1l6.5 6.5c1.1 1.1 1.1 2.9 0 4l-6.5 6.5c-.2.1-.4.2-.6.2Z" />
+      <path opacity={MASS} d="M13.23 8.52l-5.05 3.79v5.61c0 .96 1.16 1.44 1.84.76l5.18-5.18c.83-.83.83-2.18 0-3.01l-1.97-1.97z" />
+      <path d="M8.18 6.08v6.23l5.05-3.79-3.21-3.21c-.68-.67-1.84-.19-1.84.77z" />
     </svg>
   );
 }
@@ -86,7 +94,8 @@ export function ChevronRightIcon({ className }: { className?: string }) {
 export function ChevronDownIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path d="M12 15.7c-.7 0-1.4-.3-2-.8l-5.6-5.6a.8.8 0 0 1 1.1-1.1l5.6 5.6c.5.5 1.3.5 1.8 0l5.6-5.6a.8.8 0 0 1 1.1 1.1L14 14.9c-.6.5-1.3.8-2 .8Z" />
+      <path opacity={MASS} d="M15.48 13.23l-3.79-5.05H6.08c-.96 0-1.44 1.16-.76 1.84l5.18 5.18c.83.83 2.18.83 3.01 0l1.97-1.97z" />
+      <path d="M17.92 8.18h-6.23l3.79 5.05 3.21-3.21c.67-.68.19-1.84-.77-1.84z" />
     </svg>
   );
 }
@@ -94,8 +103,8 @@ export function ChevronDownIcon({ className }: { className?: string }) {
 export function PlayIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M4.5 12V6.9c0-3.2 2.3-4.5 5-2.9l4.4 2.6 4.4 2.5c2.7 1.6 2.7 4.2 0 5.8l-4.4 2.5-4.4 2.6c-2.7 1.6-5 .3-5-2.9V12Z" />
-      <path d="M18.3 8.6 13.9 6.1 9.5 3.5C7.6 2.4 6 3 5.5 4.6c1 .2 2 .7 3 1.3l4.4 2.6 4.4 2.5c1 .6 1.8 1.3 2.3 2.1.9-1.6.3-3.5-1.3-4.5Z" />
+      <path d="M18.7 8.98 4.14 17.71c-.09-.33-.14-.68-.14-1.04V7.33c0-3.08 3.33-5 6-3.46l4.04 2.33 4.05 2.34c.22.13.43.27.61.44Z" />
+      <path opacity={MASS} d="m18.089 15.46-4.05 2.34-4.04 2.33c-1.91 1.1-4.16.44-5.28-1.17l.42-.25 14.44-8.66c1 1.8.51 4.26-1.49 5.41Z" />
     </svg>
   );
 }
@@ -103,8 +112,8 @@ export function PlayIcon({ className }: { className?: string }) {
 export function PauseIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M10.7 4v16c0 1.1-.5 1.5-1.7 1.5H5.7C4.5 21.5 4 21.1 4 20V4c0-1.1.5-1.5 1.7-1.5H9c1.2 0 1.7.4 1.7 1.5Z" />
-      <path d="M20 4v16c0 1.1-.5 1.5-1.7 1.5H15c-1.2 0-1.7-.4-1.7-1.5V4c0-1.1.5-1.5 1.7-1.5h3.3c1.2 0 1.7.4 1.7 1.5Z" />
+      <path d="M10.65 19.11V4.89c0-1.35-.57-1.89-2.01-1.89H5.01C3.57 3 3 3.54 3 4.89v14.22C3 20.46 3.57 21 5.01 21h3.63c1.44 0 2.01-.54 2.01-1.89Z" />
+      <path opacity={MASS} d="M21.002 19.11V4.89c0-1.35-.57-1.89-2.01-1.89h-3.63c-1.43 0-2.01.54-2.01 1.89v14.22c0 1.35.57 1.89 2.01 1.89h3.63c1.44 0 2.01-.54 2.01-1.89Z" />
     </svg>
   );
 }
@@ -184,8 +193,8 @@ export function TextLargerIcon({ className }: { className?: string }) {
 export function PreviousIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M19.5 12v5.1c0 3.2-2.3 4.5-5 2.9l-4.4-2.6-4.4-2.5c-2.7-1.6-2.7-4.2 0-5.8l4.4-2.5 4.4-2.6c2.7-1.6 5-.3 5 2.9V12Z" />
-      <path d="M4.7 20.4a.8.8 0 0 1-.8-.8V4.4a.8.8 0 0 1 1.6 0v15.2c0 .4-.4.8-.8.8Z" />
+      <path opacity={MASS} d="M20.24 7.22v9.57c0 1.96-2.129 3.19-3.829 2.21l-4.15-2.39-4.15-2.4c-1.7-.98-1.7-3.43 0-4.41l4.15-2.4 4.15-2.39c1.7-.98 3.83.24 3.83 2.21Z" />
+      <path d="M3.762 18.93c-.41 0-.75-.34-.75-.75V5.82c0-.41.34-.75.75-.75s.75.34.75.75v12.36c0 .41-.34.75-.75.75Z" />
     </svg>
   );
 }
@@ -193,32 +202,20 @@ export function PreviousIcon({ className }: { className?: string }) {
 export function NextIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M4.5 12V6.9c0-3.2 2.3-4.5 5-2.9l4.4 2.6 4.4 2.5c2.7 1.6 2.7 4.2 0 5.8l-4.4 2.5-4.4 2.6c-2.7 1.6-5 .3-5-2.9V12Z" />
-      <path d="M19.3 20.4a.8.8 0 0 1-.8-.8V4.4a.8.8 0 0 1 1.6 0v15.2c0 .4-.4.8-.8.8Z" />
+      <path opacity={MASS} d="M3.762 7.22v9.57c0 1.96 2.13 3.19 3.83 2.21l4.15-2.39 4.15-2.4c1.7-.98 1.7-3.43 0-4.41l-4.15-2.4-4.15-2.39c-1.7-.98-3.83.24-3.83 2.21Z" />
+      <path d="M20.238 18.93c-.41 0-.75-.34-.75-.75V5.82c0-.41.34-.75.75-.75s.75.34.75.75v12.36c0 .41-.33.75-.75.75Z" />
     </svg>
   );
 }
 
-/** The table of contents: a closed book, from the DOL icon library (owner
- * picked it, 04/09). Distinct from `BookIcon`, which is the OPEN book naming
- * the library tab - one is a place to go, this one is what a book has inside.
- * It replaced a sidebar glyph that described the PANEL rather than what the
- * panel holds.
- *
- * Also redrawn once against the library's geometry: the first pass ran the
- * cover to the full 24 box and butted the page block against it in a straight
- * line. The cover is inset (3.5 to 20.5) and the block NOTCHES into it on the
- * left, which is what gives the two parts a join instead of a seam.
- */
+/** The table of contents: a closed book, distinct from `BookIcon` - the
+ * open book that names the library. One is a place to go, this one is what
+ * a book has inside (owner picked it, 04/09). */
 export function BookClosedIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path
-        opacity={MASS}
-        d="M20.5 7v8H6.4a2.9 2.9 0 0 0-2.9 2.9V7c0-4 1-5 5-5h7c4 0 5 1 5 5Z"
-      />
-      <path d="M20.5 15v3.5a3.5 3.5 0 0 1-3.5 3.5H7a3.5 3.5 0 0 1-3.5-3.5v-.6A2.9 2.9 0 0 1 6.4 15h14.1Z" />
-      <path d="M16 7.75H8a.75.75 0 0 1 0-1.5h8a.75.75 0 0 1 0 1.5Zm-3 3.5H8a.75.75 0 0 1 0-1.5h5a.75.75 0 0 1 0 1.5Z" />
+      <path opacity={MASS} d="M16.19 2H7.82C4.18 2 2.01 4.17 2.01 7.81v8.37c0 3.64 2.17 5.81 5.81 5.81h8.37c3.64 0 5.81-2.17 5.81-5.81V7.81C22 4.17 19.83 2 16.19 2Z" />
+      <path d="M11.5 8.089v9.16c0 .36-.36.6-.69.46-1.21-.52-2.79-1-3.89-1.14l-.19-.02c-.61-.08-1.11-.65-1.11-1.27v-7.7c0-.76.62-1.33 1.38-1.27 1.25.1 3.1.7 4.26 1.36.15.07.24.24.24.42ZM18.38 7.7v7.57c0 .62-.5 1.19-1.11 1.27l-.21.02c-1.09.15-2.66.62-3.87 1.13-.33.14-.69-.1-.69-.46V8.08a.5.5 0 0 1 .25-.44c1.16-.65 2.97-1.23 4.2-1.34h.04c.77.01 1.39.63 1.39 1.4Z" />
     </svg>
   );
 }
@@ -239,8 +236,8 @@ export function PagesIcon({ className }: { className?: string }) {
 export function ScrollIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M17 2H7C4.2 2 3 3.6 3 6v12c0 2.4 1.2 4 4 4h10c2.8 0 4-1.6 4-4V6c0-2.4-1.2-4-4-4Z" />
-      <path d="M16.5 8.8h-9a.8.8 0 0 1 0-1.6h9a.8.8 0 0 1 0 1.6Zm0 4h-9a.8.8 0 0 1 0-1.6h9a.8.8 0 0 1 0 1.6Zm-4 4h-5a.8.8 0 0 1 0-1.6h5a.8.8 0 0 1 0 1.6Z" />
+      <path opacity={MASS} d="M20.5 10.19h-2.89c-2.37 0-4.3-1.93-4.3-4.3V3c0-.55-.45-1-1-1H8.07C4.99 2 2.5 4 2.5 7.57v8.86C2.5 20 4.99 22 8.07 22h7.86c3.08 0 5.57-2 5.57-5.57v-5.24c0-.55-.45-1-1-1Z" />
+      <path d="M15.8 2.21c-.41-.41-1.12-.13-1.12.44v3.49c0 1.46 1.24 2.67 2.75 2.67.95.01 2.27.01 3.4.01.57 0 .87-.67.47-1.07-1.44-1.45-4.02-4.06-5.5-5.54ZM13.5 13.75h-6c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h6c.41 0 .75.34.75.75s-.34.75-.75.75ZM11.5 17.75h-4c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h4c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
     </svg>
   );
 }
@@ -248,17 +245,21 @@ export function ScrollIcon({ className }: { className?: string }) {
 export function InfoIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
-      <path d="M12 13.4a.8.8 0 0 1-.8-.8V8a.8.8 0 0 1 1.6 0v4.6c0 .4-.4.8-.8.8Zm0 3.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2Z" />
+      <path opacity={MASS} d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
+      <path d="M12 13.75c.41 0 .75-.34.75-.75V8c0-.41-.34-.75-.75-.75s-.75.34-.75.75v5c0 .41.34.75.75.75ZM12.92 15.619c-.05-.12-.12-.23-.21-.33-.1-.09-.21-.16-.33-.21a1 1 0 0 0-.76 0c-.12.05-.23.12-.33.21-.09.1-.16.21-.21.33-.05.12-.08.25-.08.38s.03.26.08.38c.05.13.12.23.21.33.1.09.21.16.33.21.12.05.25.08.38.08s.26-.03.38-.08.23-.12.33-.21c.09-.1.16-.2.21-.33.05-.12.08-.25.08-.38s-.03-.26-.08-.38Z" />
     </svg>
   );
 }
 
+/** Voice settings. Sliders, not the gear: the gear opens how the PAGE is
+ * set, and two panels must not share a glyph. */
 export function SlidersIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M21 6.8H3a1 1 0 0 1 0-2h18a1 1 0 0 1 0 2Zm0 6.2H3a1 1 0 0 1 0-2h18a1 1 0 0 1 0 2Zm0 6.2H3a1 1 0 0 1 0-2h18a1 1 0 0 1 0 2Z" />
-      <path d="M15.5 8.7a2.9 2.9 0 1 1 0-5.8 2.9 2.9 0 0 1 0 5.8Zm-7 6.2a2.9 2.9 0 1 1 0-5.8 2.9 2.9 0 0 1 0 5.8Zm8.5 6.2a2.9 2.9 0 1 1 0-5.8 2.9 2.9 0 0 1 0 5.8Z" />
+      <path opacity={MASS} d="M21.23 7.62h-5.54c-.38 0-.69-.31-.69-.7 0-.38.31-.69.69-.69h5.54c.38 0 .69.31.69.69 0 .39-.31.7-.69.7ZM6.46 7.618H2.77c-.38 0-.69-.31-.69-.69 0-.38.31-.69.69-.69h3.69c.38 0 .69.31.69.69 0 .38-.31.69-.69.69Z" />
+      <path d="M10.15 10.84a3.92 3.92 0 1 0 0-7.84 3.92 3.92 0 0 0 0 7.84Z" />
+      <path opacity={MASS} d="M21.23 17.77h-3.69c-.38 0-.69-.31-.69-.69 0-.38.31-.69.69-.69h3.69c.38 0 .69.31.69.69 0 .38-.31.69-.69.69ZM8.31 17.77H2.77c-.38 0-.69-.31-.69-.69 0-.38.31-.69.69-.69h5.54c.38 0 .69.31.69.69 0 .38-.31.69-.69.69Z" />
+      <path d="M13.85 21a3.92 3.92 0 1 0 0-7.84 3.92 3.92 0 0 0 0 7.84Z" />
     </svg>
   );
 }
@@ -266,8 +267,8 @@ export function SlidersIcon({ className }: { className?: string }) {
 export function SunIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M12 18.2a6.2 6.2 0 1 0 0-12.4 6.2 6.2 0 0 0 0 12.4Z" />
-      <path d="M12 4.3a.8.8 0 0 1-.8-.8V2a.8.8 0 0 1 1.6 0v1.5c0 .4-.4.8-.8.8Zm0 18a.8.8 0 0 1-.8-.8v-1.5a.8.8 0 0 1 1.6 0v1.5c0 .4-.4.8-.8.8ZM21.5 12.8H20a.8.8 0 0 1 0-1.6h1.5a.8.8 0 0 1 0 1.6Zm-17.5 0H2.5a.8.8 0 0 1 0-1.6H4a.8.8 0 0 1 0 1.6ZM18.4 6.4a.8.8 0 0 1-.6-1.4l1-1a.8.8 0 0 1 1.1 1.1l-1 1c-.1.2-.3.3-.5.3ZM4.6 20.2a.8.8 0 0 1-.6-1.4l1-1a.8.8 0 0 1 1.1 1.1l-1 1c-.1.2-.3.3-.5.3Zm14.8 0c-.2 0-.4-.1-.6-.2l-1-1a.8.8 0 0 1 1.1-1.1l1 1a.8.8 0 0 1-.5 1.3ZM5.6 6.4c-.2 0-.4-.1-.6-.2l-1-1a.8.8 0 0 1 1.1-1.1l1 1a.8.8 0 0 1-.5 1.3Z" />
+      <path opacity={MASS} d="M12 19a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" />
+      <path d="M12 22.96c-.55 0-1-.41-1-.96v-.08c0-.55.45-1 1-1s1 .45 1 1-.45 1.04-1 1.04Zm7.14-2.82c-.26 0-.51-.1-.71-.29l-.13-.13a.996.996 0 1 1 1.41-1.41l.13.13a.996.996 0 0 1-.7 1.7Zm-14.28 0c-.26 0-.51-.1-.71-.29a.996.996 0 0 1 0-1.41l.13-.13a.996.996 0 1 1 1.41 1.41l-.13.13c-.19.19-.45.29-.7.29ZM22 13h-.08c-.55 0-1-.45-1-1s.45-1 1-1 1.04.45 1.04 1-.41 1-.96 1ZM2.08 13H2c-.55 0-1-.45-1-1s.45-1 1-1 1.04.45 1.04 1-.41 1-.96 1Zm16.93-7.01c-.26 0-.51-.1-.71-.29a.996.996 0 0 1 0-1.41l.13-.13a.996.996 0 1 1 1.41 1.41l-.13.13c-.19.19-.44.29-.7.29Zm-14.02 0c-.26 0-.51-.1-.71-.29l-.13-.14a.996.996 0 1 1 1.41-1.41l.13.13c.39.39.39 1.02 0 1.41-.19.2-.45.3-.7.3ZM12 3.04c-.55 0-1-.41-1-.96V2c0-.55.45-1 1-1s1 .45 1 1-.45 1.04-1 1.04Z" />
     </svg>
   );
 }
@@ -286,8 +287,8 @@ export function AutoAppearanceIcon({ className }: { className?: string }) {
 export function MoonIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M21.5 14.9a9.8 9.8 0 0 1-12.4-12 .9.9 0 0 0-1.2-1.1A10.9 10.9 0 0 0 12 22.9a10.9 10.9 0 0 0 10.6-6.8.9.9 0 0 0-1.1-1.2Z" />
-      <path d="M18.2 6.3l1-.4-1-.4-.4-1-.4 1-1 .4 1 .4.4 1 .4-1Z" />
+      <path d="M8.999 19c0 .84.13 1.66.37 2.42-3.84-1.33-6.74-4.86-7.04-8.99-.3-4.39 2.23-8.49 6.32-10.21 1.06-.44 1.6-.12 1.83.11.22.22.53.75.09 1.76a8.192 8.192 0 0 0-.67 3.28c.01 2.04.81 3.93 2.11 5.38A7.985 7.985 0 0 0 8.999 19Z" />
+      <path opacity={MASS} d="M21.21 17.72a10.501 10.501 0 0 1-8.47 4.27c-.16 0-.32-.01-.48-.02-1-.04-1.97-.23-2.89-.55C9.13 20.66 9 19.84 9 19c0-2.53 1.18-4.79 3.01-6.25a8.41 8.41 0 0 0 5.91 2.82c.63.03 1.26-.02 1.88-.13 1.12-.2 1.57.22 1.73.49.17.27.35.86-.32 1.79Z" />
     </svg>
   );
 }
@@ -295,17 +296,24 @@ export function MoonIcon({ className }: { className?: string }) {
 export function ClipboardIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M17 4.2h-1.4c.1.3.1.6.1.9v1.1c0 1.1-.9 2-2 2h-3.4c-1.1 0-2-.9-2-2V5.1c0-.3 0-.6.1-.9H7c-2.2 0-4 1.8-4 4v9.7c0 2.2 1.8 4 4 4h10c2.2 0 4-1.8 4-4V8.2c0-2.2-1.8-4-4-4Z" />
-      <path d="M14.2 5.1v1.1c0 .5-.4.9-.9.9h-3.4c-.5 0-.9-.4-.9-.9V5.1c0-1.1.9-2 2-2h1.2c1.1 0 2 .9 2 2Z" />
+      <path opacity={MASS} d="m13.89 2.878-4.69-.74c-3.91-.61-5.72.71-6.34 4.62l-.74 4.69c-.4 2.56.02 4.22 1.47 5.23.76.54 1.8.9 3.15 1.11l4.69.74c3.91.61 5.72-.71 6.34-4.62l.73-4.69c.12-.77.17-1.46.13-2.07-.13-2.5-1.6-3.78-4.74-4.27Zm-5.65 6.47c-1.17 0-2.12-.95-2.12-2.11 0-1.17.95-2.12 2.12-2.12 1.16 0 2.11.95 2.11 2.12 0 1.16-.95 2.11-2.11 2.11Z" />
+      <path d="m20.5 13.468-1.5 4.51c-1.25 3.76-3.25 4.76-7.01 3.51l-4.51-1.5c-2.27-.75-3.53-1.79-3.89-3.31.76.54 1.8.9 3.15 1.11l4.69.74c3.91.61 5.72-.71 6.34-4.62l.73-4.69c.12-.77.17-1.46.13-2.07 2.39 1.27 2.91 3.19 1.87 6.32ZM10.351 7.241c0 1.16-.95 2.11-2.11 2.11-1.17 0-2.12-.95-2.12-2.11 0-1.17.95-2.12 2.12-2.12 1.16 0 2.11.95 2.11 2.12Z" />
     </svg>
   );
 }
 
+/** Reading a selection captured from another app - a scan frame, which is
+ * what "Quét đọc" says. It replaced an I-beam that described the CURSOR
+ * rather than the thing the feature does. */
 export function CursorTextIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M12 21.5a.8.8 0 0 1-.8-.8V3.3a.8.8 0 0 1 1.6 0v17.4c0 .4-.4.8-.8.8Z" />
-      <path d="M15 4.3h-6a.8.8 0 0 1 0-1.6h6a.8.8 0 0 1 0 1.6Zm0 17h-6a.8.8 0 0 1 0-1.6h6a.8.8 0 0 1 0 1.6Z" />
+      <path opacity={MASS} d="M2 9.75c-.41 0-.75-.34-.75-.75V6.5c0-2.9 2.36-5.25 5.25-5.25H9c.41 0 .75.34.75.75s-.34.75-.75.75H6.5c-2.07 0-3.75 1.68-3.75 3.75V9c0 .41-.34.75-.75.75Z" />
+      <path d="M22 9.75c-.41 0-.75-.34-.75-.75V6.5c0-2.07-1.68-3.75-3.75-3.75H15c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h2.5c2.89 0 5.25 2.35 5.25 5.25V9c0 .41-.34.75-.75.75Z" />
+      <path opacity={MASS} d="M17.5 22.75H16c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h1.5c2.07 0 3.75-1.68 3.75-3.75V16c0-.41.34-.75.75-.75s.75.34.75.75v1.5c0 2.9-2.36 5.25-5.25 5.25Z" />
+      <path d="M9 22.75H6.5c-2.89 0-5.25-2.35-5.25-5.25V15c0-.41.34-.75.75-.75s.75.34.75.75v2.5c0 2.07 1.68 3.75 3.75 3.75H9c.41 0 .75.34.75.75s-.34.75-.75.75ZM8.501 11.381a2.88 2.88 0 1 0 0-5.76 2.88 2.88 0 0 0 0 5.76Z" />
+      <path opacity={MASS} d="M7.501 18.381a1.88 1.88 0 1 0 0-3.76 1.88 1.88 0 0 0 0 3.76ZM16.501 9.381a1.88 1.88 0 1 0 0-3.76 1.88 1.88 0 0 0 0 3.76Z" />
+      <path d="M15.501 18.381a2.88 2.88 0 1 0 0-5.76 2.88 2.88 0 0 0 0 5.76Z" />
     </svg>
   );
 }
@@ -313,80 +321,40 @@ export function CursorTextIcon({ className }: { className?: string }) {
 export function TransferIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M20.5 8.5H6.2a.8.8 0 0 1 0-1.6h14.3a.8.8 0 0 1 0 1.6Zm-2.7 8.6H3.5a.8.8 0 0 1 0-1.6h14.3a.8.8 0 0 1 0 1.6Z" />
-      <path d="M8.4 11.6a.8.8 0 0 1-.6-.2L4.2 7.8a.8.8 0 0 1 0-1.1l3.6-3.6a.8.8 0 0 1 1.1 1.1L5.9 7.2l3 3a.8.8 0 0 1-.5 1.4Zm7.2 9.3a.8.8 0 0 1-.6-1.4l3-3-3-3a.8.8 0 0 1 1.1-1.1l3.6 3.6a.8.8 0 0 1 0 1.1l-3.6 3.6c-.1.1-.3.2-.5.2Z" />
+      <path opacity={MASS} d="M21.75 6.73c0-.2-.08-.39-.22-.53l-3.72-3.72a.754.754 0 00-1.06 0c-.29.29-.29.77 0 1.06l2.45 2.45H3c-.41 0-.75.34-.75.75s.34.75.75.75h16.19l-2.44 2.44c-.29.29-.29.77 0 1.06.15.15.34.22.53.22s.38-.07.53-.22l3.71-3.71c.07-.07.13-.16.17-.26 0-.01 0-.02.01-.03.03-.09.05-.17.05-.26z" />
+      <path d="M21 16.52H4.81l2.44-2.44c.29-.29.29-.77 0-1.06a.754.754 0 00-1.06 0l-3.71 3.71c-.07.07-.13.16-.17.26 0 .01 0 .02-.01.03-.03.08-.05.17-.05.26 0 .2.08.39.22.53l3.72 3.72c.15.15.34.22.53.22s.38-.07.53-.22c.29-.29.29-.77 0-1.06L4.8 18.02H21c.41 0 .75-.34.75-.75s-.34-.75-.75-.75z" />
     </svg>
   );
 }
 
-/** Notes and highlights: the sticky note from the DOL icon library, in bulk
- * (owner picked it, 04/09).
- *
- * Two earlier drawings were thrown away. Bulk with two lines on a rounded
- * rectangle was `ScrollIcon` minus one line, and the two stand a few pixels
- * apart in the same header. Line weight fixed that by leaving the manner of
- * the set - and cost something in NotesPanel, where an outline note read
- * quieter beside the filled highlight pen, backwards for the row that carries
- * more.
- *
- * A third was thrown away for being WRONG: the peel was drawn as a square
- * corner filling a mid-point notch. Measured against the library's own
- * geometry, the note's outer corner turns on a radius nearly twice the
- * square's own (8.9 against 5) and the notch sits at 13.1, not the middle -
- * that big outer arc is the whole reason it reads as paper lifting rather
- * than as a tile with a bite out of it (owner, 04/09: "tôi thấy nó sai sai").
- * Body and fold share the notch exactly, reversed, so they nest with no seam.
- */
+/** Notes and highlights: the sticky note (owner picked it, 04/09). */
 export function NoteIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path
-        opacity={MASS}
-        d="M22 7v3.9a2.2 2.2 0 0 1-2.2 2.2h-2.2a4.5 4.5 0 0 0-4.5 4.5v2.2a2.2 2.2 0 0 1-2.2 2.2H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5Z"
-      />
-      <path d="M22 10.9v2.2a8.9 8.9 0 0 1-8.9 8.9h-2.2a2.2 2.2 0 0 0 2.2-2.2v-2.2a4.5 4.5 0 0 1 4.5-4.5h2.2a2.2 2.2 0 0 0 2.2-2.2Z" />
+      <path opacity={MASS} d="M20 8.25V18c0 3-1.79 4-4 4H8c-2.21 0-4-1-4-4V8.25c0-3.25 1.79-4 4-4 0 .62.25 1.18.66 1.59.41.41.97.66 1.59.66h3.5C14.99 6.5 16 5.49 16 4.25c2.21 0 4 .75 4 4Z" />
+      <path d="M16 4.25c0 1.24-1.01 2.25-2.25 2.25h-3.5c-.62 0-1.18-.25-1.59-.66C8.25 5.43 8 4.87 8 4.25 8 3.01 9.01 2 10.25 2h3.5c.62 0 1.18.25 1.59.66.41.41.66.97.66 1.59ZM12 13.75H8c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h4c.41 0 .75.34.75.75s-.34.75-.75.75ZM16 17.75H8c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h8c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
     </svg>
   );
 }
 
-/** What a reading will cost and how much of the book to spend it on (owner,
- * 04/09: "tìm một icon chi phí/phạm vi khác liên quan đến lưu lượng hoặc
- * cost").
- *
- * A coin. Three other readings were weighed first: a gauge, which
- * this app cannot use because it HAS a reading speed and a dial beside a play
- * button is read as that one; a wallet, whose silhouette at 20 is a grey
- * rounded square - the flap that makes a wallet a wallet does not survive the
- * size, and the clasp turned it into a price tag (both were drawn and looked
- * at, at 20, before being thrown away); and `SlidersIcon`, which is
- * already the settings opener standing in the same bar. A disc with a figure
- * on it is the one money glyph that still reads at 16.
- *
- * The mark is stroked rather than filled, on purpose: bulk is a rule about
- * COLOUR - one, at two weights - not about paint mode, and a hand-filled "S"
- * at this size closes up into a blob.
- */
+/** What a reading will cost and how much of the book to spend it on
+ * (owner, 04/09). A coin: a gauge would be read as the reading SPEED, and
+ * a wallet's silhouette does not survive 20px. */
 export function CoinIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
-      <path d="M12 5.2a.9.9 0 0 1 .9.9v11.8a.9.9 0 0 1-1.8 0V6.1a.9.9 0 0 1 .9-.9Z" />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.7}
-        strokeLinecap="round"
-        d="M15 9.4c0-1.3-1.3-2.3-3-2.3s-3 1-3 2.3 1.3 2.1 3 2.3 3 1 3 2.3-1.3 2.3-3 2.3-3-1-3-2.3"
-      />
+      <path opacity={MASS} d="M12 21.898c5.523 0 10-4.477 10-10 0-5.522-4.477-10-10-10s-10 4.478-10 10c0 5.523 4.477 10 10 10Z" />
+      <path d="m14.26 12-1.51-.53V8.08h.36c.81 0 1.47.71 1.47 1.58 0 .41.34.75.75.75s.75-.34.75-.75c0-1.7-1.33-3.08-2.97-3.08h-.36V6c0-.41-.34-.75-.75-.75s-.75.34-.75.75v.58h-.65c-1.48 0-2.69 1.25-2.69 2.78 0 1.79 1.04 2.36 1.83 2.64l1.51.53v3.38h-.36c-.81 0-1.47-.71-1.47-1.58 0-.41-.34-.75-.75-.75s-.75.34-.75.75c0 1.7 1.33 3.08 2.97 3.08h.36V18c0 .41.34.75.75.75s.75-.34.75-.75v-.58h.65c1.48 0 2.69-1.25 2.69-2.78-.01-1.8-1.05-2.37-1.83-2.64Zm-4.02-1.41c-.51-.18-.82-.35-.82-1.22 0-.71.53-1.28 1.19-1.28h.65v2.86l-1.02-.36Zm3.16 5.33h-.65v-2.86l1.01.35c.51.18.82.35.82 1.22 0 .71-.53 1.29-1.18 1.29Z" />
     </svg>
   );
 }
 
+/** What Apple Books already holds - the other way into the library. */
 export function ShelfIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M8.4 2H5.6C4 2 3.2 2.8 3.2 4.4v15.2c0 1.6.8 2.4 2.4 2.4h2.8c1.6 0 2.4-.8 2.4-2.4V4.4C10.8 2.8 10 2 8.4 2Z" />
-      <path d="M18 2h-2.4c-1.6 0-2.4.8-2.4 2.4v15.2c0 1.6.8 2.4 2.4 2.4H18c1.6 0 2.4-.8 2.4-2.4V4.4C20.4 2.8 19.6 2 18 2Zm-.2 8.5h-2a.8.8 0 0 1 0-1.6h2a.8.8 0 0 1 0 1.6Z" />
+      <path opacity={MASS} d="M20.5 7v8H6.35c-1.57 0-2.85 1.28-2.85 2.85V7c0-4 1-5 5-5h7c4 0 5 1 5 5Z" />
+      <path d="M20.5 15v3.5c0 1.93-1.57 3.5-3.5 3.5H7c-1.93 0-3.5-1.57-3.5-3.5v-.65C3.5 16.28 4.78 15 6.35 15H20.5ZM16 7.75H8c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h8c.41 0 .75.34.75.75s-.34.75-.75.75ZM13 11.25H8c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h5c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
     </svg>
   );
 }
@@ -394,8 +362,8 @@ export function ShelfIcon({ className }: { className?: string }) {
 export function CheckIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
-      <path d="M10.6 15.6c-.2 0-.4-.1-.6-.2l-2.4-2.4a.8.8 0 0 1 1.1-1.1l1.9 1.9 4.7-4.7a.8.8 0 0 1 1.1 1.1l-5.2 5.2c-.2.1-.4.2-.6.2Z" />
+      <path opacity={MASS} d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
+      <path d="M10.58 15.582a.75.75 0 0 1-.53-.22l-2.83-2.83a.754.754 0 0 1 0-1.06c.29-.29.77-.29 1.06 0l2.3 2.3 5.14-5.14c.29-.29.77-.29 1.06 0 .29.29.29.77 0 1.06l-5.67 5.67a.75.75 0 0 1-.53.22Z" />
     </svg>
   );
 }
@@ -403,8 +371,9 @@ export function CheckIcon({ className }: { className?: string }) {
 export function LockIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M17.5 9.6h-11c-2 0-3.5 1.5-3.5 3.5v5.4c0 2 1.5 3.5 3.5 3.5h11c2 0 3.5-1.5 3.5-3.5v-5.4c0-2-1.5-3.5-3.5-3.5Z" />
-      <path d="M7 9.1V7.7C7 4.6 7.9 2 12 2c3.7 0 5 1.8 5 4.6v2.5h-1.6V6.5c0-2-.9-2.9-3.4-2.9-2.7 0-3.4 1.3-3.4 4.1v1.4H7Zm5 8.9a1.6 1.6 0 1 1 0-3.2 1.6 1.6 0 0 1 0 3.2Z" />
+      <path d="M18.75 8v2.1c-.44-.06-.94-.09-1.5-.1V8c0-3.15-.89-5.25-5.25-5.25S6.75 4.85 6.75 8v2c-.56.01-1.06.04-1.5.1V8c0-2.9.7-6.75 6.75-6.75S18.75 5.1 18.75 8Z" />
+      <path opacity={MASS} d="M22 15v2c0 4-1 5-5 5H7c-4 0-5-1-5-5v-2c0-3.34.7-4.59 3.25-4.9.44-.06.94-.09 1.5-.1h10.5c.56.01 1.06.04 1.5.1C21.3 10.41 22 11.66 22 15Z" />
+      <path d="M8 16.999c-.13 0-.26-.03-.38-.08-.13-.05-.23-.12-.33-.21-.18-.19-.29-.45-.29-.71 0-.13.03-.26.08-.38s.12-.23.21-.33c.1-.09.2-.16.33-.21.37-.16.81-.07 1.09.21.09.1.16.21.21.33.05.12.08.25.08.38 0 .26-.11.52-.29.71-.19.18-.45.29-.71.29ZM12 17c-.27 0-.52-.11-.71-.29-.09-.1-.16-.21-.21-.33A.995.995 0 0 1 11 16c0-.27.11-.52.29-.71.37-.37 1.04-.37 1.42 0 .18.19.29.44.29.71 0 .13-.03.26-.08.38s-.12.23-.21.33c-.19.18-.45.29-.71.29ZM16 17c-.26 0-.52-.11-.71-.29-.18-.19-.29-.44-.29-.71 0-.27.11-.52.29-.71.38-.37 1.05-.37 1.42 0 .04.05.08.1.12.16.04.05.07.11.09.17.03.06.05.12.06.18.01.07.02.14.02.2 0 .26-.11.52-.29.71-.19.18-.45.29-.71.29Z" />
     </svg>
   );
 }
@@ -412,8 +381,8 @@ export function LockIcon({ className }: { className?: string }) {
 export function ImportIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M20.5 14.7v2.2c0 2.8-1.6 4-4 4h-9c-2.4 0-4-1.2-4-4v-2.2a.8.8 0 0 1 1.6 0v2.2c0 1.9.8 2.4 2.4 2.4h9c1.6 0 2.4-.5 2.4-2.4v-2.2a.8.8 0 0 1 1.6 0Z" />
-      <path d="M12 16.1c-.2 0-.4-.1-.6-.2l-3.5-3.5a.8.8 0 0 1 1.1-1.1l2.2 2.2V3.3a.8.8 0 0 1 1.6 0v10.2l2.2-2.2a.8.8 0 0 1 1.1 1.1l-3.5 3.5c-.2.1-.4.2-.6.2Z" />
+      <path opacity={MASS} d="M20.5 10.19h-2.89c-2.37 0-4.3-1.93-4.3-4.3V3c0-.55-.45-1-1-1H8.07C4.99 2 2.5 4 2.5 7.57v8.86C2.5 20 4.99 22 8.07 22h7.86c3.08 0 5.57-2 5.57-5.57v-5.24c0-.55-.45-1-1-1Z" />
+      <path d="M15.8 2.21c-.41-.41-1.12-.13-1.12.44v3.49c0 1.46 1.24 2.67 2.75 2.67.95.01 2.27.01 3.4.01.57 0 .87-.67.47-1.07-1.44-1.45-4.02-4.06-5.5-5.54ZM12.28 14.72a.754.754 0 0 0-1.06 0l-.72.72v-4.19c0-.41-.34-.75-.75-.75s-.75.34-.75.75v4.19l-.72-.72a.754.754 0 0 0-1.06 0c-.29.29-.29.77 0 1.06l2 2c.01.01.02.01.02.02.06.06.14.11.22.15.1.03.19.05.29.05.1 0 .19-.02.28-.06.09-.04.17-.09.25-.16l2-2c.29-.29.29-.77 0-1.06Z" />
     </svg>
   );
 }
@@ -421,8 +390,8 @@ export function ImportIcon({ className }: { className?: string }) {
 export function SyncIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M21 12a9 9 0 0 1-14.9 6.8.8.8 0 0 1 1-1.2A7.4 7.4 0 0 0 19.4 12a.8.8 0 0 1 1.6 0ZM3 12a9 9 0 0 1 14.9-6.8.8.8 0 0 1-1 1.2A7.4 7.4 0 0 0 4.6 12a.8.8 0 0 1-1.6 0Z" />
-      <path d="M18.6 2.6a.8.8 0 0 1 .8.8v3.3h-3.3a.8.8 0 0 1 0-1.6h1.7V3.4c0-.4.4-.8.8-.8ZM5.4 21.4a.8.8 0 0 1-.8-.8v-3.3h3.3a.8.8 0 0 1 0 1.6H6.2v1.7c0 .4-.4.8-.8.8Z" />
+      <path opacity={MASS} d="M22 7.81v8.37c0 3.64-2.17 5.81-5.81 5.81H7.81C4.17 22 2 19.83 2 16.19V7.81C2 4.17 4.17 2 7.81 2h8.37C19.83 2 22 4.17 22 7.81z" />
+      <path d="M12 18.25c-1.79 0-3.19-.89-4.14-1.77v.71c0 .41-.34.75-.75.75s-.75-.34-.75-.75v-2.75c0-.41.34-.75.75-.75h2.48c.41 0 .75.34.75.75s-.34.75-.75.75h-.9c.74.74 1.89 1.56 3.31 1.56 2.62 0 4.75-2.13 4.75-4.75 0-.41.34-.75.75-.75s.75.34.75.75c0 3.45-2.8 6.25-6.25 6.25zm-5.5-5.5c-.41 0-.75-.34-.75-.75 0-3.45 2.8-6.25 6.25-6.25 2.15 0 3.73.93 4.75 1.82v-.76c0-.41.34-.75.75-.75s.75.34.75.75V9.63a.75.75 0 01-.3.54c-.07.05-.15.09-.24.12-.07.02-.14.03-.21.03h-2.43c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h.83c-.8-.74-2.09-1.56-3.88-1.56-2.62 0-4.75 2.13-4.75 4.75-.02.4-.36.74-.77.74z" />
     </svg>
   );
 }
@@ -430,8 +399,10 @@ export function SyncIcon({ className }: { className?: string }) {
 export function SpeakerIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M14.5 4.1v15.8c0 1.9-1.4 2.7-3.1 1.8l-4.4-2.5c-.3-.2-.7-.3-1-.3H4c-2 0-3-1-3-3v-3.8c0-2 1-3 3-3h2c.3 0 .7-.1 1-.3l4.4-2.5c1.7-.9 3.1-.1 3.1 1.8Z" />
-      <path d="M18.4 16.9a.8.8 0 0 1-.6-1.3c1.7-2 1.7-5.2 0-7.2a.8.8 0 0 1 1.2-1c2.1 2.6 2.1 6.6 0 9.2-.2.2-.4.3-.6.3Zm2.5 2.9a.8.8 0 0 1-.6-1.3c3-3.6 3-9.4 0-13a.8.8 0 0 1 1.2-1c3.4 4.1 3.4 10.9 0 15-.2.2-.4.3-.6.3Z" />
+      <path d="M18 16.75a.75.75 0 0 1-.6-1.2 5.94 5.94 0 0 0 0-7.1.75.75 0 0 1 1.2-.9c1.96 2.62 1.96 6.28 0 8.9-.15.2-.37.3-.6.3Z" />
+      <path d="M19.828 19.25a.75.75 0 0 1-.6-1.2c2.67-3.56 2.67-8.54 0-12.1a.75.75 0 0 1 1.2-.9c3.07 4.09 3.07 9.81 0 13.9-.14.2-.37.3-.6.3Z" />
+      <path opacity={MASS} d="M15.75 7.412v9.18c0 1.72-.62 3.01-1.73 3.63a3 3 0 0 1-1.47.37c-.8 0-1.66-.27-2.54-.82l-2.92-1.83c-.2-.12-.43-.19-.66-.19H5.5v-11.5h.93c.23 0 .46-.07.66-.19l2.92-1.83c1.46-.91 2.89-1.07 4.01-.45 1.11.62 1.73 1.91 1.73 3.63Z" />
+      <path d="M5.5 6.25v11.5H5c-2.42 0-3.75-1.33-3.75-3.75v-4c0-2.42 1.33-3.75 3.75-3.75h.5Z" />
     </svg>
   );
 }
@@ -439,8 +410,8 @@ export function SpeakerIcon({ className }: { className?: string }) {
 export function HighlightIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M20.2 3.8a3.9 3.9 0 0 0-5.5 0l-8.5 8.5c-.3.3-.5.7-.6 1.1l-.9 4.4c-.1.6.4 1.1 1 1l4.4-.9c.4-.1.8-.3 1.1-.6l8.5-8.5a3.9 3.9 0 0 0 0-5.5Z" />
-      <path d="M20 22H4a.8.8 0 0 1 0-1.6h16a.8.8 0 0 1 0 1.6Z" />
+      <path d="M6 2h12c1.1 0 2 .9 2 2v4.32H4V4c0-1.1.9-2 2-2Z" />
+      <path opacity={MASS} d="M4 8.32v3.56c0 1.08.58 2.08 1.53 2.61l2.96 1.67c.63.35 1.02 1.02 1.02 1.74V20c0 1.1.9 2 2 2h1c1.1 0 2-.9 2-2v-2.1c0-.72.39-1.39 1.02-1.74l2.96-1.67c.94-.53 1.53-1.53 1.53-2.61V8.32H4Z" />
     </svg>
   );
 }
