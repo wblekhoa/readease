@@ -42,13 +42,17 @@ const bulk = {
 /** The same attributes: the source's OUTLINE manner is also filled paths, so
  * only the path data differs.
  *
- * Four glyphs are outline rather than bulk, each at the owner's word (06/09)
+ * Eight glyphs are outline rather than bulk, each at the owner's word (06/09)
  * and each for its own reason. `ResetIcon` and the two that lead a slider,
  * `LineSpacingIcon` and `MarginsIcon`, because the reading settings form was
  * drawn from a line-drawn reference. `ArrowLeftIcon` because the owner asked
  * for a back arrow WITH A SHAFT and the source's bulk arrow is not one - it
- * is a rounded badge with an arrow cut out of it, a different object. They
- * are named exceptions, not a new rule. */
+ * is a rounded badge with an arrow cut out of it, a different object. And
+ * the four that mark the voice filters - `MonitorIcon`, `CloudIcon`,
+ * `ManIcon`, `WomanIcon` - because those chips draw their glyph at 16, where
+ * bulk's lighter layer collapses into a grey smudge (the reason this file
+ * renders at 20 in the first place). They are named exceptions, not a new
+ * rule. */
 const outline = bulk;
 
 /** The 40% layer. A constant so no icon quietly picks its own weight. */
@@ -414,6 +418,57 @@ export function MarginsIcon({ className }: { className?: string }) {
     <svg {...outline} className={className}>
       <path d="M8.02 20.25H6.98C4.97 20.25 4 19.32 4 17.4V6.6c0-1.92.98-2.85 2.98-2.85h1.04c2 0 2.98.93 2.98 2.85v10.8c0 1.92-.98 2.85-2.98 2.85Zm-1.04-15c-1.27 0-1.48.34-1.48 1.35v10.8c0 1.01.21 1.35 1.48 1.35h1.04c1.27 0 1.48-.34 1.48-1.35V6.6c0-1.01-.21-1.35-1.48-1.35H6.98ZM16.52 18.25h-1.04c-2.01 0-2.98-.93-2.98-2.85V8.6c0-1.92.98-2.85 2.98-2.85h1.04c2.01 0 2.98.93 2.98 2.85v6.8c0 1.92-.98 2.85-2.98 2.85Zm-1.04-11c-1.27 0-1.48.34-1.48 1.35v6.8c0 1.01.21 1.35 1.48 1.35h1.04c1.27 0 1.48-.34 1.48-1.35V8.6c0-1.01-.21-1.35-1.48-1.35h-1.04Z" />
       <path d="M4.4 12.75H2a.749.749 0 1 1 0-1.5h2.4a.749.749 0 1 1 0 1.5ZM13 12.75h-2c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h2c.41 0 .75.34.75.75s-.34.75-.75.75ZM22 12.75h-2.7c-.41 0-.75-.34-.75-.75s.34-.75.75-.75H22a.749.749 0 1 1 0 1.5Z" />
+    </svg>
+  );
+}
+
+/** A screen: this Mac. On the voice filters it marks the voices that run
+ * HERE - the distinction the icon carries is not which company made a voice
+ * but where it is spoken, which is what decides whether the words leave the
+ * machine and whether they cost money. Its opposite is `CloudIcon`. */
+export function MonitorIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M17.56 17.97H6.44c-3.98 0-5.19-1.21-5.19-5.19V6.44c0-3.98 1.21-5.19 5.19-5.19h11.11c3.98 0 5.19 1.21 5.19 5.19v6.33c.01 3.99-1.2 5.2-5.18 5.2ZM6.44 2.75c-3.14 0-3.69.55-3.69 3.69v6.33c0 3.14.55 3.69 3.69 3.69h11.11c3.14 0 3.69-.55 3.69-3.69V6.44c0-3.14-.55-3.69-3.69-3.69H6.44Z" />
+      <path d="M12 22.749c-.41 0-.75-.34-.75-.75v-4.78c0-.41.34-.75.75-.75s.75.34.75.75v4.78c0 .41-.34.75-.75.75ZM22 13.75H2c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h20c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
+      <path d="M16.5 22.75h-9c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h9c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
+    </svg>
+  );
+}
+
+/** Spoken somewhere else, over the network, on your key. Deliberately the
+ * SAME glyph for every paid provider: the word beside it already says which
+ * company, and an icon invented to tell OpenAI from ElevenLabs would carry
+ * no meaning at all. What it does carry is the thing they have in common and
+ * the reader needs to know. */
+export function CloudIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M16.68 20.831H5.55c-2.94-.21-4.26-2.47-4.26-4.49 0-1.8 1.05-3.8 3.34-4.35-.64-2.5-.1-4.85 1.53-6.55 1.85-1.94 4.82-2.71 7.37-1.92 2.34.72 3.99 2.65 4.59 5.33 2.05.46 3.68 2.01 4.34 4.15.71 2.33.07 4.72-1.68 6.25a6.128 6.128 0 0 1-4.1 1.58Zm-11.11-7.48h-.02c-1.9.14-2.77 1.6-2.77 2.99 0 1.39.87 2.85 2.81 2.99h11.04c1.16-.02 2.27-.42 3.13-1.2 1.56-1.37 1.67-3.32 1.25-4.69-.42-1.38-1.59-2.94-3.63-3.2a.753.753 0 0 1-.65-.62c-.4-2.4-1.7-4.06-3.65-4.66-2.03-.62-4.37-.01-5.84 1.52-1.33 1.39-1.71 3.31-1.09 5.42.51.07 1 .22 1.45.45.37.19.52.64.33 1.01a.75.75 0 0 1-1.01.33 2.88 2.88 0 0 0-1.31-.32c-.01-.02-.02-.02-.04-.02Z" />
+      <path d="M15.848 10.67c-.28 0-.54-.15-.67-.42a.754.754 0 0 1 .34-1.01c.62-.31 1.31-.48 1.99-.49.4-.01.76.32.76.74.01.41-.32.76-.74.76-.46.01-.93.12-1.35.33-.11.06-.22.09-.33.09Z" />
+    </svg>
+  );
+}
+
+/** The two the source set draws as a PAIR - one symbol turned two ways -
+ * which is what a filter over one dimension needs. Picking two unrelated
+ * glyphs for male and female would have read as two different questions. */
+export function ManIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M10.25 22.25c-4.69 0-8.5-3.81-8.5-8.5 0-4.69 3.81-8.5 8.5-8.5 4.69 0 8.5 3.81 8.5 8.5 0 4.69-3.81 8.5-8.5 8.5Zm0-15.5c-3.86 0-7 3.14-7 7s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7Z" />
+      <path d="M16 8.751c-.19 0-.38-.07-.53-.22a.754.754 0 0 1 0-1.06l5.5-5.5c.29-.29.77-.29 1.06 0 .29.29.29.77 0 1.06l-5.5 5.5c-.15.15-.34.22-.53.22Z" />
+      <path d="M21.5 9.75c-.41 0-.75-.34-.75-.75V3.25H15c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h6.5c.41 0 .75.34.75.75V9c0 .41-.34.75-.75.75Z" />
+    </svg>
+  );
+}
+
+export function WomanIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M12 16.75c-4.27 0-7.75-3.48-7.75-7.75S7.73 1.25 12 1.25 19.75 4.73 19.75 9s-3.48 7.75-7.75 7.75Zm0-14c-3.45 0-6.25 2.8-6.25 6.25s2.8 6.25 6.25 6.25 6.25-2.8 6.25-6.25-2.8-6.25-6.25-6.25Z" />
+      <path d="M12 22.75c-.41 0-.75-.34-.75-.75v-6c0-.41.34-.75.75-.75s.75.34.75.75v6c0 .41-.34.75-.75.75Z" />
+      <path d="M15 19.75H9c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h6c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
     </svg>
   );
 }

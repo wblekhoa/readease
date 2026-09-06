@@ -13,9 +13,11 @@
  */
 import { useState } from "react";
 import { text } from "../i18n";
-import { Button, IconButton, Input, Notice, Select, Surface, Switch } from "./controls";
+import { Button, IconButton, Notice, SearchField, Surface, Switch } from "./controls";
 import { Cluster, GroupedSection, useDismiss } from "./patterns";
-import { CloseIcon, SpeakerIcon, StopIcon } from "./icons";
+import {
+  CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SpeakerIcon, StopIcon, WomanIcon,
+} from "./icons";
 import {
   matchesVoiceFilters,
   speaksVietnamese,
@@ -55,6 +57,8 @@ export function VoicesPanel({
 }) {
   const panel = useDismiss(onClose);
   const [query, setQuery] = useState("");
+  // Folded away by default; the button in the header opens it.
+  const [searching, setSearching] = useState(false);
   const [providerFilter, setProviderFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState<"all" | VoiceGender>("all");
   const sourceOf = (id: string) => providerOf(id) ?? "local";
@@ -109,34 +113,60 @@ export function VoicesPanel({
           <h3 className="m-0 text-base font-bold">{text("voices.title")}</h3>
           <p className="m-0 mt-1 text-xs text-ink-mute">{text("voices.caption")}</p>
         </div>
+        {/* Search is FOLDED AWAY behind its own button (owner, 06/09:
+            "chúng ta không ưu tiên tìm kiếm bằng từ khóa lắm"). What the list
+            is really used for is scanning and toggling, and a permanent field
+            over it spent a row insisting otherwise. Closing it clears the
+            query: a hidden field still filtering the list would be a list
+            quietly missing voices with nothing on screen to say why. */}
+        {voices.length > 8 && (
+          <IconButton
+            onClick={() => {
+              setSearching((open: boolean) => {
+                if (open) setQuery("");
+                return !open;
+              });
+            }}
+            aria-expanded={searching}
+            aria-label={text("voices.search")}
+            title={text("voices.search")}
+            className={searching ? "text-ink" : ""}
+          >
+            <SearchIcon />
+          </IconButton>
+        )}
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>
       </div>
 
-      {voices.length > 8 && (
-        <div className="px-6 pb-4">
-          <Input
+      {voices.length > 8 && searching && (
+        <div className="px-6 pb-3">
+          <SearchField
+            autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={text("voices.search")}
-            aria-label={text("voices.search")}
+            label={text("voices.search")}
+            onEscape={() => { setQuery(""); setSearching(false); }}
           />
-          {/* Every filter on ONE wrapping row, and no captions over them
-              (owner, 06/09). Two labelled stacks for five controls spent
-              three lines saying what the controls already say - "OpenAI" is
-              a provider, "Tất cả giới tính" names its own dimension. The
-              names survive where they still do work: the select keeps its
-              own, and "Tất cả" - the one chip whose word does not say what
-              it filters - is named in full for a screen reader.
-              Five SIBLINGS, not two nested groups: nested, the chips claim
-              a whole line as one item and push the select onto the next
-              even when there is room beside them. Flat, the row wraps where
-              it actually runs out (measured 06/09: 502px of controls in a
-              462px row - it wraps either way, the question was only
-              whether it wraps as a block or as a flow). */}
-          {(providerOptions.length > 1 || hasKnownGender) && (
-            <Cluster className="mt-3 flex-wrap">
+        </div>
+      )}
+
+      {(providerOptions.length > 1 || hasKnownGender) && (
+        <div className="px-6 pb-4">
+          {/* Every filter on ONE wrapping row of chips, no captions over
+              them, and a glyph on each except the two "all"s (owner, 06/09).
+              Gender was a `Select`; as chips both dimensions are one kind of
+              control, so the row reads as one thing you tune rather than a
+              row plus a dropdown.
+              SIBLINGS, not nested groups: nested, a group claims a whole
+              line as one item and pushes the rest down even when there is
+              room beside it. Flat, the row wraps where it actually runs out.
+              "All" carries no glyph because it is the ABSENCE of a filter -
+              there is nothing for a picture to be of - and the two of them
+              keep their full names for a screen reader, since "Tất cả" alone
+              does not say all of what. */}
+          <Cluster className="flex-wrap">
               {providerOptions.length > 1 &&
                 ["all", ...providerOptions].map((key) => {
                   const active = activeProvider === key;
@@ -154,23 +184,34 @@ export function VoicesPanel({
                       aria-label={key === "all" ? text("voices.filter_all_providers") : undefined}
                       onClick={() => setProviderFilter(key)}
                     >
+                      {key === "all"
+                        ? null
+                        : key === "local" ? <MonitorIcon /> : <CloudIcon />}
                       {label}
                     </Button>
                   );
                 })}
-              {hasKnownGender && (
-                <Select
-                  aria-label={text("voices.filter_gender")}
-                  value={genderFilter}
-                  onChange={(event) => setGenderFilter(event.target.value as "all" | VoiceGender)}
-                >
-                  <option value="all">{text("voices.gender_all")}</option>
-                  <option value="male">{text("voices.gender_male")}</option>
-                  <option value="female">{text("voices.gender_female")}</option>
-                </Select>
-              )}
-            </Cluster>
-          )}
+              {hasKnownGender &&
+                ([
+                  ["all", text("voices.gender_all"), null],
+                  ["male", text("voices.gender_male"), <ManIcon key="m" />],
+                  ["female", text("voices.gender_female"), <WomanIcon key="w" />],
+                ] as const).map(([key, label, glyph]) => {
+                  const active = genderFilter === key;
+                  return (
+                    <Button
+                      key={key}
+                      size="sm"
+                      variant={active ? "primary" : "secondary"}
+                      aria-pressed={active}
+                      onClick={() => setGenderFilter(key as "all" | VoiceGender)}
+                    >
+                      {glyph}
+                      {label}
+                    </Button>
+                  );
+                })}
+          </Cluster>
         </div>
       )}
 

@@ -13,7 +13,7 @@
  * outside this folder - the gate that keeps this the single source.
  */
 import { useLayoutEffect, useRef, useState } from "react";
-import { LockIcon } from "./icons";
+import { LockIcon, SearchIcon } from "./icons";
 import { createPortal } from "react-dom";
 import type {
   ButtonHTMLAttributes,
@@ -262,6 +262,44 @@ export function Input({
       className={`h-[30px] rounded-[var(--ctl-radius)] border border-edge-strong bg-paper px-3 text-sm text-ink placeholder:text-ink-faint ${className}`}
       {...rest}
     />
+  );
+}
+
+/** A search box that says it is one: the lens sits INSIDE the field, and the
+ * field is taller than an ordinary control (36 against 30) because it is the
+ * thing a person aims at when they open it, not a row in a form.
+ *
+ * The lens takes `ink-mute`, not `ink-faint`: faint is the disabled colour,
+ * and a mark on a field somebody is about to type into is not disabled.
+ *
+ * `onEscape` exists because this field is usually revealed by a button, and
+ * Escape should retract THAT before it reaches whatever would close the panel
+ * around it - so the key is handled here and stopped here.
+ */
+export function SearchField({
+  label,
+  onEscape,
+  className = "",
+  ...rest
+}: InputHTMLAttributes<HTMLInputElement> & { label: string; onEscape?: () => void }) {
+  return (
+    <div className={`relative flex items-center ${className}`}>
+      <SearchIcon className="pointer-events-none absolute left-3 h-4 w-4 text-ink-mute" />
+      <input
+        data-raw
+        type="search"
+        aria-label={label}
+        placeholder={label}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && onEscape) {
+            event.stopPropagation();
+            onEscape();
+          }
+        }}
+        className="h-9 w-full rounded-[var(--ctl-radius)] border border-edge-strong bg-paper pl-9 pr-3 text-sm text-ink placeholder:text-ink-mute"
+        {...rest}
+      />
+    </div>
   );
 }
 
