@@ -444,6 +444,38 @@ export function Switch({
  * Blue, from the DS's own `progress` role - not brand red, which is this
  * app's identity rather than a status, and made every started book shout
  * (owner, 03/09). */
+/** A line that separates, in the DS's own three styles.
+ *
+ * The dotted one is a repeating radial gradient rather than
+ * `border-dotted`: a native dotted border renders on the browser's own
+ * cadence, and the DS pins the dot to a 2px mark on an 8px rhythm so the
+ * line looks the same everywhere (DS `Divider`, adopted 06/09).
+ */
+export function Divider({
+  lineStyle = "solid",
+  tone = "default",
+  className = "",
+}: {
+  lineStyle?: "solid" | "dashed" | "dotted";
+  tone?: "subtle" | "default";
+  className?: string;
+}) {
+  /* Written out rather than composed: Tailwind generates the classes it can
+     SEE, and a name built from a variable is a class that never ships. */
+  const dotted = tone === "subtle" ? "text-edge" : "text-edge-strong";
+  const line = tone === "subtle" ? "border-edge" : "border-edge-strong";
+  return (
+    <div
+      role="separator"
+      className={
+        lineStyle === "dotted"
+          ? `h-px bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:8px_1px] bg-repeat-x ${dotted} ${className}`
+          : `h-px border-t ${lineStyle === "dashed" ? "border-dashed" : "border-solid"} ${line} ${className}`
+      }
+    />
+  );
+}
+
 /** A row of choices, one of them on - the Books "A | A | ◐" pill.
  *
  * Drawn here rather than copied from the DS `toggle-button-group`, which is
@@ -469,10 +501,18 @@ export function SegmentedControl<T extends string | number>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={`flex items-stretch rounded-full bg-band p-1 ${size === "lg" ? "h-11" : "h-8"} ${className}`}
+      className={`flex items-stretch rounded-full bg-band p-1 ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
       {options.map((option) => {
         const on = option.value === value;
+        /* A disabled choice that still wears the raised white pill reads as
+           "on and working". Off means flat: the mark stays, the lift does
+           not (owner, 06/09). */
+        const chosen = on && !option.disabled
+          ? "bg-paper font-semibold text-ink shadow-raised"
+          : on
+            ? "bg-paper/50 font-semibold"
+            : "hover:text-ink";
         return (
           <button
             key={String(option.value)}
@@ -482,9 +522,9 @@ export function SegmentedControl<T extends string | number>({
             aria-label={option.ariaLabel}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm transition-colors disabled:text-ink-faint [&_svg]:h-4 [&_svg]:w-4 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm text-ink-mute transition-colors disabled:text-ink-faint [&_svg]:h-4 [&_svg]:w-4 ${
               size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""
-            } ${on ? "bg-paper font-semibold text-ink shadow-raised" : "text-ink-mute hover:text-ink"}`}
+            } ${chosen}`}
           >
             {option.label}
           </button>

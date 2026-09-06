@@ -9,10 +9,10 @@
  */
 import { useState } from "react";
 import { text } from "../i18n";
-import { Button, IconButton, SegmentedControl, Slider, Surface, Switch } from "./controls";
+import { Button, Divider, IconButton, SegmentedControl, Slider, Surface, Switch } from "./controls";
 import {
-  AutoAppearanceIcon, ChevronDownIcon, CloseIcon, MoonIcon, PagesIcon, ScrollIcon, SlidersIcon, SunIcon,
-  TextLargerIcon, TextSmallerIcon,
+  AutoAppearanceIcon, ChevronDownIcon, CloseIcon, LockIcon, MoonIcon, PagesIcon, ScrollIcon, SlidersIcon,
+  SunIcon, TextLargerIcon, TextSmallerIcon,
 } from "./icons";
 import { useDismiss } from "./patterns";
 import {
@@ -160,7 +160,8 @@ export function ReadingSettingsPanel({
              without drawing a second edge the way a solid hairline does
              (owner, 06/09) - and each setting is a labelled line at the
              panel's own inset. */
-          <div className="mt-4 flex flex-col gap-5 border-t border-dotted border-edge-strong pt-4">
+          <div className="mt-4 flex flex-col gap-5">
+            <Divider lineStyle="dotted" />
             <label className="flex flex-col gap-2">
               <span className="flex items-baseline justify-between">
                 <span className="text-sm text-ink">{text("settings.line_spacing")}</span>
@@ -189,8 +190,15 @@ export function ReadingSettingsPanel({
                 onChange={(value) => set("margin", value)}
               />
             </label>
+            {/* Columns are a property of a PAGE, so in a scroll there is
+                nothing for them to do. Saying that beats a row of greyed
+                words: the lock says the setting is held, and the line under
+                it says by what (owner, 06/09). */}
             <div className="flex flex-col gap-2">
-              <span className="text-sm text-ink">{text("settings.columns")}</span>
+              <span className="flex items-center gap-1.5 text-sm text-ink">
+                {text("settings.columns")}
+                {mode !== "pages" && <LockIcon className="h-4 w-4 text-ink-faint" />}
+              </span>
               <SegmentedControl<Columns>
                 label={text("settings.columns")}
                 value={prefs.columns}
@@ -201,6 +209,9 @@ export function ReadingSettingsPanel({
                   { value: 2, label: "2", disabled: mode !== "pages" },
                 ]}
               />
+              {mode !== "pages" && (
+                <span className="text-xs text-ink-mute">{text("settings.columns_pages_only")}</span>
+              )}
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-ink">{text("settings.justify")}</span>

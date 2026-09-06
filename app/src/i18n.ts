@@ -60,6 +60,7 @@ export const TEXT = {
   "settings.margins": ["Lề", "Margins"],
   "settings.columns": ["Số cột", "Columns"],
   "settings.columns_auto": ["Tự động", "Auto"],
+  "settings.columns_pages_only": ["Chỉ dùng được khi đọc theo trang.", "Only applies when reading in pages."],
   "settings.justify": ["Canh đều hai bên", "Justify text"],
   "settings.bold": ["Chữ đậm", "Bold text"],
   "settings.reset": ["Đặt lại mặc định", "Reset to defaults"],

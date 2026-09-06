@@ -309,6 +309,11 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   có icon + chữ `text-sm` không xuống dòng; phần mở rộng đặt trong khối `bg-band rounded-2xl px-5 py-4`.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click**: tooltip theo focus sẽ không treo trên
   panel vừa mở.
+- **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
+  (viền `border-dotted` của trình duyệt mỗi nơi một nhịp), `solid`/`dashed` là hairline. Không ghép tên lớp Tailwind từ
+  biến — lớp không xuất hiện nguyên vẹn trong nguồn thì không được sinh ra.
+- **Control bị khoá phải NÓI vì sao**: ô đang chọn bỏ lớp nổi (giữ dấu, bỏ `shadow-raised`), nhãn kèm icon ổ khoá, và một
+  dòng nhỏ nói điều kiện ("Số cột · Chỉ dùng được khi đọc theo trang", chủ 06/09). Một hàng chữ xám không giải thích gì.
 
 ### 3.9c `Kbd` - hiển thị phím tắt
 - **Usage**: cho THẤY tổ hợp phím hiện hành. Đây là THÔNG TIN, không phải hành động.
