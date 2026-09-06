@@ -157,13 +157,14 @@ function TextSizeIcon({ className, apex }: { className?: string; apex: number })
   );
 }
 
-/** Search in the book: the set's lens, as drawn - disc at 40%, handle at
- * full. */
+/** Search in the book: the lens whose handle is a straight stem (owner,
+ * 06/09) - the set also has one drawn as a blob, which read as a smudge
+ * beside the gear. Disc at 40%, handle at full. */
 export function SearchIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M11.01 20.02a9.01 9.01 0 1 0 0-18.02 9.01 9.01 0 0 0 0 18.02Z" />
-      <path d="M21.99 18.95c-.33-.61-1.03-.95-1.97-.95-.71 0-1.32.29-1.68.79-.36.5-.44 1.17-.22 1.84.43 1.3 1.18 1.59 1.59 1.64.06.01.12.01.19.01.44 0 1.12-.19 1.78-1.18.53-.77.63-1.54.31-2.15Z" />
+      <path opacity={MASS} d="M11.5 21a9.5 9.5 0 1 0 0-19 9.5 9.5 0 0 0 0 19Z" />
+      <path d="M21.3 21.999c-.18 0-.36-.07-.49-.2l-1.86-1.86a.706.706 0 0 1 0-.99c.27-.27.71-.27.99 0l1.86 1.86c.27.27.27.71 0 .99-.14.13-.32.2-.5.2Z" />
     </svg>
   );
 }

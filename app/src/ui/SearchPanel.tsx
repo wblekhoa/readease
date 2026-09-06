@@ -43,19 +43,23 @@ export function SearchPanel({
     <Surface
       ref={panel}
       edge="strong"
-      className={`flex flex-col overflow-hidden absolute right-0 z-10 w-80 shadow-lifted ${
+      /* A panel over the page: the sheet's radius, and content set in by 24
+         (HIG 3.9d). A list of rows reaches that 24 through the row's own
+         inset, so its track is narrower by exactly that much. */
+      radius="sheet"
+      className={`flex flex-col overflow-hidden absolute right-0 z-10 w-[22rem] shadow-lifted ${
         paged
           ? "top-0 max-h-full"
           : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
       }`}
     >
-      <div className="flex shrink-0 items-center gap-2 px-4 pb-1 pt-3">
+      <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("reader.search")}</h3>
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>
       </div>
-      <div className="shrink-0 px-4 pb-2">
+      <div className="shrink-0 px-6 pb-3">
         <Input
           autoFocus
           type="search"
@@ -78,7 +82,7 @@ export function SearchPanel({
                 : text("reader.search_count", { n: hits.length })}
         </p>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
         {hits.map((hit, index) => (
           <ListRow
             key={`${hit.segmentId}:${index}`}

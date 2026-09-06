@@ -828,6 +828,7 @@ export function Reader({
   const contents = showToc && (
     <Surface
       edge="strong"
+      radius="sheet"
       /* Built like NotesPanel, its sibling over the same page: a heading that
          stays put, a way out that is not the toolbar, and only the list
          scrolling under them. It used to be a bare box of rows - the one
@@ -840,13 +841,13 @@ export function Reader({
           : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
       }`}
     >
-      <div className="flex shrink-0 items-center gap-2 px-4 pb-1 pt-3">
+      <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("reader.toc_title")}</h3>
         <IconButton onClick={onHideToc} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>
       </div>
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
         {opened.book.chapters.map((chapter, index) => (
           <ListRow
             key={chapter.id}
