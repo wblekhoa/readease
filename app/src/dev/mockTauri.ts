@@ -52,10 +52,38 @@ const PARAGRAPHS = [
   "Thứ hai, ta cần giúp người dùng bước vào trạng thái dòng chảy (flow), khái niệm được nhà tâm lý học Mihály Csíkszentmihályi mô tả là sự đắm mình hoàn toàn.",
 ];
 
+/** Chapter 3 of the mock book is the style sampler: every kind of block the
+ * importer produces, in the three shapes lists actually arrive in (a glyph
+ * typed into the text, a number typed into the text, clean), a paragraph cut
+ * in two for the voice, a real quotation and the one-word "quotes" that
+ * translated books use as labels. */
+const STYLE_SAMPLER: Array<{ text: string; kind: string; joint?: string }> = [
+  { text: "Ba con đường vào UX", kind: "heading" },
+  { text: "Phần lớn người làm UX không bắt đầu từ UX. Họ đến từ một nghề gần đó, mang theo cách nhìn của nghề ấy, và chính cách nhìn đó làm nên thế mạnh của họ về sau.", kind: "paragraph" },
+  { text: "Đây là phần tiếp của cùng một đoạn, bị cắt cho giọng đọc: trên trang nó phải nối liền với câu trước, không mở một đoạn mới.", kind: "paragraph", joint: "split" },
+  { text: "• Thiết kế và phát triển Web hoặc phần mềm. Đây là con đường khá tự nhiên.", kind: "list_item" },
+  { text: "• Thiết kế đồ họa hoặc thiết kế in ấn. Trải nghiệm người dùng chịu ảnh hưởng từ các quyết định ở mọi tầng của sản phẩm.", kind: "list_item" },
+  { text: "• Nghiên cứu, xã hội học, nhân học và tâm lý học.", kind: "list_item" },
+  { text: "Ba bước để bắt đầu", kind: "heading" },
+  { text: "1. Hãy bắt đầu từ đầu nguồn, tức nơi các ý tưởng xuất hiện.", kind: "list_item" },
+  { text: "2. Tìm một người trong tổ chức có thể làm dự án của bạn đổ bể, và nói chuyện với họ trước.", kind: "list_item" },
+  { text: "3. Viết ra điều bạn học được, ngắn thôi.", kind: "list_item" },
+  { text: "Một danh sách sạch không mang dấu nào trong chữ, như Universal Principles viết.", kind: "list_item" },
+  { text: "Một mình làm UX giới thiệu những cách tiếp cận tạo tác động lớn nhưng không đòi hỏi một đội ngũ đông người.", kind: "quote" },
+  { text: "Trải nghiệm", kind: "quote" },
+  { text: "Phần cứng", kind: "quote" },
+  { text: "Đoạn văn thường trở lại sau các khối trên, để so khoảng cách. Ngay dưới là một hình có nhãn của sách: chú thích tự giới thiệu hình, giọng không nói \"Xem hình\" trước nó.", kind: "paragraph" },
+  { text: "Hình 3.1. Ba con đường vào UX, vẽ lại từ bản gốc.", kind: "caption" },
+  { text: "Chú giải ảnh: Sơ đồ ba nhánh nghề gặp nhau ở giữa, mỗi nhánh mang theo cách nhìn riêng.", kind: "paragraph" },
+  { text: "Bản dịch của hình đứng ngay trên là bản trùng: cùng số, cùng chú thích, không được giới thiệu lần hai.", kind: "paragraph" },
+  { text: "def read(book):\n    for segment in book:\n        speak(segment)", kind: "preformatted" },
+  { text: "Khối preformatted (mã, bảng chữ) hiện chưa có kiểu riêng - cố ý để trong bộ mẫu cho thấy điều còn thiếu.", kind: "paragraph" },
+];
+
 const CHAPTER_NAMES = [
   "Bìa sách",
   "Các nguyên tắc phổ quát của trải nghiệm người dùng",
-  "Chương 3",
+  "Chương 3 · Bộ mẫu trình bày",
   "Chương 4",
   ...Array.from({ length: 22 }, (_, index) => String(index + 1).padStart(2, "0")),
 ];
@@ -80,9 +108,36 @@ const FIGURES: Record<number, Array<Record<string, unknown>>> = {
     },
   ],
   2: [
+    // The sampler's figure: the book's own label, a caption on the page,
+    // and a translated copy right after the caption, marked as a duplicate
+    // the way "Một mình làm UX" arrives.
+    {
+      id: "fig-sample",
+      anchor_segment_id: "ch-2-seg-14",
+      placement: "after",
+      alt: "Hình 3.1. Ba con đường vào UX, vẽ lại từ bản gốc.",
+      number: 1,
+      alt_is_generic: false,
+      label: "Hình 3.1",
+      caption_segment_id: "ch-2-seg-15",
+      duplicate_of: null,
+    },
+    {
+      id: "fig-sample-vi",
+      anchor_segment_id: "ch-2-seg-15",
+      placement: "after",
+      alt: "Hình 3.1 đã Việt hóa.",
+      number: 1,
+      alt_is_generic: false,
+      label: "Hình 3.1",
+      caption_segment_id: "ch-2-seg-15",
+      duplicate_of: "fig-sample",
+    },
+  ],
+  3: [
     {
       id: "fig-tall",
-      anchor_segment_id: "ch-2-seg-0",
+      anchor_segment_id: "ch-3-seg-0",
       placement: "before",
       alt: "Image",
       number: 1,
@@ -94,6 +149,8 @@ const FIGURES: Record<number, Array<Record<string, unknown>>> = {
 const FIGURE_DATA: Record<string, string> = {
   "fig-wide": FIGURE_WIDE,
   "fig-tall": FIGURE_TALL,
+  "fig-sample": FIGURE_WIDE,
+  "fig-sample-vi": FIGURE_WIDE,
 };
 
 const BOOK = {
@@ -103,18 +160,22 @@ const BOOK = {
     id: `ch-${chapterIndex}`,
     title,
     figures: FIGURES[chapterIndex] ?? [],
-    segments: [
-      {
-        id: `ch-${chapterIndex}-seg-h`,
-        text: title,
-        kind: "heading",
-      },
-      ...PARAGRAPHS.slice(0, chapterIndex === 1 ? 8 : 4).map((text, index) => ({
-        id: `ch-${chapterIndex}-seg-${index}`,
-        text,
-        kind: "paragraph",
-      })),
-    ],
+    segments: chapterIndex === 2
+      ? STYLE_SAMPLER.map((block, index) => ({ id: `ch-2-seg-${index}`, joint: "block", ...block }))
+      : [
+        {
+          id: `ch-${chapterIndex}-seg-h`,
+          text: title,
+          kind: "heading",
+          joint: "block",
+        },
+        ...PARAGRAPHS.slice(0, chapterIndex === 1 ? 8 : 4).map((text, index) => ({
+          id: `ch-${chapterIndex}-seg-${index}`,
+          text,
+          kind: "paragraph",
+          joint: "block",
+        })),
+      ],
   })),
 };
 
@@ -123,9 +184,9 @@ const LIBRARY = [
     id: "book-ux",
     title: "Universal Principles of UX",
     source_format: "epub",
-    segment_id: "ch-1-seg-2",
+    segment_id: "ch-2-seg-1",
     progress_ratio: 0.42,
-    progress_chapter: "Chương 2",
+    progress_chapter: "Chương 3",
     chapters: BOOK.chapters.length,
     size_bytes: 9_512_000,
     imported_at: "2026-08-28T09:12:00Z",
@@ -467,7 +528,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     case "library.list":
       return { books: LIBRARY };
     case "book.open":
-      return { book: BOOK, annotations: ANNOTATIONS, progress: { segment_id: "ch-1-seg-2" } };
+      return { book: BOOK, annotations: ANNOTATIONS, progress: { segment_id: "ch-2-seg-1" } };
     case "book.cover": {
       const data = COVERS[String(params.book_id)];
       return data ? { media_type: "image/svg+xml", data } : { media_type: null, data: null };

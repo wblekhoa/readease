@@ -21,6 +21,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
+import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
@@ -52,7 +53,7 @@ export type PageInfo = {
   resumeExcerpt: string | null;
 };
 
-type BookSegment = { id: string; text: string; kind: string };
+type BookSegment = { id: string; text: string; kind: string; joint?: Joint };
 type BookFigure = {
   id: string;
   anchor_segment_id: string;
@@ -675,12 +676,15 @@ export function Reader({
    * each piece knows which highlight made it, and so which colour and which
    * note belong to it.
    */
-  const marked = (segment: BookSegment) => {
+  /** `shown` is the text as the page prints it - a list item minus the
+   *  marker the book typed into it. Highlights match by their own words, so
+   *  a shorter string still finds them. */
+  const marked = (segment: BookSegment, shown = segment.text) => {
     const items = highlightsBySegment.get(segment.id);
-    if (!items) return segment.text;
-    const pieces = markParagraph(segment.text, items.map((item) => item.selected_text));
+    if (!items) return shown;
+    const pieces = markParagraph(shown, items.map((item) => item.selected_text));
     // Nothing found: hand back the plain string, not a wrapped one.
-    if (pieces.every((piece) => piece.index === null)) return segment.text;
+    if (pieces.every((piece) => piece.index === null)) return shown;
     return pieces.map((piece, at) => {
       if (piece.index === null) return <Fragment key={at}>{piece.text}</Fragment>;
       const item = items[piece.index];
@@ -715,6 +719,57 @@ export function Reader({
     });
   };
 
+  /* One look per kind of block, decided by what the book says it is and by
+   * what it typed into the text (helpers in ui/blockStyle.ts, measured over
+   * the owner's library before they were written):
+   * - a `split` tail of a cut paragraph opens no gap above it;
+   * - a list item hangs from a gutter with a dot, or the book's own number;
+   * - a quotation is set in from the left; a one-word "quote" is a label.
+   * The heading keeps its old shape. */
+  const blockClasses = (segment: BookSegment, onPages: boolean): string => {
+    // Spacing is TOP margin only, so a block decides its own distance from
+    // the one above and a cut paragraph can close that distance to nothing.
+    // Each block carries `py-1` for its hover band; the split's negative
+    // margin swallows both paddings, so the tail sits one line-height under
+    // the head exactly as the next line of the same paragraph would.
+    const split = continues(segment.joint);
+    switch (segment.kind) {
+      case "heading":
+        return (onPages ? "mt-2 " : "mt-10 ") + "text-[1.35em] font-bold leading-snug ";
+      case "list_item":
+        return (split ? "-mt-2 " : "mt-1 ") + "relative pl-6 ";
+      case "quote":
+        return quoteRole(segment.text) === "label"
+          ? (split ? "-mt-2 " : "mt-2 ") + "text-sm text-ink-faint "
+          : (split ? "-mt-2 " : "mt-3 ") + "border-l-2 border-edge pl-4 italic text-ink-mute ";
+      default:
+        return split ? "-mt-2 " : "mt-3 ";
+    }
+  };
+
+  const blockBody = (segment: BookSegment) => {
+    if (segment.kind !== "list_item") return marked(segment);
+    if (continues(segment.joint)) return marked(segment);
+    const { marker, rest } = listLead(segment.text);
+    return (
+      <>
+        {/* The gutter mark shares the first line's baseline: `top-1` is the
+            block's own `py-1`, and the line-height is inherited rather than
+            re-typed, so a dot or "1." sits where the eye expects a bullet -
+            level with the first line, not perched above it. */}
+        <span
+          aria-hidden
+          className="absolute left-0 top-1 w-5 pr-1 text-right text-ink-mute tabular-nums"
+        >
+          {marker.kind === "dot"
+            ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />
+            : <span className="text-[0.9em]">{marker.label}</span>}
+        </span>
+        {marked(segment, rest)}
+      </>
+    );
+  };
+
   const chapterBody = (chapter: BookChapter) =>
     chapter.segments.map((segment) => (
       <div key={segment.id}>
@@ -739,13 +794,11 @@ export function Reader({
           onDoubleClick={cancelPendingRead}
           className={
             "-mx-2 cursor-text rounded-lg px-2 py-1 transition-colors " +
-            (segment.kind === "heading"
-              ? (paged ? "mt-2 mb-2 " : "mt-10 mb-2 ") + "text-[1.35em] font-bold leading-snug "
-              : "my-3 ") +
+            blockClasses(segment, paged) +
             (segment.id === marker ? "bg-band" : "hover:bg-wash")
           }
         >
-          {marked(segment)}
+          {blockBody(segment)}
         </p>
         {chapter.figures
           .filter((figure) =>

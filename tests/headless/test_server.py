@@ -386,6 +386,9 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(opened["book"]["title"], "Sách thử")
             self.assertEqual(
                 opened["book"]["chapters"][0]["segments"][0]["text"], "Một.")
+            # The page needs to know a cut paragraph from a new one.
+            self.assertEqual(
+                opened["book"]["chapters"][0]["segments"][0]["joint"], "block")
             self.assertEqual(opened["progress"]["segment_id"], first.id)
             self.assertEqual(opened["progress"]["rate"], 1.25)
 

@@ -1644,6 +1644,11 @@ class _Session:
                                 "id": segment.id,
                                 "text": segment.text,
                                 "kind": segment.kind,
+                                # How this block attaches to the one before:
+                                # a "split" is the tail of a paragraph the
+                                # importer cut for the voice, and the page
+                                # must not open a new paragraph there.
+                                "joint": segment.joint,
                             }
                             for segment in chapter.segments
                         ],
