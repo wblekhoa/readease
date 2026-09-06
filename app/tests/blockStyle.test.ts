@@ -21,6 +21,15 @@ test("a blockquote of one to three unpunctuated words is a label, anything longe
   assert.equal(quoteRole("Jeremy Keith"), "label");
   assert.equal(quoteRole("Tuy nhiên, trong những gì đã trải qua, tôi chưa bao giờ gặp phải tai nạn."), "quotation");
   assert.equal(quoteRole("Hết giờ rồi!"), "quotation");
+
+  // The demo chapter's three samples, by their exact text: the sampler is
+  // what a person LOOKS at to see this rule, so if the thresholds move the
+  // samples must stop matching here rather than quietly render as something
+  // else on screen. "Ngắn thôi." is the pair to the two above it - the same
+  // length, and a quotation only because it closes.
+  assert.equal(quoteRole("Nhãn ngắn"), "label");
+  assert.equal(quoteRole("Không chấm câu"), "label");
+  assert.equal(quoteRole("Ngắn thôi."), "quotation");
 });
 
 test("only a split tail continues the block before it", () => {

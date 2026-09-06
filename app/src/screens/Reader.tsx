@@ -750,7 +750,13 @@ export function Reader({
         return (split ? "-mt-2 " : "mt-1 ") + "relative pl-6 ";
       case "quote":
         return quoteRole(segment.text) === "label"
-          ? (split ? "-mt-2 " : "mt-2 ") + "text-sm text-ink-faint "
+          // `ink-faint` is the DISABLED colour. It was painting real words
+          // of the book - "Trải nghiệm", "Phần cứng" - in the shade that
+          // means "you cannot use this", at about 2:1 against the paper
+          // (owner, 06/09: "nó bị mờ quá vậy?"). A label is SMALL and
+          // quiet, not unavailable: size and weight say label, colour stays
+          // legible.
+          ? (split ? "-mt-2 " : "mt-2 ") + "text-sm font-semibold text-ink-mute "
           : (split ? "-mt-2 " : "mt-3 ") + "border-l-2 border-edge pl-4 italic text-ink-mute ";
       default:
         return split ? "-mt-2 " : "mt-3 ";
@@ -803,9 +809,19 @@ export function Reader({
           }}
           onDoubleClick={cancelPendingRead}
           className={
-            "-mx-2 cursor-text rounded-lg px-2 py-1 transition-colors " +
+            // The corner belongs to the FILL, not to the block. With no fill
+            // there is nothing for a radius to round except the quotation's
+            // own left rule, which came out bent at both ends (owner, 06/09).
+            // So: square while the block is bare, rounded the moment it is
+            // filled - reading now, or under the pointer. Rounder than the
+            // `lg` it was (owner, 06/09), and `2xl` rather than `xl` because
+            // the radius scale has two rungs - surface 2xl, content lg - and
+            // `xl` is off it, which `npm run audit:ui` enforces.
+            "-mx-2 cursor-text px-2 py-1 transition-colors " +
             blockClasses(segment, paged) +
-            (segment.id === marker ? "bg-band" : "hover:bg-wash")
+            (segment.id === marker
+              ? "rounded-2xl bg-band"
+              : "rounded-none hover:rounded-2xl hover:bg-wash")
           }
         >
           {blockBody(segment)}

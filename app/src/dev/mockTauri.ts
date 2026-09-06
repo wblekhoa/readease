@@ -70,8 +70,14 @@ const STYLE_SAMPLER: Array<{ text: string; kind: string; joint?: string }> = [
   { text: "3. Viết ra điều bạn học được, ngắn thôi.", kind: "list_item" },
   { text: "Một danh sách sạch không mang dấu nào trong chữ, như Universal Principles viết.", kind: "list_item" },
   { text: "Một mình làm UX giới thiệu những cách tiếp cận tạo tác động lớn nhưng không đòi hỏi một đội ngũ đông người.", kind: "quote" },
-  { text: "Trải nghiệm", kind: "quote" },
-  { text: "Phần cứng", kind: "quote" },
+  // Ba mẫu cho MỘT luật, đủ cả hai phía của ranh giới (`quoteRole`): trích
+  // dẫn ngắn mà không có dấu kết câu thì là NHÃN, còn lại là trích dẫn. Hai
+  // mẫu cũ ("Trải nghiệm", "Phần cứng") đều rơi cùng một phía và không tự
+  // nói chúng đang minh hoạ gì - nhìn ra chỉ thấy hai chữ mờ vô cớ.
+  { text: "Ngay dưới là trích dẫn ngắn dùng làm nhãn: từ ba chữ trở xuống và không có dấu kết câu. Mẫu thứ ba ngắn y như vậy nhưng có dấu chấm, nên nó vẫn là một câu trích.", kind: "paragraph" },
+  { text: "Nhãn ngắn", kind: "quote" },
+  { text: "Không chấm câu", kind: "quote" },
+  { text: "Ngắn thôi.", kind: "quote" },
   { text: "Đoạn văn thường trở lại sau các khối trên, để so khoảng cách. Ngay dưới là một hình có nhãn của sách: chú thích tự giới thiệu hình, giọng không nói \"Xem hình\" trước nó.", kind: "paragraph" },
   { text: "Hình 3.1. Ba con đường vào UX, vẽ lại từ bản gốc.", kind: "caption" },
   { text: "Chú giải ảnh: Sơ đồ ba nhánh nghề gặp nhau ở giữa, mỗi nhánh mang theo cách nhìn riêng.", kind: "paragraph" },
