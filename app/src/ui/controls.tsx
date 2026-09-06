@@ -494,8 +494,10 @@ export function SegmentedControl<T extends string | number>({
   );
 }
 
-/** A value on a line, with the value written beside it - a person reading a
- * book sets line spacing by eye, and reads the number to get back to it. */
+/** A value on a line. The number belongs to the caller's own label row -
+ * a reader sets line spacing by eye and reads the figure to get back to
+ * it, and that figure reads better beside the name of the thing than
+ * squeezed against the end of the track. */
 export function Slider({
   value,
   min,
@@ -503,7 +505,6 @@ export function Slider({
   step,
   onChange,
   label,
-  format,
 }: {
   value: number;
   min: number;
@@ -511,23 +512,19 @@ export function Slider({
   step: number;
   onChange: (value: number) => void;
   label: string;
-  format: (value: number) => string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <input
-        data-raw
-        type="range"
-        aria-label={label}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="h-1 min-w-0 flex-1 cursor-pointer accent-brand-600"
-      />
-      <span className="w-12 shrink-0 text-right text-sm tabular-nums text-ink-mute">{format(value)}</span>
-    </div>
+    <input
+      data-raw
+      type="range"
+      aria-label={label}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+      className="h-1 w-full cursor-pointer accent-brand-600"
+    />
   );
 }
 

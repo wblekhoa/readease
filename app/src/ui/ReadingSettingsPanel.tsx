@@ -152,40 +152,47 @@ export function ReadingSettingsPanel({
         </div>
 
         {more && (
-          <div className="mt-2 rounded-2xl bg-band px-5 py-4">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm text-ink">{text("settings.line_spacing")}</span>
-            </div>
-            <Slider
-              label={text("settings.line_spacing")}
-              value={prefs.lineHeight}
-              min={LINE_HEIGHT.min}
-              max={LINE_HEIGHT.max}
-              step={LINE_HEIGHT.step}
-              onChange={(value) => set("lineHeight", value)}
-              format={(value) => value.toFixed(2)}
-            />
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-sm text-ink">{text("settings.margins")}</span>
-            </div>
-            <Slider
-              label={text("settings.margins")}
-              value={prefs.margin}
-              min={MARGIN.min}
-              max={MARGIN.max}
-              step={MARGIN.step}
-              onChange={(value) => set("margin", value)}
-              format={(value) => `${value}%`}
-            />
-            <div className="mt-4 border-t border-edge pt-3">
+          /* No box around this. The quick rows above are pills BECAUSE they
+             are controls; these are a form, and a grey field behind a form
+             that already sits inside a panel is one container too many
+             (owner, 06/09: "box xám ở đây cũng không cần thiết, nó bị
+             thừa"). A hairline opens the section, and each setting is a
+             labelled line at the panel's own inset. */
+          <div className="mt-4 flex flex-col gap-5 border-t border-edge pt-4">
+            <label className="flex flex-col gap-2">
+              <span className="flex items-baseline justify-between">
+                <span className="text-sm text-ink">{text("settings.line_spacing")}</span>
+                <span className="text-sm tabular-nums text-ink-mute">{prefs.lineHeight.toFixed(2)}</span>
+              </span>
+              <Slider
+                label={text("settings.line_spacing")}
+                value={prefs.lineHeight}
+                min={LINE_HEIGHT.min}
+                max={LINE_HEIGHT.max}
+                step={LINE_HEIGHT.step}
+                onChange={(value) => set("lineHeight", value)}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="flex items-baseline justify-between">
+                <span className="text-sm text-ink">{text("settings.margins")}</span>
+                <span className="text-sm tabular-nums text-ink-mute">{`${prefs.margin}%`}</span>
+              </span>
+              <Slider
+                label={text("settings.margins")}
+                value={prefs.margin}
+                min={MARGIN.min}
+                max={MARGIN.max}
+                step={MARGIN.step}
+                onChange={(value) => set("margin", value)}
+              />
+            </label>
+            <div className="flex flex-col gap-2">
               <span className="text-sm text-ink">{text("settings.columns")}</span>
-              {/* Its own row, full width: "Tự động" is a two-word label and
-                  broke in two inside a narrow pill beside its caption. */}
               <SegmentedControl<Columns>
                 label={text("settings.columns")}
                 value={prefs.columns}
                 onChange={(value) => set("columns", value)}
-                className="mt-2 bg-paper"
                 options={[
                   { value: "auto", label: text("settings.columns_auto"), disabled: mode !== "pages" },
                   { value: 1, label: "1", disabled: mode !== "pages" },
@@ -193,11 +200,11 @@ export function ReadingSettingsPanel({
                 ]}
               />
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-ink">{text("settings.justify")}</span>
               <Switch label={text("settings.justify")} checked={prefs.justify} onChange={(value) => set("justify", value)} />
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-ink">{text("settings.bold")}</span>
               <Switch label={text("settings.bold")} checked={prefs.bold} onChange={(value) => set("bold", value)} />
             </div>
@@ -206,7 +213,7 @@ export function ReadingSettingsPanel({
               size="sm"
               disabled={isDefaultPrefs(prefs)}
               onClick={() => onPrefs(DEFAULT_PREFS)}
-              className="mt-3 w-full rounded-full"
+              className="-mt-1 self-start rounded-full px-0"
             >
               {text("settings.reset")}
             </Button>
