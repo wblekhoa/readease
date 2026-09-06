@@ -72,47 +72,51 @@ export function ReadingSettingsPanel({
           {/* The Books row: two halves of one wide pill, a hairline between
               them, the letters drawn at the size they set. Plain buttons - two
               actions, not a choice - so neither half is ever "on". */}
+          {/* The size control carries its own scale: two halves of one pill,
+              and under them - INSIDE the pill, not floating below it (owner,
+              06/09) - a mark per step, filled up to the one in use. The
+              buttons say "smaller" and "larger" but not "of how many", and a
+              reader pressing one wants to know how much further it goes. The
+              marks are a read-out, so they are hidden from the screen reader
+              and the level travels in the group's own name instead. */}
           <div
             role="group"
             aria-label={text("settings.text_size_level", { n: step + 1, total: sizes.length })}
-            className="flex h-11 items-stretch rounded-full bg-band p-1"
+            className="flex h-14 flex-col rounded-[1.75rem] bg-band p-1"
           >
-            <button
-              type="button"
-              onClick={() => onSize(-1)}
-              disabled={size === sizes[0]}
-              aria-label={text("reader.text_smaller")}
-              title={text("reader.text_smaller")}
-              className="flex flex-1 items-center justify-center rounded-full text-ink transition-colors hover-wash disabled:text-ink-faint"
-            >
-              <TextSmallerIcon className="h-5 w-5" />
-            </button>
-            <span aria-hidden className="my-2 w-px bg-edge-strong" />
-            <button
-              type="button"
-              onClick={() => onSize(1)}
-              disabled={size === sizes[sizes.length - 1]}
-              aria-label={text("reader.text_larger")}
-              title={text("reader.text_larger")}
-              className="flex flex-1 items-center justify-center rounded-full text-ink transition-colors hover-wash disabled:text-ink-faint"
-            >
-              <TextLargerIcon className="h-6 w-6" />
-            </button>
-          </div>
-          {/* How many steps there are, and which one this is. The two
-              buttons say "smaller" and "larger" but not "of how many", and
-              a reader pressing one wants to know how much further it goes
-              (owner, 06/09). A read-out, not a control: the group above
-              carries the level in its own name for anyone not looking. */}
-          <div aria-hidden className="-mt-1 flex items-center justify-center gap-1.5">
-            {sizes.map((value, index) => (
-              <span
-                key={value}
-                className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                  index <= step ? "bg-ink-mute" : "bg-edge-strong"
-                }`}
-              />
-            ))}
+            <div className="flex min-h-0 flex-1 items-stretch">
+              <button
+                type="button"
+                onClick={() => onSize(-1)}
+                disabled={size === sizes[0]}
+                aria-label={text("reader.text_smaller")}
+                title={text("reader.text_smaller")}
+                className="flex flex-1 items-center justify-center rounded-[1.5rem] text-ink transition-colors hover-wash disabled:text-ink-faint"
+              >
+                <TextSmallerIcon className="h-5 w-5" />
+              </button>
+              <span aria-hidden className="my-1.5 w-px bg-edge-strong" />
+              <button
+                type="button"
+                onClick={() => onSize(1)}
+                disabled={size === sizes[sizes.length - 1]}
+                aria-label={text("reader.text_larger")}
+                title={text("reader.text_larger")}
+                className="flex flex-1 items-center justify-center rounded-[1.5rem] text-ink transition-colors hover-wash disabled:text-ink-faint"
+              >
+                <TextLargerIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div aria-hidden className="flex shrink-0 items-center justify-center gap-1.5 pb-1 pt-1.5">
+              {sizes.map((value, index) => (
+                <span
+                  key={value}
+                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                    index <= step ? "bg-ink-mute" : "bg-edge-strong"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
           <SegmentedControl<ThemePreference>
             size="lg"
