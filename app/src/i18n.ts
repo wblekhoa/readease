@@ -47,6 +47,7 @@ export const TEXT = {
   "reader.search_count": ["{n} kết quả", "{n} results"],
   "reader.search_capped": ["Hiện {n} kết quả đầu - gõ rõ hơn để thu hẹp.", "Showing the first {n} - type more to narrow down."],
   "settings.text_size": ["Cỡ chữ", "Text size"],
+  "settings.text_size_level": ["Cỡ chữ - mức {n}/{total}", "Text size - level {n} of {total}"],
   "settings.appearance": ["Giao diện", "Appearance"],
   "settings.light": ["Sáng", "Light"],
   "settings.dark": ["Tối", "Dark"],

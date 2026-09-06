@@ -45,6 +45,7 @@ export function ReadingSettingsPanel({
   onClose: () => void;
 }) {
   const [more, setMore] = useState(!isDefaultPrefs(prefs));
+  const step = Math.max(0, sizes.indexOf(size));
   const panel = useDismiss(onClose);
   const set = <K extends keyof ReadingPrefs>(key: K, value: ReadingPrefs[K]) =>
     onPrefs({ ...prefs, [key]: value });
@@ -73,7 +74,7 @@ export function ReadingSettingsPanel({
               actions, not a choice - so neither half is ever "on". */}
           <div
             role="group"
-            aria-label={text("settings.text_size")}
+            aria-label={text("settings.text_size_level", { n: step + 1, total: sizes.length })}
             className="flex h-11 items-stretch rounded-full bg-band p-1"
           >
             <button
@@ -97,6 +98,21 @@ export function ReadingSettingsPanel({
             >
               <TextLargerIcon className="h-6 w-6" />
             </button>
+          </div>
+          {/* How many steps there are, and which one this is. The two
+              buttons say "smaller" and "larger" but not "of how many", and
+              a reader pressing one wants to know how much further it goes
+              (owner, 06/09). A read-out, not a control: the group above
+              carries the level in its own name for anyone not looking. */}
+          <div aria-hidden className="-mt-1 flex items-center justify-center gap-1.5">
+            {sizes.map((value, index) => (
+              <span
+                key={value}
+                className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                  index <= step ? "bg-ink-mute" : "bg-edge-strong"
+                }`}
+              />
+            ))}
           </div>
           <SegmentedControl<ThemePreference>
             size="lg"
