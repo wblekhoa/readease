@@ -19,6 +19,19 @@ test("large type folds the spread back to one page", () => {
   assert.equal(layoutPages(1252, 19).cols, 2);
 });
 
+test("the reader can force one page or a spread, within what fits", () => {
+  assert.equal(layoutPages(1252, 16, { columns: 1 }).cols, 1);
+  assert.equal(layoutPages(1012, 16, { columns: 2 }).cols, 2);
+  // Forced spread that would leave pages under 240px falls back to one.
+  assert.equal(layoutPages(500, 16, { columns: 2 }).cols, 1);
+  assert.equal(layoutPages(1252, 21, { columns: 2 }).cols, 2);
+});
+
+test("margins narrow the page through the measure", () => {
+  assert.equal(layoutPages(1012, 16, { measureEm: 30 }).pageWidth, 480);
+  assert.equal(layoutPages(1012, 16).pageWidth, 640);
+});
+
 test("columns and views count the way pages are turned", () => {
   const layout = layoutPages(1252, 16);
   assert.equal(columnAt(0, layout), 0);

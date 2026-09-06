@@ -16,12 +16,27 @@ export const SPREAD_MIN_AREA = 1040;
 export const SPREAD_MAX_SIZE = 19;
 
 export type PageLayout = { cols: 1 | 2; pageWidth: number; gap: number; step: number };
+/** How many pages side by side: decided by the window and the type size,
+ * or fixed by the reader (owner, 06/09 - the Books "Columns" setting). */
+export type Columns = "auto" | 1 | 2;
+/** A page narrower than this is not a page. A forced spread that would need
+ * one falls back to a single page rather than clipping words. */
+export const MIN_PAGE = 240;
 
-export function layoutPages(areaWidth: number, size: number): PageLayout {
-  const cols: 1 | 2 = areaWidth >= SPREAD_MIN_AREA && size <= SPREAD_MAX_SIZE ? 2 : 1;
-  const measure = size * MEASURE_EM;
+export function layoutPages(
+  areaWidth: number,
+  size: number,
+  options: { columns?: Columns; measureEm?: number } = {},
+): PageLayout {
+  const wanted = options.columns ?? "auto";
+  const fits = (n: number) => Math.floor((areaWidth - PAGE_GAP * (n - 1)) / n) >= MIN_PAGE;
+  let cols: 1 | 2 = wanted === "auto"
+    ? (areaWidth >= SPREAD_MIN_AREA && size <= SPREAD_MAX_SIZE ? 2 : 1)
+    : wanted;
+  if (cols === 2 && !fits(2)) cols = 1;
+  const measure = size * (options.measureEm ?? MEASURE_EM);
   const available = Math.floor((areaWidth - PAGE_GAP * (cols - 1)) / cols);
-  const pageWidth = Math.max(240, Math.min(measure, available));
+  const pageWidth = Math.max(MIN_PAGE, Math.min(measure, available));
   return { cols, pageWidth, gap: PAGE_GAP, step: pageWidth + PAGE_GAP };
 }
 

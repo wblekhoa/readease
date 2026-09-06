@@ -22,6 +22,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
+import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
+import { SearchPanel } from "../ui/SearchPanel";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
@@ -206,6 +208,9 @@ export function Reader({
   mode,
   showToc,
   onHideToc,
+  showSearch,
+  onHideSearch,
+  prefs,
   showNotes,
   notesFocus,
   onNotes,
@@ -226,6 +231,11 @@ export function Reader({
    * so the controls that drive this screen are rendered up there. */
   showToc: boolean;
   onHideToc: () => void;
+  showSearch: boolean;
+  onHideSearch: () => void;
+  /** Line spacing, margins, columns, justification, weight - the reader's
+   * own setting of the page (ui/readingPrefs). */
+  prefs: ReadingPrefs;
   showNotes: boolean;
   /** The annotation whose icon opened the panel, if it was opened that way. */
   notesFocus: string | null;
@@ -867,6 +877,26 @@ export function Reader({
     </Surface>
   );
 
+  /* Search, on the other side of the page from the contents. A hit shows
+   * its place the way a contents row does; the panel stays open so the next
+   * hit is one click away, and the reading is not disturbed - looking
+   * something up mid-listen is the whole point of having it here. */
+  const search = showSearch && (
+    <SearchPanel
+      chapters={opened.book.chapters}
+      paged={paged}
+      onClose={onHideSearch}
+      onJump={(hit) => {
+        if (paged) {
+          setChapterIndex(hit.chapterIndex);
+          setTarget({ segmentId: hit.segmentId, source: "contents" });
+        } else {
+          jumpTo(hit.segmentId);
+        }
+      }}
+    />
+  );
+
   /* Beside the contents, and under the same rule: a row jumps to the place,
    * it never starts speaking. */
   const notes = showNotes && (
@@ -1035,6 +1065,11 @@ export function Reader({
             chapterIndex={chapterIndex}
             chapterCount={opened.book.chapters.length}
             size={size}
+            columns={prefs.columns}
+            measureEm={measureEm(prefs.margin)}
+            lineHeight={prefs.lineHeight}
+            justify={prefs.justify}
+            bold={prefs.bold}
             target={target}
             onTargetReached={() => setTarget(null)}
             onChapterChange={onChapterChange}
@@ -1043,6 +1078,7 @@ export function Reader({
             {opened.book.chapters[chapterIndex] && chapterBody(opened.book.chapters[chapterIndex])}
           </PageFlow>
           {contents}
+          {search}
           {notes}
           {notePeek}
           {noteEditor}
@@ -1054,8 +1090,14 @@ export function Reader({
             <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
               <div
                 ref={column}
-                className="shell-inset-content mx-auto max-w-[40em] select-text px-2"
-                style={{ fontSize: `${size}px`, lineHeight: 1.75 }}
+                className="shell-inset-content mx-auto select-text px-2"
+                style={{
+                  fontSize: `${size}px`,
+                  lineHeight: prefs.lineHeight,
+                  maxWidth: `${measureEm(prefs.margin)}em`,
+                  textAlign: prefs.justify ? "justify" : undefined,
+                  fontWeight: prefs.bold ? 600 : undefined,
+                }}
               >
                 {opened.book.chapters.map((chapter) => (
                   <div key={chapter.id}>{chapterBody(chapter)}</div>
@@ -1063,6 +1105,7 @@ export function Reader({
               </div>
             </div>
             {contents}
+            {search}
             {notes}
             {notePeek}
             {noteEditor}

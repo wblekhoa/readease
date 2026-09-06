@@ -444,6 +444,93 @@ export function Switch({
  * Blue, from the DS's own `progress` role - not brand red, which is this
  * app's identity rather than a status, and made every started book shout
  * (owner, 03/09). */
+/** A row of choices, one of them on - the Books "A | A | ◐" pill.
+ *
+ * Drawn here rather than copied from the DS `toggle-button-group`, which is
+ * not consumable outside the DS repo (same gap as every other registry
+ * component this app would want). Tokens only, so it reads as one of ours. */
+export function SegmentedControl<T extends string | number>({
+  value,
+  options,
+  onChange,
+  label,
+  size = "md",
+  className = "",
+}: {
+  value: T;
+  options: readonly { value: T; label: ReactNode; ariaLabel?: string; disabled?: boolean }[];
+  onChange: (value: T) => void;
+  label: string;
+  /** `lg` is the Books row: taller, meant to run the full width of a panel. */
+  size?: "md" | "lg";
+  className?: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={`flex items-stretch rounded-full bg-band p-1 ${size === "lg" ? "h-11" : "h-8"} ${className}`}
+    >
+      {options.map((option) => {
+        const on = option.value === value;
+        return (
+          <button
+            key={String(option.value)}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={option.ariaLabel}
+            disabled={option.disabled}
+            onClick={() => onChange(option.value)}
+            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm transition-colors disabled:text-ink-faint [&_svg]:h-4 [&_svg]:w-4 ${
+              size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""
+            } ${on ? "bg-paper font-semibold text-ink shadow-raised" : "text-ink-mute hover:text-ink"}`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A value on a line, with the value written beside it - a person reading a
+ * book sets line spacing by eye, and reads the number to get back to it. */
+export function Slider({
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  label,
+  format,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  label: string;
+  format: (value: number) => string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        data-raw
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="h-1 min-w-0 flex-1 cursor-pointer accent-brand-600"
+      />
+      <span className="w-12 shrink-0 text-right text-sm tabular-nums text-ink-mute">{format(value)}</span>
+    </div>
+  );
+}
+
 export function ProgressBar({ value }: { value: number }) {
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-band">

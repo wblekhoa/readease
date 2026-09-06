@@ -297,6 +297,18 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   Cùng lỗi ở nút đóng lightbox trên nền đen. **Ngoại lệ**: `Select` giữ `hover:bg-wash` vì chevron
   của nó đã sống trong `background-image`.
 
+### 3.9d Panel nổi trên trang (popover) — lót 24, bo cỡ sheet (03/09, nhắc lại 06/09)
+- **Mọi panel nổi trên nội dung** (`SettingsPanel` dưới footer, `ReadingSettingsPanel` dưới header, panel chi phí…)
+  dùng `Surface radius="sheet"` (`rounded-3xl`) và **lót nội dung 24 px** (`px-6`, `pt-5`/`pb-6`) — cùng một inset với
+  sheet, không phải 16 của card. Lý do: panel là một LỚP đứng trên trang, cần đọc như lớp; 16/2xl làm nó lẫn với thẻ
+  trong trang (chủ, 06/09: "tăng padding và tăng radius của popover").
+- **Ngoại lệ**: panel là DANH SÁCH DÒNG (mục lục, tìm trong sách, menu chuyển giọng) giữ khung 8 px vì hàng tự mang inset;
+  header của chúng `px-4`.
+- Hàng điều khiển bên trong panel nổi theo Books: pill toàn bề rộng cao 44, ô chia đều (`SegmentedControl size="lg"`),
+  có icon + chữ `text-sm` không xuống dòng; phần mở rộng đặt trong khối `bg-band rounded-2xl px-5 py-4`.
+- Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click**: tooltip theo focus sẽ không treo trên
+  panel vừa mở.
+
 ### 3.9c `Kbd` - hiển thị phím tắt
 - **Usage**: cho THẤY tổ hợp phím hiện hành. Đây là THÔNG TIN, không phải hành động.
 - **Anatomy**: mỗi phím một keycap rời (`Shift` `Command` `T`), nối bằng dấu `+` mờ. Nền `panel`

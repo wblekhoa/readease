@@ -25,8 +25,8 @@ import {
   PreviousIcon,
   BookClosedIcon,
   StopIcon,
-  PagesIcon,
-  ScrollIcon,
+  ReadingSettingsIcon,
+  SearchIcon,
   InfoIcon,
   SlidersIcon,
   CoinIcon,
@@ -46,6 +46,8 @@ import {
   storedReadingSize,
 } from "./ui/readingSize";
 import { rememberReadingMode, storedReadingMode, type ReadingMode } from "./ui/readingMode";
+import { rememberReadingPrefs, storedReadingPrefs, type ReadingPrefs } from "./ui/readingPrefs";
+import { ReadingSettingsPanel } from "./ui/ReadingSettingsPanel";
 import { CostPanel } from "./ui/CostPanel";
 import {
   buttonCost,
@@ -71,7 +73,7 @@ type ModelGate = "checking" | "setup" | "ready";
 /** Light or dark onto the DS token switch: the reader's own choice when
  * they have made one (the toolbar switch, owner 02/09), the macOS
  * appearance otherwise - followed live. */
-function useAppearance(): [Theme, () => void] {
+function useAppearance(): [Theme, () => void, ThemePreference, (preference: ThemePreference) => void] {
   const [preference, setPreference] = useState<ThemePreference>(storedThemePreference);
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
@@ -91,7 +93,11 @@ function useAppearance(): [Theme, () => void] {
     rememberThemePreference(next);
     setPreference(next);
   }, [theme]);
-  return [theme, toggle];
+  const choose = useCallback((next: ThemePreference) => {
+    rememberThemePreference(next);
+    setPreference(next);
+  }, []);
+  return [theme, toggle, preference, choose];
 }
 
 /** Where a layer hung from a control gets pinned: the control's centre and
@@ -104,7 +110,7 @@ function anchor(element: HTMLElement) {
 }
 
 export default function App() {
-  const [theme, toggleTheme] = useAppearance();
+  const [theme, toggleTheme, appearance, chooseAppearance] = useAppearance();
   const [tab, setTab] = useState("paste");
   const [voices, setVoices] = useState<Voice[]>([]);
   /** Why there are no voices to offer. An empty catalogue is a claim - "this
@@ -255,13 +261,20 @@ export default function App() {
   const [costOpen, setCostOpen] = useState(false);
   const [readingSize, setReadingSize] = useState(storedReadingSize);
   const [readingMode, setReadingMode] = useState<ReadingMode>(storedReadingMode);
-  const toggleReadingMode = useCallback(() => {
-    setReadingMode((current) => {
-      const next = current === "pages" ? "scroll" : "pages";
-      rememberReadingMode(next);
-      return next;
-    });
+  const chooseReadingMode = useCallback((next: ReadingMode) => {
+    rememberReadingMode(next);
+    setReadingMode(next);
   }, []);
+  /* The finer setting of the page (ui/readingPrefs), and the two panels the
+     book's toolbar opens: reading settings and search in the book (owner,
+     06/09: "học hỏi theo Apple Books"). One floating layer at a time. */
+  const [prefs, setPrefs] = useState<ReadingPrefs>(storedReadingPrefs);
+  const choosePrefs = useCallback((next: ReadingPrefs) => {
+    rememberReadingPrefs(next);
+    setPrefs(next);
+  }, []);
+  const [readingSettingsOpen, setReadingSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const paidVoice = isPaidVoice(voiceId);
   /* Whether there is anything to put a price ON. An empty paste box is not
@@ -871,28 +884,39 @@ export default function App() {
           <>
             {screen === "reader" && (
               <>
+                {/* Books' pair: "AA" for how the page is set, a lens for
+                    finding words in it. Size, pages/scroll and the finer
+                    choices live behind AA; the appearance switch stays
+                    beside them (owner, 06/09). */}
                 <IconButton
-                  onClick={() => changeReadingSize(-1)}
-                  disabled={readingSize === READING_SIZES[0]}
-                  aria-label={text("reader.text_smaller")}
-                  title={text("reader.text_smaller")}
+                  data-popover-trigger
+                  /* The tooltip follows focus, and a mouse click leaves the
+                     button focused - so the tip sat over the panel it had
+                     just opened (owner's screenshot, 06/09). Let it go. */
+                  onClick={(event) => {
+                    event.currentTarget.blur();
+                    setSearchOpen(false);
+                    setReadingSettingsOpen((value) => !value);
+                  }}
+                  aria-label={text("reader.settings")}
+                  title={text("reader.settings")}
+                  className={readingSettingsOpen ? "text-ink" : ""}
                 >
-                  <span className="text-xs font-bold">A</span>
+                  <ReadingSettingsIcon />
                 </IconButton>
                 <IconButton
-                  onClick={() => changeReadingSize(1)}
-                  disabled={readingSize === READING_SIZES[READING_SIZES.length - 1]}
-                  aria-label={text("reader.text_larger")}
-                  title={text("reader.text_larger")}
+                  data-popover-trigger
+                  onClick={(event) => {
+                    event.currentTarget.blur();
+                    setReadingSettingsOpen(false);
+                    setShowToc(false);
+                    setSearchOpen((value) => !value);
+                  }}
+                  aria-label={text("reader.search")}
+                  title={text("reader.search")}
+                  className={searchOpen ? "text-ink" : ""}
                 >
-                  <span className="text-base font-bold">A</span>
-                </IconButton>
-                <IconButton
-                  onClick={toggleReadingMode}
-                  aria-label={text(readingMode === "pages" ? "reader.mode_pages" : "reader.mode_scroll")}
-                  title={text(readingMode === "pages" ? "reader.mode_pages" : "reader.mode_scroll")}
-                >
-                  {readingMode === "pages" ? <PagesIcon /> : <ScrollIcon />}
+                  <SearchIcon />
                 </IconButton>
               </>
             )}
@@ -951,8 +975,11 @@ export default function App() {
               currentFigure={figureCue}
               reading={reading !== "idle"}
               mode={readingMode}
+              prefs={prefs}
               showToc={showToc}
               onHideToc={() => setShowToc(false)}
+              showSearch={searchOpen}
+              onHideSearch={() => setSearchOpen(false)}
               reveal={reveal}
               showNotes={notes.open}
               notesFocus={notes.focus}
@@ -1375,6 +1402,20 @@ export default function App() {
           </div>
         </div>
       </footer>
+      )}
+      {readingSettingsOpen && screen === "reader" && openBook && (
+        <ReadingSettingsPanel
+          size={readingSize}
+          sizes={READING_SIZES}
+          onSize={changeReadingSize}
+          mode={readingMode}
+          onMode={chooseReadingMode}
+          appearance={appearance}
+          onAppearance={chooseAppearance}
+          prefs={prefs}
+          onPrefs={choosePrefs}
+          onClose={() => setReadingSettingsOpen(false)}
+        />
       )}
       {costOpen && pricing && (
         <CostPanel

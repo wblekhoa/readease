@@ -109,13 +109,76 @@ export function PauseIcon({ className }: { className?: string }) {
   );
 }
 
+/** Stop: the set's own glyph, as drawn - a rounded square split on the
+ * diagonal into the two weights. Two hand redrawings preceded it; the
+ * owner asked for the source glyph instead (06/09). */
 export function StopIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M16.2 2H7.8C4.2 2 2 4.2 2 7.8v8.4C2 19.8 4.2 22 7.8 22h8.4c3.6 0 5.8-2.2 5.8-5.8V7.8C22 4.2 19.8 2 16.2 2Z" />
-      <path d="M15 8.3v7.4c0 .9-.4 1.3-1.3 1.3h-3.4c-.9 0-1.3-.4-1.3-1.3V8.3C9 7.4 9.4 7 10.3 7h3.4c.9 0 1.3.4 1.3 1.3Z" />
+      <path d="m20.9 7.66-.78.47-.49.3-.93.55-13.94 8.36-.09.05-.53.32-.61.37C3.17 17.19 3 16.07 3 14.7V9.3C3 4.8 4.8 3 9.3 3h5.4c3.91 0 5.78 1.36 6.2 4.66Z" />
+      <path opacity={MASS} d="M21 9.2v5.5c0 4.5-1.8 6.3-6.3 6.3H9.3c-2.44 0-4.09-.53-5.07-1.74l.3-.18.61-.37.53-.32.09-.05L19.7 9.98l.93-.55.37-.23Z" />
     </svg>
   );
+}
+
+/** Reading size, smaller and larger. These were the letter "A" set in the
+ * interface font at two sizes - the one control in the bar drawn in a
+ * different hand from every glyph beside it (owner, 06/09). The letter stays,
+ * because Books uses it and the owner knows it, but it is drawn on the set's
+ * grid in the set's weight: an A stroked at 1.7 with round joins. Stroked
+ * rather than filled for the same reason as `CoinIcon`: a hand-filled
+ * letterform at 20 closes up. Single-layer: the text line first drawn under
+ * the letter as its mass read as an underline (owner, 06/09). */
+function TextSizeIcon({ className, apex }: { className?: string; apex: number }) {
+  // The legs meet the baseline at y=19.5; the bar sits two thirds down.
+  const half = apex === 4.5 ? 6 : 4;
+  const bar = apex + (19.5 - apex) * 0.66;
+  const spread = half * ((bar - apex) / (19.5 - apex));
+  return (
+    <svg {...bulk} className={className}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d={`M${12 - half} 19.5 12 ${apex} ${12 + half} 19.5M${(12 - spread).toFixed(1)} ${bar.toFixed(1)}h${(spread * 2).toFixed(1)}`}
+      />
+    </svg>
+  );
+}
+
+/** Search in the book: the set's lens, as drawn - disc at 40%, handle at
+ * full. */
+export function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M11.01 20.02a9.01 9.01 0 1 0 0-18.02 9.01 9.01 0 0 0 0 18.02Z" />
+      <path d="M21.99 18.95c-.33-.61-1.03-.95-1.97-.95-.71 0-1.32.29-1.68.79-.36.5-.44 1.17-.22 1.84.43 1.3 1.18 1.59 1.59 1.64.06.01.12.01.19.01.44 0 1.12-.19 1.78-1.18.53-.77.63-1.54.31-2.15Z" />
+    </svg>
+  );
+}
+
+/** Reading settings: the gear from the source set, in bulk - body at 40%,
+ * hub at full. A gear rather than a type glyph because the panel holds
+ * appearance, layout, spacing and more (owner, 06/09); not the sliders,
+ * which already mean the voice settings in the footer. Taken from the set
+ * as drawn, not redrawn (owner, 06/09: "tìm đúng … chứ đừng tự vẽ"). */
+export function ReadingSettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M2 12.881v-1.76c0-1.04.85-1.9 1.9-1.9 1.81 0 2.55-1.28 1.64-2.85-.52-.9-.21-2.07.7-2.59l1.73-.99c.79-.47 1.81-.19 2.28.6l.11.19c.9 1.57 2.38 1.57 3.29 0l.11-.19c.47-.79 1.49-1.07 2.28-.6l1.73.99c.91.52 1.22 1.69.7 2.59-.91 1.57-.17 2.85 1.64 2.85 1.04 0 1.9.85 1.9 1.9v1.76c0 1.04-.85 1.9-1.9 1.9-1.81 0-2.55 1.28-1.64 2.85.52.91.21 2.07-.7 2.59l-1.73.99c-.79.47-1.81.19-2.28-.6l-.11-.19c-.9-1.57-2.38-1.57-3.29 0l-.11.19c-.47.79-1.49 1.07-2.28.6l-1.73-.99a1.899 1.899 0 0 1-.7-2.59c.91-1.57.17-2.85-1.64-2.85-1.05 0-1.9-.86-1.9-1.9Z" />
+      <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
+    </svg>
+  );
+}
+
+export function TextSmallerIcon({ className }: { className?: string }) {
+  return <TextSizeIcon className={className} apex={9.5} />;
+}
+
+export function TextLargerIcon({ className }: { className?: string }) {
+  return <TextSizeIcon className={className} apex={4.5} />;
 }
 
 export function PreviousIcon({ className }: { className?: string }) {
@@ -160,11 +223,15 @@ export function BookClosedIcon({ className }: { className?: string }) {
   );
 }
 
+/** Pages: the set's open book, as drawn - two leaves of equal height either
+ * side of the gutter, lines on the left leaf. Replaces a redrawn variant
+ * whose left leaf sat lower and shorter (owner, 06/09: "icon trang đang bị
+ * lệch"). */
 export function PagesIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M10.8 3.5v17c0 1-.9 1.7-1.9 1.5-1.6-.2-3.2-.6-4.6-1.2-1-.4-1.6-1.4-1.6-2.5V5.2c0-1.6 1.4-2.7 3-2.5 1.1.1 2.2.4 3.3.7.9.3 1.8 1.1 1.8 2.1Z" />
-      <path d="M21.3 5.2v13.1c0 1.1-.6 2.1-1.6 2.5-1.4.6-3 1-4.6 1.2-1 .2-1.9-.5-1.9-1.5v-17c0-1 .9-1.8 1.8-2.1 1.1-.3 2.2-.6 3.3-.7 1.6-.2 3 .9 3 2.5Z" />
+      <path opacity={MASS} d="M12 5.302v16.03c-.17 0-.35-.03-.49-.11l-.04-.02c-1.92-1.05-5.27-2.15-7.44-2.44l-.29-.04c-.96-.12-1.74-1.02-1.74-1.98V4.662c0-1.19.97-2.09 2.16-1.99 2.1.17 5.28 1.23 7.06 2.34l.25.15c.15.09.34.14.53.14Z" />
+      <path d="M22 4.67v12.07c0 .96-.78 1.86-1.74 1.98l-.33.04c-2.18.29-5.54 1.4-7.46 2.46-.13.08-.29.11-.47.11V5.3c.19 0 .38-.05.53-.14l.17-.11c1.78-1.12 4.97-2.19 7.07-2.37h.06c1.19-.1 2.17.79 2.17 1.99ZM7.75 9.238H5.5c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h2.25c.41 0 .75.34.75.75s-.34.75-.75.75ZM8.5 12.238h-3c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h3c.41 0 .75.34.75.75s-.34.75-.75.75Z" />
     </svg>
   );
 }
@@ -201,6 +268,17 @@ export function SunIcon({ className }: { className?: string }) {
     <svg {...bulk} className={className}>
       <path opacity={MASS} d="M12 18.2a6.2 6.2 0 1 0 0-12.4 6.2 6.2 0 0 0 0 12.4Z" />
       <path d="M12 4.3a.8.8 0 0 1-.8-.8V2a.8.8 0 0 1 1.6 0v1.5c0 .4-.4.8-.8.8Zm0 18a.8.8 0 0 1-.8-.8v-1.5a.8.8 0 0 1 1.6 0v1.5c0 .4-.4.8-.8.8ZM21.5 12.8H20a.8.8 0 0 1 0-1.6h1.5a.8.8 0 0 1 0 1.6Zm-17.5 0H2.5a.8.8 0 0 1 0-1.6H4a.8.8 0 0 1 0 1.6ZM18.4 6.4a.8.8 0 0 1-.6-1.4l1-1a.8.8 0 0 1 1.1 1.1l-1 1c-.1.2-.3.3-.5.3ZM4.6 20.2a.8.8 0 0 1-.6-1.4l1-1a.8.8 0 0 1 1.1 1.1l-1 1c-.1.2-.3.3-.5.3Zm14.8 0c-.2 0-.4-.1-.6-.2l-1-1a.8.8 0 0 1 1.1-1.1l1 1a.8.8 0 0 1-.5 1.3ZM5.6 6.4c-.2 0-.4-.1-.6-.2l-1-1a.8.8 0 0 1 1.1-1.1l1 1a.8.8 0 0 1-.5 1.3Z" />
+    </svg>
+  );
+}
+
+/** Appearance that follows the Mac: a disc half in light, half in shade -
+ * the Books "◐". Mass is the whole disc, detail the shaded half. */
+export function AutoAppearanceIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />
+      <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" />
     </svg>
   );
 }

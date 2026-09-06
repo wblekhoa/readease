@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { text } from "../i18n";
 import { EdgeZone } from "../ui/patterns";
-import { columnAt, layoutPages, viewCount, viewStart, type PageLayout } from "../ui/pageLayout";
+import { columnAt, layoutPages, viewCount, viewStart, type Columns, type PageLayout } from "../ui/pageLayout";
 
 /** Why a page came on screen. "turn" is the reader's own hand; everything
  * else is the app taking them somewhere, which never counts as wandering. */
@@ -27,6 +27,11 @@ export function PageFlow({
   chapterIndex,
   chapterCount,
   size,
+  columns,
+  measureEm,
+  lineHeight,
+  justify,
+  bold,
   target,
   onTargetReached,
   onChapterChange,
@@ -36,6 +41,13 @@ export function PageFlow({
   chapterIndex: number;
   chapterCount: number;
   size: number;
+  /** The reader's own setting of the page: forced columns, the measure,
+   * line height, justification, weight (ui/readingPrefs). */
+  columns: Columns;
+  measureEm: number;
+  lineHeight: number;
+  justify: boolean;
+  bold: boolean;
   /** A place to show; consumed once the page holding it is on screen. */
   target: PageTarget | null;
   onTargetReached: () => void;
@@ -88,7 +100,7 @@ export function PageFlow({
     if (!element) return;
     const measure = () => {
       const rect = element.getBoundingClientRect();
-      setLayout(layoutPages(rect.width, size));
+      setLayout(layoutPages(rect.width, size, { columns, measureEm }));
       setBoxWidth(rect.width);
       setPageHeight(Math.floor(rect.height));
     };
@@ -96,7 +108,7 @@ export function PageFlow({
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [size]);
+  }, [size, columns, measureEm]);
 
   const columnOf = useCallback((element: Element): number => {
     const host = flow.current;
@@ -267,7 +279,9 @@ export function PageFlow({
                 columnGap: layout.gap,
                 columnFill: "auto",
                 fontSize: `${size}px`,
-                lineHeight: 1.75,
+                lineHeight,
+                textAlign: justify ? "justify" : undefined,
+                fontWeight: bold ? 600 : undefined,
                 transform: `translateX(${-view * layout.cols * layout.step}px)`,
                 transition: animate ? "transform 220ms ease-out" : "none",
                 ["--page-h" as string]: `${pageHeight}px`,
