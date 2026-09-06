@@ -60,6 +60,16 @@ security add-trusted-cert -r trustRoot -p codeSign -k "$KC" "$T/cert.pem"
 if security find-identity -v -p codesigning "$KC" | grep -q "\"$NAME\""; then
   echo "✔ Xong. Từ giờ scripts/install-local-app.sh tự ký bằng \"$NAME\"."
   echo "  Lần cài kế: bỏ ReadEase khỏi Trợ năng rồi thêm lại MỘT lần cuối — sau đó quyền giữ mãi."
+  echo
+  echo "  CÒN MỘT BƯỚC nếu không muốn bị hỏi mật khẩu mỗi lần ký. Khoá nhập bằng"
+  echo "  \`security import\` bị một lớp thứ hai (partition list) chặn, nên nút"
+  echo "  \"Always Allow\" trong hộp thoại KHÔNG dính. Chạy dòng này trong Terminal"
+  echo "  CỦA BẠN (nó tự hỏi mật khẩu; đừng đưa mật khẩu cho công cụ nào khác):"
+  echo
+  echo "    security set-key-partition-list -S apple-tool:,apple:,codesign: -s -t private \\"
+  echo "      ~/Library/Keychains/login.keychain-db"
+  echo
+  echo "  Một lần cho cả máy — nó áp cho mọi khoá ký trong login keychain."
 else
   echo "✗ Chứng chỉ chưa được coi là hợp lệ. Mở Keychain Access → login → Certificates →" >&2
   echo "  \"$NAME\" → Get Info → Trust → Code Signing: Always Trust." >&2
