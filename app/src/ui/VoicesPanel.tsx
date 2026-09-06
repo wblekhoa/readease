@@ -122,13 +122,23 @@ export function VoicesPanel({
             placeholder={text("voices.search")}
             aria-label={text("voices.search")}
           />
-          {providerOptions.length > 1 && (
-            <div className="mt-3" role="group" aria-label={text("voices.filter_provider")}>
-              <div className="mb-1.5 text-xs font-semibold text-ink-mute">
-                {text("voices.filter_provider")}
-              </div>
-              <Cluster className="flex-wrap">
-                {["all", ...providerOptions].map((key) => {
+          {/* Every filter on ONE wrapping row, and no captions over them
+              (owner, 06/09). Two labelled stacks for five controls spent
+              three lines saying what the controls already say - "OpenAI" is
+              a provider, "Tất cả giới tính" names its own dimension. The
+              names survive where they still do work: the select keeps its
+              own, and "Tất cả" - the one chip whose word does not say what
+              it filters - is named in full for a screen reader.
+              Five SIBLINGS, not two nested groups: nested, the chips claim
+              a whole line as one item and push the select onto the next
+              even when there is room beside them. Flat, the row wraps where
+              it actually runs out (measured 06/09: 502px of controls in a
+              462px row - it wraps either way, the question was only
+              whether it wraps as a block or as a flow). */}
+          {(providerOptions.length > 1 || hasKnownGender) && (
+            <Cluster className="mt-3 flex-wrap">
+              {providerOptions.length > 1 &&
+                ["all", ...providerOptions].map((key) => {
                   const active = activeProvider === key;
                   const label = key === "all"
                     ? text("voices.filter_all")
@@ -141,31 +151,25 @@ export function VoicesPanel({
                       size="sm"
                       variant={active ? "primary" : "secondary"}
                       aria-pressed={active}
+                      aria-label={key === "all" ? text("voices.filter_all_providers") : undefined}
                       onClick={() => setProviderFilter(key)}
                     >
                       {label}
                     </Button>
                   );
                 })}
-              </Cluster>
-            </div>
-          )}
-          {hasKnownGender && (
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <label className="text-xs font-semibold text-ink-mute" htmlFor="voice-gender-filter">
-                {text("voices.filter_gender")}
-              </label>
-              <Select
-                id="voice-gender-filter"
-                value={genderFilter}
-                onChange={(event) => setGenderFilter(event.target.value as "all" | VoiceGender)}
-                className="min-w-[10rem]"
-              >
-                <option value="all">{text("voices.gender_all")}</option>
-                <option value="male">{text("voices.gender_male")}</option>
-                <option value="female">{text("voices.gender_female")}</option>
-              </Select>
-            </div>
+              {hasKnownGender && (
+                <Select
+                  aria-label={text("voices.filter_gender")}
+                  value={genderFilter}
+                  onChange={(event) => setGenderFilter(event.target.value as "all" | VoiceGender)}
+                >
+                  <option value="all">{text("voices.gender_all")}</option>
+                  <option value="male">{text("voices.gender_male")}</option>
+                  <option value="female">{text("voices.gender_female")}</option>
+                </Select>
+              )}
+            </Cluster>
           )}
         </div>
       )}

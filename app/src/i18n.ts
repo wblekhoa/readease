@@ -58,6 +58,12 @@ export const TEXT = {
   "settings.customize": ["Tuỳ chỉnh", "Customize"],
   "settings.line_spacing": ["Giãn dòng", "Line spacing"],
   "settings.margins": ["Lề", "Margins"],
+  "settings.spacing_tight": ["Chặt", "Tight"],
+  "settings.spacing_normal": ["Vừa", "Normal"],
+  "settings.spacing_loose": ["Thoáng", "Loose"],
+  "settings.margin_tight": ["Hẹp", "Narrow"],
+  "settings.margin_normal": ["Vừa", "Medium"],
+  "settings.margin_loose": ["Rộng", "Wide"],
   "settings.columns": ["Số cột", "Columns"],
   "settings.columns_auto": ["Tự động", "Auto"],
   "settings.columns_pages_only": ["Chỉ dùng được khi đọc theo trang.", "Only applies when reading in pages."],
@@ -118,6 +124,7 @@ export const TEXT = {
   "voices.pick": ["Chọn giọng…", "Pick a voice…"],
   "voices.search": ["Tìm giọng…", "Search voices…"],
   "voices.filter_provider": ["Nhà cung cấp", "Provider"],
+  "voices.filter_all_providers": ["Tất cả nhà cung cấp", "All providers"],
   "voices.filter_all": ["Tất cả", "All"],
   "voices.filter_gender": ["Giới tính", "Gender"],
   "voices.gender_all": ["Tất cả giới tính", "All genders"],
@@ -505,6 +512,13 @@ export function setLanguage(language: Language): void {
 
 export function currentLanguage(): Language {
   return current;
+}
+
+/** A number with two decimals, parted the way the reading language parts one.
+ * Vietnamese writes 1,70; English writes 1.70. A control should not know
+ * this, so it takes the string already written (see `Slider`). */
+export function decimal(value: number, places = 2): string {
+  return value.toFixed(places).replace(".", currentLanguage() === "vi" ? "," : ".");
 }
 
 export function text(key: TextKey,

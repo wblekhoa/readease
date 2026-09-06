@@ -13,9 +13,11 @@
  * outside this folder - the gate that keeps this the single source.
  */
 import { useLayoutEffect, useRef, useState } from "react";
+import { LockIcon } from "./icons";
 import { createPortal } from "react-dom";
 import type {
   ButtonHTMLAttributes,
+  CSSProperties,
   InputHTMLAttributes,
   ReactNode,
   Ref,
@@ -150,13 +152,20 @@ export function IconButton({
 
   const open = (element: HTMLElement) => {
     if (!title) return;
-    const rect = element.getBoundingClientRect();
+    const hit = element.getBoundingClientRect();
+    // The gap is measured from the MARK, not from the hit area. The circle
+    // is 32 so a 20 glyph can be pressed comfortably; measuring from the
+    // circle put the bubble 18 from the thing it names while every other
+    // floating layer sits 12 from its object, so this one read as the loose
+    // one (owner, 06/09: "đồng bộ 12px"). Centred on the hit area, though -
+    // the button is what the pointer is over.
+    const mark = element.querySelector("svg")?.getBoundingClientRect() ?? hit;
     // Both candidates are recorded here; which one is used needs the
     // bubble's own height, which only exists once it has rendered.
     setTip({
-      centre: rect.left + rect.width / 2,
-      above: rect.top - LAYER_GAP,
-      below: rect.bottom + LAYER_GAP,
+      centre: hit.left + hit.width / 2,
+      above: mark.top - LAYER_GAP,
+      below: mark.bottom + LAYER_GAP,
     });
   };
 
@@ -505,14 +514,21 @@ export function SegmentedControl<T extends string | number>({
     >
       {options.map((option) => {
         const on = option.value === value;
-        /* A disabled choice that still wears the raised white pill reads as
-           "on and working". Off means flat: the mark stays, the lift does
-           not (owner, 06/09). */
-        const chosen = on && !option.disabled
-          ? "bg-paper font-semibold text-ink shadow-raised"
-          : on
-            ? "bg-paper/50 font-semibold"
-            : "hover:text-ink";
+        /* A locked choice keeps its pill: it IS still the reader's choice,
+           and flattening it read as "nothing is selected". What says locked
+           is a padlock on the choice itself, with the words faded beside it -
+           the state is on the control, not only in a line underneath
+           (owner, 06/09). */
+        /* The whole colour decision lives here rather than half in a
+           `disabled:` variant on the shared string: two variants of equal
+           weight are settled by the order Tailwind emits them, not the order
+           they are written, so a locked choice could not be told to be
+           darker than a locked non-choice. */
+        const chosen = on
+          ? `bg-paper font-semibold shadow-raised ${option.disabled ? "text-ink-mute" : "text-ink"}`
+          : option.disabled
+            ? "text-ink-faint"
+            : "text-ink-mute hover:text-ink";
         return (
           <button
             key={String(option.value)}
@@ -522,11 +538,12 @@ export function SegmentedControl<T extends string | number>({
             aria-label={option.ariaLabel}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm text-ink-mute transition-colors disabled:text-ink-faint [&_svg]:h-4 [&_svg]:w-4 ${
+            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
               size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""
             } ${chosen}`}
           >
             {option.label}
+            {on && option.disabled && <LockIcon />}
           </button>
         );
       })}
@@ -534,10 +551,24 @@ export function SegmentedControl<T extends string | number>({
   );
 }
 
-/** A value on a line. The number belongs to the caller's own label row -
- * a reader sets line spacing by eye and reads the figure to get back to
- * it, and that figure reads better beside the name of the thing than
- * squeezed against the end of the track. */
+/** A value on a line, laid out as the Books settings sheet lays one out
+ * (owner, 06/09): the NAME on its own line above, and under it one row -
+ * the glyph that says which property this is, the track, and the reading.
+ *
+ * Three rows (owner, 06/09): the glyph and the NAME together at the left;
+ * the track, full width, with nothing beside it to shorten it; and under it
+ * a read-out with a word at the left and the figure at the right.
+ *
+ * Both ends of that read-out describe the SAME state - "Thoáng · 1,70" - so
+ * they read as a pair. A fixed bound at the left (the scale's minimum) would
+ * not: it never moves, and the knob reaching the end already says it. The
+ * word is the one a reader can act on; the figure is how they get back to a
+ * setting they liked.
+ *
+ * The whole thing is one `<label>`, so the name is the input's name and a
+ * click anywhere on it reaches the input. Callers pass a formatted
+ * `display`: how a figure is written - a percent, two decimals, which
+ * decimal mark - belongs to the caller's language, not to a control. */
 export function Slider({
   value,
   min,
@@ -545,6 +576,9 @@ export function Slider({
   step,
   onChange,
   label,
+  icon,
+  display,
+  note,
 }: {
   value: number;
   min: number;
@@ -552,19 +586,45 @@ export function Slider({
   step: number;
   onChange: (value: number) => void;
   label: string;
+  /** The glyph that leads the NAME, at the left of the row above the track. */
+  icon?: ReactNode;
+  /** The value as the reader should read it, already formatted. Sits at the
+   * right of the read-out under the track. */
+  display?: ReactNode;
+  /** What that value means, in a word, at the left of the same read-out. */
+  note?: ReactNode;
 }) {
+  const span = max - min;
+  const fill = span > 0 ? ((value - min) / span) * 100 : 0;
   return (
-    <input
-      data-raw
-      type="range"
-      aria-label={label}
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(event) => onChange(Number(event.target.value))}
-      className="h-1 w-full cursor-pointer accent-brand-600"
-    />
+    <label className="flex flex-col gap-2">
+      <span className="flex items-center gap-2 text-sm text-ink">
+        {icon && (
+          <span aria-hidden className="shrink-0 text-ink-mute [&_svg]:h-5 [&_svg]:w-5">
+            {icon}
+          </span>
+        )}
+        {label}
+      </span>
+      <input
+        data-raw
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        style={{ "--fill": `${fill}%` } as CSSProperties}
+        className="reading-slider"
+      />
+      {(note !== undefined || display !== undefined) && (
+        <span className="-mt-1 flex items-baseline justify-between text-sm text-ink-mute">
+          <span>{note}</span>
+          <span className="tabular-nums">{display}</span>
+        </span>
+      )}
+    </label>
   );
 }
 

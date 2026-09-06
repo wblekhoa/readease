@@ -38,9 +38,9 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 | Trạng thái | Công thức (token) |
 |---|---|
 | default | như khai báo |
-| hover | phủ `wash` = neutral-alpha **na05** (na10 đã thử — đậm, chủ bác 01/09) |
+| hover | phủ `wash` = neutral-alpha **na10** (chủ 06/09: na05 "hơi nhạt"; **đảo lại** quyết định 01/09 — xem ghi chú dưới) |
 | focus-visible | **một chỗ duy nhất**: outline 2px `--color-focus` (info b60) trong `index.css` — KHÔNG bao giờ brand |
-| pressed | control trung tính: phủ `press` = neutral-alpha **na10** (cùng thang hover, nặng hơn một bậc) · nút primary đã có nền brand thì đậm xuống `brand-700` — phủ xám lên nền đỏ chỉ làm bẩn màu |
+| pressed | control trung tính: phủ `press` = neutral-alpha **na20** (cùng thang hover, **luôn** nặng hơn một bậc — hover đổi thì press đổi theo) · nút primary đã có nền brand thì đậm xuống `brand-700` — phủ xám lên nền đỏ chỉ làm bẩn màu |
 | disabled | chữ luôn `ink-faint`, **không bao giờ opacity**; control có viền giữ nguyên viền `edge-strong`, control không viền vẫn không viền |
 | loading | chữ đổi sang trạng thái ("Đang nhập sách…", "Đang chuẩn bị giọng đọc…") — không spinner mồ côi |
 | error | `Notice tone=error` màu **danger**, nói-gì-sai + làm-gì-tiếp |
@@ -57,8 +57,13 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   theme** khi chữ danger nằm thẳng trên desk. Ghi chú cũ nói 4.06 (dưới AA) — con số đó đo trên
   desk **xám n20** đã bị thay; nền trắng tự nâng tương phản, và ca dưới-AA đó không còn tồn tại.
   *Bài học: số đo tương phản gắn với MỘT nền cụ thể — đổi nền là phải đo lại, đừng chép số cũ.*
-- Pressed **na10 không phải là re-litigate**: na10 bị bác với tư cách trọng lượng HOVER; ngón tay
-  đang nhấn thì nặng hơn con trỏ lướt qua, và chỉ nặng trong lúc giữ.
+- **Hover đã đi na10 → na05 → na10** (01/09 rồi 06/09, cùng một người). Ghi lại vì đây là **đảo chiều**,
+  không phải trôi: na05 đọc như tiếng thì thầm trên mặt bàn trắng, nơi hover phải tự nói "đây là nút" mà
+  không có gì đỡ ngoài giấy. Thang alpha **không có bậc nào giữa hai cái đó**, nên "đậm một xíu" chỉ có
+  thể là na10. *Bài học: đừng chép lại một con số cũ như thể nó là chân lý — chép cả lý do, rồi đo lại
+  trên nền hiện tại.*
+- **Press luôn là một bậc TRÊN hover, dù hover là bao nhiêu**: ngón tay đang nhấn phải nặng hơn con trỏ
+  lướt qua, và chỉ nặng trong lúc giữ. Nâng hover mà quên nâng press là lặng lẽ xoá mất trạng thái nhấn.
 - **Ô nhập chữ và select đeo vòng focus cả khi bấm chuột** (nút thì không) — đó là hành vi của
   `:focus-visible` với trường nhập liệu, không phải lỗi. Giữ vòng đó, nhưng ô nhập nhiều dòng
   vẽ vòng **đè lên viền của chính nó** (`outline-offset: -1px`): một đường xanh gọn như ô văn
@@ -288,6 +293,19 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
 - **Scroll-spy** tính "đầu trang" từ inset: dòng mắt = top + `--shell-top-h` + 40; dòng đang đọc
   "còn nhìn thấy" khi nằm giữa hai inset, không phải giữa hai mép cửa sổ.
 
+### 3.9e Khối nội dung sách: góc theo FILL, và nhãn không mặc màu vô hiệu (06/09)
+
+- **Bo góc thuộc về lớp nền, không thuộc về khối.** Khối chữ để trần thì `rounded-none`; có nền thì `rounded-2xl` —
+  đang đọc (`bg-band`) hoặc đang rê chuột (`bg-wash`). Trước đó khối luôn mang `rounded-lg`, và ở trạng thái trần
+  chẳng có gì để bo ngoài **vạch trái của khối trích dẫn**, nên vạch bị cong hai đầu (chủ 06/09). Dùng `2xl` chứ
+  không phải `xl`: thang bán kính chỉ có hai nấc — surface `2xl`, content `lg` — `xl` nằm ngoài thang và
+  `npm run audit:ui` chặn nó.
+- **`ink-faint` là màu VÔ HIỆU, đừng dùng cho chữ của sách.** Nhánh "trích dẫn ngắn = nhãn" (`quoteRole`, ≤3 từ và
+  không có dấu kết câu) từng tô chữ thật của sách bằng `ink-faint`, tương phản ~2:1 trên giấy trắng — chủ đọc không
+  ra và hỏi "nội dung gì mà mờ quá vậy". **Nhãn là NHỎ và khẽ, không phải không dùng được**: cỡ chữ và độ đậm nói
+  rằng đây là nhãn, còn màu phải giữ ở mức đọc được (`ink-mute`). Luật rộng hơn: token trạng thái (`faint` = vô
+  hiệu) không được mượn sang làm sắc độ cho nội dung.
+
 ### 3.9b Hover/press của control = lớp wash PHỦ LÊN fill, không thay fill (02/09)
 
 - Bộ control vẽ hover bằng `hover-wash` (index.css): `background-image` gradient của `wash`/`press`
@@ -312,8 +330,35 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
 - **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
   (viền `border-dotted` của trình duyệt mỗi nơi một nhịp), `solid`/`dashed` là hairline. Không ghép tên lớp Tailwind từ
   biến — lớp không xuất hiện nguyên vẹn trong nguồn thì không được sinh ra.
-- **Control bị khoá phải NÓI vì sao**: ô đang chọn bỏ lớp nổi (giữ dấu, bỏ `shadow-raised`), nhãn kèm icon ổ khoá, và một
-  dòng nhỏ nói điều kiện ("Số cột · Chỉ dùng được khi đọc theo trang", chủ 06/09). Một hàng chữ xám không giải thích gì.
+- **Control bị khoá phải NÓI vì sao**: ô đang chọn **GIỮ NGUYÊN** viên trắng nổi (`bg-paper` + `shadow-raised`) — nó vẫn
+  là lựa chọn của người đọc, làm phẳng đi thành ra "chưa chọn gì". Cái nói lên trạng thái khoá là **icon ổ khoá nằm trong
+  chính ô đang chọn**, cùng chữ nhạt đi (`disabled:text-ink-faint` cho cả ô lẫn icon), cộng một dòng nhỏ nói điều kiện
+  ("Số cột · Chỉ dùng được khi đọc theo trang", chủ 06/09). `SegmentedControl` tự vẽ ổ khoá khi một ô vừa `on` vừa
+  `disabled`, nên luật nằm một chỗ; **đừng** gắn ổ khoá lên nhãn — trạng thái thuộc về control, không thuộc về cái tên
+  của nó. Một hàng chữ xám không giải thích gì.
+- **Mũi tên để QUAY LẠI, chevron để LẬT TRANG** (chủ 06/09): nút quay lại đeo `ArrowLeftIcon` — đầu mũi tên
+  **có thân**; `ChevronLeftIcon` là dấu trần, giữ nguyên chỗ của nó ở hai mép trang, nơi cặp trái/phải chỉ dọc
+  theo dòng chữ. Mũi tên là *rời đi*, chevron là *bước một nhịp*. Mũi tên lấy bản outline vì bản bulk của bộ nguồn
+  không phải mũi tên trần — nó là một huy hiệu bo góc khoét hình mũi tên, một vật khác hẳn.
+- **Tooltip cách DẤU 12, không cách vùng bấm** (`IconButton`, chủ 06/09): nút tròn 32 để bấm cho dễ, nhưng glyph chỉ
+  20 — đo `LAYER_GAP` từ mép nút thì bong bóng nằm cách thứ nó đặt tên **18**, trong khi mọi lớp nổi khác cách vật
+  của nó 12, nên riêng nó trông rời ra. Đo từ `svg` bên trong; **căn giữa thì vẫn theo nút**, vì nút mới là chỗ con
+  trỏ đang ở.
+- **Slider ba tầng** (`Slider`, chủ 06/09): **glyph + TÊN cùng một hàng trên** · thanh trượt **suốt bề ngang**, không
+  có gì đứng cạnh làm nó ngắn đi · dưới thanh là bản đọc: **một chữ bên trái, con số bên phải**. Hai đầu bản đọc tả
+  **cùng một trạng thái** ("Thoáng · 1,70") nên đọc như một cặp; một mốc chết (giá trị nhỏ nhất của thang) đặt bên
+  trái thì không — nó không bao giờ nhúc nhích, và núm chạm đầu thanh đã nói điều đó rồi. Chữ là thứ người đọc hành
+  động được ("1,70" là một tỉ số, không ai chỉnh giãn dòng bằng cách biết 1,70 là đẹp); con số là cách quay lại đúng
+  chỗ đã thích. Ranh giới các chữ **đặt tay, không chia ba đều**: mặc định phải nằm GIỮA một khoảng, mặc định rơi
+  trúng ranh thì chữ lật qua lật lại chỉ với một nấc núm (`lineHeightBand`/`marginBand`, có test ghim).
+  Cả cụm là **một** `<label>` — đừng bọc thêm `<label>` bên ngoài (lồng label thì click không tới input).
+  Thanh: `appearance: none` rồi tự vẽ `::-webkit-slider-runnable-track` (cao 4, bo tròn) + `::-webkit-slider-thumb`
+  (20 tròn, `bg-paper`, `shadow-raised`); **tắt appearance là mất luôn phần đã tô**, nên phần tô là một gradient mà
+  component dời điểm dừng qua biến `--fill`. Chuỗi hiển thị do **caller** truyền: dấu thập phân là chuyện ngôn ngữ
+  (tiếng Việt viết `1,75` — `decimal()` trong `i18n.ts`), không phải chuyện của control.
+- **Chỉ báo bậc thì im khi đang ở mặc định** (hàng chấm dưới cụm cỡ chữ, chủ 06/09): người chưa đụng tới cỡ chữ không
+  cần được chỉ chỗ trên một thang họ chưa dùng. Làm mờ (`opacity-0`), **đừng tháo khỏi DOM** — viên thuốc cao cố định,
+  tháo hàng ra là chữ A nhảy lên xuống mỗi lần đi qua mặc định. Mức vẫn nằm trong `aria-label` của cả cụm.
 
 ### 3.9c `Kbd` - hiển thị phím tắt
 - **Usage**: cho THẤY tổ hợp phím hiện hành. Đây là THÔNG TIN, không phải hành động.
@@ -475,7 +520,7 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
 Control 30px `rounded-xl` · nhỏ 28px `rounded-lg` (phím tắt `Kbd` cùng bậc) · icon-button 32
 tròn · pill cho nav/ngôn ngữ · surface + ô nhập nhiều dòng `rounded-2xl` · chữ 16 bold (tiêu đề)
 / **14 base** / 12 micro (+18 màn chào) · trong-cặp 8 / giữa-cặp 16 / khối 24 · cột đọc 65ch ·
-hover na05 · pressed na10 · hairline `edge`.
+hover na10 · pressed na20 · hairline `edge`.
 
 **Ngoài thang là lỗi**: `rounded-md` (6px) không thuộc thang nào — cổng `audit:ui` chặn. Bốn
 biến thể nút: `primary` (CTA brand) · `secondary` (viền) · `ghost` (không viền, việc phụ như

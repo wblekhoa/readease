@@ -34,6 +34,32 @@ export const MARGIN = { min: 0, max: 100, step: 10 };
  * that and a page is a strip of a few words per line. */
 const MARGIN_EM = 10;
 
+/** What a slider's number MEANS, in one word.
+ *
+ * A reader does not set line spacing by knowing that 1.70 is good; they set
+ * it by eye and read the figure afterwards to get back to it. The word says
+ * what they are getting, the figure says exactly where they are - so the two
+ * ends of the read-out under the track are a pair describing the same state,
+ * rather than a fixed bound sitting next to a moving value.
+ *
+ * The bands are named, not computed from thirds: the default line spacing
+ * (1.75) must land in the middle band, and a scale whose default sat on a
+ * boundary would flicker between two words on one step of the knob.
+ */
+export type Band = "tight" | "normal" | "loose";
+
+export function lineHeightBand(value: number): Band {
+  if (value <= 1.6) return "tight";
+  if (value <= 1.9) return "normal";
+  return "loose";
+}
+
+export function marginBand(value: number): Band {
+  if (value <= 20) return "tight";
+  if (value <= 60) return "normal";
+  return "loose";
+}
+
 const KEY = "readease.reading-prefs";
 
 /** The reading measure in em for a margin setting. */

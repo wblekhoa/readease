@@ -28,14 +28,23 @@ const CLUSTER_RADIUS = {
 export function Cluster({
   radius = "control",
   className = "",
+  role,
+  label,
   children,
 }: {
   radius?: keyof typeof CLUSTER_RADIUS;
   className?: string;
+  /** `group` when the cluster is a set of controls over one dimension. */
+  role?: string;
+  /** The set's name. Carries the naming when the visible label is dropped -
+   * a row of filter chips reads "Tất cả" with nothing to say all of WHAT. */
+  label?: string;
   children: ReactNode;
 }) {
   return (
     <div
+      role={role}
+      aria-label={label}
       className={`flex items-center gap-2 ${className}`}
       style={{ "--ctl-radius": CLUSTER_RADIUS[radius] } as CSSProperties}
     >

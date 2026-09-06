@@ -18,7 +18,7 @@ import {
   type Voice, chipName } from "./ui/voiceShortlist";
 import { useShortcut } from "./ui/useShortcut";
 import {
-  ChevronLeftIcon,
+  ArrowLeftIcon,
   NextIcon,
   PauseIcon,
   PlayIcon,
@@ -795,7 +795,7 @@ export default function App() {
                 aria-label={text("reader.back")}
                 title={text("reader.back")}
               >
-                <ChevronLeftIcon />
+                <ArrowLeftIcon />
               </IconButton>
               <IconButton
                 onClick={() => {
@@ -1117,7 +1117,7 @@ export default function App() {
                     }
                   }}
                 >
-                  <ChevronLeftIcon />
+                  <ArrowLeftIcon />
                   {text("player.return")}
                 </Button>
               </>

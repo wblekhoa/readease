@@ -39,6 +39,18 @@ const bulk = {
   "aria-hidden": true,
 };
 
+/** The same attributes: the source's OUTLINE manner is also filled paths, so
+ * only the path data differs.
+ *
+ * Four glyphs are outline rather than bulk, each at the owner's word (06/09)
+ * and each for its own reason. `ResetIcon` and the two that lead a slider,
+ * `LineSpacingIcon` and `MarginsIcon`, because the reading settings form was
+ * drawn from a line-drawn reference. `ArrowLeftIcon` because the owner asked
+ * for a back arrow WITH A SHAFT and the source's bulk arrow is not one - it
+ * is a rounded badge with an arrow cut out of it, a different object. They
+ * are named exceptions, not a new rule. */
+const outline = bulk;
+
 /** The 40% layer. A constant so no icon quietly picks its own weight. */
 const MASS = 0.4;
 
@@ -69,6 +81,19 @@ export function TrashIcon({ className }: { className?: string }) {
       <path d="M21.07 5.23c-1.61-.16-3.22-.28-4.84-.37v-.01l-.22-1.3c-.15-.92-.37-2.3-2.71-2.3h-2.62c-2.33 0-2.55 1.32-2.71 2.29l-.21 1.28c-.93.06-1.86.12-2.79.21l-2.04.2c-.42.04-.72.41-.68.82.04.41.4.71.82.67l2.04-.2c5.24-.52 10.52-.32 15.82.21h.08c.38 0 .71-.29.75-.68a.766.766 0 0 0-.69-.82Z" />
       <path d="M19.23 8.14c-.24-.25-.57-.39-.91-.39H5.68c-.34 0-.68.14-.91.39-.23.25-.36.59-.34.94l.62 10.26c.11 1.52.25 3.42 3.74 3.42h6.42c3.49 0 3.63-1.89 3.74-3.42l.62-10.25c.02-.36-.11-.7-.34-.95Z" />
       <path d="M9.58 17a.75.75 0 0 1 .75-.75h3.33a.75.75 0 0 1 0 1.5h-3.33a.75.75 0 0 1-.75-.75ZM8.75 13a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Z" />
+    </svg>
+  );
+}
+
+/** Going BACK: an arrowhead on a shaft. Distinct from `ChevronLeftIcon`,
+ * which is a bare mark and stays where it belongs - turning a page, where
+ * the pair of them point along the text. An arrow leaves; a chevron steps
+ * (owner, 06/09: "arrow icon có line"). */
+export function ArrowLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M9.57 18.82c-.19 0-.38-.07-.53-.22l-6.07-6.07a.754.754 0 010-1.06L9.04 5.4c.29-.29.77-.29 1.06 0 .29.29.29.77 0 1.06L4.56 12l5.54 5.54c.29.29.29.77 0 1.06-.14.15-.34.22-.53.22z" />
+      <path d="M20.5 12.75H3.67c-.41 0-.75-.34-.75-.75s.34-.75.75-.75H20.5c.41 0 .75.34.75.75s-.34.75-.75.75z" />
     </svg>
   );
 }
@@ -365,6 +390,44 @@ export function CheckIcon({ className }: { className?: string }) {
     <svg {...bulk} className={className}>
       <path opacity={MASS} d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
       <path d="M10.58 15.582a.75.75 0 0 1-.53-.22l-2.83-2.83a.754.754 0 0 1 0-1.06c.29-.29.77-.29 1.06 0l2.3 2.3 5.14-5.14c.29-.29.77-.29 1.06 0 .29.29.29.77 0 1.06l-5.67 5.67a.75.75 0 0 1-.53.22Z" />
+    </svg>
+  );
+}
+
+/** Two stacked bars parted by a dashed line: the space BETWEEN lines, which
+ * is what the slider beside it sets. Its horizontal twin is `MarginsIcon`;
+ * they sit one under the other in the same form, so they are one pair from
+ * one family rather than two glyphs that happen to mean spacing. */
+export function LineSpacingIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M17.4 20H6.6c-1.92 0-2.85-.98-2.85-2.98v-1.04c0-2 .93-2.98 2.85-2.98h10.8c1.92 0 2.85.98 2.85 2.98v1.04c0 2-.93 2.98-2.85 2.98ZM6.6 14.5c-1.01 0-1.35.21-1.35 1.48v1.04c0 1.27.34 1.48 1.35 1.48h10.8c1.01 0 1.35-.21 1.35-1.48v-1.04c0-1.27-.34-1.48-1.35-1.48H6.6ZM15.4 11.5H8.6c-1.92 0-2.85-.98-2.85-2.98V7.48c0-2.01.93-2.98 2.85-2.98h6.8c1.92 0 2.85.98 2.85 2.98v1.04c0 2-.93 2.98-2.85 2.98ZM8.6 6c-1.01 0-1.35.21-1.35 1.48v1.04c0 1.27.34 1.48 1.35 1.48h6.8c1.01 0 1.35-.21 1.35-1.48V7.48c0-1.27-.34-1.48-1.35-1.48H8.6Z" />
+      <path d="M12 22.752c-.41 0-.75-.34-.75-.75v-2.4c0-.41.34-.75.75-.75s.75.34.75.75v2.4c0 .41-.34.75-.75.75ZM12 13.75c-.41 0-.75-.34-.75-.75v-2c0-.41.34-.75.75-.75s.75.34.75.75v2c0 .41-.34.75-.75.75ZM12 5.44c-.41 0-.75-.34-.75-.75V2a.749.749 0 1 1 1.5 0v2.69c0 .42-.34.75-.75.75Z" />
+    </svg>
+  );
+}
+
+/** The same glyph turned on its side: two bars parted horizontally, which is
+ * what a margin is - the room left at the sides of the text. */
+export function MarginsIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M8.02 20.25H6.98C4.97 20.25 4 19.32 4 17.4V6.6c0-1.92.98-2.85 2.98-2.85h1.04c2 0 2.98.93 2.98 2.85v10.8c0 1.92-.98 2.85-2.98 2.85Zm-1.04-15c-1.27 0-1.48.34-1.48 1.35v10.8c0 1.01.21 1.35 1.48 1.35h1.04c1.27 0 1.48-.34 1.48-1.35V6.6c0-1.01-.21-1.35-1.48-1.35H6.98ZM16.52 18.25h-1.04c-2.01 0-2.98-.93-2.98-2.85V8.6c0-1.92.98-2.85 2.98-2.85h1.04c2.01 0 2.98.93 2.98 2.85v6.8c0 1.92-.98 2.85-2.98 2.85Zm-1.04-11c-1.27 0-1.48.34-1.48 1.35v6.8c0 1.01.21 1.35 1.48 1.35h1.04c1.27 0 1.48-.34 1.48-1.35V8.6c0-1.01-.21-1.35-1.48-1.35h-1.04Z" />
+      <path d="M4.4 12.75H2a.749.749 0 1 1 0-1.5h2.4a.749.749 0 1 1 0 1.5ZM13 12.75h-2c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h2c.41 0 .75.34.75.75s-.34.75-.75.75ZM22 12.75h-2.7c-.41 0-.75-.34-.75-.75s.34-.75.75-.75H22a.749.749 0 1 1 0 1.5Z" />
+    </svg>
+  );
+}
+
+/** Undo, in the source's outline manner (owner, 06/09: an outline glyph
+ * here). A counter-clockwise arrow says "put it back the way it was", which
+ * is what this button does; the circular refresh in the same set means
+ * "load it again", which is a different promise. */
+export function ResetIcon({ className }: { className?: string }) {
+  return (
+    <svg {...outline} className={className}>
+      <path d="M12 22.75c-5.2 0-9.42-4.23-9.42-9.42 0-1.87.55-3.68 1.59-5.24.23-.34.7-.44 1.04-.21.34.23.44.7.21 1.04a7.925 7.925 0 006.59 12.32c4.37 0 7.92-3.55 7.92-7.92S16.37 5.4 12 5.4c-.92 0-1.82.13-2.67.39a.75.75 0 01-.94-.5c-.12-.4.1-.82.5-.94 1-.3 2.04-.46 3.11-.46 5.2 0 9.42 4.23 9.42 9.42 0 5.19-4.22 9.44-9.42 9.44z" />
+      <path d="M7.87 6.07a.748.748 0 01-.57-1.24l2.89-3.32c.27-.31.75-.35 1.06-.07.31.27.34.75.07 1.06L8.43 5.81c-.15.17-.36.26-.56.26z" />
+      <path d="M11.24 8.53c-.15 0-.31-.05-.44-.14L7.42 5.92a.751.751 0 01.89-1.21l3.37 2.46c.33.24.41.71.16 1.05a.71.71 0 01-.6.31z" />
     </svg>
   );
 }

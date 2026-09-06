@@ -8,17 +8,20 @@
  * fine ones back, the quick ones are a click away anyway.
  */
 import { useState } from "react";
-import { text } from "../i18n";
+import { decimal, text } from "../i18n";
 import { Button, Divider, IconButton, SegmentedControl, Slider, Surface, Switch } from "./controls";
 import {
-  AutoAppearanceIcon, ChevronDownIcon, CloseIcon, LockIcon, MoonIcon, PagesIcon, ScrollIcon, SlidersIcon,
+  AutoAppearanceIcon, ChevronDownIcon, CloseIcon, LineSpacingIcon, MarginsIcon, MoonIcon, PagesIcon,
+  ResetIcon, ScrollIcon, SlidersIcon,
   SunIcon, TextLargerIcon, TextSmallerIcon,
 } from "./icons";
 import { useDismiss } from "./patterns";
 import {
-  DEFAULT_PREFS, LINE_HEIGHT, MARGIN, isDefaultPrefs, type Columns, type ReadingPrefs,
+  DEFAULT_PREFS, LINE_HEIGHT, MARGIN, isDefaultPrefs, lineHeightBand, marginBand,
+  type Columns, type ReadingPrefs,
 } from "./readingPrefs";
 import type { ReadingMode } from "./readingMode";
+import { DEFAULT_READING_SIZE } from "./readingSize";
 import type { ThemePreference } from "./theme";
 
 export function ReadingSettingsPanel({
@@ -107,7 +110,19 @@ export function ReadingSettingsPanel({
                 <TextLargerIcon className="h-6 w-6" />
               </button>
             </div>
-            <div aria-hidden className="flex shrink-0 items-center justify-center gap-1.5 pb-1 pt-1.5">
+            {/* At the default size the marks go quiet: a reader who has not
+                moved the size does not need to be told where they are on a
+                scale they never used, and the row reading "you are here" at
+                rest made the standard size look like a setting. Faded, not
+                unmounted - the pill is a fixed height and taking the row out
+                would jog the letters up and down across the default (owner,
+                06/09). The level still travels in the group's own name. */}
+            <div
+              aria-hidden
+              className={`flex shrink-0 items-center justify-center gap-1.5 pb-1 pt-1.5 transition-opacity ${
+                size === DEFAULT_READING_SIZE ? "opacity-0" : "opacity-100"
+              }`}
+            >
               {sizes.map((value, index) => (
                 <span
                   key={value}
@@ -162,43 +177,34 @@ export function ReadingSettingsPanel({
              panel's own inset. */
           <div className="mt-4 flex flex-col gap-5">
             <Divider lineStyle="dotted" />
-            <label className="flex flex-col gap-2">
-              <span className="flex items-baseline justify-between">
-                <span className="text-sm text-ink">{text("settings.line_spacing")}</span>
-                <span className="text-sm tabular-nums text-ink-mute">{prefs.lineHeight.toFixed(2)}</span>
-              </span>
-              <Slider
-                label={text("settings.line_spacing")}
-                value={prefs.lineHeight}
-                min={LINE_HEIGHT.min}
-                max={LINE_HEIGHT.max}
-                step={LINE_HEIGHT.step}
-                onChange={(value) => set("lineHeight", value)}
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="flex items-baseline justify-between">
-                <span className="text-sm text-ink">{text("settings.margins")}</span>
-                <span className="text-sm tabular-nums text-ink-mute">{`${prefs.margin}%`}</span>
-              </span>
-              <Slider
-                label={text("settings.margins")}
-                value={prefs.margin}
-                min={MARGIN.min}
-                max={MARGIN.max}
-                step={MARGIN.step}
-                onChange={(value) => set("margin", value)}
-              />
-            </label>
+            <Slider
+              label={text("settings.line_spacing")}
+              icon={<LineSpacingIcon />}
+              note={text(`settings.spacing_${lineHeightBand(prefs.lineHeight)}`)}
+              display={decimal(prefs.lineHeight)}
+              value={prefs.lineHeight}
+              min={LINE_HEIGHT.min}
+              max={LINE_HEIGHT.max}
+              step={LINE_HEIGHT.step}
+              onChange={(value) => set("lineHeight", value)}
+            />
+            <Slider
+              label={text("settings.margins")}
+              icon={<MarginsIcon />}
+              note={text(`settings.margin_${marginBand(prefs.margin)}`)}
+              display={`${prefs.margin}%`}
+              value={prefs.margin}
+              min={MARGIN.min}
+              max={MARGIN.max}
+              step={MARGIN.step}
+              onChange={(value) => set("margin", value)}
+            />
             {/* Columns are a property of a PAGE, so in a scroll there is
-                nothing for them to do. Saying that beats a row of greyed
-                words: the lock says the setting is held, and the line under
-                it says by what (owner, 06/09). */}
+                nothing for them to do. The padlock rides on the chosen
+                option (see `SegmentedControl`) so the held state is on the
+                control; the line under it says what holds it (owner, 06/09). */}
             <div className="flex flex-col gap-2">
-              <span className="flex items-center gap-1.5 text-sm text-ink">
-                {text("settings.columns")}
-                {mode !== "pages" && <LockIcon className="h-4 w-4 text-ink-faint" />}
-              </span>
+              <span className="text-sm text-ink">{text("settings.columns")}</span>
               <SegmentedControl<Columns>
                 label={text("settings.columns")}
                 value={prefs.columns}
@@ -228,6 +234,7 @@ export function ReadingSettingsPanel({
               onClick={() => onPrefs(DEFAULT_PREFS)}
               className="-mt-1 self-start rounded-full px-0"
             >
+              <ResetIcon />
               {text("settings.reset")}
             </Button>
           </div>
