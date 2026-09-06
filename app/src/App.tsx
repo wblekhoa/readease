@@ -15,8 +15,7 @@ import {
   serializeShortlist,
   toggleShortlist,
   voiceName,
-  type Voice,
-} from "./ui/voiceShortlist";
+  type Voice, chipName } from "./ui/voiceShortlist";
 import { useShortcut } from "./ui/useShortcut";
 import {
   ChevronLeftIcon,
@@ -1057,7 +1056,13 @@ export default function App() {
               the voice is up to. A grid keeps the middle in the middle
               whatever the sides say - and gives the bar its height (an
               absolute group gave it none: 40px, owner 02/09). */}
-          <div className="flex min-w-0 items-center gap-2 justify-self-start">
+          {/* The side columns STRETCH to their track (no `justify-self-*`): a
+              grid item aligned to an edge takes its content's width and, when
+              the track is narrower, spills across the neighbouring column -
+              which is how the voice chip slid under the transport at the
+              narrowest window (owner, 06/09). Stretched, the column is exactly
+              the track, and what is inside shrinks and truncates. */}
+          <div className="flex min-w-0 items-center gap-2">
             {reading === "idle" && screen === "reader" && (
               <span className="text-xs text-ink-mute">{text("player.hint_click")}</span>
             )}
@@ -1319,7 +1324,7 @@ export default function App() {
               middle is what a CLICK DOES, and the chip is a standing fact
               about the reading with a way in - it belongs beside the state,
               not inside the actions. Its panel stays centred over the bar. */}
-          <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">
+          <div className="flex min-w-0 items-center justify-end gap-2">
             {reading !== "idle" && player.warming && (
               <Notice className="min-w-0 truncate whitespace-nowrap">{text("player.warming")}</Notice>
             )}
@@ -1340,17 +1345,31 @@ export default function App() {
                 /* It toggles, so the outside-click that closes the panel has
                    to leave this button alone - see `useDismiss`. */
                 data-popover-trigger
-                className={`shrink-0 ${settingsOpen ? "text-ink" : ""}`}
+                /* `min-w-0` + `truncate`, never `shrink-0`: at the narrowest
+                   window this is the one thing in the footer allowed to give
+                   way, so it shortens to "Phạm T…" and finally to its icon
+                   instead of sliding under the transport (owner, 06/09). */
+                className={`min-w-0 ${settingsOpen ? "text-ink" : ""}`}
               >
                 <SlidersIcon />
-                {/* Without a voice the old chip read " · 1.25×", a
-                    separator with nothing on its left. And a paid voice's id
-                    is `openai:tts-1:alloy`, which is an address, not a name -
+                {/* A reminder, not a description: the name that tells this
+                    voice apart from the others on offer, and the speed only
+                    when it is not the plain 1×. Without a voice the old chip
+                    read " · 1.25×", a separator with nothing on its left; a
+                    paid voice's id is `openai:tts-1:alloy`, an address, so
                     the chip shows what the catalogue calls it. */}
-                <span className="font-normal">
-                  {voiceId ? `${voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId} · ` : ""}
-                  {rate}×
-                </span>
+                {(voiceId || rate !== 1) && (
+                  <span className="min-w-0 truncate font-normal">
+                    {voiceId
+                      ? chipName(
+                          voices.find((voice) => voice.id === voiceId) ?? { id: voiceId, label: voiceId },
+                          offeredVoices(voices, shortlist, voiceId),
+                        )
+                      : ""}
+                    {voiceId && rate !== 1 ? " · " : ""}
+                    {rate !== 1 ? `${rate}×` : ""}
+                  </span>
+                )}
               </Button>
             )}
           </div>

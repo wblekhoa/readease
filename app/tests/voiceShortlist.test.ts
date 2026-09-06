@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   initialShortlist, matchesVoice, matchesVoiceFilters, offeredVoices, parseShortlist, serializeShortlist,
-  speaksVietnamese, STARTING_VOICES, tidyName, toggleShortlist, voiceDescription, voiceName,
+  chipName, speaksVietnamese, STARTING_VOICES, tidyName, toggleShortlist, voiceDescription, voiceName,
   voiceGender,
 } from "../src/ui/voiceShortlist.ts";
 
@@ -144,4 +144,27 @@ test("provider, gender and search filters combine instead of replacing each othe
     voices.filter((voice) => matchesVoiceFilters(voice, "", source(voice.id), "all", "male")).map((voice) => voice.id),
     ["local-m"],
   );
+});
+
+test("the SDK's em dash and the fixtures' hyphen both split a label; an en dash is part of a name", () => {
+  assert.equal(voiceName("Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên"), "Phạm Tuyên");
+  assert.equal(voiceDescription("Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên"), "Nam · Bắc · Phong cách tự nhiên");
+  assert.equal(voiceName("Trúc Ly - Nữ · Bắc"), "Trúc Ly");
+  assert.equal(voiceName("JM – Husky & Engaging"), "JM – Husky & Engaging");
+  assert.equal(voiceDescription("Adam"), undefined);
+});
+
+test("the footer chip says the shortest name that still tells the voice apart", () => {
+  const tuyen = { id: "Phạm Tuyên", label: "Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên" };
+  const son = { id: "Thái Sơn", label: "Thái Sơn — Nam · Nam · Phong cách kể chuyện" };
+  const alloyOpenAI = { id: "openai:tts-1:alloy", label: "Alloy · OpenAI" };
+  const alloyEleven = { id: "elevenlabs:m:alloy", label: "Alloy · ElevenLabs" };
+  assert.equal(chipName(tuyen, [tuyen, son]), "Phạm Tuyên");
+  assert.equal(chipName(alloyOpenAI, [alloyOpenAI, son]), "Alloy");
+  // Two voices answering to the same name: the first descriptor comes along.
+  const twin = { id: "Phạm Tuyên 2", label: "Phạm Tuyên — Nữ · Nam · Phong cách tin tức" };
+  assert.equal(chipName(tuyen, [tuyen, twin]), "Phạm Tuyên · Nam");
+  assert.equal(chipName(alloyOpenAI, [alloyOpenAI, alloyEleven]), "Alloy · OpenAI");
+  // No label at all: the id is what there is.
+  assert.equal(chipName({ id: "x", label: "" }, []), "x");
 });

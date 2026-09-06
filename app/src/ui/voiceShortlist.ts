@@ -31,16 +31,46 @@ export function speaksVietnamese(voice: Pick<Voice, "languages">): boolean {
   return (voice.languages ?? []).some((tag) => tag.toLowerCase().split("-")[0] === "vi");
 }
 
-/** The engine labels a voice "Tên - Nữ · Bắc · Phong cách kể chuyện": the
+/** The engine labels a voice "Tên — Nữ · Bắc · Phong cách kể chuyện": the
  * part before the dash is the name, the rest describes it. Lived in
- * SettingsPanel; two panels now read labels, so it lives here instead. */
+ * SettingsPanel; two panels now read labels, so it lives here instead.
+ *
+ * The dash is the SDK's em dash (" — "); the mock and older fixtures wrote
+ * " - ". Splitting on the hyphen alone let the whole label through to the
+ * footer chip - "Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên · 1×" across
+ * the transport buttons (owner, 06/09). An en dash is NOT a separator: a
+ * cloned voice is called "JM – Husky & Engaging", and that is its name. */
+const NAME_DASH = /\s+[-—]\s+/;
+
 export function voiceName(label: string | undefined): string {
-  return (label ?? "").split(" - ")[0].trim();
+  return (label ?? "").split(NAME_DASH)[0].trim();
 }
 
 export function voiceDescription(label: string | undefined): string | undefined {
-  const parts = (label ?? "").split(" - ");
-  return parts.length > 1 ? parts.slice(1).join(" - ").trim() : undefined;
+  const value = label ?? "";
+  const dash = value.match(NAME_DASH);
+  if (!dash || dash.index === undefined) return undefined;
+  const rest = value.slice(dash.index + dash[0].length).trim();
+  return rest || undefined;
+}
+
+/** What the footer chip calls the voice in use: the shortest thing that
+ * still tells it apart from the other voices on offer.
+ *
+ * The chip is a reminder, not a description - the description lives one
+ * tap away in the settings panel. So: the name alone ("Phạm Tuyên",
+ * "Alloy"); and only when another offered voice answers to the same name
+ * does the first descriptor come along ("Nam · Bắc", or the provider). */
+export function chipName(voice: Pick<Voice, "id" | "label">, offered: readonly Pick<Voice, "id" | "label">[]): string {
+  const bare = (item: Pick<Voice, "id" | "label">) =>
+    (tidyName(item.label) || item.id).split(" · ")[0].trim();
+  const mine = bare(voice);
+  const twin = offered.some((item) => item.id !== voice.id && bare(item) === mine);
+  if (!twin) return mine;
+  const detail =
+    voiceDescription(voice.label)?.split(" · ")[0]?.trim()
+    || tidyName(voice.label).split(" · ").slice(1).join(" · ").trim();
+  return detail ? `${mine} · ${detail}` : mine;
 }
 
 /** A name without its diacritics, for matching what someone types.
