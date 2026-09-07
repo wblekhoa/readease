@@ -756,6 +756,94 @@ class ProtocolTests(unittest.TestCase):
             # And the managed copy is gone with the record.
             self.assertEqual(list(paths.books.glob("*")), [])
 
+    def test_an_epub_and_a_pdf_land_in_the_same_library(self) -> None:
+        """Two formats, one shelf. The Qt shell's own smoke asserted this and
+        the pipe never did, so the assurance was about to leave with a shell
+        nobody ships (07/09). PDF is the one that carries its own extractor,
+        so "it imports at all" is not a given."""
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tests.importers.epub_fixture import make_epub
+        from tests.importers.pdf_fixture import make_text_pdf
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = AppPaths.create(root / "data")
+            repository = LibraryRepository(paths.database)
+            service = LibraryService(paths, repository)
+            sources = root / "sources"
+            sources.mkdir()
+
+            replies = run_server(
+                [{"id": 20, "method": "library.import",
+                  "params": {"path": str(make_epub(sources))}},
+                 {"id": 21, "method": "library.import",
+                  "params": {"path": str(make_text_pdf(sources))}},
+                 {"id": 22, "method": "library.list"}],
+                FakeEngine(), repository=repository, service=service,
+            )
+
+        self.assertTrue(replies[0]["ok"], replies[0])
+        self.assertTrue(replies[1]["ok"], replies[1])
+        shelved = replies[2]["result"]["books"]
+        self.assertEqual(len(shelved), 2)
+        self.assertEqual(
+            sorted(book["source_format"] for book in shelved), ["epub", "pdf"]
+        )
+        # Every book on the shelf is readable: a format that imports but
+        # produces no segments would list fine and speak nothing.
+        for book in shelved:
+            self.assertGreater(book["chapters"], 0, book["source_format"])
+
+    def test_reading_pasted_text_never_moves_a_book_the_reader_was_in(self) -> None:
+        """A pasted passage is transient. It must not move where the reader
+        had got to in a book - and the shell reports the ear for whatever it
+        is playing, so the engine is what has to refuse.
+
+        Also from the Qt shell's smoke (`paste_progress_immutable`), where it
+        would have died with that shell."""
+        from vieneu_reader.storage.repository import LibraryRepository, Progress
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([
+                ("Một", [("Đoạn một của chương đầu.", "paragraph"),
+                          ("Đoạn hai của chương đầu.", "paragraph")]),
+            ])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            where = book.chapters[0].segments[-1].id
+            repository.save_progress(Progress(
+                book_id=BOOK_ID, segment_id=where,
+                playback_rate=1.25, voice_id="adam",
+            ))
+            before = repository.load_progress(BOOK_ID)
+
+            replies = run_server(
+                [
+                    {"id": 30, "method": "read",
+                     "params": {"text": "Một đoạn dán tạm thời, không thuộc cuốn nào.",
+                                "voice_id": "adam"}},
+                    # The shell says the ear arrived, exactly as it does for a
+                    # book. Nothing is listening for a pasted reading, so this
+                    # must fall on the floor rather than on the book.
+                    {"method": "progress.reached",
+                     "params": {"id": 30, "segment_id": "part-0"}},
+                ],
+                FakeEngine(), repository=repository,
+                settings_path=root / "settings.json",
+            )
+
+            self.assertTrue(replies[-1]["ok"])
+            self.assertEqual(repository.load_progress(BOOK_ID), before)
+
     def test_import_reports_a_broken_book_as_an_error_reply(self) -> None:
         from vieneu_reader.config import AppPaths
         from vieneu_reader.importers.service import LibraryService
