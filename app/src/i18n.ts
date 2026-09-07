@@ -235,6 +235,10 @@ export const TEXT = {
     "Nhà cung cấp từ chối đoạn này.",
     "The provider refused this passage.",
   ],
+  "voiceerr.wrong_language": [
+    "Giọng trên máy chỉ đọc được tiếng Việt. Chọn một giọng đọc được tiếng Anh trong phần giọng đọc.",
+    "The voice on this Mac reads Vietnamese only. Pick a voice that reads English in the voice settings.",
+  ],
   "voiceerr.budget": [
     "Đã chạm trần chi tiêu bạn đặt. Nâng trần trong phần chi phí, hoặc đọc bằng giọng trên máy.",
     "You have hit the ceiling you set. Raise it under cost, or read with the voice on this Mac.",

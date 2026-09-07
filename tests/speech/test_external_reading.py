@@ -621,12 +621,35 @@ class CatalogueLanguageTests(unittest.TestCase):
         # JSON-plain: the shell reads a list, not a tuple's repr.
         self.assertIsInstance(paid[0]["languages"], list)
 
-    def test_the_local_model_carries_no_claim_either_way(self) -> None:
-        # The local voices ARE Vietnamese, but the field is what a PROVIDER
-        # verified; the shell knows the local model from `paid: False`.
+    def test_the_local_model_says_vietnamese_because_that_is_enforced(self) -> None:
+        # This field used to mean only "what a PROVIDER verified", and the
+        # local voices carried no claim. The owner's rule of 07/09 - never
+        # read another language with VieNeu - turned the local model's
+        # language into something this app ENFORCES, so it has to be
+        # published beside the voice rather than left for the shell to infer.
         local = [voice for voice in self._voices_with(None) if not voice["paid"]]
         self.assertTrue(local)
-        self.assertTrue(all("languages" not in voice for voice in local))
+        self.assertTrue(all(voice["languages"] == ["vi"] for voice in local))
+
+    def test_an_unmarked_paid_voice_still_means_nobody_asked(self) -> None:
+        # The local claim must not turn an empty list into "cannot". OpenAI
+        # publishes nothing about any of its voices and they all read
+        # Vietnamese after a fashion; hiding them would be a lie by filter.
+        class Silent:
+            name = "openai"
+            model = "tts-1"
+
+            def voices(self):
+                return (ProviderVoice(id="alloy", label="Alloy · OpenAI", model=self.model),)
+
+            def synthesize(self, text, voice_id):  # pragma: no cover
+                raise AssertionError("never asked")
+
+            def cancel(self):
+                pass
+
+        paid = [voice for voice in self._voices_with(Silent()) if voice["paid"]]
+        self.assertEqual([voice["languages"] for voice in paid], [[]])
 
     def test_known_provider_gender_reaches_the_shell_without_inference(self) -> None:
         class Labelled:

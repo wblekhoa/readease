@@ -124,9 +124,48 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(
             replies[0]["result"]["voices"],
             # `paid` is additive: the shell needs to know which voices cost
-            # money BEFORE one is chosen, not after it refuses.
-            [{"id": "adam", "label": "Adam - Nam Bộ", "paid": False}],
+            # money BEFORE one is chosen, not after it refuses. `languages`
+            # is the same shape of answer for a different question: the local
+            # model reads Vietnamese and nothing else, and a reader in
+            # English has to be able to see that before pressing read.
+            [{
+                "id": "adam",
+                "label": "Adam - Nam Bộ",
+                "paid": False,
+                "languages": ["vi"],
+            }],
         )
+
+    def _read_in(self, language: str, text: str) -> list[dict]:
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            settings = Path(directory) / "settings.json"
+            return run_server(
+                [
+                    {"id": 1, "method": "config.set",
+                     "params": {"key": "ui_language", "value": language}},
+                    {"id": 3, "method": "read",
+                     "params": {"text": text, "voice_id": "adam"}},
+                ],
+                FakeEngine(),
+                settings_path=settings,
+            )
+
+    def test_the_local_voice_refuses_a_language_it_was_not_trained_for(self) -> None:
+        # VieNeu is published as a Vietnamese model. Reading English with it
+        # produces sound, which is exactly why this has to be refused rather
+        # than left to whoever notices - the failure is audible, not visible.
+        replies = self._read_in("en", "This is an English sentence.")
+
+        self.assertFalse(replies[-1]["ok"])
+        self.assertIn("wrong_language", replies[-1]["error"])
+
+    def test_the_local_voice_still_reads_vietnamese(self) -> None:
+        replies = self._read_in("vi", "Câu tiếng Việt.")
+
+        self.assertTrue(replies[-1]["ok"])
 
     def test_read_streams_voice_frames_with_a_rest_between_sentences(self) -> None:
         engine = FakeEngine(chunks_per_sentence=2)

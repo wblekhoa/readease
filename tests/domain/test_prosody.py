@@ -10,8 +10,10 @@ from vieneu_reader.domain.prosody import (
     final_punctuation,
     pause_after_ms,
     selection_pause_ms,
+    cardinal_words,
     speak_links,
     speak_roman_numerals,
+    spell_ordinal_marks,
     speak_with_notes,
     speakable_text,
     split_sentences,
@@ -612,3 +614,54 @@ class LinkTests(unittest.TestCase):
         # was not checked: a price with a slash, and an abbreviation.
         self.assertEqual(speak_links("Giá là 1.000/năm."), "Giá là 1.000/năm.")
         self.assertEqual(speak_links("Anh ấy nói v.v. rồi đi."), "Anh ấy nói v.v. rồi đi.")
+
+
+class ReadingAnotherLanguageTests(unittest.TestCase):
+    """The transforms that make WORDS have to make them in the right language.
+
+    Everything here was Vietnamese-only until the app was asked to read
+    English (owner, 07/09). The bug it fixes is audible rather than visible:
+    an English chapter came out saying "Part hai" and "địa chỉ example chấm
+    com" in the middle of English sentences.
+    """
+
+    def test_a_roman_numeral_is_read_in_the_language_of_the_book(self) -> None:
+        self.assertEqual(speak_roman_numerals("Part II"), "Part hai")
+        self.assertEqual(speak_roman_numerals("Part II", "en"), "Part two")
+        self.assertEqual(speak_roman_numerals("Chapter XIV", "en"), "Chapter fourteen")
+
+    def test_english_numbers_are_hyphenated_the_way_english_writes_them(self) -> None:
+        self.assertEqual(cardinal_words(21, "en"), "twenty-one")
+        self.assertEqual(cardinal_words(30, "en"), "thirty")
+        self.assertEqual(cardinal_words(15, "en"), "fifteen")
+        # Past the table the digits go through, in either language.
+        self.assertEqual(cardinal_words(100, "en"), "100")
+
+    def test_a_hash_number_is_not_an_ordinal_in_english(self) -> None:
+        # "#1" is "thứ nhất" in Vietnamese and "number one" in English - the
+        # same mark, two different parts of speech.
+        self.assertEqual(spell_ordinal_marks("Sự thật #1"), "Sự thật thứ nhất")
+        self.assertEqual(spell_ordinal_marks("Fact #1", "en"), "Fact number one")
+
+    def test_an_address_is_announced_in_the_language_being_read(self) -> None:
+        self.assertEqual(
+            speak_links("See svpg.com.", "en"), "See the address svpg dot com."
+        )
+        # Already announced in English: no second announcement.
+        self.assertEqual(
+            speak_links("at www.wiley.com/go/permissions.", "en"),
+            "at wiley dot com.",
+        )
+
+    def test_an_unknown_language_reads_as_vietnamese_rather_than_failing(self) -> None:
+        # A settings file can hold anything. The reading must not stop.
+        self.assertEqual(speakable_text("Part II", language="klingon"), "Part hai")
+        self.assertEqual(speakable_text("Part II", language=""), "Part hai")
+
+    def test_what_is_the_same_job_in_both_languages_stays_shared(self) -> None:
+        # De-shouting, note marks and the heading's final stop are not about
+        # language; they must not have quietly become English-only.
+        self.assertEqual(
+            speakable_text("THE ART OF WAR", "heading", "en"), "The art of war."
+        )
+        self.assertEqual(speakable_text("Tang.\u00b3", language="en"), "Tang.")

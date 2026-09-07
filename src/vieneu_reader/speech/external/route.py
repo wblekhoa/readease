@@ -19,7 +19,11 @@ KEY_FOR_PROVIDER: Mapping[str, str] = {
     "elevenlabs": "elevenlabs_api_key",
 }
 
-BlockedReason = Literal["no_key", "budget"]
+#: `wrong_language` is not about payment at all: the local model is a
+#: Vietnamese model, and a book being read in another language must not be
+#: handed to it. Refusing by name is the same rule the two money reasons
+#: follow - say why, rather than speak in a voice nobody chose.
+BlockedReason = Literal["no_key", "budget", "wrong_language"]
 
 
 @dataclass(frozen=True, slots=True)

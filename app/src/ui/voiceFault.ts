@@ -11,8 +11,9 @@
  *
  * Two prefixes, because there are two moments a paid reading can stop:
  *
- *   `voice_unavailable: <reason>`  before anything was sent - no key, or our
- *                                  own ceiling. Nothing was charged.
+ *   `voice_unavailable: <reason>`  before anything was sent - no key, our own
+ *                                  ceiling, or a voice that does not read this
+ *                                  language. Nothing was charged.
  *   `voice_failed: <code>: <text>` the provider was asked and said no.
  *
  * Parsed rather than matched exactly: the string arrives through Tauri's
@@ -30,6 +31,7 @@ export const FAULT_CODES = [
   "provider_down",
   "refused",
   "budget",
+  "wrong_language",
 ] as const;
 
 export type FaultCode = (typeof FAULT_CODES)[number];

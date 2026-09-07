@@ -57,6 +57,8 @@ from vieneu_reader.domain.prosody import (
     pause_after_ms,
     selection_pause_ms,
     speak_with_notes,
+    DEFAULT_SPEECH_LANGUAGE,
+    speech_language,
     speakable_text,
     split_sentences,
 )
@@ -146,7 +148,11 @@ def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
     return None
 
 
-def _text_utterances(text: str, settings: SynthesisSettings) -> list[_Utterance]:
+def _text_utterances(
+    text: str,
+    settings: SynthesisSettings,
+    language: str = DEFAULT_SPEECH_LANGUAGE,
+) -> list[_Utterance]:
     """Pasted or captured text, shaped exactly as the reading will send it.
 
     ONE builder, two callers - the reading and the estimate that prices it,
@@ -163,7 +169,7 @@ def _text_utterances(text: str, settings: SynthesisSettings) -> list[_Utterance]
     parts = split_transient_parts(text, settings.max_chars)
     if not parts:
         return []
-    spoken = tuple(speakable_text(part.text) for part in parts)
+    spoken = tuple(speakable_text(part.text, language=language) for part in parts)
     return [
         _Utterance(
             text=spoken[index],
@@ -241,9 +247,13 @@ class _Utterance:
 
 
 # What the voice says when the reading reaches a picture, and the rest that
-# follows so the listener has a beat to look. Vietnamese on purpose: the voice
-# is Vietnamese whatever the shell's UI language is.
-FIGURE_CUE = "Xem hình {number}."
+# follows so the listener has a beat to look. In the language being READ: this
+# sentence is spoken aloud between two sentences of the book, so a Vietnamese
+# one in the middle of an English chapter is a stumble, not a label.
+FIGURE_CUE = {
+    "vi": "Xem hình {number}.",
+    "en": "See figure {number}.",
+}
 FIGURE_CUE_PAUSE_MS = 600
 
 # What the voice says before a footnote, and the beat after it. On paper a
@@ -253,7 +263,10 @@ FIGURE_CUE_PAUSE_MS = 600
 # middle of a paragraph. Two words, because a longer preamble said before
 # eighty notes becomes the thing you hear instead of the notes (owner,
 # 04/09: "nói thêm").
-NOTE_CUE = "Nói thêm, {text}"
+NOTE_CUE = {
+    "vi": "Nói thêm, {text}",
+    "en": "Also, {text}",
+}
 NOTE_CUE_PAUSE_MS = 450
 
 
@@ -633,7 +646,7 @@ class _Session:
         voice_id = str(params.get("voice_id") or "")
         rate = float(params.get("rate") or 1.0)
         settings = SynthesisSettings()
-        utterances = _text_utterances(text, settings)
+        utterances = _text_utterances(text, settings, self._reading_language())
         if not utterances:
             self._fail(request_id, "text is empty")
             return
@@ -679,7 +692,9 @@ class _Session:
         if not wanted:
             progress = self._repository.load_progress(book_id)
             wanted = progress.segment_id if progress else None
-        utterances, chapter_of = self._book_utterances(stored)
+        utterances, chapter_of = self._book_utterances(
+            stored, self._reading_language()
+        )
         start = _start_at(utterances, wanted, _reading_order(stored.book))
         # How far this press of the button is allowed to reach. `None` is the
         # whole book, which is what every reading did before paid voices
@@ -701,8 +716,17 @@ class _Session:
         product; the paid ones are an option somebody went and enabled.
         """
 
+        # The local voices are Vietnamese and only Vietnamese - not "did not
+        # say" like a provider that never published a list. Naming it here is
+        # what lets the shell show a reader in English which voices can
+        # actually read to them.
         catalogue: list[dict[str, Any]] = [
-            {"id": voice.id, "label": voice.label, "paid": False}
+            {
+                "id": voice.id,
+                "label": voice.label,
+                "paid": False,
+                "languages": [DEFAULT_SPEECH_LANGUAGE],
+            }
             for voice in self._engine.voices()
         ]
         unreachable: list[dict[str, Any]] = []
@@ -761,7 +785,9 @@ class _Session:
         # what gets read.
         if not params.get("book_id"):
             utterances = _text_utterances(
-                str(params.get("text") or ""), SynthesisSettings()
+                str(params.get("text") or ""),
+                SynthesisSettings(),
+                self._reading_language(),
             )
             chars = sum(len(utterance.text) for utterance in utterances)
             if price is None:
@@ -793,7 +819,9 @@ class _Session:
         if stored is None:
             self._fail(request_id, f"unknown book: {params.get('book_id')}")
             return
-        utterances, chapter_of = self._book_utterances(stored)
+        utterances, chapter_of = self._book_utterances(
+            stored, self._reading_language()
+        )
         wanted = params.get("segment_id")
         if not wanted:
             progress = self._repository.load_progress(stored.book.id)
@@ -843,7 +871,7 @@ class _Session:
         })
 
     def _book_utterances(
-        self, stored: StoredBook
+        self, stored: StoredBook, language: str = DEFAULT_SPEECH_LANGUAGE
     ) -> tuple[list[_Utterance], list[int]]:
         """Everything this book would say, and the chapter each bit is in.
 
@@ -854,6 +882,7 @@ class _Session:
         numbers is the difference between a price and a guess.
         """
 
+        language = speech_language(language)
         segments: list[Segment] = [
             segment
             for chapter in stored.book.chapters
@@ -925,7 +954,7 @@ class _Session:
             for cue in here:
                 if cue.placement == "before" and cue.caption_segment_id is None:
                     add(_Utterance(
-                        text=FIGURE_CUE.format(number=cue.number),
+                        text=FIGURE_CUE[language].format(number=cue.number),
                         pause_after_ms=FIGURE_CUE_PAUSE_MS,
                         segment_id=segment.id,
                         figure_id=cue.figure_id,
@@ -948,9 +977,11 @@ class _Session:
             for order, (piece, is_note) in enumerate(pieces):
                 last = order == len(pieces) - 1
                 spoken = (
-                    NOTE_CUE.format(text=speakable_text(piece))
+                    NOTE_CUE[language].format(
+                        text=speakable_text(piece, language=language)
+                    )
                     if is_note
-                    else speakable_text(piece, segment.kind)
+                    else speakable_text(piece, segment.kind, language)
                 )
                 add(_Utterance(
                     text=spoken,
@@ -965,7 +996,7 @@ class _Session:
             for cue in here:
                 if cue.placement == "after" and cue.caption_segment_id is None:
                     add(_Utterance(
-                        text=FIGURE_CUE.format(number=cue.number),
+                        text=FIGURE_CUE[language].format(number=cue.number),
                         pause_after_ms=FIGURE_CUE_PAUSE_MS,
                         segment_id=segment.id,
                         figure_id=cue.figure_id,
@@ -1739,6 +1770,20 @@ class _Session:
             "data": base64.b64encode(data).decode("ascii"),
         })
 
+    def _reading_language(self, settings: dict[str, Any] | None = None) -> str:
+        """The language the VOICE reads in.
+
+        Taken from the interface language for now, which is the only language
+        this app has ever been told. It is the wrong long-term answer - a
+        library holds books in more than one language and the book knows which
+        it is - but it is a true one: somebody who put the app in English is
+        reading in English. When books carry their own language (EPUB spells
+        it in `dc:language`), that overrides this per reading.
+        """
+
+        document = self._settings_document() if settings is None else settings
+        return speech_language(document.get("ui_language"))
+
     def _settings_document(self) -> dict[str, Any]:
         from vieneu_reader.settings import load_settings
 
@@ -1767,6 +1812,7 @@ class _Session:
 
         price = price_for(model_of(voice_id) or "")
         self._spend.set_limit(self._budget(settings))
+        language = self._reading_language(settings)
         route = pick_voice_route(
             voice_id,
             keys=settings,
@@ -1775,6 +1821,14 @@ class _Session:
             ),
         )
         if route.kind == "local":
+            # VieNeu is a Vietnamese model, trained and published for
+            # Vietnamese. Handed an English sentence it produces something -
+            # measured 2026-09-07, it does not fail - and that something is
+            # Vietnamese-accented mush. The owner's rule: never read another
+            # language with it. So this is a refusal by name, like a paid
+            # voice with no key, and the person picks a voice that can.
+            if language != DEFAULT_SPEECH_LANGUAGE:
+                return None, None, "wrong_language"
             return self._engine, None, None
         if route.kind == "blocked":
             return None, price, route.reason

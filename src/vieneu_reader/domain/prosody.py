@@ -263,6 +263,45 @@ def _capitalise_first(token: str) -> str:
 _ORDINAL_MARK = re.compile(r"(?<![\w#])#(\d{1,3})(?!\w)")
 _UNITS = ("không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín")
 
+# The language the VOICE is reading in, which is not the same question as the
+# language of the interface. Everything below that turns writing into speech -
+# a number, a Roman numeral, a web address - has to answer in the language
+# being read, or an English book gets "Part hai" in the middle of a sentence.
+# Vietnamese stays the default: it is what every existing caller means.
+SPEECH_LANGUAGES = ("vi", "en")
+DEFAULT_SPEECH_LANGUAGE = "vi"
+_EN_UNITS = (
+    "zero", "one", "two", "three", "four",
+    "five", "six", "seven", "eight", "nine",
+)
+_EN_TEENS = (
+    "ten", "eleven", "twelve", "thirteen", "fourteen",
+    "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+)
+_EN_TENS = (
+    "", "", "twenty", "thirty", "forty",
+    "fifty", "sixty", "seventy", "eighty", "ninety",
+)
+
+
+def speech_language(value: object) -> str:
+    """The reading language named by `value`, or Vietnamese."""
+    text = str(value or "").strip().lower()
+    return text if text in SPEECH_LANGUAGES else DEFAULT_SPEECH_LANGUAGE
+
+
+def _english_cardinal(number: int) -> str:
+    if number < 1 or number > 99:
+        return str(number)
+    if number < 10:
+        return _EN_UNITS[number]
+    if number < 20:
+        return _EN_TEENS[number - 10]
+    tens, unit = divmod(number, 10)
+    # Hyphenated the way English writes it; the voice reads the hyphen as the
+    # single word it is.
+    return _EN_TENS[tens] if unit == 0 else f"{_EN_TENS[tens]}-{_EN_UNITS[unit]}"
+
 
 def ordinal_words(number: int) -> str:
     """'thứ nhất' … 'thứ chín mươi chín'; digits past that (the model reads them)."""
@@ -289,8 +328,19 @@ def ordinal_words(number: int) -> str:
     return f"thứ {head} {tail}"
 
 
-def spell_ordinal_marks(text: str) -> str:
-    """'#1' → 'thứ nhất' for the voice; the page keeps its '#1'."""
+def spell_ordinal_marks(
+    text: str, language: str = DEFAULT_SPEECH_LANGUAGE
+) -> str:
+    """'#1' → 'thứ nhất' for the voice; the page keeps its '#1'.
+
+    English print says the same thing with a different word: "#1" is read
+    "number one", not an ordinal, so the English side is not a translation of
+    the Vietnamese one.
+    """
+    if speech_language(language) == "en":
+        return _ORDINAL_MARK.sub(
+            lambda m: f"number {_english_cardinal(int(m.group(1)))}", text
+        )
     return _ORDINAL_MARK.sub(lambda m: ordinal_words(int(m.group(1))), text)
 
 
@@ -358,10 +408,22 @@ _LINK_TAIL = ".,;:!?…)]}»”’\"'"
 #: Words that already announce a link. "tại địa chỉ www.x.com" must not
 #: become "tại địa chỉ địa chỉ x chấm com".
 _LINK_ANNOUNCED = ("địa chỉ", "đường dẫn", "trang", "website", "url", "link")
+#: Same three parts in English: what the dots are called, what announces a
+#: link, and the words that already did the announcing.
+_LINK_WORDS = {
+    "vi": (" chấm ", "địa chỉ ", _LINK_ANNOUNCED),
+    "en": (
+        " dot ",
+        "the address ",
+        ("address", "link", "url", "website", "site", "at", "page"),
+    ),
+}
 
 
-def speak_links(text: str) -> str:
+def speak_links(text: str, language: str = DEFAULT_SPEECH_LANGUAGE) -> str:
     """Say the site a link points at, not the link."""
+
+    separator, prefix, announced = _LINK_WORDS[speech_language(language)]
 
     def spoken(match: "re.Match[str]") -> str:
         hit = match.group(0)
@@ -374,11 +436,11 @@ def speak_links(text: str) -> str:
         labels = [label for label in host.split(".") if label]
         if len(labels) < 2 or labels[-1].lower() not in _LINK_TLDS:
             return match.group(0)
-        said = " chấm ".join(labels)
+        said = separator.join(labels)
         before = match.string[:match.start()].rstrip().lower()
-        if any(before.endswith(word) for word in _LINK_ANNOUNCED):
+        if any(before.endswith(word) for word in announced):
             return f"{said}{tail}"
-        return f"địa chỉ {said}{tail}"
+        return f"{prefix}{said}{tail}"
 
     return _LINK.sub(spoken, text)
 
@@ -403,8 +465,10 @@ _ROMAN_NUMERAL = re.compile(
 _ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
 
 
-def cardinal_words(number: int) -> str:
+def cardinal_words(number: int, language: str = DEFAULT_SPEECH_LANGUAGE) -> str:
     """'một' … 'chín mươi chín'; anything else stays a digit for the model."""
+    if speech_language(language) == "en":
+        return _english_cardinal(number)
     if number < 1 or number > 99:
         return str(number)
     if number < 10:
@@ -455,14 +519,17 @@ def _roman_form(number: int) -> str:
     return "".join(out)
 
 
-def speak_roman_numerals(text: str) -> str:
+def speak_roman_numerals(
+    text: str, language: str = DEFAULT_SPEECH_LANGUAGE
+) -> str:
     """"Phần II" → "Phần hai" for the voice; the page keeps its "II"."""
 
     def spoken(match: "re.Match[str]") -> str:
         number = roman_value(match.group(3))
         if number is None:
             return match.group(0)
-        return f"{match.group(1)}{match.group(2)}{cardinal_words(number)}"
+        said = cardinal_words(number, language)
+        return f"{match.group(1)}{match.group(2)}{said}"
 
     return _ROMAN_NUMERAL.sub(spoken, text)
 
@@ -600,7 +667,11 @@ def speak_with_notes(
     return tuple(pieces)
 
 
-def speakable_text(text: str, kind: str = "paragraph") -> str:
+def speakable_text(
+    text: str,
+    kind: str = "paragraph",
+    language: str = DEFAULT_SPEECH_LANGUAGE,
+) -> str:
     """Shape one segment's text for the voice without touching the display.
 
     Bullet glyphs derail the voice (one probe read two words for four
@@ -610,13 +681,18 @@ def speakable_text(text: str, kind: str = "paragraph") -> str:
     Two more things the eye reads and the ear cannot: a Roman numeral after
     a division word ("Phần II"), which came out as a letter, and a web
     address, which came out spelled character by character.
+
+    `language` is the language being READ. It only reaches the transforms that
+    have to produce words - numbers, Roman numerals, the word for a dot in an
+    address. Dropping note marks, de-shouting, bullets and the heading's final
+    period are the same job in either language.
     """
 
     # Roman numerals BEFORE unshout: "II" is all-caps and vowel-less, and a
     # de-shouted "ii" is no longer a numeral anything can recognise.
     spoken = drop_note_marks(text)
-    spoken = speak_roman_numerals(speak_enumerators(spoken))
-    spoken = spell_ordinal_marks(unshout(speak_links(spoken)))
+    spoken = speak_roman_numerals(speak_enumerators(spoken), language)
+    spoken = spell_ordinal_marks(unshout(speak_links(spoken, language)), language)
     stripped = spoken.lstrip()
     while stripped and stripped[0] in _BULLET_GLYPHS:
         stripped = stripped[1:].lstrip()
