@@ -33,7 +33,7 @@ You do not need an API key, Homebrew, Python or programming knowledge.
 Building on your own Mac is **never blocked by macOS**, at the cost of 10-25 minutes and about 6 GB of free space while it builds. Use it if you would rather not do the Open Anyway step above.
 
 > [!IMPORTANT]
-> **The source install does not build right now.** It builds the older Qt shell, and the Qt shell has been removed from the source. Download the `.zip` above instead — that is the complete, current app. The steps below are kept for reference; pointing them at the new build is a decision nobody has made yet.
+> **The source install does not build right now.** It builds the older Qt shell, and the Qt shell has been removed from the source. Download the `.zip` above instead — that is the complete, current app. The steps below are kept for reference.
 
 Open **Terminal**, paste this and press Enter:
 

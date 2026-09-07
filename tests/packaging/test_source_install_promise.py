@@ -59,6 +59,37 @@ class SourceInstallPromiseTests(unittest.TestCase):
                         f"it spends 10-25 minutes to reach a failure.",
                     )
 
+    def test_the_installer_stops_before_the_build_instead_of_during_it(self) -> None:
+        """The documents warn; the file a person double-clicks has to as well.
+
+        A friend who never reads the README opens `Install ReadEase.command`.
+        Twenty-five minutes of building and then a compiler trace is the worst
+        way to learn the path is retired, so the check runs before anything is
+        downloaded, and it reads the entry point out of the spec rather than
+        naming a file.
+        """
+
+        installer = (ROOT / "Install ReadEase.command").read_text(encoding="utf-8")
+        buildable = self._build_entry_point().is_file()
+
+        self.assertIn(
+            "pysidedeploy.spec",
+            installer,
+            "the installer no longer asks the spec what it is about to build",
+        )
+        guarded = "cannot build right now" in installer
+        if buildable:
+            self.assertFalse(
+                guarded,
+                "the entry point is back but the installer still refuses to run",
+            )
+        else:
+            self.assertTrue(
+                guarded,
+                "the entry point is gone and the installer still starts a build "
+                "that cannot finish",
+            )
+
     def test_the_entry_point_is_read_from_the_spec_not_guessed(self) -> None:
         # A rename in the spec must move this guard with it, not silently
         # leave it checking a path nothing builds.

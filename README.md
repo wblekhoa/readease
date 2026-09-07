@@ -33,7 +33,7 @@ Bạn **không cần** API key, Homebrew, Python hay kiến thức lập trình.
 Cách này dựng app ngay trên máy bạn nên **không bao giờ bị macOS chặn**, đổi lại tốn 10–25 phút và khoảng 6 GB trống lúc dựng. Dùng khi bạn không muốn làm bước Open Anyway ở trên.
 
 > [!IMPORTANT]
-> **Đường cài từ nguồn đang không dựng được.** Nó dựng bản Qt cũ, và bản Qt cũ đã bị gỡ khỏi mã nguồn. Hãy tải `.zip` ở trên — đó là bản đầy đủ và mới nhất. Phần hướng dẫn bên dưới giữ lại để tham khảo, chưa xoá vì việc trỏ nó sang bản dựng mới là một quyết định chưa có.
+> **Đường cài từ nguồn đang không dựng được.** Nó dựng bản Qt cũ, và bản Qt cũ đã bị gỡ khỏi mã nguồn. Hãy tải `.zip` ở trên — đó là bản đầy đủ và mới nhất. Phần hướng dẫn bên dưới giữ lại để tham khảo.
 
 Mở **Terminal**, dán nguyên khối lệnh sau rồi nhấn Enter:
 
