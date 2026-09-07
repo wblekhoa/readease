@@ -293,6 +293,23 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
 - **Scroll-spy** tính "đầu trang" từ inset: dòng mắt = top + `--shell-top-h` + 40; dòng đang đọc
   "còn nhìn thấy" khi nằm giữa hai inset, không phải giữa hai mép cửa sổ.
 
+### 3.9g Dấu trên một dòng danh sách: emoji, và chỉ cho ca KHÁC thường (07/09)
+
+- **Nhãn chữ trong một hàng danh sách thành emoji khi nó chỉ nói một sự thật đơn lẻ.** "Trả phí" → 💵,
+  "Tiếng Việt" → 🇻🇳, "Tiếng Anh" → 🇬🇧. Hàng ngắn lại, và cái tên giọng — thứ người ta thực sự quét — không
+  còn phải chia chỗ với hai viên nang chữ.
+- **Không đeo nhãn cho ca thường.** Giọng miễn phí không mang dấu nào: một nhãn cho ca thường là hai mươi
+  dòng cùng nói một điều chẳng ai cần đọc, và nó làm ca KHÁC thường (trả phí) khó thấy hơn.
+- **Bỏ viên nang bọc ngoài khi nội dung là emoji.** Viên nang tồn tại để CHỮ đọc ra như một nhãn; emoji vốn
+  đã là một vật thể riêng, và một bao xám quanh lá cờ chỉ đánh nhau với chính màu làm nó dễ nhận.
+- **Dấu không tự mang nghĩa thì phải nói lời hai lượt**: `title` cho con trỏ, `role="img"` + `aria-label`
+  cho cây trợ năng. Hàng phải đọc được với người không bao giờ nhìn thấy emoji.
+- **Cụm dấu có khoảng cách riêng, hẹp hơn khoảng cách của hàng.** Xếp theo `gap` của hàng, ba dấu đọc ra như
+  ba thứ rời nhau trôi khỏi cái tên; gom lại thì chúng là một cụm sự thật về giọng đó.
+- **Nhãn nói cái ĐÃ BIẾT, bộ lọc không hành động trên cái CHƯA BIẾT.** Cờ chỉ hiện khi nhà cung cấp đã xác
+  nhận (`vouchedFor`); còn bộ lọc theo ngôn ngữ chỉ loại giọng nào TỰ khai ngôn ngữ khác (`canSpeak`). Cùng
+  một trường dữ liệu, hai mặc định ngược nhau, cố ý.
+
 ### 3.9f Cửa sổ thấp: chữ giải thích nhường chỗ, nút bấm thì không (07/09)
 
 Đo trên bảng Giọng đọc ở cửa sổ cao 423px: trần của bảng là 239px, nhưng các hàng cố định phía trên danh
