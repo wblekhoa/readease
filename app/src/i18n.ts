@@ -255,19 +255,26 @@ export const TEXT = {
   ],
   "voices.language_vi": ["Tiếng Việt", "Vietnamese"],
   "voices.language_en": ["Tiếng Anh", "English"],
-  // Two different sentences on purpose. "Tự dò" is a statement about where
-  // the answer came from, and it is the one that has to invite a correction;
-  // "đã đặt" is a statement that a decision stands, and it has to offer the
-  // way back.
-  "voices.language_detected": [
-    "Máy tự dò từ nội dung sách. Sai thì chọn lại: giọng trên máy chỉ đọc được tiếng Việt.",
-    "Read off the book's own text. Change it if that is wrong: the voice on this Mac reads Vietnamese only.",
+  // A suggestion, not a correction: the reader's choice stands until they
+  // take this up. Shown only when the book's own words disagree with it.
+  "voices.language_looks_vi": [
+    "Nội dung cuốn này đọc ra tiếng Việt.",
+    "This book's text reads as Vietnamese.",
   ],
-  "voices.language_chosen": [
-    "Bạn đã đặt cho cuốn này.",
-    "You set this for this book.",
+  "voices.language_looks_en": [
+    "Nội dung cuốn này đọc ra tiếng Anh.",
+    "This book's text reads as English.",
   ],
-  "voices.language_auto": ["Để máy tự dò lại", "Let it read the book again"],
+  "voices.language_use_vi": ["Chuyển sang tiếng Việt", "Switch to Vietnamese"],
+  "voices.language_use_en": ["Chuyển sang tiếng Anh", "Switch to English"],
+  "voices.none_for_language": [
+    "Chưa có giọng nào đọc được ngôn ngữ của cuốn này. Giọng trên máy chỉ đọc tiếng Việt; thêm khoá API để dùng giọng từ xa.",
+    "No voice here reads this book's language. The voice on this Mac reads Vietnamese only; add an API key for a remote one.",
+  ],
+  "voices.hidden_for_language": [
+    "Đã ẩn {count} giọng không đọc được ngôn ngữ của cuốn này.",
+    "{count} voices that do not read this book's language are hidden.",
+  ],
   "voices.switch": ["Đổi giọng", "Change voice"],
   "voices.switched": ["Đang đọc tiếp bằng giọng {name}.", "Reading on with {name}."],
   "player.settings_open": ["Cài đặt giọng đọc", "Voice settings"],

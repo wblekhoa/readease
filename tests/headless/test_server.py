@@ -413,7 +413,12 @@ class ProtocolTests(unittest.TestCase):
         )
 
         self.assertTrue(replies[0]["ok"])
-        self.assertEqual(replies[0]["result"], {"language": "vi", "language_set": True})
+        self.assertEqual(
+            replies[0]["result"],
+            # Both, always: what the book is read in, and what its own words
+            # say. The shell offers a suggestion off the difference.
+            {"language": "vi", "language_set": True, "language_detected": "en"},
+        )
         self.assertTrue(replies[-1]["ok"])
 
     def test_withdrawing_the_word_gives_the_text_its_vote_back(self) -> None:
@@ -431,7 +436,10 @@ class ProtocolTests(unittest.TestCase):
             settings_path=root / "settings.json",
         )
 
-        self.assertEqual(replies[1]["result"], {"language": "en", "language_set": False})
+        self.assertEqual(
+            replies[1]["result"],
+            {"language": "en", "language_set": False, "language_detected": "en"},
+        )
         self.assertFalse(replies[-1]["ok"])
         self.assertIn("wrong_language", replies[-1]["error"])
 
@@ -452,6 +460,9 @@ class ProtocolTests(unittest.TestCase):
         after = replies[2]["result"]["books"][0]
         self.assertEqual((before["language"], before["language_set"]), ("en", False))
         self.assertEqual((after["language"], after["language_set"]), ("vi", True))
+        # The text says the same thing throughout; only the decision moved.
+        self.assertEqual(before["language_detected"], "en")
+        self.assertEqual(after["language_detected"], "en")
 
     def test_the_shelf_asks_each_book_its_language_once(self) -> None:
         # It used to ask for the language and then ask AGAIN whether that had
@@ -477,6 +488,62 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(asked, [BOOK_ID])
         shelved = replies[0]["result"]["books"][0]
         self.assertEqual((shelved["language"], shelved["language_set"]), ("vi", True))
+
+    def test_a_decision_survives_the_next_launch(self) -> None:
+        # "khi user chỉnh thì lưu lại, không cần tự động detect lại vào lần
+        # sau" (owner, 07/09). Two SEPARATE servers over the same library,
+        # which is what closing and reopening the app is: the second one has
+        # an empty memo cache and no idea what the first was told.
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        run_server(
+            [{"id": 5, "method": "book.set_language",
+              "params": {"book_id": BOOK_ID, "language": "vi"}}],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        later = run_server(
+            [
+                {"id": 1, "method": "library.list"},
+                {"id": 8, "method": "read.book",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        shelved = later[0]["result"]["books"][0]
+        self.assertEqual(shelved["language"], "vi")
+        self.assertTrue(shelved["language_set"])
+        # And the text still reads as what it is, so the shell can still
+        # offer to change its mind.
+        self.assertEqual(shelved["language_detected"], "en")
+        self.assertTrue(later[-1]["ok"])
+
+    def test_a_book_is_read_once_however_often_it_is_listed(self) -> None:
+        # 2.34 ms a book on the owner's shelf: nothing once, half a second
+        # every time a two-hundred-book shelf is opened. A book's words do
+        # not change while it sits there.
+        from unittest.mock import patch
+
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        with patch(
+            "vieneu_reader.headless.server.language_of_texts",
+            side_effect=lambda *a, **k: "en",
+        ) as reader:
+            replies = run_server(
+                [
+                    {"id": 1, "method": "library.list"},
+                    {"id": 2, "method": "library.list"},
+                    {"id": 3, "method": "library.list"},
+                ],
+                FakeEngine(), repository=repository,
+                settings_path=root / "settings.json",
+            )
+
+        self.assertEqual(reader.call_count, 1)
+        for reply in replies:
+            self.assertEqual(reply["result"]["books"][0]["language_detected"], "en")
 
     def test_a_language_nobody_can_read_is_refused_at_the_pipe(self) -> None:
         # An open string column reached over a pipe would put whatever

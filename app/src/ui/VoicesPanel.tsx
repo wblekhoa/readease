@@ -23,6 +23,7 @@ import {
 } from "./icons";
 import { useShortWindow } from "./useShortWindow";
 import {
+  canSpeak,
   matchesVoiceFilters,
   speaksVietnamese,
   tidyName,
@@ -41,7 +42,7 @@ export function VoicesPanel({
   reading,
   previewing,
   bookLanguage,
-  languageSet,
+  detectedLanguage,
   onSetLanguage,
   onToggle,
   onPreview,
@@ -61,9 +62,13 @@ export function VoicesPanel({
    * a pasted passage is judged by its own words every time it is read, so
    * there is nothing here to set. */
   bookLanguage?: string | null;
-  /** True when that language was a reader's decision rather than the
-   * engine's reading of the text. */
-  languageSet?: boolean;
+  /** What the book's own words read as, whatever was decided. The panel
+   * needs only this and `bookLanguage`: where they agree there is nothing to
+   * say, and where they differ there is a suggestion to offer. Whether the
+   * difference came from a reader's decision is the engine's business - the
+   * decision is stored and stands, and the book is not read again on the
+   * next launch. */
+  detectedLanguage?: string | null;
   /** `null` withdraws the decision and lets the text speak for itself. */
   onSetLanguage?: (language: string | null) => void;
   onToggle: (id: string) => void;
@@ -85,13 +90,21 @@ export function VoicesPanel({
   const short = useShortWindow();
   const [filtering, setFiltering] = useState(false);
   const sourceOf = (id: string) => providerOf(id) ?? "local";
+  // A book's language decides which voices may be offered AT ALL, so it
+  // narrows the list before anything the reader filters. Scrolling past
+  // twenty Vietnamese voices the engine will refuse, to reach the one that
+  // can read this English chapter, is a list working against its reader.
+  const speakableVoices = bookLanguage
+    ? voices.filter((voice) => canSpeak(voice, bookLanguage))
+    : voices;
+  const hiddenByLanguage = voices.length - speakableVoices.length;
   const providerOrder = ["local", ...PROVIDERS.map((provider) => provider.id)];
   const providerOptions = providerOrder.filter((key) =>
-    voices.some((voice) => sourceOf(voice.id) === key));
+    speakableVoices.some((voice) => sourceOf(voice.id) === key));
   const activeProvider = providerFilter === "all" || providerOptions.includes(providerFilter)
     ? providerFilter
     : "all";
-  const hasKnownGender = voices.some((voice) =>
+  const hasKnownGender = speakableVoices.some((voice) =>
     voiceGender(voice, sourceOf(voice.id) === "local") !== null);
   const hasFilters = providerOptions.length > 1 || hasKnownGender;
   const filtersShown = hasFilters && (!short || filtering);
@@ -101,7 +114,7 @@ export function VoicesPanel({
      the others bill, and an ElevenLabs account can hold forty-five of them
      (owner, 05/09). One flat list of fifty-four with no way to search was
      not a list anyone could work with. */
-  const matched = voices.filter((voice) => matchesVoiceFilters(
+  const matched = speakableVoices.filter((voice) => matchesVoiceFilters(
     voice,
     query,
     sourceOf(voice.id),
@@ -223,20 +236,32 @@ export function VoicesPanel({
             ]}
             onChange={(chosen) => onSetLanguage(chosen)}
           />
-          {/* The sentence is `short-hidden`; the undo BUTTON is not. On a
-              short window the row becomes the control and the way back, with
-              the explanation dropped - which is the order they matter in for
-              somebody who has just been refused mid-chapter. */}
-          <p className={`m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-mute ${languageSet ? "mt-1" : "mt-2"}`}>
-            <span className="short-hidden">
-              {languageSet ? text("voices.language_chosen") : text("voices.language_detected")}
-            </span>
-            {languageSet && (
-              <Button variant="ghost" size="sm" onClick={() => onSetLanguage(null)}>
-                {text("voices.language_auto")}
+          {/* No sentence explaining the control, in either state. The two
+              that used to sit here said what the row already shows ("máy tự
+              dò", "bạn đã đặt") and the owner asked for them to go (07/09).
+              What is left is a SUGGESTION, and only when there is something
+              to suggest: the words of this book read as the other language.
+              Silent when the two agree, which is almost always. */}
+          {detectedLanguage && detectedLanguage !== bookLanguage && (
+            <p className="m-0 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-mute">
+              {text(
+                detectedLanguage === "vi"
+                  ? "voices.language_looks_vi"
+                  : "voices.language_looks_en",
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onSetLanguage(detectedLanguage)}
+              >
+                {text(
+                  detectedLanguage === "vi"
+                    ? "voices.language_use_vi"
+                    : "voices.language_use_en",
+                )}
               </Button>
-            )}
-          </p>
+            </p>
+          )}
         </div>
       )}
 
@@ -306,10 +331,21 @@ export function VoicesPanel({
       <div className="min-h-0 flex-1 overflow-y-auto px-6">
         {found === 0 && (
           <Notice className="mb-4 block">
-            {query.trim()
-              ? text("voices.no_match", { query })
-              : text("voices.no_filter_match")}
+            {/* Order matters: the LANGUAGE is why a Vietnamese-only
+                catalogue is empty for an English book, and saying "no voice
+                matches your filters" there would send somebody to clear
+                filters that were never the problem. */}
+            {hiddenByLanguage > 0 && !query.trim()
+              ? text("voices.none_for_language")
+              : query.trim()
+                ? text("voices.no_match", { query })
+                : text("voices.no_filter_match")}
           </Notice>
+        )}
+        {found > 0 && hiddenByLanguage > 0 && (
+          <p className="mb-1 mt-4 text-xs text-ink-mute">
+            {text("voices.hidden_for_language", { count: hiddenByLanguage })}
+          </p>
         )}
         {groups.map((group) => (
         <GroupedSection key={group.key} title={`${group.title} (${group.voices.length})`}>

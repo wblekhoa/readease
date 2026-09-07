@@ -391,6 +391,11 @@ class _Session:
         # Whether the reading in progress is allowed to leave audio on disk.
         # Set per reading by `_speak`; false until one starts.
         self._cache_reading = False
+        # What each book's own text reads as, remembered for this process.
+        # A book's words do not change while it is on the shelf, and reading
+        # them is 2.34 ms each - nothing once, half a second every time a
+        # two-hundred-book shelf is listed.
+        self._detected_languages: dict[tuple[str, str], str] = {}
         # What each recent reading was of, so a `progress.reached` for it -
         # which may land after its reply - can be written with the right
         # rate and voice. Bounded: only the last few readings matter.
@@ -1025,6 +1030,7 @@ class _Session:
         for stored in self._repository.list_books():
             progress = self._repository.load_progress(stored.book.id)
             chosen_language = self._repository.book_language(stored.book.id)
+            detected_language = self._detected_language(stored)
             try:
                 size_bytes = stored.managed_path.stat().st_size
             except OSError:
@@ -1073,9 +1079,15 @@ class _Session:
                 "language": (
                     chosen_language
                     if chosen_language in SPEECH_LANGUAGES
-                    else self._detected_language(stored)
+                    else detected_language
                 ),
                 "language_set": chosen_language is not None,
+                # What the TEXT says, whatever the reader decided. The shell
+                # needs both to offer a suggestion rather than an argument:
+                # a book set to Vietnamese whose words read as English is
+                # somebody who may have chosen by mistake, and a book where
+                # the two agree has nothing to suggest.
+                "language_detected": detected_language,
             })
         self._reply(request_id, {"books": books})
 
@@ -1807,9 +1819,21 @@ class _Session:
         return speech_language(document.get("ui_language"))
 
     def _detected_language(self, stored: StoredBook) -> str:
-        """What this book's own text says, ignoring anyone's opinion of it."""
+        """What this book's own text says, ignoring anyone's opinion of it.
 
-        return language_of_texts(
+        Remembered per book for as long as this process lives. Measured on
+        the owner's shelf (07/09): 2.34 ms a book, which is nothing once and
+        half a second on a two-hundred-book shelf that is listed on every
+        visit to the library. Keyed on the source hash as well as the id, so
+        a book re-imported from a different file is read again rather than
+        answered from what the old one said.
+        """
+
+        key = (stored.book.id, stored.book.source_hash)
+        remembered = self._detected_languages.get(key)
+        if remembered is not None:
+            return remembered
+        found = language_of_texts(
             (
                 segment.text
                 for chapter in stored.book.chapters
@@ -1817,6 +1841,8 @@ class _Session:
             ),
             self._reading_language(),
         )
+        self._detected_languages[key] = found
+        return found
 
     def _book_language(self, stored: StoredBook) -> str:
         """The language THIS book is written in.
@@ -1871,6 +1897,7 @@ class _Session:
         self._reply(request_id, {
             "language": self._book_language(stored),
             "language_set": chosen is not None,
+            "language_detected": self._detected_language(stored),
         })
 
     def _settings_document(self) -> dict[str, Any]:

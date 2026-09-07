@@ -432,7 +432,13 @@ export default function App() {
   const setBookLanguage = useCallback((language: string | null) => {
     setOpenBook((book) => {
       if (!book) return book;
-      void invoke<{ result: { language?: string; language_set?: boolean } }>(
+      void invoke<{
+        result: {
+          language?: string;
+          language_set?: boolean;
+          language_detected?: string;
+        };
+      }>(
         "engine_request",
         {
           method: "book.set_language",
@@ -448,6 +454,7 @@ export default function App() {
                   ...current,
                   language: settled.language,
                   language_set: Boolean(settled.language_set),
+                  language_detected: settled.language_detected,
                 }
               : current,
           );
@@ -1521,7 +1528,7 @@ export default function App() {
           reading={reading !== "idle" && previewing === null}
           previewing={previewing}
           bookLanguage={openBook?.language ?? null}
-          languageSet={openBook?.language_set ?? false}
+          detectedLanguage={openBook?.language_detected ?? null}
           onSetLanguage={setBookLanguage}
           onToggle={(id) => rememberShortlist(toggleShortlist(shortlist, id))}
           onPreview={previewVoice}

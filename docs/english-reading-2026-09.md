@@ -62,9 +62,20 @@ hợp, không in tên sách và không in nội dung: **9/9 cuốn ra "vi"**, th
 
 **Chỗ sửa tay (đã làm)**: bảng **Giọng đọc** có một hàng "Cuốn này đọc bằng" ngay trên danh sách giọng —
 ngôn ngữ quyết định giọng nào được phép đọc, nên hai thứ đứng cạnh nhau. Lời của người đọc **thắng** kết quả
-tự dò; bấm "Để máy tự dò lại" là rút lời đó, và cuốn sách quay về được **đọc lại**, không bị ghim vào câu trả
-lời hôm nay (một cuốn nhập lại hoặc sửa lại phải được chấm lại từ đầu). Hàng này chỉ hiện khi đang mở một
-cuốn sách: đoạn văn dán được chấm bằng chính chữ của nó ở mỗi lượt đọc, không có gì để nhớ.
+tự dò và **ở lại**: mở app lần sau, cuốn đó vẫn đọc bằng thứ tiếng đã chọn, máy không chấm lại (có test dựng
+hai server riêng trên cùng thư viện để chứng minh). Hàng này chỉ hiện khi đang mở một cuốn sách: đoạn văn dán
+được chấm bằng chính chữ của nó ở mỗi lượt đọc, không có gì để nhớ.
+
+**Không có câu giải thích nào dưới ô chọn** (chủ, 07/09). Thay vào đó là một **gợi ý**, và chỉ khi có gì để
+gợi: khi chữ trong sách đọc ra khác với thứ đang chọn thì hiện một dòng "Nội dung cuốn này đọc ra tiếng Anh."
+kèm nút "Chuyển sang tiếng Anh". Hai bên khớp nhau — gần như luôn luôn — thì im lặng. Vì vậy engine trả về
+**cả hai**: `language` (đang đọc bằng gì) và `language_detected` (chữ nói gì).
+
+**Danh sách giọng lọc theo ngôn ngữ của cuốn sách.** Một giọng chỉ bị loại khi **chính nó khai** ngôn ngữ
+khác: model trên máy khai `["vi"]` nên sách tiếng Anh không mời nó, còn OpenAI không công bố gì về giọng nào
+nên chúng ở lại — "không ai hỏi" không phải "không đọc được", và ẩn chúng đi là nói dối bằng bộ lọc. Số bị ẩn
+được nói ra ("Đã ẩn 20 giọng…"), và nếu không còn giọng nào thì câu báo nói đúng lý do là **ngôn ngữ**, không
+phải bộ lọc người dùng đặt.
 
 Lưu ở bảng phụ `book_languages` — thêm mới, không đổi `SCHEMA_VERSION`, đúng đường mà `annotations` và
 `apple_books_links` đã đi, nên bản ReadEase cũ mở thư viện này vẫn chạy và chỉ là không thấy nó. Chỉ cuốn nào

@@ -31,6 +31,25 @@ export function speaksVietnamese(voice: Pick<Voice, "languages">): boolean {
   return (voice.languages ?? []).some((tag) => tag.toLowerCase().split("-")[0] === "vi");
 }
 
+/** May this voice be offered for a book in `language`?
+ *
+ * Yes unless the voice NAMES its languages and this one is not among them.
+ * The difference matters: the local model publishes `["vi"]` because the
+ * engine enforces it, so it drops out of an English book's list; OpenAI
+ * publishes nothing about any of its voices and they all read Vietnamese
+ * after a fashion, so they stay. Hiding those would be a lie by filter -
+ * a list quietly missing rows with nothing on screen to say why.
+ */
+export function canSpeak(
+  voice: Pick<Voice, "languages">,
+  language: string,
+): boolean {
+  const named = voice.languages ?? [];
+  if (named.length === 0) return true;
+  const wanted = language.toLowerCase().split("-")[0];
+  return named.some((tag) => tag.toLowerCase().split("-")[0] === wanted);
+}
+
 /** The engine labels a voice "Tên — Nữ · Bắc · Phong cách kể chuyện": the
  * part before the dash is the name, the rest describes it. Lived in
  * SettingsPanel; two panels now read labels, so it lives here instead.

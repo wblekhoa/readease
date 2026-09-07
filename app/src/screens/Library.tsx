@@ -26,9 +26,13 @@ export type LibraryBook = {
   /** Which language this book gets read in - "vi" or "en". */
   language?: string;
   /** True when a reader SET that, rather than the engine reading it off the
-   * text. What makes an undo possible, and what tells the panel whether it
-   * is showing a decision or a guess. */
+   * text. The decision is sticky: the book is not read again on the next
+   * launch. */
   language_set?: boolean;
+  /** What the book's own words read as, whatever was decided. The two differ
+   * only when a reader disagreed with the text, and that is exactly when the
+   * voices panel has a suggestion to offer. */
+  language_detected?: string;
 };
 
 /** The cover as a data URL: undefined while loading, null when the book has

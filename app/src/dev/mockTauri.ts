@@ -206,6 +206,7 @@ const LIBRARY = [
     from_apple_books: true,
     language: "vi",
     language_set: false,
+    language_detected: "vi",
   },
   {
     id: "book-two",
@@ -220,6 +221,7 @@ const LIBRARY = [
     from_apple_books: false,
     language: "vi",
     language_set: false,
+    language_detected: "vi",
   },
   {
     id: "book-three",
@@ -234,6 +236,7 @@ const LIBRARY = [
     from_apple_books: true,
     language: "vi",
     language_set: false,
+    language_detected: "vi",
   },
   {
     id: "book-four",
@@ -248,6 +251,7 @@ const LIBRARY = [
     from_apple_books: false,
     language: "en",
     language_set: false,
+    language_detected: "en",
   },
 ];
 
@@ -545,7 +549,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       if (row.status === "encrypted") throw new Error("applebooks.import failed: encrypted");
       const id = `imported-${row.asset_id}`;
       row.status = "linked"; row.book_id = id; row.paired_title = row.title;
-      LIBRARY.push({ id, title: row.title, source_format: "epub", segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 9, size_bytes: 1_400_000, imported_at: new Date().toISOString(), from_apple_books: true, language: "vi", language_set: false });
+      LIBRARY.push({ id, title: row.title, source_format: "epub", segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 9, size_bytes: 1_400_000, imported_at: new Date().toISOString(), from_apple_books: true, language: "vi", language_set: false, language_detected: "vi" });
       return { book_id: id, title: row.title, was_existing: false };
     }
     case "applebooks.sync_notes": {
@@ -561,7 +565,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       // harness has to do the same or the panel looks right here and wrong
       // in the app.
       const shelved = LIBRARY.find((entry) => entry.id === String(params.book_id));
-      if (!shelved) return { language: "vi", language_set: false };
+      if (!shelved) return { language: "vi", language_set: false, language_detected: "vi" };
       const asked = params.language;
       if (asked === null || asked === undefined) {
         shelved.language = DETECTED_LANGUAGE[shelved.id] ?? "vi";
@@ -570,7 +574,14 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         shelved.language = String(asked);
         shelved.language_set = true;
       }
-      return { language: shelved.language, language_set: shelved.language_set };
+      // `language_detected` never moves: it is what the words say, and a
+      // reader disagreeing with them does not change them. That difference
+      // is exactly what the panel turns into a suggestion.
+      return {
+        language: shelved.language,
+        language_set: shelved.language_set,
+        language_detected: DETECTED_LANGUAGE[shelved.id] ?? "vi",
+      };
     }
     case "book.open":
       return { book: BOOK, annotations: ANNOTATIONS, progress: { segment_id: "ch-2-seg-1" } };
@@ -771,7 +782,7 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
       segment_id: null, progress_ratio: null, progress_chapter: null,
       chapters: 7, size_bytes: 2_100_000,
       imported_at: new Date().toISOString(), from_apple_books: false,
-      language: "vi", language_set: false,
+      language: "vi", language_set: false, language_detected: "vi",
     });
     return Promise.resolve({ result: { was_existing: false } });
   }

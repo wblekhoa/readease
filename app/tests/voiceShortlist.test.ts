@@ -1,9 +1,21 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
-  initialShortlist, matchesVoice, matchesVoiceFilters, offeredVoices, parseShortlist, serializeShortlist,
-  chipName, speaksVietnamese, STARTING_VOICES, tidyName, toggleShortlist, voiceDescription, voiceName,
+  STARTING_VOICES,
+  canSpeak,
+  chipName,
+  initialShortlist,
+  matchesVoice,
+  matchesVoiceFilters,
+  offeredVoices,
+  parseShortlist,
+  serializeShortlist,
+  speaksVietnamese,
+  tidyName,
+  toggleShortlist,
+  voiceDescription,
   voiceGender,
+  voiceName,
 } from "../src/ui/voiceShortlist.ts";
 
 const CATALOGUE = [
@@ -167,4 +179,29 @@ test("the footer chip says the shortest name that still tells the voice apart", 
   assert.equal(chipName(alloyOpenAI, [alloyOpenAI, alloyEleven]), "Alloy · OpenAI");
   // No label at all: the id is what there is.
   assert.equal(chipName({ id: "x", label: "" }, []), "x");
+});
+
+test("giọng chỉ bị loại khi CHÍNH nó khai ngôn ngữ khác", () => {
+  const local = { languages: ["vi"] };
+  const silent = { languages: [] as string[] };
+  const unknown = {};
+  const english = { languages: ["en"] };
+  const both = { languages: ["vi", "en-US"] };
+
+  // Model trên máy khai tiếng Việt, nên sách tiếng Anh không mời nó.
+  assert.equal(canSpeak(local, "vi"), true);
+  assert.equal(canSpeak(local, "en"), false);
+  assert.equal(canSpeak(english, "vi"), false);
+  assert.equal(canSpeak(both, "vi"), true);
+  assert.equal(canSpeak(both, "en"), true);
+
+  // "Không ai hỏi" KHÔNG phải "không đọc được": OpenAI chẳng công bố gì.
+  for (const voice of [silent, unknown]) {
+    assert.equal(canSpeak(voice, "vi"), true);
+    assert.equal(canSpeak(voice, "en"), true);
+  }
+
+  // Thẻ vùng không làm lệch kết quả.
+  assert.equal(canSpeak({ languages: ["en-GB"] }, "en"), true);
+  assert.equal(canSpeak({ languages: ["vi-VN"] }, "vi"), true);
 });
