@@ -537,7 +537,16 @@ export function SegmentedControl<T extends string | number>({
   className = "",
 }: {
   value: T;
-  options: readonly { value: T; label: ReactNode; ariaLabel?: string; disabled?: boolean }[];
+  options: readonly {
+    value: T;
+    label: ReactNode;
+    ariaLabel?: string;
+    /** Hover words for an option that carries a mark whose meaning is not
+     * in its own label - a suggestion dot, say. The accessibility tree gets
+     * `ariaLabel`; this is the same answer for a pointer. */
+    title?: string;
+    disabled?: boolean;
+  }[];
   onChange: (value: T) => void;
   label: string;
   /** `lg` is the Books row: taller, meant to run the full width of a panel. */
@@ -574,6 +583,7 @@ export function SegmentedControl<T extends string | number>({
             role="radio"
             aria-checked={on}
             aria-label={option.ariaLabel}
+            title={option.title}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
             className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${

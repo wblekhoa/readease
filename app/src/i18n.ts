@@ -255,18 +255,12 @@ export const TEXT = {
   ],
   "voices.language_vi": ["Tiếng Việt", "Vietnamese"],
   "voices.language_en": ["Tiếng Anh", "English"],
-  // A suggestion, not a correction: the reader's choice stands until they
-  // take this up. Shown only when the book's own words disagree with it.
-  "voices.language_looks_vi": [
-    "Nội dung cuốn này đọc ra tiếng Việt.",
-    "This book's text reads as Vietnamese.",
+  // What the dot on an option means. A suggestion, not a correction: the
+  // reader's choice stands until they tap the other one.
+  "voices.language_suggested": [
+    "{name}: nội dung cuốn sách đọc ra thứ tiếng này",
+    "{name} - the book's own text reads as this",
   ],
-  "voices.language_looks_en": [
-    "Nội dung cuốn này đọc ra tiếng Anh.",
-    "This book's text reads as English.",
-  ],
-  "voices.language_use_vi": ["Chuyển sang tiếng Việt", "Switch to Vietnamese"],
-  "voices.language_use_en": ["Chuyển sang tiếng Anh", "Switch to English"],
   "voices.none_for_language": [
     "Chưa có giọng nào đọc được ngôn ngữ của cuốn này. Giọng trên máy chỉ đọc tiếng Việt; thêm khoá API để dùng giọng từ xa.",
     "No voice here reads this book's language. The voice on this Mac reads Vietnamese only; add an API key for a remote one.",

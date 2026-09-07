@@ -66,10 +66,12 @@ tự dò và **ở lại**: mở app lần sau, cuốn đó vẫn đọc bằng 
 hai server riêng trên cùng thư viện để chứng minh). Hàng này chỉ hiện khi đang mở một cuốn sách: đoạn văn dán
 được chấm bằng chính chữ của nó ở mỗi lượt đọc, không có gì để nhớ.
 
-**Không có câu giải thích nào dưới ô chọn** (chủ, 07/09). Thay vào đó là một **gợi ý**, và chỉ khi có gì để
-gợi: khi chữ trong sách đọc ra khác với thứ đang chọn thì hiện một dòng "Nội dung cuốn này đọc ra tiếng Anh."
-kèm nút "Chuyển sang tiếng Anh". Hai bên khớp nhau — gần như luôn luôn — thì im lặng. Vì vậy engine trả về
-**cả hai**: `language` (đang đọc bằng gì) và `language_detected` (chữ nói gì).
+**Không có câu giải thích nào dưới ô chọn, và cũng không có câu gợi ý** (chủ, 07/09). Gợi ý là một **chấm nhỏ
+ngay trên ô chọn**: khi chữ trong sách đọc ra khác với thứ đang chọn, phía kia mang một chấm. Bấm vào chấm đó
+chính là bấm vào lựa chọn đó — không thêm hàng nào, không thêm đường thứ hai để làm một việc. Chấm tự nó không
+có nghĩa nên nó mang lời cho con trỏ (`title`) và cho cây trợ năng (`aria-label`). Hai bên khớp nhau — gần như
+luôn luôn — thì không có chấm nào. Vì vậy engine trả về **cả hai**: `language` (đang đọc bằng gì) và
+`language_detected` (chữ nói gì). Hàng ngôn ngữ nhờ đó còn **76px**, so với 116px lúc đầu.
 
 **Danh sách giọng lọc theo ngôn ngữ của cuốn sách.** Một giọng chỉ bị loại khi **chính nó khai** ngôn ngữ
 khác: model trên máy khai `["vi"]` nên sách tiếng Anh không mời nó, còn OpenAI không công bố gì về giọng nào

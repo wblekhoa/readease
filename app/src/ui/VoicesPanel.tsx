@@ -227,41 +227,39 @@ export function VoicesPanel({
           <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">
             {text("voices.language")}
           </p>
+          {/* The suggestion is a DOT on the option itself, not a sentence
+              underneath (owner, 07/09). Acting on it is tapping that option,
+              which is the same tap it always was - so the nudge costs no row
+              and adds no second way to do one thing. Shown only where there
+              is something to suggest: the book's own words read as the other
+              language. The dot has no meaning of its own, so it carries
+              words for a pointer and for the accessibility tree. */}
           <SegmentedControl
             value={bookLanguage}
             label={text("voices.language")}
-            options={[
-              { value: "vi", label: text("voices.language_vi") },
-              { value: "en", label: text("voices.language_en") },
-            ]}
+            options={(["vi", "en"] as const).map((code) => {
+              const name = text(code === "vi" ? "voices.language_vi" : "voices.language_en");
+              const suggested = detectedLanguage === code && detectedLanguage !== bookLanguage;
+              return {
+                value: code,
+                label: suggested ? (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"
+                    />
+                    {name}
+                  </>
+                ) : (
+                  name
+                ),
+                ariaLabel: suggested ? text("voices.language_suggested", { name }) : undefined,
+                title: suggested ? text("voices.language_suggested", { name }) : undefined,
+              };
+            })}
             onChange={(chosen) => onSetLanguage(chosen)}
           />
-          {/* No sentence explaining the control, in either state. The two
-              that used to sit here said what the row already shows ("máy tự
-              dò", "bạn đã đặt") and the owner asked for them to go (07/09).
-              What is left is a SUGGESTION, and only when there is something
-              to suggest: the words of this book read as the other language.
-              Silent when the two agree, which is almost always. */}
-          {detectedLanguage && detectedLanguage !== bookLanguage && (
-            <p className="m-0 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-mute">
-              {text(
-                detectedLanguage === "vi"
-                  ? "voices.language_looks_vi"
-                  : "voices.language_looks_en",
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onSetLanguage(detectedLanguage)}
-              >
-                {text(
-                  detectedLanguage === "vi"
-                    ? "voices.language_use_vi"
-                    : "voices.language_use_en",
-                )}
-              </Button>
-            </p>
-          )}
+
         </div>
       )}
 
