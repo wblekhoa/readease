@@ -20,15 +20,27 @@ export type Voice = {
   gender?: VoiceGender;
 };
 
-/** Has the provider itself vouched for this voice in Vietnamese?
+/** Has the provider itself vouched for this voice in `language`?
  *
  * The primary subtag is what matters: "vi" and "vi-VN" are both yes. Only
  * ElevenLabs answers this at all today; for everything else the answer is
  * unknown, which reads as false here so that a badge is only ever a claim
- * somebody made.
+ * somebody made. That is the opposite default from `canSpeak` below, and
+ * deliberately so: a badge states what IS known, a filter must not act on
+ * what is not.
  */
+export function vouchedFor(
+  voice: Pick<Voice, "languages">,
+  language: string,
+): boolean {
+  const wanted = language.toLowerCase().split("-")[0];
+  return (voice.languages ?? []).some(
+    (tag) => tag.toLowerCase().split("-")[0] === wanted,
+  );
+}
+
 export function speaksVietnamese(voice: Pick<Voice, "languages">): boolean {
-  return (voice.languages ?? []).some((tag) => tag.toLowerCase().split("-")[0] === "vi");
+  return vouchedFor(voice, "vi");
 }
 
 /** May this voice be offered for a book in `language`?

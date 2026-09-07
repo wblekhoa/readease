@@ -16,6 +16,7 @@ import {
   voiceDescription,
   voiceGender,
   voiceName,
+  vouchedFor,
 } from "../src/ui/voiceShortlist.ts";
 
 const CATALOGUE = [
@@ -204,4 +205,25 @@ test("giọng chỉ bị loại khi CHÍNH nó khai ngôn ngữ khác", () => {
   // Thẻ vùng không làm lệch kết quả.
   assert.equal(canSpeak({ languages: ["en-GB"] }, "en"), true);
   assert.equal(canSpeak({ languages: ["vi-VN"] }, "vi"), true);
+});
+
+test("nhãn ngôn ngữ chỉ nói điều nhà cung cấp ĐÃ xác nhận", () => {
+  // Ngược hẳn với canSpeak: nhãn nói cái ĐÃ BIẾT, bộ lọc không được hành
+  // động trên cái chưa biết. Một giọng không ai hỏi thì không đeo cờ nào,
+  // nhưng vẫn được mời đọc.
+  const silent = { languages: [] as string[] };
+  assert.equal(vouchedFor(silent, "vi"), false);
+  assert.equal(vouchedFor(silent, "en"), false);
+  assert.equal(canSpeak(silent, "vi"), true);
+  assert.equal(canSpeak(silent, "en"), true);
+
+  const both = { languages: ["vi-VN", "en-GB"] };
+  assert.equal(vouchedFor(both, "vi"), true);
+  assert.equal(vouchedFor(both, "en"), true);
+  assert.equal(vouchedFor({ languages: ["en"] }, "vi"), false);
+
+  // speaksVietnamese giờ là một lối gọi của vouchedFor, phải trả lời như nhau.
+  for (const voice of [silent, both, { languages: ["vi"] }, {}]) {
+    assert.equal(speaksVietnamese(voice), vouchedFor(voice, "vi"));
+  }
 });

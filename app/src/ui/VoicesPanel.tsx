@@ -26,6 +26,7 @@ import {
   canSpeak,
   matchesVoiceFilters,
   speaksVietnamese,
+  vouchedFor,
   tidyName,
   voiceDescription,
   voiceGender,
@@ -33,6 +34,26 @@ import {
   type VoiceGender,
 } from "./voiceShortlist";
 import { isPaidVoice, PROVIDERS, providerOf } from "./readingCost";
+
+/** One fact about a voice, as a glyph.
+ *
+ * These were word chips ("Trả phí", "Tiếng Việt") and the owner asked for
+ * pictures instead (07/09). A glyph carries no meaning by itself, so it says
+ * the same words twice over: to a pointer through `title`, and to the
+ * accessibility tree through `role="img"` plus `aria-label` - which is what
+ * keeps the row readable to somebody who never sees the emoji at all.
+ *
+ * No pill behind it. The pill existed to make WORDS read as a tag; an emoji
+ * is already its own object, and a grey capsule around a flag only fights
+ * the colour that makes it legible.
+ */
+function VoiceMark({ glyph, name }: { glyph: string; name: string }) {
+  return (
+    <span role="img" aria-label={name} title={name} className="text-sm leading-none">
+      {glyph}
+    </span>
+  );
+}
 
 export function VoicesPanel({
   voices,
@@ -361,25 +382,32 @@ export function VoicesPanel({
                         so the first a reader knew was the figure appearing in
                         the read button afterwards. The amount stays in that
                         button - it depends on what is about to be read, and
-                        only the engine knows it - but which ones bill at all,
-                        and who bills, belongs here (owner, 04/09). */}
-                    {isPaidVoice(voice.id) && (
-                      <span className="rounded-full bg-band px-2 py-0.5 text-xs font-normal text-ink-mute">
-                        {/* "Trả phí" alone: the engine already builds these
-                            labels as "Alloy · OpenAI", so naming the provider
-                            again put OpenAI twice on one line. */}
-                        {text("voices.paid")}
-                      </span>
-                    )}
-                    {/* Same chip as "Trả phí", because it is the same kind of
-                        fact: something true of the voice before you pick it.
-                        Only shown when the provider verified it - absence
-                        means nobody checked, not that it cannot. */}
-                    {speaksVietnamese(voice) && (
-                      <span className="rounded-full bg-band px-2 py-0.5 text-xs font-normal text-ink-mute">
-                        {text("voices.speaks_vi")}
-                      </span>
-                    )}
+                        only the engine knows it - but which ones bill at all
+                        belongs here (owner, 04/09).
+
+                        A banknote rather than the words "Trả phí" (owner,
+                        07/09), and nothing at all on a free voice: costing
+                        nothing is the ordinary case, and a badge for the
+                        ordinary case is twenty badges saying nothing. */}
+                    {/* The marks sit in their own tighter group: they are
+                        one cluster of facts about this voice, and spaced on
+                        the row's own gap they read as three separate things
+                        drifting away from the name. */}
+                    <span className="flex items-center gap-1">
+                      {isPaidVoice(voice.id) && (
+                        <VoiceMark glyph="💵" name={text("voices.paid")} />
+                      )}
+                      {/* Same kind of fact, same kind of mark: something true
+                          of the voice before you pick it. Only when the
+                          provider verified it - absence means nobody checked,
+                          never that it cannot. */}
+                      {speaksVietnamese(voice) && (
+                        <VoiceMark glyph="🇻🇳" name={text("voices.speaks_vi")} />
+                      )}
+                      {vouchedFor(voice, "en") && (
+                        <VoiceMark glyph="🇬🇧" name={text("voices.speaks_en")} />
+                      )}
+                    </span>
                     {voice.id === voiceId && (
                       <span className="text-xs font-normal text-ink-faint">{text("voices.in_use")}</span>
                     )}

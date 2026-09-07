@@ -131,6 +131,7 @@ export const TEXT = {
   "voices.gender_male": ["Nam", "Male"],
   "voices.gender_female": ["Nữ", "Female"],
   "voices.speaks_vi": ["Tiếng Việt", "Vietnamese"],
+  "voices.speaks_en": ["Tiếng Anh", "English"],
   "voices.group_local": ["Trên máy", "On this Mac"],
   "voices.no_match": [
     "Không có giọng nào khớp \"{query}\".",
