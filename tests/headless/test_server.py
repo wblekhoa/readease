@@ -868,6 +868,58 @@ class ProtocolTests(unittest.TestCase):
             self.assertFalse(replies[0]["ok"])
             self.assertTrue(replies[0]["error"])
 
+    def test_one_unreadable_reading_position_does_not_hide_the_shelf(self) -> None:
+        """A corrupt progress row costs that book its place, not the library.
+
+        The Qt shell kept the book on the shelf and simply did not restore
+        where the voice was; this path called `load_progress` once per book
+        with nothing catching it, so a single bad row answered "thư viện
+        hỏng" for EVERY book. The owner reads real books daily and the only
+        way back would have been editing SQLite by hand.
+        """
+
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        from tests.importers.epub_fixture import make_epub
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = AppPaths.create(root / "data")
+            repository = LibraryRepository(paths.database)
+            service = LibraryService(paths, repository)
+            sources = root / "sources"
+            sources.mkdir()
+            stored = service.import_book(make_epub(sources))
+            segment_id = stored.book.chapters[0].segments[0].id
+            # A rate no build can have written on purpose - the shape of a
+            # row left behind by a crash mid-write, or by a build whose rate
+            # range was wider than this one's.
+            with repository._connection:
+                repository._connection.execute(
+                    "INSERT INTO progress(book_id, segment_id, playback_rate, "
+                    "voice_id) VALUES (?, ?, ?, ?)",
+                    (stored.book.id, segment_id, "oops", "Adam"),
+                )
+
+            replies = run_server(
+                [{"id": 26, "method": "library.list"}],
+                FakeEngine(), repository=repository, service=service,
+                settings_path=root / "settings.json",
+            )
+
+            self.assertTrue(replies[0]["ok"], replies[0].get("error"))
+            books = replies[0]["result"]["books"]
+            self.assertEqual([book["id"] for book in books], [stored.book.id])
+            # Listed as a book nobody has started, which the shelf already
+            # knows how to draw.
+            self.assertIsNone(books[0]["segment_id"])
+            self.assertIsNone(books[0]["progress_ratio"])
+            self.assertIsNone(books[0]["progress_chapter"])
+
     def test_model_status_reports_the_build_in_use(self) -> None:
         engine = FakeEngine()
         engine.precision = "fp32"

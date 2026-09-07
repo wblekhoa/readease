@@ -81,6 +81,7 @@ from vieneu_reader.speech.external.route import (
     KEY_FOR_PROVIDER, model_of, pick_voice_route, provider_of,
 )
 from vieneu_reader.speech.external.spend import SpendMeter
+from vieneu_reader.storage.errors import RepositoryCorruptionError
 from vieneu_reader.storage.repository import LibraryRepository, Progress, StoredBook
 
 PROTOCOL_VERSION = 1
@@ -1028,7 +1029,17 @@ class _Session:
         # the library is opened, for a badge (owner, 03/09).
         paired = set(self._repository.apple_book_links().values())
         for stored in self._repository.list_books():
-            progress = self._repository.load_progress(stored.book.id)
+            try:
+                progress = self._repository.load_progress(stored.book.id)
+            except RepositoryCorruptionError:
+                # One book's unreadable position must not take the shelf down
+                # with it. The Qt shell kept listing the book and simply did
+                # not restore its place; this path answered "thư viện hỏng"
+                # for the WHOLE library instead, and the only way back was
+                # editing SQLite by hand. A book with no readable position is
+                # a state the shelf already renders - it is a book nobody has
+                # started.
+                progress = None
             chosen_language = self._repository.book_language(stored.book.id)
             detected_language = self._detected_language(stored)
             try:
