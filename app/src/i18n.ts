@@ -248,6 +248,25 @@ export const TEXT = {
     "The voice list could not be fetched - this is not the same as having no voices.",
   ],
   "voices.sample": ["Tôi sẽ đọc sách cho bạn nghe bằng giọng này.", "Tôi sẽ đọc sách cho bạn nghe bằng giọng này."],
+  "voices.language": [
+    "Cuốn này đọc bằng",
+    "This book is read in",
+  ],
+  "voices.language_vi": ["Tiếng Việt", "Vietnamese"],
+  "voices.language_en": ["Tiếng Anh", "English"],
+  // Two different sentences on purpose. "Tự dò" is a statement about where
+  // the answer came from, and it is the one that has to invite a correction;
+  // "đã đặt" is a statement that a decision stands, and it has to offer the
+  // way back.
+  "voices.language_detected": [
+    "Máy tự dò từ nội dung sách. Sai thì chọn lại: giọng trên máy chỉ đọc được tiếng Việt.",
+    "Read off the book's own text. Change it if that is wrong: the voice on this Mac reads Vietnamese only.",
+  ],
+  "voices.language_chosen": [
+    "Bạn đã đặt cho cuốn này.",
+    "You set this for this book.",
+  ],
+  "voices.language_auto": ["Để máy tự dò lại", "Let it read the book again"],
   "voices.switch": ["Đổi giọng", "Change voice"],
   "voices.switched": ["Đang đọc tiếp bằng giọng {name}.", "Reading on with {name}."],
   "player.settings_open": ["Cài đặt giọng đọc", "Voice settings"],

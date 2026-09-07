@@ -24,7 +24,7 @@ wrong_language`, và vỏ nói ra thành câu ("Giọng trên máy chỉ đọc 
 | Số, số La Mã, địa chỉ web | **Theo ngôn ngữ đọc** — "Part two" thay vì "Part hai"; "the address svpg dot com" thay vì "địa chỉ svpg chấm com"; "#1" → "number one" (tiếng Anh nói số, không nói thứ tự) |
 | Nhãn hình của sách | Đã nhận sẵn từ tiếng Anh: `Figure 2-4`, `Fig. 7` nằm trong regex từ trước |
 | Giọng VieNeu + sách tiếng Anh | **Bị từ chối**, không đọc |
-| Ngôn ngữ đọc lấy từ đâu | **Chính cuốn sách** khai, đọc từ văn bản của nó; dán/vùng chọn thì theo ngôn ngữ giao diện |
+| Ngôn ngữ đọc lấy từ đâu | **Chính cuốn sách** khai, đọc từ văn bản của nó; người đọc đặt lại được trong bảng Giọng đọc |
 | Giọng tiếng Anh **cục bộ** (không cần khoá, không cần mạng) | **Chưa có** — xem §3 |
 
 Những gì vốn đã không phụ thuộc ngôn ngữ thì giữ nguyên một đường: bỏ dấu chú thích, hạ chữ HOA, bỏ ký tự
@@ -60,10 +60,18 @@ hai chữ thì không phán được gì, và đoán bừa sẽ từ chối đ�
 hợp, không in tên sách và không in nội dung: **9/9 cuốn ra "vi"**, thấp nhất 13,9% — gấp gần ba lần ngưỡng
 5%. Không cuốn nào suýt.
 
-**Rủi ro đã biết, chưa có lời giải**: một cuốn tiếng Việt **mất dấu** (PDF quét bằng OCR, hoặc gõ không dấu)
-sẽ bị chấm là tiếng Anh ⇒ bị từ chối ⇒ **không đọc được bằng giọng cục bộ, và không có chỗ để sửa tay**. Kệ
-sách hiện tại không có cuốn nào như vậy, nhưng đây là lý do cần một chỗ sửa ngôn ngữ trong giao diện — việc
-kế tiếp, không phải việc đã xong.
+**Chỗ sửa tay (đã làm)**: bảng **Giọng đọc** có một hàng "Cuốn này đọc bằng" ngay trên danh sách giọng —
+ngôn ngữ quyết định giọng nào được phép đọc, nên hai thứ đứng cạnh nhau. Lời của người đọc **thắng** kết quả
+tự dò; bấm "Để máy tự dò lại" là rút lời đó, và cuốn sách quay về được **đọc lại**, không bị ghim vào câu trả
+lời hôm nay (một cuốn nhập lại hoặc sửa lại phải được chấm lại từ đầu). Hàng này chỉ hiện khi đang mở một
+cuốn sách: đoạn văn dán được chấm bằng chính chữ của nó ở mỗi lượt đọc, không có gì để nhớ.
+
+Lưu ở bảng phụ `book_languages` — thêm mới, không đổi `SCHEMA_VERSION`, đúng đường mà `annotations` và
+`apple_books_links` đã đi, nên bản ReadEase cũ mở thư viện này vẫn chạy và chỉ là không thấy nó. Chỉ cuốn nào
+**có người không đồng ý** với máy mới có dòng, nên bảng rỗng với gần như mọi thư viện.
+
+Nhờ đó ca **mất dấu** (PDF quét bằng OCR, hoặc gõ không dấu) hết là ngõ cụt: máy chấm nhầm thành tiếng Anh
+thì người đọc đặt lại là xong. Kệ sách hiện tại không có cuốn nào như vậy (9/9 ra "vi").
 
 ## 3. Giọng tiếng Anh cục bộ — ứng viên, và cái bẫy giấy phép
 
@@ -91,8 +99,8 @@ Bundle đã mang sẵn `onnxruntime` (44 MB), nên thêm một model ONNX chỉ 
 ## 4. Chủ phải quyết
 1. Bản phát hành có kèm giọng tiếng Anh cục bộ (thêm ~80–300 MB tải về) hay chỉ dùng giọng từ xa/BYOK.
 2. Nếu Kokoro dính espeak-ng GPL: bỏ giọng tiếng Anh cục bộ, hay chấp nhận GPL ở riêng bản GitHub.
-3. Chỗ sửa tay ngôn ngữ của một cuốn: cần cho sách tiếng Việt mất dấu và sách trộn hai thứ tiếng. Đặt ở đâu —
-   trong thẻ sách, hay trong bảng cài đặt giọng đọc?
+3. Sách trộn hai thứ tiếng thật sự (một chương Việt, một chương Anh) vẫn chưa có câu trả lời: hiện cả cuốn
+   mang đúng một ngôn ngữ.
 
 ## Nguồn `[fetched 2026-09-07]`
 - Kokoro ONNX: https://github.com/thewh1teagle/kokoro-onnx

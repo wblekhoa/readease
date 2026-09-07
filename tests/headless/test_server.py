@@ -372,6 +372,107 @@ class ProtocolTests(unittest.TestCase):
 
         self.assertTrue(replies[-1]["ok"])
 
+    def _shelf_with(self, chapters):
+        """A one-book library on a temp root, plus the pieces to drive it."""
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        repository = LibraryRepository(root / "reader.sqlite3")
+        book = build_book(chapters)
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        repository.add_book(book, source)
+        return repository, root
+
+    ENGLISH_BOOK = [
+        ("One", [
+            ("Reading is the art of listening with your eyes.", "paragraph"),
+            ("This chapter explains why the market changed.", "paragraph"),
+        ]),
+    ]
+
+    def test_a_reader_can_say_a_book_is_vietnamese_after_all(self) -> None:
+        # The case with no way out before this: a Vietnamese book that lost
+        # its diacritics reads as English, is refused by the Vietnamese voice,
+        # and cannot be read at all. The reader's word has to outrank the
+        # text, or the guard is worse than the problem it prevents.
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        replies = run_server(
+            [
+                {"id": 5, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": "vi"}},
+                {"id": 8, "method": "read.book",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        self.assertTrue(replies[0]["ok"])
+        self.assertEqual(replies[0]["result"], {"language": "vi", "language_set": True})
+        self.assertTrue(replies[-1]["ok"])
+
+    def test_withdrawing_the_word_gives_the_text_its_vote_back(self) -> None:
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        replies = run_server(
+            [
+                {"id": 5, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": "vi"}},
+                {"id": 6, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": None}},
+                {"id": 8, "method": "read.book",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        self.assertEqual(replies[1]["result"], {"language": "en", "language_set": False})
+        self.assertFalse(replies[-1]["ok"])
+        self.assertIn("wrong_language", replies[-1]["error"])
+
+    def test_the_shelf_says_which_language_and_who_decided(self) -> None:
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        replies = run_server(
+            [
+                {"id": 1, "method": "library.list"},
+                {"id": 5, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": "vi"}},
+                {"id": 2, "method": "library.list"},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        before = replies[0]["result"]["books"][0]
+        after = replies[2]["result"]["books"][0]
+        self.assertEqual((before["language"], before["language_set"]), ("en", False))
+        self.assertEqual((after["language"], after["language_set"]), ("vi", True))
+
+    def test_a_language_nobody_can_read_is_refused_at_the_pipe(self) -> None:
+        # An open string column reached over a pipe would put whatever
+        # arrived in front of the transforms that turn writing into words.
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        replies = run_server(
+            [
+                {"id": 5, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": "klingon"}},
+                {"id": 6, "method": "book.set_language",
+                 "params": {"book_id": "no-such-book", "language": "vi"}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        self.assertFalse(replies[0]["ok"])
+        self.assertIn("klingon", replies[0]["error"])
+        self.assertFalse(replies[1]["ok"])
+        self.assertIn("unknown book", replies[1]["error"])
+
     def test_read_book_without_a_voice_writes_no_progress(self) -> None:
         """Progress is saved with the reading's voice when the shell reports
         the ear reaching a position, so a request the voice would reject must

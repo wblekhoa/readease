@@ -185,6 +185,10 @@ const BOOK = {
   })),
 };
 
+/* `language` is what the engine detected off each book's own text, and
+ * `language_set` says whether a reader has since disagreed. Book four is
+ * English on purpose: it is the one the Vietnamese voice refuses, which is
+ * the whole reason the language row in the voices panel exists. */
 const LIBRARY = [
   {
     id: "book-ux",
@@ -200,6 +204,8 @@ const LIBRARY = [
     // says "linked" on the shelf and "not paired" on the card teaches the
     // wrong thing about the feature.
     from_apple_books: true,
+    language: "vi",
+    language_set: false,
   },
   {
     id: "book-two",
@@ -212,6 +218,8 @@ const LIBRARY = [
     size_bytes: 2_310_000,
     imported_at: "2026-08-30T15:40:00Z",
     from_apple_books: false,
+    language: "vi",
+    language_set: false,
   },
   {
     id: "book-three",
@@ -224,6 +232,8 @@ const LIBRARY = [
     size_bytes: 25_200_000,
     imported_at: "2026-08-26T08:00:00Z",
     from_apple_books: true,
+    language: "vi",
+    language_set: false,
   },
   {
     id: "book-four",
@@ -236,8 +246,17 @@ const LIBRARY = [
     size_bytes: 45_900_000,
     imported_at: "2026-09-02T10:20:00Z",
     from_apple_books: false,
+    language: "en",
+    language_set: false,
   },
 ];
+
+/* What each book's own text says, kept apart from the shelf rows:
+ * withdrawing a reader's decision has to fall back to THIS, not to whatever
+ * the row happened to be holding. */
+const DETECTED_LANGUAGE: Record<string, string> = Object.fromEntries(
+  LIBRARY.map((entry) => [entry.id, entry.language]),
+);
 
 /* Two drawn covers so the shelf can be LOOKED at with real proportions; the
  * other two books answer null and show the typographic placeholder. */
@@ -526,7 +545,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       if (row.status === "encrypted") throw new Error("applebooks.import failed: encrypted");
       const id = `imported-${row.asset_id}`;
       row.status = "linked"; row.book_id = id; row.paired_title = row.title;
-      LIBRARY.push({ id, title: row.title, source_format: "epub", segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 9, size_bytes: 1_400_000, imported_at: new Date().toISOString(), from_apple_books: true });
+      LIBRARY.push({ id, title: row.title, source_format: "epub", segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 9, size_bytes: 1_400_000, imported_at: new Date().toISOString(), from_apple_books: true, language: "vi", language_set: false });
       return { book_id: id, title: row.title, was_existing: false };
     }
     case "applebooks.sync_notes": {
@@ -536,6 +555,23 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "library.list":
       return { books: LIBRARY };
+    case "book.set_language": {
+      // The engine answers with what the book is in NOW, so withdrawing a
+      // decision comes back as the DETECTED language rather than null. The
+      // harness has to do the same or the panel looks right here and wrong
+      // in the app.
+      const shelved = LIBRARY.find((entry) => entry.id === String(params.book_id));
+      if (!shelved) return { language: "vi", language_set: false };
+      const asked = params.language;
+      if (asked === null || asked === undefined) {
+        shelved.language = DETECTED_LANGUAGE[shelved.id] ?? "vi";
+        shelved.language_set = false;
+      } else {
+        shelved.language = String(asked);
+        shelved.language_set = true;
+      }
+      return { language: shelved.language, language_set: shelved.language_set };
+    }
     case "book.open":
       return { book: BOOK, annotations: ANNOTATIONS, progress: { segment_id: "ch-2-seg-1" } };
     case "book.cover": {
@@ -735,6 +771,7 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
       segment_id: null, progress_ratio: null, progress_chapter: null,
       chapters: 7, size_bytes: 2_100_000,
       imported_at: new Date().toISOString(), from_apple_books: false,
+      language: "vi", language_set: false,
     });
     return Promise.resolve({ result: { was_existing: false } });
   }

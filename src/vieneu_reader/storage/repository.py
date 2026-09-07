@@ -452,6 +452,24 @@ class LibraryRepository:
                 )
                 """
             )
+            # A reader's word about what language a book is in, overriding
+            # what the text looked like. Its own table rather than a column on
+            # `books`: additive, so an older build opens this library and
+            # simply does not see it - the same road annotations and the Apple
+            # Books links took, and the reason SCHEMA_VERSION is still 1.
+            #
+            # A row exists only where somebody DISAGREED with the detector, so
+            # the table stays empty for almost every library, and "no row" is
+            # the honest way to say "nobody has said otherwise".
+            self._connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS book_languages (
+                    book_id TEXT PRIMARY KEY
+                        REFERENCES books(id) ON DELETE CASCADE,
+                    language TEXT NOT NULL
+                )
+                """
+            )
             if row is None:
                 self._connection.execute(
                     "INSERT INTO app_meta(key, value) VALUES('schema_version', ?)",
@@ -527,6 +545,48 @@ class LibraryRepository:
                 )
                 self._connection.commit()
         return removed > 0
+
+    def book_language(self, book_id: str) -> str | None:
+        """The language a reader SET for this book, or None if nobody has.
+
+        None is not a default dressed up as an answer: it means the detector's
+        reading still stands, and the caller is the one that knows what to
+        fall back to.
+        """
+
+        with _database_errors():
+            with self._lock:
+                row = self._connection.execute(
+                    "SELECT language FROM book_languages WHERE book_id = ?",
+                    (book_id,),
+                ).fetchone()
+        return str(row[0]) if row else None
+
+    def set_book_language(self, book_id: str, language: str | None) -> bool:
+        """Record - or withdraw - a reader's word about a book's language.
+
+        `None` withdraws it, which is not the same as setting the language the
+        detector happens to agree with today: a book edited or re-imported
+        later should go back to being read, not stay pinned to an answer
+        somebody gave about a different text.
+        """
+
+        with _database_errors():
+            with self._lock:
+                if language is None:
+                    changed = self._connection.execute(
+                        "DELETE FROM book_languages WHERE book_id = ?",
+                        (book_id,),
+                    ).rowcount
+                else:
+                    changed = self._connection.execute(
+                        "INSERT INTO book_languages(book_id, language) "
+                        "VALUES(?, ?) ON CONFLICT(book_id) DO UPDATE SET "
+                        "language = excluded.language",
+                        (book_id, language),
+                    ).rowcount
+                self._connection.commit()
+        return changed > 0
 
     def imported_at(self, book_id: str) -> str | None:
         """When this book entered the library, as stored by SQLite."""

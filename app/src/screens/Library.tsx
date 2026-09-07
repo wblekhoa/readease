@@ -23,6 +23,12 @@ export type LibraryBook = {
   /** The pairing with Apple Books still holds, so a note sync lands on this
    * book. False for a book that arrived by hand. */
   from_apple_books?: boolean;
+  /** Which language this book gets read in - "vi" or "en". */
+  language?: string;
+  /** True when a reader SET that, rather than the engine reading it off the
+   * text. What makes an undo possible, and what tells the panel whether it
+   * is showing a decision or a guess. */
+  language_set?: boolean;
 };
 
 /** The cover as a data URL: undefined while loading, null when the book has

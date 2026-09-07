@@ -13,7 +13,9 @@
  */
 import { useState } from "react";
 import { text } from "../i18n";
-import { Button, IconButton, Notice, SearchField, Surface, Switch } from "./controls";
+import {
+  Button, IconButton, Notice, SearchField, SegmentedControl, Surface, Switch,
+} from "./controls";
 import { Cluster, GroupedSection, useDismiss } from "./patterns";
 import {
   CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SpeakerIcon, StopIcon, WomanIcon,
@@ -36,6 +38,9 @@ export function VoicesPanel({
   voiceId,
   reading,
   previewing,
+  bookLanguage,
+  languageSet,
+  onSetLanguage,
   onToggle,
   onPreview,
   onStopPreview,
@@ -50,6 +55,15 @@ export function VoicesPanel({
   reading: boolean;
   /** The voice whose sample is playing right now, if any. */
   previewing: string | null;
+  /** The language the open book is read in, or null when no book is open -
+   * a pasted passage is judged by its own words every time it is read, so
+   * there is nothing here to set. */
+  bookLanguage?: string | null;
+  /** True when that language was a reader's decision rather than the
+   * engine's reading of the text. */
+  languageSet?: boolean;
+  /** `null` withdraws the decision and lets the text speak for itself. */
+  onSetLanguage?: (language: string | null) => void;
   onToggle: (id: string) => void;
   onPreview: (id: string) => void;
   onStopPreview: () => void;
@@ -149,6 +163,41 @@ export function VoicesPanel({
             label={text("voices.search")}
             onEscape={() => { setQuery(""); setSearching(false); }}
           />
+        </div>
+      )}
+
+      {/* The language of the BOOK, above the voices, because it decides
+          which of them may speak at all: the model on this Mac is a
+          Vietnamese one and the engine refuses to read anything else with
+          it. A reader who lands here after being refused mid-chapter is
+          exactly the person who needs this row, and it is the same row that
+          undoes a wrong guess on a Vietnamese book whose diacritics were
+          lost in a scan.
+
+          Only when a book is open. A pasted passage is judged by its own
+          words on every read, so there would be nothing to remember. */}
+      {bookLanguage && onSetLanguage && (
+        <div className="px-6 pb-4">
+          <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">
+            {text("voices.language")}
+          </p>
+          <SegmentedControl
+            value={bookLanguage}
+            label={text("voices.language")}
+            options={[
+              { value: "vi", label: text("voices.language_vi") },
+              { value: "en", label: text("voices.language_en") },
+            ]}
+            onChange={(chosen) => onSetLanguage(chosen)}
+          />
+          <p className="m-0 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-mute">
+            {languageSet ? text("voices.language_chosen") : text("voices.language_detected")}
+            {languageSet && (
+              <Button variant="ghost" size="sm" onClick={() => onSetLanguage(null)}>
+                {text("voices.language_auto")}
+              </Button>
+            )}
+          </p>
         </div>
       )}
 

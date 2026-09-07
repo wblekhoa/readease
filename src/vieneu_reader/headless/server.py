@@ -59,6 +59,7 @@ from vieneu_reader.domain.prosody import (
     selection_pause_ms,
     speak_with_notes,
     DEFAULT_SPEECH_LANGUAGE,
+    SPEECH_LANGUAGES,
     speech_language,
     speakable_text,
     split_sentences,
@@ -616,6 +617,8 @@ class _Session:
                 self._library_remove(request_id, request.get("params") or {})
             elif method == "estimate":
                 self._estimate(request_id, request.get("params") or {})
+            elif method == "book.set_language":
+                self._book_set_language(request_id, request.get("params") or {})
             elif method == "book.open":
                 self._book_open(request_id, request.get("params") or {})
             elif method == "book.cover":
@@ -1057,6 +1060,15 @@ class _Session:
                 # True while the pairing holds, which is what makes a note
                 # sync land on this book rather than a guess at its title.
                 "from_apple_books": stored.book.id in paired,
+                # Which language this book gets read in, and whether that was
+                # a reader's decision or the detector's. Both, because "đã
+                # đặt" is what the shell needs to offer an undo - and because
+                # a shelf that only showed the answer would leave somebody
+                # wondering whether it can be changed at all.
+                "language": self._book_language(stored),
+                "language_set": (
+                    self._repository.book_language(stored.book.id) is not None
+                ),
             })
         self._reply(request_id, {"books": books})
 
@@ -1795,8 +1807,22 @@ class _Session:
         buttons in, not which language the chapter in front of them is in.
         Getting this from the book is what makes "never read English with the
         Vietnamese model" true for somebody whose interface is Vietnamese.
+
+        A reader's own word outranks the text. The detector reads Vietnamese
+        orthography, so a Vietnamese book that lost its diacritics - scanned
+        by OCR, or typed without them - reads as English and is then refused
+        by the Vietnamese voice. Without this line that book cannot be read at
+        all, which is a worse failure than the one the detector prevents.
+
+        One door on purpose: `read.book` and the book half of `estimate` both
+        arrive here, so the price and the reading can never disagree about
+        which language a book is in.
         """
 
+        if self._repository is not None:
+            chosen = self._repository.book_language(stored.book.id)
+            if chosen in SPEECH_LANGUAGES:
+                return chosen
         return language_of_texts(
             (
                 segment.text
@@ -1805,6 +1831,35 @@ class _Session:
             ),
             self._reading_language(),
         )
+
+    def _book_set_language(self, request_id: Any, params: dict[str, Any]) -> None:
+        """A reader's word about one book's language; `null` withdraws it.
+
+        Fail-closed on the language, like the config keys: an open string
+        column reached over a pipe would put whatever arrived in front of the
+        transforms that turn writing into words.
+        """
+
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        stored = self._repository.get_book(book_id)
+        if stored is None:
+            self._fail(request_id, f"unknown book: {book_id}")
+            return
+        raw = params.get("language")
+        if raw is not None and str(raw) not in SPEECH_LANGUAGES:
+            self._fail(request_id, f"unknown language: {raw}")
+            return
+        chosen = None if raw is None else str(raw)
+        self._repository.set_book_language(book_id, chosen)
+        # What the book is in NOW, so the shell shows the answer rather than
+        # asking for it again.
+        self._reply(request_id, {
+            "language": self._book_language(stored),
+            "language_set": chosen is not None,
+        })
 
     def _settings_document(self) -> dict[str, Any]:
         from vieneu_reader.settings import load_settings

@@ -421,6 +421,42 @@ export default function App() {
     remember("voice_shortlist", serializeShortlist(ids));
   }, [remember]);
 
+  /** A reader's word about which language the open book is in.
+   *
+   * The engine answers with what the book is in NOW - the language it chose
+   * when the decision was withdrawn, not the one that was just cleared - so
+   * the panel shows the real answer rather than an optimistic one. Anything
+   * else and withdrawing a decision would leave the row on the language that
+   * had just been removed.
+   */
+  const setBookLanguage = useCallback((language: string | null) => {
+    setOpenBook((book) => {
+      if (!book) return book;
+      void invoke<{ result: { language?: string; language_set?: boolean } }>(
+        "engine_request",
+        {
+          method: "book.set_language",
+          params: { book_id: book.id, language },
+        },
+      )
+        .then((answer) => {
+          const settled = answer?.result;
+          if (!settled?.language) return;
+          setOpenBook((current) =>
+            current && current.id === book.id
+              ? {
+                  ...current,
+                  language: settled.language,
+                  language_set: Boolean(settled.language_set),
+                }
+              : current,
+          );
+        })
+        .catch(() => undefined);
+      return book;
+    });
+  }, []);
+
   const { accelerator, change: changeShortcut } = useShortcut();
   const speech = useRef({ voiceId: "", rate: 1.0 });
   speech.current = { voiceId, rate };
@@ -1484,6 +1520,9 @@ export default function App() {
           voiceId={voiceId}
           reading={reading !== "idle" && previewing === null}
           previewing={previewing}
+          bookLanguage={openBook?.language ?? null}
+          languageSet={openBook?.language_set ?? false}
+          onSetLanguage={setBookLanguage}
           onToggle={(id) => rememberShortlist(toggleShortlist(shortlist, id))}
           onPreview={previewVoice}
           onStopPreview={stopPreview}

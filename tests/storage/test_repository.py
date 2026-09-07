@@ -82,6 +82,60 @@ class LibraryRepositoryTests(unittest.TestCase):
         self.assertEqual(stored.managed_path, managed_path)
         self.assertEqual(self.repository.count_books(), 1)
 
+    def _shelved(self, marker: str = "tiếng Việt"):
+        book = sample_book(marker)
+        managed_path = self.paths.books / f"{book.id}.epub"
+        managed_path.write_bytes(b"managed copy")
+        self.repository.add_book(book, managed_path)
+        return book
+
+    def test_a_book_has_no_language_of_its_own_until_somebody_says_so(self):
+        # None means "the detector's reading still stands", which is a
+        # different statement from any particular language.
+        book = self._shelved()
+
+        self.assertIsNone(self.repository.book_language(book.id))
+
+    def test_a_language_a_reader_set_is_remembered_and_can_be_changed(self):
+        book = self._shelved()
+
+        self.assertTrue(self.repository.set_book_language(book.id, "vi"))
+        self.assertEqual(self.repository.book_language(book.id), "vi")
+        self.assertTrue(self.repository.set_book_language(book.id, "en"))
+        self.assertEqual(self.repository.book_language(book.id), "en")
+
+    def test_withdrawing_it_is_not_the_same_as_setting_the_current_answer(self):
+        # Withdrawn, the book goes back to being READ. Pinned to whatever the
+        # detector says today, a re-imported or corrected book would stay
+        # stuck on an answer given about a different text.
+        book = self._shelved()
+        self.repository.set_book_language(book.id, "en")
+
+        self.assertTrue(self.repository.set_book_language(book.id, None))
+        self.assertIsNone(self.repository.book_language(book.id))
+
+    def test_forgetting_a_book_forgets_what_language_it_was_in(self):
+        # The row points at `books(id)` with ON DELETE CASCADE, which only
+        # does anything because foreign keys are switched on for this
+        # connection - so this is a test of the pragma as much as the table.
+        book = self._shelved()
+        self.repository.set_book_language(book.id, "vi")
+
+        self.assertTrue(self.repository.delete_book(book.id))
+
+        with closing(sqlite3.connect(self.paths.database)) as connection:
+            rows = connection.execute(
+                "SELECT COUNT(*) FROM book_languages WHERE book_id = ?",
+                (book.id,),
+            ).fetchone()
+        self.assertEqual(rows[0], 0)
+
+    def test_the_language_table_did_not_move_the_schema_version(self):
+        # Additive, like the annotations tables and the Apple Books links: an
+        # older ReadEase opens this library and simply does not see it.
+        self.assertEqual(self.repository.schema_version(), SCHEMA_VERSION)
+        self.assertEqual(SCHEMA_VERSION, 1)
+
     def test_partial_meta_without_version_is_rejected_without_bootstrap(self):
         database = self.paths.root / "partial-meta.sqlite3"
         with closing(sqlite3.connect(database)) as connection:
