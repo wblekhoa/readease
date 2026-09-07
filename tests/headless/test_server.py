@@ -2607,3 +2607,33 @@ class FlowControlReceipts(unittest.TestCase):
             more = _until(replies, lambda m: m.get("id") == 3 and "ok" in m)
             self.assertFalse(more[-1]["result"]["stopped"])
             self.assertGreater(_frames(seen) + _frames(more), self.WINDOW)
+
+
+class SpokenCueTests(unittest.TestCase):
+    """The two sentences the voice says that are not in the book.
+
+    They are indexed by the language being READ, so a language the app can
+    read in but a cue has no line for is a `KeyError` in the middle of a
+    reading. Their English used to be checked by accident - the Qt shell's
+    translation table happened to carry a copy - and that shell is gone, so
+    the guard has to be here, where the sentences live.
+    """
+
+    def test_every_spoken_cue_has_a_line_in_every_language_the_app_reads(self) -> None:
+        from vieneu_reader.domain.prosody import SPEECH_LANGUAGES
+        from vieneu_reader.headless.server import FIGURE_CUE, NOTE_CUE
+
+        for name, cue, placeholder in (
+            ("FIGURE_CUE", FIGURE_CUE, "{number}"),
+            ("NOTE_CUE", NOTE_CUE, "{text}"),
+        ):
+            with self.subTest(cue=name):
+                self.assertEqual(sorted(cue), sorted(SPEECH_LANGUAGES))
+                for language, sentence in cue.items():
+                    # A translation that dropped the slot reads the cue and
+                    # then says nothing about what it was cueing.
+                    self.assertIn(
+                        placeholder,
+                        sentence,
+                        f"{name}[{language!r}] no longer carries {placeholder}",
+                    )
