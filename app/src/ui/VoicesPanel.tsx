@@ -18,8 +18,10 @@ import {
 } from "./controls";
 import { Cluster, GroupedSection, useDismiss } from "./patterns";
 import {
-  CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SpeakerIcon, StopIcon, WomanIcon,
+  CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SlidersIcon, SpeakerIcon,
+  StopIcon, WomanIcon,
 } from "./icons";
+import { useShortWindow } from "./useShortWindow";
 import {
   matchesVoiceFilters,
   speaksVietnamese,
@@ -75,6 +77,13 @@ export function VoicesPanel({
   const [searching, setSearching] = useState(false);
   const [providerFilter, setProviderFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState<"all" | VoiceGender>("all");
+  // On a short window the filter chips are folded away behind their own
+  // button, the way search already is. They are CONTROLS, so they are never
+  // simply dropped - but a permanent 80px row of them on a panel that has
+  // 239px in total leaves the list nothing, and a list of no voices is not a
+  // thing filters can help with (measured 07/09).
+  const short = useShortWindow();
+  const [filtering, setFiltering] = useState(false);
   const sourceOf = (id: string) => providerOf(id) ?? "local";
   const providerOrder = ["local", ...PROVIDERS.map((provider) => provider.id)];
   const providerOptions = providerOrder.filter((key) =>
@@ -84,6 +93,8 @@ export function VoicesPanel({
     : "all";
   const hasKnownGender = voices.some((voice) =>
     voiceGender(voice, sourceOf(voice.id) === "local") !== null);
+  const hasFilters = providerOptions.length > 1 || hasKnownGender;
+  const filtersShown = hasFilters && (!short || filtering);
 
   /* Grouped by where a voice comes FROM, because that is the question being
      answered here: the model on this Mac costs nothing and is always there;
@@ -120,12 +131,18 @@ export function VoicesPanel({
       edge="strong"
       radius="sheet"
       ref={panel}
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] flex-col shadow-lifted"
+      /* `overflow-hidden` is not tidying: without it the rows above the
+         list simply drew past the rounded surface when they came to more
+         than the cap, and the footer ended up floating below the window edge
+         with nothing behind it (owner's screenshot, 07/09). Clipped, the
+         panel is at worst cut short at the bottom - which is what a panel
+         with a cap should look like. */
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex items-start gap-3 px-6 pb-4 pt-5">
         <div className="min-w-0 flex-1">
           <h3 className="m-0 text-base font-bold">{text("voices.title")}</h3>
-          <p className="m-0 mt-1 text-xs text-ink-mute">{text("voices.caption")}</p>
+          <p className="short-hidden m-0 mt-1 text-xs text-ink-mute">{text("voices.caption")}</p>
         </div>
         {/* Search is FOLDED AWAY behind its own button (owner, 06/09:
             "chúng ta không ưu tiên tìm kiếm bằng từ khóa lắm"). What the list
@@ -147,6 +164,22 @@ export function VoicesPanel({
             className={searching ? "text-ink" : ""}
           >
             <SearchIcon />
+          </IconButton>
+        )}
+        {/* Rendered by the same boolean that folds the row, not by a CSS
+            utility: `IconButton` already sets `display: flex`, and a
+            `display: none` utility of equal weight does not reliably beat
+            it. One mechanism, so the button and the row it opens can never
+            disagree about what "short" means. */}
+        {hasFilters && short && (
+          <IconButton
+            onClick={() => setFiltering((open: boolean) => !open)}
+            aria-expanded={filtering}
+            aria-label={text("voices.filters")}
+            title={text("voices.filters")}
+            className={filtering ? "text-ink" : ""}
+          >
+            <SlidersIcon />
           </IconButton>
         )}
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
@@ -190,8 +223,14 @@ export function VoicesPanel({
             ]}
             onChange={(chosen) => onSetLanguage(chosen)}
           />
-          <p className="m-0 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-mute">
-            {languageSet ? text("voices.language_chosen") : text("voices.language_detected")}
+          {/* The sentence is `short-hidden`; the undo BUTTON is not. On a
+              short window the row becomes the control and the way back, with
+              the explanation dropped - which is the order they matter in for
+              somebody who has just been refused mid-chapter. */}
+          <p className={`m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-mute ${languageSet ? "mt-1" : "mt-2"}`}>
+            <span className="short-hidden">
+              {languageSet ? text("voices.language_chosen") : text("voices.language_detected")}
+            </span>
             {languageSet && (
               <Button variant="ghost" size="sm" onClick={() => onSetLanguage(null)}>
                 {text("voices.language_auto")}
@@ -201,7 +240,7 @@ export function VoicesPanel({
         </div>
       )}
 
-      {(providerOptions.length > 1 || hasKnownGender) && (
+      {filtersShown && (
         <div className="px-6 pb-4">
           {/* Every filter on ONE wrapping row of chips, no captions over
               them, and a glyph on each except the two "all"s (owner, 06/09).
@@ -334,7 +373,13 @@ export function VoicesPanel({
         ))}
       </div>
 
-      <div className="border-t border-edge px-6 py-4">
+      {/* A count of marked voices is a nicety; "the catalogue could not be
+          fetched" and "the engine cannot preview while it is reading" are
+          not. So the row stays for those two and stands down for the
+          count. */}
+      <div
+        className={`border-t border-edge px-6 py-4 ${error || reading ? "" : "short-hidden"}`}
+      >
         <Notice tone={error ? "error" : "ok"}>
           {error
             ? `${text("voices.unavailable")} (${error})`

@@ -293,6 +293,33 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
 - **Scroll-spy** tính "đầu trang" từ inset: dòng mắt = top + `--shell-top-h` + 40; dòng đang đọc
   "còn nhìn thấy" khi nằm giữa hai inset, không phải giữa hai mép cửa sổ.
 
+### 3.9f Cửa sổ thấp: chữ giải thích nhường chỗ, nút bấm thì không (07/09)
+
+Đo trên bảng Giọng đọc ở cửa sổ cao 423px: trần của bảng là 239px, nhưng các hàng cố định phía trên danh
+sách cộng lại 348px. Hậu quả **không phải** là chật — mà là **110px vẽ ra NGOÀI mặt bo góc**, chân bảng
+trôi xuống dưới mép cửa sổ, và danh sách giọng — thứ duy nhất bảng này tồn tại vì nó — được **0px**. Ở
+560px nó được 26px.
+
+- **Mọi lớp nổi có trần chiều cao phải `overflow-hidden`.** Có trần mà không cắt thì con vượt trần cứ thế
+  vẽ ra ngoài; cắt rồi thì tệ nhất cũng chỉ là bảng bị hụt ở đáy, đúng hình dạng của một bảng có trần.
+- **Thứ tự nhường chỗ: câu giải thích trước, nội dung sau cùng.** Dưới ngưỡng (`short-hidden`, 640px) thì
+  phụ đề dưới tiêu đề, câu giải thích dưới ô điều khiển, và dòng đếm ở chân bảng đứng xuống. Cảnh báo thì
+  **không**: "không lấy được danh sách" và "đang đọc nên không nghe thử được" là lý do, không phải trang trí.
+- **Nút bấm không bao giờ bị giấu — nó được GẤP LẠI sau một nút khác.** Hàng chip lọc chiếm 80px cố định;
+  ở cửa sổ thấp nó lui về sau một nút trong hàng tiêu đề, đúng khuôn ô tìm kiếm đã làm (§3.9d). Giấu hẳn
+  một bộ lọc là để lại một danh sách thiếu dòng mà trên màn hình không có gì nói vì sao.
+- **Đừng đánh nhau với cascade.** `short-only` (một utility `display:none`) không thắng nổi lớp `flex` mà
+  `IconButton` tự đặt — nút vẫn hiện ở cửa sổ cao. Thứ gì component đã tự đặt `display` thì phải quyết bằng
+  **render hay không render**, không phải bằng CSS. Đã bỏ `short-only`, dùng hook `useShortWindow`.
+- **Một ngưỡng, khai hai nơi, phải bằng nhau.** CSS không đọc được state của React và ngược lại, nên 640px
+  nằm cả trong `index.css` lẫn `ui/useShortWindow.ts` — và có test đọc cả hai file so số. Lệch nhau là một
+  bảng gấp chữ ở một chiều cao còn mời nút ở chiều cao khác.
+- **Hook nghe cả `change` lẫn `resize`.** Máy chủ xem trước đổi khung nhìn mà **không** phát sự kiện nào
+  của `matchMedia` (đo 07/09) — nghe một tín hiệu thì trạng thái đứng im sau lần đổi cỡ đầu tiên.
+
+Kết quả đo lại (cùng bảng, cùng thư viện giả có 3 nhà cung cấp): 423px → danh sách 0 ⇒ **85px**; 560px →
+26 ⇒ **142px**; 900px → **không đổi** (366px). Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
+
 ### 3.9e Khối nội dung sách: góc theo FILL, và nhãn không mặc màu vô hiệu (06/09)
 
 - **Bo góc thuộc về lớp nền, không thuộc về khối.** Khối chữ để trần thì `rounded-none`; có nền thì `rounded-2xl` —

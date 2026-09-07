@@ -195,6 +195,26 @@
   );
 }
 
+/* A floating panel that is chrome all the way down is not a panel any more.
+ * Measured on the voices panel, 07/09: at a 423px window its own cap was
+ * 239px while the fixed rows above the list came to 348 - so 110px rendered
+ * OUTSIDE the rounded surface, the footer floated past the window edge, and
+ * the voice list, which is the entire point of the panel, got 0px. At 560px
+ * it got 26.
+ *
+ * So the sentences that EXPLAIN a control give up their room before the
+ * content does. Controls never hide: a filter you cannot see is a list
+ * quietly missing rows with nothing on screen to say why.
+ *
+ * A viewport query rather than a container query because the cap IS a
+ * viewport expression (`layer-capped` above): 100vh minus the two bars.
+ */
+@utility short-hidden {
+  @media (max-height: 640px) {
+    display: none;
+  }
+}
+
 @utility dot-divided {
   & > * + * {
     position: relative;

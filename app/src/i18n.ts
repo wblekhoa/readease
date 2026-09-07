@@ -248,6 +248,7 @@ export const TEXT = {
     "The voice list could not be fetched - this is not the same as having no voices.",
   ],
   "voices.sample": ["Tôi sẽ đọc sách cho bạn nghe bằng giọng này.", "Tôi sẽ đọc sách cho bạn nghe bằng giọng này."],
+  "voices.filters": ["Lọc danh sách", "Filter the list"],
   "voices.language": [
     "Cuốn này đọc bằng",
     "This book is read in",
