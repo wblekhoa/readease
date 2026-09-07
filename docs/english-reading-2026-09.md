@@ -51,11 +51,19 @@ Hai bẫy đã bắt được bằng test:
   sách của nó.
 - **Đoạn quá ngắn không là bằng chứng**: số trang, chú thích toàn chữ số ⇒ trả về mặc định, không đoán.
 
-Dán văn bản và đọc vùng chọn thì không có sách để hỏi ⇒ theo ngôn ngữ giao diện, và điều đó được ghim
-bằng test để không trông giống một chỗ bỏ sót.
+**Văn bản dán và vùng chọn cũng bị hỏi như vậy** — chính đoạn văn là bằng chứng. Nếu chỉ hỏi công tắc giao
+diện thì luật của chủ sẽ thủng ở đúng ca thường gặp nhất: người Việt, giao diện tiếng Việt, dán một đoạn
+tiếng Anh từ trình duyệt. Chỉ mẩu quá ngắn (dưới 20 chữ cái — "Ok.", một số trang) mới rơi về công tắc, vì
+hai chữ thì không phán được gì, và đoán bừa sẽ từ chối đọc một ghi chú tiếng Việt hai từ.
 
-Còn lại: giao diện chưa có chỗ sửa tay khi máy đoán sai. Với sách hai thứ tiếng thật sự thì chưa có câu
-trả lời — cần chủ quyết.
+**Biên nhận trên kệ sách thật của chủ (07/09)**, đọc bản sao chỉ-đọc của cơ sở dữ liệu, chỉ in số liệu tổng
+hợp, không in tên sách và không in nội dung: **9/9 cuốn ra "vi"**, thấp nhất 13,9% — gấp gần ba lần ngưỡng
+5%. Không cuốn nào suýt.
+
+**Rủi ro đã biết, chưa có lời giải**: một cuốn tiếng Việt **mất dấu** (PDF quét bằng OCR, hoặc gõ không dấu)
+sẽ bị chấm là tiếng Anh ⇒ bị từ chối ⇒ **không đọc được bằng giọng cục bộ, và không có chỗ để sửa tay**. Kệ
+sách hiện tại không có cuốn nào như vậy, nhưng đây là lý do cần một chỗ sửa ngôn ngữ trong giao diện — việc
+kế tiếp, không phải việc đã xong.
 
 ## 3. Giọng tiếng Anh cục bộ — ứng viên, và cái bẫy giấy phép
 
@@ -83,7 +91,8 @@ Bundle đã mang sẵn `onnxruntime` (44 MB), nên thêm một model ONNX chỉ 
 ## 4. Chủ phải quyết
 1. Bản phát hành có kèm giọng tiếng Anh cục bộ (thêm ~80–300 MB tải về) hay chỉ dùng giọng từ xa/BYOK.
 2. Nếu Kokoro dính espeak-ng GPL: bỏ giọng tiếng Anh cục bộ, hay chấp nhận GPL ở riêng bản GitHub.
-3. Có cần chỗ sửa tay ngôn ngữ của một cuốn khi máy đoán sai không (và sách trộn hai thứ tiếng thì tính sao).
+3. Chỗ sửa tay ngôn ngữ của một cuốn: cần cho sách tiếng Việt mất dấu và sách trộn hai thứ tiếng. Đặt ở đâu —
+   trong thẻ sách, hay trong bảng cài đặt giọng đọc?
 
 ## Nguồn `[fetched 2026-09-07]`
 - Kokoro ONNX: https://github.com/thewh1teagle/kokoro-onnx

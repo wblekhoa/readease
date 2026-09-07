@@ -51,7 +51,7 @@ from typing import Any, Iterator, Protocol, TextIO
 import numpy as np
 
 from vieneu_reader.domain.models import AudioChunk, Segment, Voice
-from vieneu_reader.domain.language import language_of_texts
+from vieneu_reader.domain.language import language_of_text, language_of_texts
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
     SENTENCE_PAUSE_MS,
@@ -647,7 +647,12 @@ class _Session:
         voice_id = str(params.get("voice_id") or "")
         rate = float(params.get("rate") or 1.0)
         settings = SynthesisSettings()
-        utterances = _text_utterances(text, settings, self._reading_language())
+        # The passage itself is the evidence, exactly as a book's text is.
+        # Reading it off the interface setting instead left the owner's rule
+        # unenforced for the commonest case there is: a Vietnamese interface
+        # and an English paragraph pasted out of a browser.
+        language = language_of_text(text, self._reading_language())
+        utterances = _text_utterances(text, settings, language)
         if not utterances:
             self._fail(request_id, "text is empty")
             return
@@ -662,7 +667,7 @@ class _Session:
                 return
         self._speak(
             request_id, utterances, voice_id, rate, settings,
-            window=params.get("window"),
+            window=params.get("window"), language=language,
         )
 
     def _read_book(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -784,10 +789,11 @@ class _Session:
         # so there is no scope to apply - the whole of what was pasted is
         # what gets read.
         if not params.get("book_id"):
+            pasted = str(params.get("text") or "")
             utterances = _text_utterances(
-                str(params.get("text") or ""),
+                pasted,
                 SynthesisSettings(),
-                self._reading_language(),
+                language_of_text(pasted, self._reading_language()),
             )
             chars = sum(len(utterance.text) for utterance in utterances)
             if price is None:

@@ -167,13 +167,26 @@ class ProtocolTests(unittest.TestCase):
 
         self.assertTrue(replies[-1]["ok"])
 
-    def test_pasted_english_follows_the_setting_because_there_is_no_book(self) -> None:
-        # A pasted passage has no book behind it to ask, so the interface
-        # language is the only thing this app has been told. Named here so
-        # the difference from a BOOK - which is asked directly - is on the
-        # record rather than looking like an oversight.
-        self.assertFalse(self._read_in("en", "This is English.")[-1]["ok"])
-        self.assertTrue(self._read_in("vi", "This is English.")[-1]["ok"])
+    def test_a_pasted_english_passage_is_refused_whatever_the_setting_says(self) -> None:
+        # The commonest case there is: a Vietnamese interface and an English
+        # paragraph pasted out of a browser. The passage is its own evidence,
+        # so the setting does not get a vote.
+        english = (
+            "Reading is the art of listening with your eyes, and this "
+            "paragraph was pasted out of a browser."
+        )
+        for setting in ("vi", "en"):
+            with self.subTest(setting=setting):
+                replies = self._read_in(setting, english)
+                self.assertFalse(replies[-1]["ok"])
+                self.assertIn("wrong_language", replies[-1]["error"])
+
+    def test_a_scrap_too_short_to_judge_follows_the_setting(self) -> None:
+        # "Ok." is not evidence of a language. Guessing from it would refuse
+        # to read a two-word Vietnamese note, so a scrap falls back to what
+        # the reader chose - the one place the setting still decides.
+        self.assertTrue(self._read_in("vi", "Ok.")[-1]["ok"])
+        self.assertFalse(self._read_in("en", "Ok.")[-1]["ok"])
 
     def test_read_streams_voice_frames_with_a_rest_between_sentences(self) -> None:
         engine = FakeEngine(chunks_per_sentence=2)
