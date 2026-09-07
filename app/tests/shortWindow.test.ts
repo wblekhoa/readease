@@ -31,6 +31,28 @@ test("ngưỡng màn thấp trong CSS và trong TS là một", () => {
   );
 });
 
+test("sàn chiều cao của cửa sổ nằm TRONG vùng gấp", () => {
+  // Hai con số phải đứng đúng phía của nhau, và đây là chỗ duy nhất nói ra:
+  //   - sàn CAO hơn ngưỡng ⇒ đường gấp thành mã chết, không ai chạy vào.
+  //   - sàn thấp hơn nhiều ⇒ có những chiều cao hợp lệ mà không ai đã đo.
+  // Cửa sổ nhỏ nhất mà macOS cho phép (đo 07/09: ép xuống 380px thì bị kẹp
+  // lại đúng 600) là chiều cao mà bảng nổi PHẢI dùng được, nên nó nằm dưới
+  // ngưỡng gấp - đo ở khung nhìn 572px (600 trừ thanh tiêu đề): danh sách
+  // giọng được 234px, khoảng 3,7 giọng.
+  const config = JSON.parse(
+    readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+  );
+  const floor = config.app.windows[0].minHeight;
+  assert.equal(typeof floor, "number", "cửa sổ không khai minHeight");
+  const breakpoint = Number(/max-height:\s*(\d+)px/.exec(SHORT_WINDOW)![1]);
+  assert.ok(
+    floor <= breakpoint,
+    `sàn cửa sổ ${floor}px cao hơn ngưỡng gấp ${breakpoint}px: đường gấp không bao giờ chạy`,
+  );
+  // Và sàn phải THỰC SỰ có: bỏ nó đi thì cửa sổ co được tới 0.
+  assert.ok(floor >= 480, `sàn ${floor}px thấp tới mức không ai đo được`);
+});
+
 test("short-hidden thực sự giấu đi, không chỉ làm mờ", () => {
   const utility = /@utility short-hidden \{([\s\S]*?)\n\}/.exec(CSS);
   assert.ok(utility);

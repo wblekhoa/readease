@@ -317,8 +317,24 @@ trôi xuống dưới mép cửa sổ, và danh sách giọng — thứ duy nh�
 - **Hook nghe cả `change` lẫn `resize`.** Máy chủ xem trước đổi khung nhìn mà **không** phát sự kiện nào
   của `matchMedia` (đo 07/09) — nghe một tín hiệu thì trạng thái đứng im sau lần đổi cỡ đầu tiên.
 
-Kết quả đo lại (cùng bảng, cùng thư viện giả có 3 nhà cung cấp): 423px → danh sách 0 ⇒ **85px**; 560px →
-26 ⇒ **142px**; 900px → **không đổi** (366px). Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
+**Sàn của cửa sổ, và vì sao ngưỡng gấp phải nằm trên nó.** `tauri.conf.json` khai `minHeight: 600`, và nó
+có hiệu lực thật — ép cửa sổ xuống 380px qua System Events thì macOS kẹp lại đúng 600 (đo 07/09). Trừ thanh
+tiêu đề còn **khung nhìn ≈ 572px**, tức cửa sổ NHỎ NHẤT hợp lệ vẫn nằm dưới ngưỡng gấp 640 — nên đường gấp
+là đường mà app thật sự chạy vào, không phải mã chết. Có test đọc cả `tauri.conf.json` lẫn `SHORT_WINDOW`
+để giữ quan hệ đó; nâng sàn lên 700 làm test đỏ.
+
+Đừng lấy bản xem trước trong trình duyệt làm chuẩn: một thẻ trình duyệt không có sàn nào, nên nó dựng được
+những chiều cao mà app không bao giờ đạt tới (423px trong ảnh chủ gửi là một trong số đó).
+
+Kết quả đo lại (cùng bảng, cùng thư viện giả có 3 nhà cung cấp):
+
+| Khung nhìn | Danh sách trước | Danh sách sau |
+|---|---:|---:|
+| 423px (chỉ có trong bản xem trước) | 0 | 85px · 1,3 giọng |
+| **572px — sàn thật của app** | 96px · 1,5 giọng | **234px · 3,7 giọng** |
+| 900px | 366px | 366px · không đổi |
+
+Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 
 ### 3.9e Khối nội dung sách: góc theo FILL, và nhãn không mặc màu vô hiệu (06/09)
 
