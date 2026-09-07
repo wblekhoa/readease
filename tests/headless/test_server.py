@@ -453,6 +453,31 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual((before["language"], before["language_set"]), ("en", False))
         self.assertEqual((after["language"], after["language_set"]), ("vi", True))
 
+    def test_the_shelf_asks_each_book_its_language_once(self) -> None:
+        # It used to ask for the language and then ask AGAIN whether that had
+        # been set, reading the same row twice for every book on every shelf
+        # open. Counted rather than asserted by eye: an extra query is
+        # invisible on a shelf of nine and is not on a shelf of two hundred.
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        repository.set_book_language(BOOK_ID, "vi")
+        asked: list[str] = []
+        honest = repository.book_language
+
+        def counted(book_id: str):
+            asked.append(book_id)
+            return honest(book_id)
+
+        repository.book_language = counted  # type: ignore[method-assign]
+        replies = run_server(
+            [{"id": 1, "method": "library.list"}],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        self.assertEqual(asked, [BOOK_ID])
+        shelved = replies[0]["result"]["books"][0]
+        self.assertEqual((shelved["language"], shelved["language_set"]), ("vi", True))
+
     def test_a_language_nobody_can_read_is_refused_at_the_pipe(self) -> None:
         # An open string column reached over a pipe would put whatever
         # arrived in front of the transforms that turn writing into words.

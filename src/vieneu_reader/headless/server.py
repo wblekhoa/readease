@@ -1024,6 +1024,7 @@ class _Session:
         paired = set(self._repository.apple_book_links().values())
         for stored in self._repository.list_books():
             progress = self._repository.load_progress(stored.book.id)
+            chosen_language = self._repository.book_language(stored.book.id)
             try:
                 size_bytes = stored.managed_path.stat().st_size
             except OSError:
@@ -1065,10 +1066,16 @@ class _Session:
                 # đặt" is what the shell needs to offer an undo - and because
                 # a shelf that only showed the answer would leave somebody
                 # wondering whether it can be changed at all.
-                "language": self._book_language(stored),
-                "language_set": (
-                    self._repository.book_language(stored.book.id) is not None
+                # One question to the database per book, not two. Asking for
+                # the language and then asking AGAIN whether it was set read
+                # the same row twice on every shelf open; the detector only
+                # ever ran once, so this is the query, not the reading.
+                "language": (
+                    chosen_language
+                    if chosen_language in SPEECH_LANGUAGES
+                    else self._detected_language(stored)
                 ),
+                "language_set": chosen_language is not None,
             })
         self._reply(request_id, {"books": books})
 
@@ -1799,6 +1806,18 @@ class _Session:
         document = self._settings_document() if settings is None else settings
         return speech_language(document.get("ui_language"))
 
+    def _detected_language(self, stored: StoredBook) -> str:
+        """What this book's own text says, ignoring anyone's opinion of it."""
+
+        return language_of_texts(
+            (
+                segment.text
+                for chapter in stored.book.chapters
+                for segment in chapter.segments
+            ),
+            self._reading_language(),
+        )
+
     def _book_language(self, stored: StoredBook) -> str:
         """The language THIS book is written in.
 
@@ -1823,14 +1842,7 @@ class _Session:
             chosen = self._repository.book_language(stored.book.id)
             if chosen in SPEECH_LANGUAGES:
                 return chosen
-        return language_of_texts(
-            (
-                segment.text
-                for chapter in stored.book.chapters
-                for segment in chapter.segments
-            ),
-            self._reading_language(),
-        )
+        return self._detected_language(stored)
 
     def _book_set_language(self, request_id: Any, params: dict[str, Any]) -> None:
         """A reader's word about one book's language; `null` withdraws it.
