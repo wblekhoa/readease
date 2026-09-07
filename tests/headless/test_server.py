@@ -868,6 +868,43 @@ class ProtocolTests(unittest.TestCase):
             self.assertFalse(replies[0]["ok"])
             self.assertTrue(replies[0]["error"])
 
+    def test_a_pdf_with_no_text_layer_is_refused_and_leaves_the_shelf_empty(self) -> None:
+        """A rejected import must not leave half a book behind.
+
+        The Qt smoke used to be the only place this was checked, through a
+        window. The reply is the importer's own sentence about OCR; what
+        matters as much is that the shelf afterwards is the shelf before.
+        """
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        from tests.importers.pdf_fixture import make_blank_pdf
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = AppPaths.create(root / "data")
+            repository = LibraryRepository(paths.database)
+            service = LibraryService(paths, repository)
+            scan = make_blank_pdf(root / "scan.pdf")
+
+            replies = run_server(
+                [
+                    {"id": 30, "method": "library.import",
+                     "params": {"path": str(scan)}},
+                    {"id": 31, "method": "library.list"},
+                ],
+                FakeEngine(), repository=repository, service=service,
+            )
+
+            self.assertFalse(replies[0]["ok"])
+            self.assertIn("OCR", replies[0]["error"])
+            self.assertTrue(replies[1]["ok"])
+            self.assertEqual(replies[1]["result"]["books"], [])
+            self.assertEqual(repository.count_books(), 0)
+
     def test_one_unreadable_reading_position_does_not_hide_the_shelf(self) -> None:
         """A corrupt progress row costs that book its place, not the library.
 
