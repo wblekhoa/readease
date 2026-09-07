@@ -4,6 +4,12 @@ This guide is for people who want to install ReadEase from source on a Mac witho
 
 > [Hướng dẫn cài đặt tiếng Việt](INSTALL.md) · [English product guide](README.en.md)
 
+> [!IMPORTANT]
+> **The source install described here does not build right now.** It builds the
+> old Qt shell, and the Qt shell was removed from the source on 2026-09-08. The
+> working way to install is the prebuilt `.zip` - see [README.en.md](README.en.md).
+> This guide is kept for reference.
+
 ## Before you begin
 
 ReadEase is currently distributed as a local **source build**. `Install ReadEase.command` is not signed with an Apple Developer ID and is not Apple-notarized, so macOS Gatekeeper may block it the first time it opens. This is a macOS distribution warning, not an app crash.

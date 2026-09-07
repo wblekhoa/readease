@@ -4,6 +4,12 @@ Hướng dẫn này dành cho người muốn cài ReadEase từ mã nguồn tr�
 
 > **English installation guide:** [INSTALL.en.md](INSTALL.en.md)
 
+> [!IMPORTANT]
+> **Đường cài từ nguồn trong tài liệu này đang không dựng được.** Nó dựng bản
+> vỏ Qt cũ, và vỏ Qt đã bị gỡ khỏi mã nguồn (08/09/2026). Cách cài đang dùng
+> được là tải bản `.zip` dựng sẵn — xem [README.md](README.md). Tài liệu này
+> giữ nguyên để tham khảo.
+
 ## Trước khi bắt đầu
 
 ReadEase hiện được chia sẻ dưới dạng **source build**. File cài chưa được ký bằng Apple Developer ID và chưa được Apple notarize, nên macOS có thể chặn `Install ReadEase.command` ở lần mở đầu tiên. Đây là cơ chế Gatekeeper của macOS, không phải thông báo app bị crash.

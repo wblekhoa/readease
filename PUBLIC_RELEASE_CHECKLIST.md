@@ -73,6 +73,10 @@ failing somewhere confusing).
   bundle contract says so out loud rather than passing quietly.
 - **No notarization**, as above.
 - The legacy source-sharing path (`scripts/export-public-source.py`,
-  `Install ReadEase.command`) still exists and still builds the OLD Qt shell.
+  `Install ReadEase.command`) still exists but **no longer builds anything**:
+  it compiles the Qt shell, and the Qt shell was deleted on 2026-09-08. The
+  READMEs and both INSTALL guides say so at the top rather than sending
+  someone into a 10-25 minute build that cannot finish. Pointing that path at
+  the Tauri build is a port, not a cleanup, and is the owner's call.
   It is superseded by this document and goes away with the rest of the Qt
   shell in P6.
