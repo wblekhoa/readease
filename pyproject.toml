@@ -19,8 +19,6 @@ dependencies = [
   "pypdfium2>=5.13.0",
 ]
 
-[project.scripts]
-vieneu-reader = "vieneu_reader.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vieneu_reader"]

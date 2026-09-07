@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import tomllib
 import unittest
 from pathlib import Path
@@ -30,19 +29,14 @@ class ProjectContractTests(unittest.TestCase):
                 "numpy>=2,<3",
                 # pypdfium2 replaced QtPdf for PDF extraction so the headless
                 # sidecar can import books without a Qt runtime (Tauri plan,
-                # milestone B). PySide6 stays until the Qt shell retires.
+                # milestone B). The Qt shell has retired; PySide6 stays
+                # until `integrations/macos_selection.py`,
+                # `integrations/macos_settings.py` and
+                # `playback/qt_audio.py` are decided - they still import
+                # it and are the owner's call, not a cleanup.
                 "pypdfium2>=5.13.0",
             ],
         )
-        self.assertEqual(
-            project["scripts"]["vieneu-reader"],
-            "vieneu_reader.__main__:main",
-        )
-
-    def test_console_entrypoint_is_importable(self) -> None:
-        module = importlib.import_module("vieneu_reader.__main__")
-
-        self.assertTrue(callable(module.main))
 
     def test_verification_script_exists_and_is_executable(self) -> None:
         verification_script = PROJECT_ROOT / "scripts" / "verify.sh"

@@ -12,8 +12,6 @@ echo "VERIFY phase=unit-tests"
 uv run --frozen python \
   -W error \
   -m unittest discover -s tests "$verbosity"
-echo "VERIFY phase=headless-reader-smoke"
-QT_QPA_PLATFORM=offscreen uv run --frozen python tests/ui/headless_reader_smoke.py
 echo "VERIFY phase=native-selection-bridge"
 "$project_root/scripts/test-native-selection-bridge.sh"
 # The shell's own tests. Rust had none until 05/09; now the playback

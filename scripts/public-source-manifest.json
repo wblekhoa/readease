@@ -14,7 +14,6 @@
     "README.en.md",
     "SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
-    "app_main.py",
     "pyproject.toml",
     "pysidedeploy.spec",
     "uv.lock"

@@ -107,17 +107,6 @@ class ProvenanceContractTests(unittest.TestCase):
             )
         )
 
-    def test_application_applies_provenance_before_building_runtime(self) -> None:
-        source = (ROOT / "src" / "vieneu_reader" / "__main__.py").read_text(
-            encoding="utf-8"
-        )
-
-        self.assertIn("from vieneu_reader.provenance import apply_provenance", source)
-        self.assertLess(
-            source.index("apply_provenance(application)"),
-            source.index("runtime = build_runtime"),
-        )
-
     def test_packager_writes_matching_resource_and_plist_metadata(self) -> None:
         provenance = self._module()
         script = ROOT / "scripts" / "package-provenance.py"

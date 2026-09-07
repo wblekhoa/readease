@@ -192,11 +192,6 @@ def vietnamese_constants() -> list[tuple[str, int, str]]:
     constants: list[tuple[str, int, str]] = []
     for path in sorted(PACKAGE_ROOT.rglob("*.py")):
         module = path.relative_to(PACKAGE_ROOT).as_posix()
-        # The Qt shell is not a surface anyone reads; it is deleted in the
-        # next commit and its strings are its own localizer's, not the
-        # engine's. Everything else in the package can reach a person.
-        if module.startswith("ui/"):
-            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         docstrings = docstring_nodes(tree)
         for node in ast.walk(tree):
