@@ -906,7 +906,9 @@ class ProtocolTests(unittest.TestCase):
                 )
 
             replies = run_server(
-                [{"id": 26, "method": "library.list"}],
+                [{"id": 26, "method": "library.list"},
+                 {"id": 27, "method": "book.open",
+                  "params": {"book_id": stored.book.id}}],
                 FakeEngine(), repository=repository, service=service,
                 settings_path=root / "settings.json",
             )
@@ -919,6 +921,11 @@ class ProtocolTests(unittest.TestCase):
             self.assertIsNone(books[0]["segment_id"])
             self.assertIsNone(books[0]["progress_ratio"])
             self.assertIsNone(books[0]["progress_chapter"])
+            # And it OPENS. Listing a book the reader cannot open would be
+            # half a fix: the torn bookmark is not the book, and the text
+            # itself was never in question.
+            self.assertTrue(replies[1]["ok"], replies[1].get("error"))
+            repository.close()
 
     def test_model_status_reports_the_build_in_use(self) -> None:
         engine = FakeEngine()

@@ -1679,7 +1679,14 @@ class _Session:
         if stored is None:
             self._fail(request_id, f"unknown book: {book_id}")
             return
-        progress = self._repository.load_progress(book_id)
+        try:
+            progress = self._repository.load_progress(book_id)
+        except RepositoryCorruptionError:
+            # Same reasoning as library.list: an unreadable position costs
+            # this book its place, not the book. Refusing to open it would
+            # leave a book visible on the shelf that nothing can open, and
+            # the text itself is fine - it is the bookmark that is torn.
+            progress = None
         figures_by_chapter: dict[str, list[dict[str, Any]]] = {}
         if self._service is not None:
             presentation = self._service.presentation_for(
