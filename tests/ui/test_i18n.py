@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unicodedata
@@ -348,18 +349,39 @@ class AppleBooksDisclosureTests(unittest.TestCase):
         self.assertIn("clean undo only while Apple Books has not launched", privacy)
         self.assertIn("delete them inside Apple Books", privacy)
 
+    def _shipped_tab_name(self) -> tuple[str, str]:
+        """The tab's two names, read out of the shell that actually ships.
+
+        They used to be read out of the Qt localizer, which is on its way out;
+        a name taken from a shell nobody runs would stop being the name on the
+        screen the moment the two drifted. `app/src/i18n.ts` is what the reader
+        sees, so that is where the claim has to be pinned.
+        """
+
+        source = (self.ROOT / "app" / "src" / "i18n.ts").read_text(encoding="utf-8")
+        found = re.search(
+            r'"nav\.transfer":\s*\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]',
+            source,
+        )
+        self.assertIsNotNone(
+            found,
+            "app/src/i18n.ts no longer declares nav.transfer; the documents "
+            "below have nothing left to be checked against",
+        )
+        assert found is not None  # narrowed for the type checker
+        return found.group(1), found.group(2)
+
     def test_every_surface_calls_the_tab_the_same_thing(self) -> None:
         """One name, taken from the app rather than retyped here.
 
         The tab moves notes now; it was still called "Compare notes" in the app
         and "Move notes" in PRIVACY.md, so someone looking for how to move their
         notes found a tab that said it only compared them. Reading the name out
-        of the localizer means renaming it again cannot leave a document behind.
+        of the shipping shell means renaming it again cannot leave a document
+        behind.
         """
 
-        from vieneu_reader.ui.i18n import _TEXT
-
-        vietnamese, english = _TEXT["nav.transfer"]
+        vietnamese, english = self._shipped_tab_name()
         for name, expected in (
             ("README.md", vietnamese),
             ("README.en.md", english),
