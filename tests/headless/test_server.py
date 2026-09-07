@@ -167,6 +167,14 @@ class ProtocolTests(unittest.TestCase):
 
         self.assertTrue(replies[-1]["ok"])
 
+    def test_pasted_english_follows_the_setting_because_there_is_no_book(self) -> None:
+        # A pasted passage has no book behind it to ask, so the interface
+        # language is the only thing this app has been told. Named here so
+        # the difference from a BOOK - which is asked directly - is on the
+        # record rather than looking like an oversight.
+        self.assertFalse(self._read_in("en", "This is English.")[-1]["ok"])
+        self.assertTrue(self._read_in("vi", "This is English.")[-1]["ok"])
+
     def test_read_streams_voice_frames_with_a_rest_between_sentences(self) -> None:
         engine = FakeEngine(chunks_per_sentence=2)
         replies = run_server(
@@ -292,6 +300,64 @@ class ProtocolTests(unittest.TestCase):
             # reaching any of these positions, so a restart must not resume
             # past content nobody heard (F2 of the 05/09 audit).
             self.assertIsNone(repository.load_progress(BOOK_ID))
+
+    def test_an_english_book_is_refused_by_the_vietnamese_model(self) -> None:
+        # The rule the whole language seam exists for, at the level it
+        # matters: a reader whose INTERFACE is Vietnamese, opening an English
+        # book. The setting says nothing useful here; the book does.
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([
+                ("One", [
+                    ("Reading is the art of listening with your eyes.", "paragraph"),
+                    ("This chapter explains why the market changed.", "paragraph"),
+                ]),
+            ])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+
+            replies = run_server(
+                [{"id": 8, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+                FakeEngine(), repository=repository,
+                settings_path=root / "settings.json",
+            )
+
+        self.assertFalse(replies[-1]["ok"])
+        self.assertIn("wrong_language", replies[-1]["error"])
+
+    def test_a_vietnamese_book_reads_as_it_always_did(self) -> None:
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([
+                ("Một", [
+                    ("Đoạn một của chương đầu, viết bằng tiếng Việt.", "paragraph"),
+                    ("Đoạn hai của chương đầu, cũng tiếng Việt.", "paragraph"),
+                ]),
+            ])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+
+            replies = run_server(
+                [{"id": 8, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+                FakeEngine(), repository=repository,
+                settings_path=root / "settings.json",
+            )
+
+        self.assertTrue(replies[-1]["ok"])
 
     def test_read_book_without_a_voice_writes_no_progress(self) -> None:
         """Progress is saved with the reading's voice when the shell reports

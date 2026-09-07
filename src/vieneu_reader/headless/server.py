@@ -51,6 +51,7 @@ from typing import Any, Iterator, Protocol, TextIO
 import numpy as np
 
 from vieneu_reader.domain.models import AudioChunk, Segment, Voice
+from vieneu_reader.domain.language import language_of_texts
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
     SENTENCE_PAUSE_MS,
@@ -692,9 +693,8 @@ class _Session:
         if not wanted:
             progress = self._repository.load_progress(book_id)
             wanted = progress.segment_id if progress else None
-        utterances, chapter_of = self._book_utterances(
-            stored, self._reading_language()
-        )
+        language = self._book_language(stored)
+        utterances, chapter_of = self._book_utterances(stored, language)
         start = _start_at(utterances, wanted, _reading_order(stored.book))
         # How far this press of the button is allowed to reach. `None` is the
         # whole book, which is what every reading did before paid voices
@@ -703,7 +703,7 @@ class _Session:
         end = scope_end(chapter_of, start, None if chapters is None else int(chapters))
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
-            book_id=book_id, window=params.get("window"),
+            book_id=book_id, window=params.get("window"), language=language,
         )
 
     def _voice_catalogue(self) -> list[dict[str, Any]]:
@@ -820,7 +820,7 @@ class _Session:
             self._fail(request_id, f"unknown book: {params.get('book_id')}")
             return
         utterances, chapter_of = self._book_utterances(
-            stored, self._reading_language()
+            stored, self._book_language(stored)
         )
         wanted = params.get("segment_id")
         if not wanted:
@@ -1771,18 +1771,34 @@ class _Session:
         })
 
     def _reading_language(self, settings: dict[str, Any] | None = None) -> str:
-        """The language the VOICE reads in.
+        """The language the VOICE reads in, when there is no book to ask.
 
-        Taken from the interface language for now, which is the only language
-        this app has ever been told. It is the wrong long-term answer - a
-        library holds books in more than one language and the book knows which
-        it is - but it is a true one: somebody who put the app in English is
-        reading in English. When books carry their own language (EPUB spells
-        it in `dc:language`), that overrides this per reading.
+        Pasted text and a selection captured from another app have no book
+        behind them, so the interface language is the only thing this app has
+        been told. A BOOK is asked directly - see `_book_language`.
         """
 
         document = self._settings_document() if settings is None else settings
         return speech_language(document.get("ui_language"))
+
+    def _book_language(self, stored: StoredBook) -> str:
+        """The language THIS book is written in.
+
+        The book outranks the interface: a library holds books in more than
+        one language, and the setting says which language the reader wants
+        buttons in, not which language the chapter in front of them is in.
+        Getting this from the book is what makes "never read English with the
+        Vietnamese model" true for somebody whose interface is Vietnamese.
+        """
+
+        return language_of_texts(
+            (
+                segment.text
+                for chapter in stored.book.chapters
+                for segment in chapter.segments
+            ),
+            self._reading_language(),
+        )
 
     def _settings_document(self) -> dict[str, Any]:
         from vieneu_reader.settings import load_settings
@@ -1800,7 +1816,10 @@ class _Session:
         return limit if limit > 0 else None
 
     def _voice_engine(
-        self, voice_id: str, settings: dict[str, Any]
+        self,
+        voice_id: str,
+        settings: dict[str, Any],
+        language_hint: str | None = None,
     ) -> tuple[Any, "VoicePrice | None", str | None]:
         """The engine for this voice, its price, and why not if not.
 
@@ -1812,7 +1831,7 @@ class _Session:
 
         price = price_for(model_of(voice_id) or "")
         self._spend.set_limit(self._budget(settings))
-        language = self._reading_language(settings)
+        language = language_hint or self._reading_language(settings)
         route = pick_voice_route(
             voice_id,
             keys=settings,
@@ -1934,12 +1953,13 @@ class _Session:
         *,
         book_id: str | None = None,
         window: Any = None,
+        language: str | None = None,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
         # the same road for both.
         document = self._settings_document()
-        engine, price, blocked = self._voice_engine(voice_id, document)
+        engine, price, blocked = self._voice_engine(voice_id, document, language)
         if engine is None:
             # Named, not silently swapped for the local voice: hearing a
             # different voice than the one you chose, with no reason given,

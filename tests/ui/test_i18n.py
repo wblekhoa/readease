@@ -54,6 +54,12 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
             r"\b(mục|điểm|phần|khoản|ý|câu|trường hợp|phương án|lựa chọn)\s+\(([a-z])\)",
         ),
         ("domain/prosody.py", "cđ"),
+        # The Vietnamese alphabet itself, used to recognise which language a
+        # book is written in. An alphabet has no translation - the English
+        # build needs these exact letters to tell a Vietnamese book from an
+        # English one, which is what keeps the Vietnamese model away from
+        # English text.
+        ("domain/language.py", "ăâđêôơưĂÂĐÊÔƠƯ"),
         # The division words a Roman numeral can stand behind. Matcher data
         # for Vietnamese book text, like the two rules above - an English
         # build reading a Vietnamese book still has to know that "Phần II"

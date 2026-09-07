@@ -24,24 +24,38 @@ wrong_language`, và vỏ nói ra thành câu ("Giọng trên máy chỉ đọc 
 | Số, số La Mã, địa chỉ web | **Theo ngôn ngữ đọc** — "Part two" thay vì "Part hai"; "the address svpg dot com" thay vì "địa chỉ svpg chấm com"; "#1" → "number one" (tiếng Anh nói số, không nói thứ tự) |
 | Nhãn hình của sách | Đã nhận sẵn từ tiếng Anh: `Figure 2-4`, `Fig. 7` nằm trong regex từ trước |
 | Giọng VieNeu + sách tiếng Anh | **Bị từ chối**, không đọc |
-| Ngôn ngữ đọc lấy từ đâu | Tạm lấy theo **ngôn ngữ giao diện** (`ui_language`) — xem §2 |
+| Ngôn ngữ đọc lấy từ đâu | **Chính cuốn sách** khai, đọc từ văn bản của nó; dán/vùng chọn thì theo ngôn ngữ giao diện |
 | Giọng tiếng Anh **cục bộ** (không cần khoá, không cần mạng) | **Chưa có** — xem §3 |
 
 Những gì vốn đã không phụ thuộc ngôn ngữ thì giữ nguyên một đường: bỏ dấu chú thích, hạ chữ HOA, bỏ ký tự
 đầu dòng, chấm câu cho tiêu đề.
 
-## 2. Ngôn ngữ đọc: bước sau phải là **theo từng cuốn**
+## 2. Ngôn ngữ đọc: cuốn sách tự khai
 
-Lấy theo ngôn ngữ giao diện là câu trả lời **đúng nhưng tạm**: nó đúng với người đã chuyển app sang tiếng
-Anh, và sai với một thư viện có cả sách Việt lẫn sách Anh.
+Lấy theo ngôn ngữ giao diện là câu trả lời **đúng nhưng thủng**: nó bỏ sót đúng người dễ gặp nhất — người
+Việt, giao diện tiếng Việt, mở một cuốn sách tiếng Anh. Với người đó luật của chủ sẽ không có hiệu lực.
 
-Bước đúng: **cuốn sách tự khai ngôn ngữ của nó.**
-- EPUB có `dc:language` trong OPF — bắt buộc theo đặc tả EPUB `[from training — may be stale]`, đọc lúc nhập.
-- PDF không có gì đáng tin ⇒ đoán bằng chữ (tỷ lệ ký tự có dấu tiếng Việt là dấu hiệu rẻ và chắc), hoặc hỏi
-  một lần lúc nhập.
-- Cần một cột `language` trên bảng sách + migration, và một chỗ trong giao diện để sửa khi đoán sai.
-- Cổng kiểm: nhập 9 cuốn thật của chủ ⇒ mỗi cuốn ra đúng ngôn ngữ; một cuốn tiếng Anh đọc bằng giọng ngoài
-  không còn câu tiếng Việt nào xen vào.
+Nên **cuốn sách được hỏi trực tiếp**, đọc từ chính văn bản của nó (`domain/language.py`): tỷ lệ chữ mang
+chính tả tiếng Việt (ăâđêôơư + năm dấu thanh) trên mẫu 20.000 chữ cái, **rải đều từ đầu tới cuối sách**,
+ngưỡng 5%.
+
+Vì sao đọc chữ chứ không đọc metadata: EPUB có `dc:language`, PDF không có gì đáng tin, và cả hai sai đủ
+thường xuyên để một cuốn sách bị đọc bằng ngôn ngữ không ai chọn. Văn bản là nhân chứng luôn có mặt.
+
+Số đo để chọn ngưỡng (07/09): văn xuôi Việt 28% · Việt lẫn thuật ngữ Anh 12% · một câu tiếng Anh có hai
+tên riêng Việt 6% (cả cuốn thì thấp hơn nhiều) · tiếng Anh 0%.
+
+Hai bẫy đã bắt được bằng test:
+- **Rải đều, không phải lấy phần đầu cho tới hết ngân sách**: cách sau chỉ bao giờ nhìn thấy phần mở đầu,
+  nên một cuốn có đoạn đầu tiếng Anh bị đọc sai. Nay lấy 200 chỗ trải đều, mỗi chỗ cắt bớt theo phần ngân
+  sách của nó.
+- **Đoạn quá ngắn không là bằng chứng**: số trang, chú thích toàn chữ số ⇒ trả về mặc định, không đoán.
+
+Dán văn bản và đọc vùng chọn thì không có sách để hỏi ⇒ theo ngôn ngữ giao diện, và điều đó được ghim
+bằng test để không trông giống một chỗ bỏ sót.
+
+Còn lại: giao diện chưa có chỗ sửa tay khi máy đoán sai. Với sách hai thứ tiếng thật sự thì chưa có câu
+trả lời — cần chủ quyết.
 
 ## 3. Giọng tiếng Anh cục bộ — ứng viên, và cái bẫy giấy phép
 
@@ -69,7 +83,7 @@ Bundle đã mang sẵn `onnxruntime` (44 MB), nên thêm một model ONNX chỉ 
 ## 4. Chủ phải quyết
 1. Bản phát hành có kèm giọng tiếng Anh cục bộ (thêm ~80–300 MB tải về) hay chỉ dùng giọng từ xa/BYOK.
 2. Nếu Kokoro dính espeak-ng GPL: bỏ giọng tiếng Anh cục bộ, hay chấp nhận GPL ở riêng bản GitHub.
-3. Ngôn ngữ đọc theo từng cuốn (đúng hơn, tốn migration) hay giữ một công tắc chung.
+3. Có cần chỗ sửa tay ngôn ngữ của một cuốn khi máy đoán sai không (và sách trộn hai thứ tiếng thì tính sao).
 
 ## Nguồn `[fetched 2026-09-07]`
 - Kokoro ONNX: https://github.com/thewh1teagle/kokoro-onnx
