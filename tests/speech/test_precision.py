@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
+from vieneu_reader.playback.preferences import VoicePreferenceStore
 from vieneu_reader.speech.cache import audio_cache_key
 from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.speech.preferences import (
@@ -24,7 +25,6 @@ from vieneu_reader.speech.vieneu import (
     PRECISIONS,
     VieNeuSpeechEngine,
 )
-from vieneu_reader.ui.i18n import Language, LanguagePreferenceStore
 
 
 class PrecisionEngineTests(unittest.TestCase):
@@ -259,10 +259,10 @@ class VoiceQualityPreferenceStoreTests(unittest.TestCase):
         self.assertEqual(self.store.load(), DEFAULT_PRECISION)
 
     def test_saving_it_keeps_the_other_preferences(self):
-        LanguagePreferenceStore(self.path).save(Language.ENGLISH)
+        VoicePreferenceStore(self.path).save("Ngọc Linh", 1.5)
         self.store.save("fp32")
         stored = json.loads(self.path.read_text(encoding="utf-8"))
-        self.assertEqual(stored["language"], "en")
+        self.assertEqual(stored["voice"], "Ngọc Linh")
         self.assertEqual(stored[SETTINGS_KEY], "fp32")
 
     def test_the_environment_can_try_a_build_without_saving_it(self):

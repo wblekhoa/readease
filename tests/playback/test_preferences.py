@@ -10,7 +10,6 @@ from vieneu_reader.playback.preferences import (
     DEFAULT_VOICE_ID,
     VoicePreferenceStore,
 )
-from vieneu_reader.ui.i18n import Language, LanguagePreferenceStore
 
 
 class VoicePreferenceStoreTests(unittest.TestCase):
@@ -35,7 +34,6 @@ class VoicePreferenceStoreTests(unittest.TestCase):
         self.assertEqual(reopened.load_rate(), 1.25)
 
     def test_saving_the_voice_leaves_the_other_preferences_alone(self):
-        LanguagePreferenceStore(self.path).save(Language.ENGLISH)
         shortcut = ShortcutPreferenceStore(self.path)
         shortcut.save(shortcut.load())
         VoiceQualityPreferenceStore(self.path).save("fp32")
@@ -43,7 +41,6 @@ class VoicePreferenceStoreTests(unittest.TestCase):
         self.store.save("Ngọc Linh", 1.5)
 
         stored = json.loads(self.path.read_text(encoding="utf-8"))
-        self.assertEqual(stored["language"], "en")
         self.assertIn("selection_shortcut", stored)
         self.assertEqual(stored["voice_quality"], "fp32")
         self.assertEqual(stored["voice"], "Ngọc Linh")
