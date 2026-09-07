@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { text } from "../i18n";
+import { engineMessage, text } from "../i18n";
 import { formatSize } from "../ui/format";
 import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, EmptyState } from "../ui/patterns";
@@ -179,7 +179,7 @@ export function Library({
         // after an import is no reason to empty a shelf that was right a
         // second ago.
         console.error(error);
-        setLoadError(String(error));
+        setLoadError(engineMessage(error));
       });
   }, []);
 
@@ -207,7 +207,7 @@ export function Library({
       });
       refresh();
     } catch (error) {
-      setNotice({ tone: "error", message: String(error) });
+      setNotice({ tone: "error", message: engineMessage(error) });
     } finally {
       setImporting(false);
     }
@@ -224,7 +224,7 @@ export function Library({
       setConfirming(null);
       refresh();
     } catch (error) {
-      setNotice({ tone: "error", message: String(error) });
+      setNotice({ tone: "error", message: engineMessage(error) });
     }
   }, [refresh]);
 

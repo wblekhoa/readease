@@ -288,6 +288,10 @@ const COVERS: Record<string, string> = {
    with no key would put the refusal after the choice: they pick it, press
    read, and are told no. */
 const FAIL = new URLSearchParams(window.location.search).get("fail");
+// What the engine says when it refuses. A real importer sentence by default
+// - `?said=…` puts any other one in its place.
+const FAIL_SAID = new URLSearchParams(window.location.search).get("said")
+  ?? "PDF không có lớp văn bản; bản MVP chưa hỗ trợ OCR.";
 
 /** Which named failure a paid reading should produce: `?voicefail=quota`.
  *
@@ -751,7 +755,14 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
 
 function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
   if (FAIL && (command === FAIL || args.method === FAIL)) {
-    return Promise.reject(`engine timeout on ${FAIL}`);
+    // The REFUSAL shape, not the timeout one. Both are real (engine.rs
+    // formats `engine timeout on <method>` and `engine refused <method>:
+    // <said>`), but only refusal carries the engine's own sentence - which
+    // is written in Vietnamese, by the importer, for every language. The
+    // harness used to answer with the timeout shape alone, so the state
+    // where an engine sentence reaches the screen could not be looked at
+    // at all, and it was wrong in both languages for exactly that long.
+    return Promise.reject(`engine refused ${FAIL}: ${FAIL_SAID}`);
   }
   if (command === "plugin:event|listen") {
     const handler = callbacks.get(args.handler as number);

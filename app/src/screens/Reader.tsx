@@ -20,7 +20,7 @@
  */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { text } from "../i18n";
+import { engineMessage, text } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
 import { SearchPanel } from "../ui/SearchPanel";
@@ -370,7 +370,7 @@ export function Reader({
       })
       .catch((error) => {
         console.error(error);
-        setOpenError(String(error));
+        setOpenError(engineMessage(error));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId]);

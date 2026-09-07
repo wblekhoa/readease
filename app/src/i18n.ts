@@ -555,3 +555,221 @@ export function text(key: TextKey,
   }
   return result;
 }
+
+
+/* ---------------------------------------------------------------------------
+ * What the ENGINE says, in the reader's language.
+ *
+ * The table above is the shell's own wording. This one is not: these are the
+ * sentences the Python engine writes - an EPUB that will not parse, a PDF with
+ * no text layer, a library written by a newer build - and the engine writes
+ * every one of them in Vietnamese, whatever language the interface is set to.
+ * They were ported verbatim from the Qt shell's ui/i18n.py, the same way the
+ * static table above was, and for the same reason: the shell that ships is the
+ * one that has to say them.
+ *
+ * They reach the screen through a transport wrapper. `engine.rs` formats a
+ * refusal as `engine refused <method>: <what the engine said>`, and nothing on
+ * this side ever took that apart - so a reader met
+ * `engine refused library.import: PDF không có lớp văn bản; …`, with the
+ * plumbing showing, in Vietnamese, in an English interface. Stripping the
+ * wrapper is not cosmetic here: an exact-match lookup can never fire while the
+ * sentence is still wearing it.
+ *
+ * Lookup order mirrors the Python `Localizer.runtime`: exact table first, then
+ * the patterns, then the message unchanged. An unrecognised sentence keeps its
+ * own words - a message nobody wrote a translation for is still a true message,
+ * and must not be swallowed.
+ * ------------------------------------------------------------------------ */
+
+const RUNTIME_EN: Record<string, string> = {
+  "không": "zero",
+  "một": "one",
+  "bốn": "four",
+  "năm": "five",
+  "sáu": "six",
+  "bảy": "seven",
+  "tám": "eight",
+  "chín": "nine",
+  "mười": "ten",
+  " mươi": "-ty",
+  "mốt": "one",
+  "tư": "four",
+  "lăm": "five",
+  "thứ ": "number ",
+  "thứ nhất": "first",
+  "thứ tư": "fourth",
+  "ReadEase chưa được phép đọc thư mục Apple Books.": "ReadEase has not been allowed to read the Apple Books folder.",
+  "Mở sách hoặc dán nội dung để bắt đầu.": "Open a book or paste text to begin.",
+  "Không thể mở sách.": "Could not open the book.",
+  "Sách đã được thêm nhưng chưa thể tải lại. Hãy mở lại ứng dụng.": "The book was added but could not be reloaded. Reopen the app.",
+  "Đã thêm sách nhưng chưa thể tải lại.": "Book added but not reloaded.",
+  "Không thể tải thư viện cục bộ. Hãy mở lại ứng dụng.": "Could not load the local library. Reopen the app.",
+  "Không thể tải thư viện cục bộ.": "Could not load the local library.",
+  "Sách đã có trong thư viện; đã mở lại.": "This book is already in the library and has been reopened.",
+  "Đã thêm sách vào thư viện.": "Book added to the library.",
+  "Không thể tải sách từ thư viện cục bộ. Hãy mở lại ứng dụng.": "Could not load the book from the local library. Reopen the app.",
+  "Không tìm thấy sách trong thư viện.": "The book was not found in the library.",
+  "Sách không có đoạn văn có thể đọc.": "This book has no readable paragraphs.",
+  "Sẵn sàng đọc.": "Ready to read.",
+  "Không thể lưu vị trí đọc. Sách vẫn có thể mở lại.": "Could not save the reading position. The book can still be reopened.",
+  "Không thể lưu vị trí đọc.": "Could not save the reading position.",
+  "Không thể lưu tùy chọn đọc. Sách vẫn có thể mở lại.": "Could not save reading preferences. The book can still be reopened.",
+  "Không thể lưu tùy chọn đọc.": "Could not save reading preferences.",
+  "Hãy mở một cuốn sách trước khi bấm đọc.": "Open a book before pressing Read.",
+  "Hãy chọn một phần nội dung để đọc.": "Select some text to read.",
+  "Nội dung dán vượt quá giới hạn 100.000 ký tự.": "Pasted text exceeds the 100,000-character limit.",
+  "Hãy dán nội dung trước khi bấm đọc.": "Paste some text before pressing Read.",
+  "Phần đã chọn vượt quá giới hạn 100.000 ký tự.": "The selection exceeds the 100,000-character limit.",
+  "Không thể đọc phần đã chọn.": "Could not read the selection.",
+  "Không tìm thấy nội dung đang chọn.": "No selected text was found.",
+  "ReadEase cần quyền Trợ năng để gửi lệnh sao chép tới ứng dụng bạn đang dùng. Hãy bật ReadEase trong Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng rồi thử lại.": "ReadEase needs Accessibility permission to send the copy command to the app you are using. Enable ReadEase in System Settings > Privacy & Security > Accessibility, then try again.",
+  "Không tìm thấy nội dung đang chọn. Hãy bôi đen phần muốn nghe rồi nhấn phím tắt đọc.": "No selected text was found. Select the text you want to hear, then press the read shortcut.",
+  "Không quét đọc được từ cửa sổ này. Hãy chuyển sang ứng dụng có phần chữ bạn muốn nghe rồi thử lại.": "A selection cannot be read from this window. Switch to the app holding the text you want to hear, then try again.",
+  "Phần đang chọn được đánh dấu là nội dung bí mật nên ReadEase không đọc.": "The selection is marked as concealed content, so ReadEase does not read it.",
+  "Không đăng ký được phím tắt này; macOS hoặc ứng dụng khác đang dùng nó. Hãy chọn tổ hợp khác.": "This shortcut could not be registered; macOS or another app is already using it. Choose a different combination.",
+  "ReadEase không thể xác nhận đã khôi phục clipboard nên đã dừng trước khi đọc.": "ReadEase could not confirm that the clipboard was restored, so it stopped before reading.",
+  "Phím tắt quét đọc chưa sẵn sàng. Hãy mở lại ReadEase.": "The read-selection shortcut is not ready. Reopen ReadEase.",
+  "Phần nội dung đã chọn vượt quá 100.000 ký tự.": "The selected text exceeds 100,000 characters.",
+  "Nội dung này không còn trong lịch sử phiên.": "This item is no longer in session history.",
+  "Đang chuẩn bị giọng đọc…": "Preparing voice data…",
+  "Đang đọc": "Reading",
+  "Đã tạm dừng": "Paused",
+  "Không thể tiếp tục đọc.": "Could not continue reading.",
+  "Đang kiểm tra giọng đọc…": "Checking the voice…",
+  "Đang tải mô hình…": "Downloading the model…",
+  "Đang kiểm tra…": "Checking…",
+  "Sẵn sàng.": "Ready.",
+  "Mô hình đọc tiếng Việt đã sẵn sàng.": "The Vietnamese voice model is ready.",
+  "Đang tải mô hình đọc tiếng Việt lần đầu…": "Downloading the Vietnamese voice model for the first time…",
+  "Đang tải bộ giải mã âm thanh…": "Downloading the audio decoder…",
+  "Đang kiểm tra bộ đọc tiếng Việt…": "Checking the Vietnamese voice engine…",
+  "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại.": "Could not prepare the Vietnamese voice model. Check your connection and try again.",
+  "Không tìm thấy dữ liệu Apple Books trên máy này.": "No Apple Books data was found on this Mac.",
+  "Không đọc được dữ liệu Apple Books. Hãy thử lại sau.": "Could not read the Apple Books data. Try again in a moment.",
+  "Chưa có bản sao lưu, nên không thể hoàn tác nếu sai.": "No backup was taken, so a mistake could not be undone.",
+  "Apple Books đang mở. Hãy thoát Apple Books rồi thử lại.": "Apple Books is open. Quit Apple Books, then try again.",
+  "Không thể chuẩn bị giọng đọc. Hãy kiểm tra kết nối mạng và Thử lại.": "Could not prepare the voice. Check your connection and try again.",
+  "Vui lòng chọn tệp PDF hoặc EPUB.": "Choose a PDF or EPUB file.",
+  "Không tìm thấy tệp sách đã chọn.": "The selected book file was not found.",
+  "Không thể kiểm tra tệp sách đã chọn.": "Could not inspect the selected book file.",
+  "Tệp sách vượt giới hạn dung lượng 200 MiB.": "The book exceeds the 200 MiB size limit.",
+  "Không thể chuẩn bị thư viện để sao chép sách.": "Could not prepare the library to copy the book.",
+  "Không thể cập nhật thư viện cục bộ; sách chưa được thêm.": "Could not update the local library; the book was not added.",
+  "Không thể sao chép sách vào thư viện cục bộ.": "Could not copy the book into the local library.",
+  "PDF có tiêu đề quá dài.": "The PDF title is too long.",
+  "PDF chứa quá nhiều khối văn bản.": "The PDF contains too many text blocks.",
+  "PDF có nội dung đọc quá dài.": "The PDF contains too much readable text.",
+  "PDF được bảo vệ bằng mật khẩu nên không thể đọc.": "Password-protected PDFs are not supported.",
+  "Không thể đọc tệp PDF bị hỏng.": "The damaged PDF could not be read.",
+  "PDF có số trang không hợp lệ hoặc vượt giới hạn.": "The PDF page count is invalid or exceeds the limit.",
+  "PDF không có lớp văn bản; bản MVP chưa hỗ trợ OCR.": "This PDF has no text layer; OCR is not supported yet.",
+  "EPUB được mã hóa nên không thể đọc.": "Encrypted EPUB files are not supported.",
+  "EPUB không có nội dung đọc trong spine.": "The EPUB spine contains no readable content.",
+  "Không thể đọc tệp EPUB bị hỏng.": "The damaged EPUB could not be read.",
+  "Không thể đọc hình ảnh trong EPUB.": "An EPUB image could not be read.",
+  "Sẵn sàng tải giọng đọc.": "Ready to download voice data.",
+  "Đang dừng sau bước tải hiện tại…": "Stopping after the current download step…",
+  "Đã hủy chuẩn bị giọng đọc.": "Voice setup was cancelled.",
+  "EPUB chứa đường dẫn không an toàn.": "The EPUB contains an unsafe path.",
+  "EPUB chứa quá nhiều thành phần.": "The EPUB contains too many entries.",
+  "EPUB không có mục lục ZIP hợp lệ.": "The EPUB has no valid ZIP directory.",
+  "EPUB có mục lục ZIP không nhất quán.": "The EPUB ZIP directory is inconsistent.",
+  "EPUB nhiều phần không được hỗ trợ.": "Multi-part EPUB archives are not supported.",
+  "EPUB ZIP64 không được hỗ trợ trong bản MVP.": "ZIP64 EPUB files are not supported yet.",
+  "Mục lục EPUB vượt giới hạn an toàn.": "The EPUB directory exceeds the safety limit.",
+  "Mục lục EPUB không hợp lệ.": "The EPUB directory is invalid.",
+  "Mục lục EPUB khai báo số thành phần không nhất quán.": "The EPUB directory declares an inconsistent entry count.",
+  "Một thành phần EPUB vượt giới hạn an toàn.": "An EPUB entry exceeds the safety limit.",
+  "EPUB chứa đường dẫn nội dung không an toàn.": "The EPUB contains an unsafe content path.",
+  "EPUB có tiêu đề quá dài.": "The EPUB title is too long.",
+  "EPUB chứa mục tệp trùng lặp.": "The EPUB contains duplicate file entries.",
+  "EPUB vượt giới hạn dung lượng an toàn.": "The EPUB exceeds the safe size limit.",
+  "Một thành phần EPUB bị hỏng.": "An EPUB entry is damaged.",
+  "EPUB chứa đường dẫn nội dung không hợp lệ.": "The EPUB contains an invalid content path.",
+  "EPUB thiếu đường dẫn package.": "The EPUB package path is missing.",
+  "EPUB manifest chứa quá nhiều mục.": "The EPUB manifest contains too many items.",
+  "EPUB spine chứa quá nhiều mục đọc.": "The EPUB spine contains too many reading items.",
+  "EPUB tạo ra quá nhiều chương.": "The EPUB produces too many chapters.",
+  "EPUB tạo ra quá nhiều đoạn đọc.": "The EPUB produces too many readable paragraphs.",
+  "EPUB có nội dung đọc quá dài.": "The EPUB contains too much readable text.",
+  "EPUB chứa đường dẫn hình ảnh từ xa.": "The EPUB contains a remote image path.",
+  "Nội dung hình ảnh EPUB không còn khớp với bản sách đã nhập.": "The EPUB image content no longer matches the imported book.",
+  "Chương EPUB chứa quá nhiều hình ảnh.": "The EPUB chapter contains too many images.",
+  "EPUB chứa đường dẫn hình ảnh không hợp lệ.": "The EPUB contains an invalid image path.",
+  "EPUB tạo ra quá nhiều hình ảnh đọc.": "The EPUB produces too many readable images.",
+  "EPUB có quá nhiều chú thích.": "The EPUB contains too many footnotes.",
+  "Nguồn EPUB được quản lý không còn an toàn.": "The managed EPUB source is no longer safe.",
+  "Spine EPUB không còn khớp bản sách đã nhập.": "The EPUB spine no longer matches the imported book.",
+  "Nguồn EPUB được quản lý đã thay đổi.": "The managed EPUB source has changed.",
+  "Nguồn EPUB không khớp bản sách đã nhập.": "The EPUB source does not match the imported book.",
+  "Không thể dọn dẹp bản sao nhập tạm trong thư viện.": "Could not clean up the temporary imported copy in the library.",
+  "Thư viện có bản sao chưa hoàn tất; cần sửa thư viện trước khi nhập lại.": "The library contains an incomplete copy; repair the library before importing again.",
+  "Không thể dọn dẹp bản sao nhập tạm; lần nhập sau sẽ thử lại.": "Could not clean up the temporary imported copy; the next import will try again.",
+  "Không thể khóa thư viện cục bộ để nhập sách.": "Could not lock the local library for import.",
+  "Không thể đóng tệp khóa import sau lỗi chính.": "Could not close the import lock file after the primary error.",
+  "Không thể truy cập dữ liệu thư viện cục bộ.": "Could not access the local library data.",
+  "Không thể mở dữ liệu thư viện cục bộ.": "Could not open the local library data.",
+  "Dữ liệu sách trong thư viện cục bộ bị hỏng.": "The book data in the local library is damaged.",
+  "Không thể lưu cuốn sách đang mở.": "Could not save which book is open.",
+  "Dữ liệu cuốn sách đang mở trong thư viện cục bộ bị hỏng.": "The record of the open book in the local library is damaged.",
+  "Dữ liệu tiến độ đọc trong thư viện cục bộ bị hỏng.": "The reading-progress data in the local library is damaged.",
+  "Không thể tạo giọng đọc cho đoạn này.": "Could not create the voice for this paragraph.",
+  "Mô hình đọc tiếng Việt chưa được chuẩn bị.": "The Vietnamese voice model has not been prepared yet.",
+  "Máy đã hết dung lượng trống nên chưa tải xong giọng đọc. Hãy giải phóng bớt dung lượng rồi thử lại.": "This Mac ran out of free space before the voice finished downloading. Free up some space, then try again.",
+};
+
+/** Sentences carrying a number or a title, so they cannot be looked up whole.
+ *
+ * Ported from Python `re` to JS `RegExp`: the sources are identical, the
+ * replacements changed `\1` to `$1`. Written with `new RegExp` rather than a
+ * literal because four of them contain `/`. Matching emulates Python's
+ * `fullmatch` (the whole string, not a part of it) by checking the match
+ * covers everything - anchors are already in the sources, and this holds even
+ * if one day one is not. */
+const RUNTIME_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
+  [new RegExp("^Chương (\\d+)/(\\d+) · Đoạn (\\d+)/(\\d+)$"), "Chapter $1/$2 · Paragraph $3/$4"],
+  [new RegExp("^Đang chuẩn bị đoạn (\\d+)/(\\d+)…$"), "Preparing part $1/$2…"],
+  [new RegExp("^Đang đọc đoạn (\\d+)/(\\d+)$"), "Reading part $1/$2"],
+  [new RegExp("^Đã tạm dừng · Đoạn (\\d+)/(\\d+)$"), "Paused · Part $1/$2"],
+  [new RegExp("^(.+) có XML quá phức tạp\\.$"), "$1 contains XML that is too complex."],
+  [new RegExp("^(.+) chứa khai báo XML không an toàn\\.$"), "$1 contains unsafe XML declarations."],
+  [new RegExp("^(.+) không phải XML hợp lệ\\.$"), "$1 is not valid XML."],
+  [new RegExp("^EPUB thiếu thành phần bắt buộc: (.+)\\.$"), "The EPUB is missing a required component: $1."],
+  [new RegExp("^Thư viện này được tạo bởi bản ReadEase mới hơn \\(dữ liệu v(\\d+), bản này đọc tới v(\\d+)\\)\\. Hãy cài lại bản mới nhất\\.$"), "This library was written by a newer ReadEase (data v$1, this build reads up to v$2). Please install the latest version."],
+  [new RegExp("^Không có bước nâng cấp dữ liệu lên v(\\d+)\\.$"), "No upgrade step to data v$1."],
+  [new RegExp("^Nâng cấp dữ liệu từ v(\\d+) lên v(\\d+) không xong; thư viện được giữ nguyên như cũ\\.$"), "Upgrading data from v$1 to v$2 did not finish; the library was left exactly as it was."],
+  [new RegExp("^(.+) - Nam Bộ$"), "$1 - Southern Vietnamese"],
+  [new RegExp("^(.+) - Bắc Bộ$"), "$1 - Northern Vietnamese"],
+];
+
+/** The transport wrapper `engine.rs` puts around a refusal.
+ *
+ * Method names carry dots (`library.import`), hence `[\w.]`. Only the refusal
+ * shape is stripped: `engine timeout on …`, `spawn engine: …` and `bad
+ * payload: …` are this side's own words, already English, and are left alone
+ * so a transport failure never gets dressed up as an engine sentence. */
+const ENGINE_REFUSAL = /^engine refused [\w.]+: /;
+
+/** One engine sentence, said in the language the interface is set to. */
+export function runtime(message: string): string {
+  if (currentLanguage() === "vi") return message;
+  const exact = RUNTIME_EN[message];
+  if (exact !== undefined) return exact;
+  for (const [pattern, replacement] of RUNTIME_PATTERNS) {
+    const found = pattern.exec(message);
+    if (found && found[0] === message) return message.replace(pattern, replacement);
+  }
+  return message;
+}
+
+/** What to put in front of a person when an engine call was rejected.
+ *
+ * Takes the rejection whatever shape it arrived in, drops the transport
+ * wrapper, and says the rest in their language. Both halves matter to both
+ * languages: a Vietnamese reader stops seeing `engine refused library.import:`
+ * in front of a sentence written for them, and an English one stops seeing the
+ * sentence in Vietnamese. */
+export function engineMessage(error: unknown): string {
+  return runtime(String(error).replace(ENGINE_REFUSAL, ""));
+}
