@@ -7,7 +7,7 @@ to do the same for a corrupt `document_json` - `list_books()` builds the
 whole tuple in one comprehension, so one bad row still takes every book
 down with it.
 
-Measured on a temporary data root (07/09, 01:2x): that move would not be a
+Measured on a temporary data root (08/09, 01:2x): that move would not be a
 strict improvement. The corrupt row stays LOAD-BEARING after it stops being
 readable - it keeps its `id` PRIMARY KEY, its UNIQUE `source_hash` and its
 UNIQUE `managed_path`, and `add_book` is a plain INSERT. Skip it silently
