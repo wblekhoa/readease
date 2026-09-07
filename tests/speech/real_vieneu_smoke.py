@@ -1,4 +1,4 @@
-"""Explicit online-then-offline smoke for the real VieNeu 3.3.0 engine."""
+"""Explicit online-then-offline smoke for the real VieNeu 3.6.3 engine."""
 
 from __future__ import annotations
 

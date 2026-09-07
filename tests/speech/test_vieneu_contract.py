@@ -46,9 +46,14 @@ class FakeVieNeuSDK:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         self.stream_calls = []
+        self.infer_calls = []
 
     def list_preset_voices(self):
         return [("Adam — Nam Bộ", "Adam"), ("Trúc Ly — Bắc Bộ", "Trúc Ly")]
+
+    def infer(self, text, **kwargs):
+        self.infer_calls.append((text, kwargs))
+        return FakeAudioArray(0.3, -0.3)
 
     def infer_stream(self, text, **kwargs):
         self.stream_calls.append((text, kwargs))
@@ -99,7 +104,7 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
     def test_stream_converts_each_sdk_array_to_48khz_float32_audio(self):
         chunks = tuple(
             self.engine.stream(
-                "Xin chào",
+                "Xin chào các bạn thân mến",
                 "Adam",
                 SynthesisSettings(temperature=0.7),
             )
@@ -109,7 +114,7 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         self.assertTrue(all(chunk.sample_rate == 48_000 for chunk in chunks))
         self.assertEqual(chunks[0].pcm, struct.pack("<2f", 0.1, -0.1))
         text, settings = self.created[0].stream_calls[0]
-        self.assertEqual(text, "Xin chào")
+        self.assertEqual(text, "Xin chào các bạn thân mến")
         self.assertEqual(settings["voice"], "Adam")
         self.assertEqual(settings["temperature"], 0.7)
 
@@ -124,7 +129,7 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         self.assertEqual(settings["max_chars"], 240)
 
     def test_cancel_stops_an_existing_iterator_before_the_next_chunk(self):
-        iterator = self.engine.stream("Xin chào", "Adam")
+        iterator = self.engine.stream("Xin chào các bạn thân mến", "Adam")
         first = next(iterator)
 
         self.engine.cancel()
@@ -137,6 +142,34 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
             list(self.engine.stream(" \n", "Adam"))
 
         self.assertEqual(self.created, [])
+
+    def test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble(self):
+        # The SDK generates a one-to-three-word chunk again when it "said
+        # more" after a slipped stop token; that guard only exists on the
+        # whole-utterance path, streaming has already emitted the audio.
+        chunks = tuple(
+            self.engine.stream(
+                "Được rồi nhé.", "Adam", SynthesisSettings(temperature=0.7)
+            )
+        )
+
+        sdk = self.created[0]
+        self.assertEqual(sdk.stream_calls, [])
+        self.assertEqual(len(sdk.infer_calls), 1)
+        text, settings = sdk.infer_calls[0]
+        self.assertEqual(text, "Được rồi nhé.")
+        self.assertEqual(settings["voice"], "Adam")
+        self.assertEqual(settings["temperature"], 0.7)
+        self.assertEqual(settings["max_chars"], 240)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(chunks[0].pcm, struct.pack("<2f", 0.3, -0.3))
+
+    def test_the_fourth_word_is_where_streaming_starts(self):
+        tuple(self.engine.stream("Được rồi nhé ạ.", "Adam"))
+
+        sdk = self.created[0]
+        self.assertEqual(sdk.infer_calls, [])
+        self.assertEqual(len(sdk.stream_calls), 1)
 
     def test_model_and_codec_revisions_are_full_pinned_commits(self):
         self.assertEqual(

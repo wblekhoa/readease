@@ -144,6 +144,27 @@ class ExistingInstallTests(unittest.TestCase):
     def test_but_it_does_not_vouch_for_a_build_it_never_saw(self):
         self.assertFalse(self.engine("fp32")._marker_matches())
 
+    def test_a_newer_engine_still_trusts_it_because_the_files_did_not_change(self):
+        # The record names the SDK that wrote it; this engine is newer. The
+        # pinned files are the same ones, so an upgrade must not send an
+        # install that already has them back to the network.
+        self.assertNotEqual(self.engine("int8").engine_version, "3.3.0")
+        self.assertTrue(self.engine("int8")._marker_matches())
+
+    def test_but_a_record_of_other_files_never_counts(self):
+        for key in ("codec_revision", "model_revision"):
+            with self.subTest(key=key):
+                marker = {
+                    "codec_revision": CODEC_REVISION,
+                    "engine_version": "3.3.0",
+                    "model_revision": MODEL_REVISION,
+                    key: "somewhere-else",
+                }
+                (self.models / ".vieneu-ready.json").write_text(
+                    json.dumps(marker, sort_keys=True), encoding="utf-8"
+                )
+                self.assertFalse(self.engine("int8")._marker_matches())
+
 
 class RemovingAnUnusedBuildTests(unittest.TestCase):
     """One build is downloaded at a time; the other must not be stuck there."""

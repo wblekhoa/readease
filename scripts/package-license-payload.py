@@ -23,7 +23,6 @@ DEFAULT_DISTRIBUTIONS = {
     "kaldi-native-fbank",
     "numpy",
     "onnxruntime",
-    "perth",
     "shiboken6",
     "soundfile",
     "soxr",
@@ -37,7 +36,6 @@ PYSIDE_DISTRIBUTIONS = {
     "shiboken6",
 }
 MANUAL_RECEIPTS = {
-    "perth": (ROOT / "legal" / "PERTH_LICENSE.txt",),
     "tokenizers": (ROOT / "legal" / "APACHE-2.0.txt",),
     **{
         name: (

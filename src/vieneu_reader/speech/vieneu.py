@@ -19,7 +19,7 @@ from vieneu_reader.domain.segmenter import normalize_paragraph
 from .contracts import SynthesisSettings
 
 
-ENGINE_VERSION = "3.3.0"
+ENGINE_VERSION = "3.6.3"
 MODEL_REVISION = "2da0efab622a1722125991736524f080b751ef5b"
 MODEL_REPO = "pnnbao-ump/VieNeu-TTS-v3-Turbo"
 MODEL_DIRECTORY = "vieneu-v3-turbo"
@@ -52,6 +52,21 @@ CODEC_FILES = (
 _READY_MARKER = ".vieneu-ready-{precision}.json"
 # What installs made before the model build became a choice wrote.
 _LEGACY_READY_MARKER = ".vieneu-ready.json"
+# What a ready marker has to agree on. The engine version is still written -
+# the audio cache keys on it - but not gated on: the pinned files are the same
+# across SDK releases and the SDK checks them itself at load. Gating on it sent
+# every SDK upgrade back to the network for files already on disk, and an
+# upgrade done offline read as "model not ready".
+_MARKER_GATE = ("codec_revision", "model_revision")
+# Mirrors BABBLE_MAX_SYLLABLES in the SDK: an utterance this short is checked
+# for "saying more" after a slipped stop token, and generated again if it did.
+# That guard lives in `infer`; `infer_stream` cannot carry it - the audio is
+# already out before the check could run. Measured on 100 renders of ten 1-3
+# word utterances (2026-09-07): 33% said more when streamed, 4% whole. The
+# price is the wait for the first sound, which grows from the first chunk to
+# the whole utterance - 0.1-0.4 s on this Mac - and the queue running ahead of
+# the ear hides that everywhere but the first sentence of a reading.
+SHORT_UTTERANCE_WORDS = 3
 _SDK_LOAD_LOCK = RLock()
 
 
@@ -227,17 +242,22 @@ class VieNeuSpeechEngine:
             "model_revision": model_revision,
         }
 
+    def _marker_vouches(self, path: Path, model_revision: str) -> bool:
+        marker = self._read_marker(path)
+        if not isinstance(marker, dict):
+            return False
+        expected = self._expected_marker(model_revision)
+        return all(marker.get(key) == expected[key] for key in _MARKER_GATE)
+
     def _marker_matches(self) -> bool:
-        if self._read_marker(self._ready_marker) == self._expected_marker(
-            self.model_revision
-        ):
+        if self._marker_vouches(self._ready_marker, self.model_revision):
             return True
         # An install from before this choice existed recorded readiness without
         # naming the build. It is on the default one; do not send it back to
         # download 158 MB it already has on disk.
-        return self._precision == DEFAULT_PRECISION and self._read_marker(
-            self._models_path / _LEGACY_READY_MARKER
-        ) == self._expected_marker(MODEL_REVISION)
+        return self._precision == DEFAULT_PRECISION and self._marker_vouches(
+            self._models_path / _LEGACY_READY_MARKER, MODEL_REVISION
+        )
 
     @property
     def is_model_ready(self) -> bool:
@@ -413,15 +433,18 @@ class VieNeuSpeechEngine:
         with self._lock:
             token = self._generation
         sdk = self._instance()
-        raw_stream = sdk.infer_stream(
-            normalized,
-            voice=voice_id,
-            temperature=settings.temperature,
-            top_k=settings.top_k,
-            top_p=settings.top_p,
-            max_chars=settings.max_chars,
-            repetition_penalty=settings.repetition_penalty,
-        )
+        sampling = {
+            "voice": voice_id,
+            "temperature": settings.temperature,
+            "top_k": settings.top_k,
+            "top_p": settings.top_p,
+            "max_chars": settings.max_chars,
+            "repetition_penalty": settings.repetition_penalty,
+        }
+        if len(normalized.split()) <= SHORT_UTTERANCE_WORDS:
+            raw_stream = (sdk.infer(normalized, **sampling),)
+        else:
+            raw_stream = sdk.infer_stream(normalized, **sampling)
         for raw in raw_stream:
             with self._lock:
                 if token != self._generation:

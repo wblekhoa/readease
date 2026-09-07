@@ -25,7 +25,7 @@ class ProjectContractTests(unittest.TestCase):
         self.assertEqual(
             project["dependencies"],
             [
-                "vieneu==3.3.0",
+                "vieneu==3.6.3",
                 "PySide6>=6.8,<7",
                 "numpy>=2,<3",
                 # pypdfium2 replaced QtPdf for PDF extraction so the headless

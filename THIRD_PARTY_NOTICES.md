@@ -21,7 +21,7 @@ signed, not notarized. The PDF importer does not bundle PyMuPDF or MuPDF.
 
 ## Primary components and model assets
 
-- **VieNeu SDK 3.3.0** — Apache License 2.0. Source:
+- **VieNeu SDK 3.6.3** — Apache License 2.0. Source:
   <https://github.com/pnnbao97/VieNeu-TTS>.
 - **VieNeu-TTS v3 Turbo model**, pinned at
   `2da0efab622a1722125991736524f080b751ef5b` — Apache License 2.0. Model:
@@ -89,7 +89,6 @@ build.
 | orjson | 3.12.0 | MPL-2.0 AND (Apache-2.0 OR MIT) |
 | packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
 | pandas | 3.0.5 | BSD-3-Clause and bundled notices |
-| perth | 1.0.0 | MIT |
 | pillow | 12.3.0 | MIT-CMU |
 | platformdirs | 4.11.4 | MIT |
 | pooch | 1.9.0 | BSD-3-Clause |
@@ -111,7 +110,7 @@ build.
 | safehttpx | 0.1.7 | MIT |
 | scikit-learn | 1.9.0 | BSD-3-Clause |
 | scipy | 1.18.1 | BSD-3-Clause and bundled native-library notices |
-| sea-g2p | 0.9.0 | Apache-2.0 |
+| sea-g2p | 0.9.1 | Apache-2.0 |
 | semantic-version | 2.10.0 | BSD |
 | shellingham | 1.5.4 | ISC |
 | shiboken6 | 6.11.2 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only |
@@ -128,7 +127,7 @@ build.
 | typing-extensions | 4.16.0 | PSF-2.0 |
 | urllib3 | 2.7.0 | MIT |
 | uvicorn | 0.52.4 | BSD-3-Clause |
-| vieneu | 3.3.0 | Apache-2.0 |
+| vieneu | 3.6.3 | Apache-2.0 |
 
 Nuitka is a build-time tool and is not an application runtime dependency. Its
 license notice must be included with build tooling if redistributed.
