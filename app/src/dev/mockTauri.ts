@@ -307,6 +307,7 @@ const FAIL_SAID = new URLSearchParams(window.location.search).get("said")
 const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
+const PERMISSION = new URLSearchParams(window.location.search).get("permission");
 
 const PAID_VOICES: Record<string, { id: string; label: string; languages?: string[]; gender?: "male" | "female" }[]> = {
   // ONE model per provider, as the engine now lists them: the catalogue used
@@ -790,6 +791,17 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     return Promise.resolve(listenerId);
   }
   if (command === "plugin:event|unlisten") return Promise.resolve();
+  /* Unanswered, this fell through to `{}` - a truthy object that is neither
+     `true` nor `false`, so "Quét đọc" showed neither the permission notice
+     nor the granted state. Its EVERYDAY state, the one a reader is in every
+     time, could not be looked at at all. Granted by default; `?permission=
+     missing` is the first-run screen. */
+  if (command === "plugin:macos-permissions|check_accessibility_permission") {
+    return Promise.resolve(PERMISSION !== "missing");
+  }
+  if (command === "plugin:macos-permissions|request_accessibility_permission") {
+    return Promise.resolve(null);
+  }
   if (command === "engine_voices") {
     return Promise.resolve([...VOICES, ...paidCatalogue()]);
   }

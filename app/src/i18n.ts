@@ -376,7 +376,6 @@ export const TEXT = {
   ],
   "external.open_system_settings": ["Cài đặt hệ thống", "System Settings"],
   "external.open_settings": ["Mở Cài đặt quyền", "Open permission settings"],
-  "external.recent_title": ["Đã quét đọc trong phiên", "Read from a selection this session"],
   "external.history_clear": ["Xoá lịch sử", "Clear history"],
   "external.history_empty": [
     "Chưa có gì. Danh sách này mất khi đóng ReadEase.",

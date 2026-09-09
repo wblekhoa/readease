@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { text, type TextKey } from "../i18n";
 import { Button, IconButton, Kbd, Notice, SectionTitle, Surface } from "../ui/controls";
-import { ChevronDownIcon, PlayIcon } from "../ui/icons";
+import { ChevronDownIcon, InfoIcon, PlayIcon } from "../ui/icons";
 import { currentPart, isOpen, summarise } from "../ui/scanHistory";
 import { comboFromEvent, displayShortcut } from "../ui/useShortcut";
 
@@ -185,115 +185,125 @@ export function External({
         : null;
 
   return (
-    <section className="shell-inset flex min-h-0 flex-1 gap-10">
-      <div className="max-w-[52ch]">
+    /* One column, not two. The left column used to give a one-time setup -
+       a shortcut you learn once and three steps you read once - the same
+       413 px the passages themselves got (measured at a 1060 px window,
+       09/09). Scanning is what this screen DOES; the setup is what it
+       needed once. So the setup is one bar across the top and the passages
+       have the width (owner, 09/09). */
+    <section className="shell-inset flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <SectionTitle>{text("external.title")}</SectionTitle>
-        {granted === false && (
-          <Surface className="mt-5 p-4">
-            <p className="m-0 text-sm leading-relaxed text-ink-mute">
-              {text("external.permission_note")}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setAsked(true);
-                  void requestAccessibilityPermission();
-                }}
-              >
-                {text("external.open_settings")}
-              </Button>
-              <Button className="px-3" onClick={() => void openUrl(ACCESSIBILITY_PANE)}>
-                {text("external.open_system_settings")}
-              </Button>
-            </div>
-            {asked && (
-              <p className="m-0 mt-3 text-sm font-medium">
-                {text("external.permission_restart")}
-              </p>
-            )}
-          </Surface>
-        )}
-        <div className="mt-4 flex items-center gap-3">
-          <span className="text-sm font-semibold text-ink-mute">
-            {text("external.shortcut")}
+        <span className="text-sm text-ink-mute">{text("external.shortcut")}</span>
+        {recording ? (
+          <span className="text-sm text-ink-mute">
+            {text("external.shortcut_recording")}
           </span>
-          {recording ? (
-            <span className="text-sm text-ink-mute">
-              {text("external.shortcut_recording")}
-            </span>
-          ) : (
-            <Kbd>{displayShortcut(shortcut)}</Kbd>
-          )}
-          <Button size="sm" onClick={() => setRecording((value) => !value)}>
-            {text("external.shortcut_change")}
+        ) : (
+          <Kbd>{displayShortcut(shortcut)}</Kbd>
+        )}
+        <Button size="sm" onClick={() => setRecording((value) => !value)}>
+          {text("external.shortcut_change")}
+        </Button>
+        {/* Once it works, how-to is reference: on the icon, not on the page.
+            Before it works, the same words are the task itself and stay
+            open below. */}
+        {granted === true && (
+          <IconButton
+            title={
+              <span className="block max-w-[44ch] whitespace-pre-line text-left">
+                {text("external.steps")}
+              </span>
+            }
+          >
+            <InfoIcon />
+          </IconButton>
+        )}
+        <span className="flex-1" />
+        {history.length > 0 && (
+          /* The Qt shell could empty this list; the rewrite dropped the
+             action until the parity audit found it (2026-09-02). */
+          <Button variant="ghost" size="sm" onClick={onClearHistory}>
+            {text("external.history_clear")}
           </Button>
-        </div>
-        {recording && (
-          <p className="m-0 mt-2 max-w-[48ch] text-sm text-ink-mute">
-            {text("external.shortcut_hint")}
-          </p>
         )}
-        {shortcutError && (
-          <Notice tone="error" className="mt-2 max-w-[48ch]">
-            {text("external.shortcut_taken")}
-          </Notice>
-        )}
+      </div>
 
-        <p className="m-0 mt-5 whitespace-pre-line text-xs leading-relaxed text-ink-mute">
+      {recording && (
+        <p className="m-0 mt-2 max-w-[52ch] text-sm text-ink-mute">
+          {text("external.shortcut_hint")}
+        </p>
+      )}
+      {shortcutError && (
+        <Notice tone="error" className="mt-2 max-w-[52ch]">
+          {text("external.shortcut_taken")}
+        </Notice>
+      )}
+      {statusMessage && (
+        <Notice tone="error" className="mt-3 max-w-[52ch]">
+          {statusMessage}
+        </Notice>
+      )}
+
+      {granted === false && (
+        <Surface className="mt-4 max-w-[60ch] p-4">
+          <p className="m-0 text-sm leading-relaxed text-ink-mute">
+            {text("external.permission_note")}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setAsked(true);
+                void requestAccessibilityPermission();
+              }}
+            >
+              {text("external.open_settings")}
+            </Button>
+            <Button className="px-3" onClick={() => void openUrl(ACCESSIBILITY_PANE)}>
+              {text("external.open_system_settings")}
+            </Button>
+          </div>
+          {asked && (
+            <p className="m-0 mt-3 text-sm font-medium">
+              {text("external.permission_restart")}
+            </p>
+          )}
+        </Surface>
+      )}
+      {granted !== true && (
+        <p className="m-0 mt-4 max-w-[60ch] whitespace-pre-line text-xs leading-relaxed text-ink-mute">
           {text("external.steps")}
         </p>
-        {granted === true && (
-          <p className="m-0 mt-4 text-sm text-ink-mute">
-            {text("external.permission_granted")}
-          </p>
-        )}
+      )}
 
-        {statusMessage && (
-          <Notice tone="error" className="mt-4 max-w-[52ch]">
-            {statusMessage}
-          </Notice>
-        )}
-      </div>
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3">
-          <h3 className="m-0 flex-1 text-sm font-bold">
-            {text("external.recent_title")}
-          </h3>
-          {/* The Qt shell could empty this list; the rewrite dropped the
-              action until the parity audit found it (2026-09-02). */}
-          {history.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={onClearHistory}>
-              {text("external.history_clear")}
-            </Button>
-          )}
+      {history.length === 0 ? (
+        <p className="m-0 mt-4 text-sm text-ink-mute">
+          {text("external.history_empty")}
+        </p>
+      ) : (
+        /* Capped at a readable measure rather than stretched: the passages
+           are prose, and prose that runs the whole window is harder to
+           follow than the narrow column this replaced. */
+        <div className="mt-3 flex min-h-0 max-w-[80ch] flex-1 flex-col gap-1 overflow-y-auto">
+          {history.map((entry) => (
+            <ScanEntry
+              key={entry.at}
+              entry={entry}
+              open={isOpen(entry.at, readingAt, toggled)}
+              current={currentPart(entry.at, readingAt, position)}
+              onToggle={() =>
+                setToggled((was) => ({
+                  ...was,
+                  [entry.at]: !isOpen(entry.at, readingAt, was),
+                }))
+              }
+              onReplay={() => onReplay(entry)}
+              onReadPart={(segmentId) => onReadPart(entry, segmentId)}
+            />
+          ))}
         </div>
-        {history.length === 0 ? (
-          <p className="m-0 mt-2 text-sm text-ink-mute">
-            {text("external.history_empty")}
-          </p>
-        ) : (
-          <div className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-            {history.map((entry) => (
-              <ScanEntry
-                key={entry.at}
-                entry={entry}
-                open={isOpen(entry.at, readingAt, toggled)}
-                current={currentPart(entry.at, readingAt, position)}
-                onToggle={() =>
-                  setToggled((was) => ({
-                    ...was,
-                    [entry.at]: !isOpen(entry.at, readingAt, was),
-                  }))
-                }
-                onReplay={() => onReplay(entry)}
-                onReadPart={(segmentId) => onReadPart(entry, segmentId)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </section>
   );
 }

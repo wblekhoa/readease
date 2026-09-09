@@ -2363,6 +2363,59 @@ class ProtocolTests(unittest.TestCase):
             requests.close()
             reader.close()
 
+    def test_the_parts_of_a_passage_arrive_while_that_passage_is_being_read(self) -> None:
+        """The one moment this call exists for is the one it was in danger of
+        missing.
+
+        The shell asks for the parts the instant a scanned passage STARTS
+        being read - that is when the reader wants to follow along. Held in
+        the deferred queue like a heavy request, the answer would arrive
+        after the reading had finished, and the screen would sit on "Đang mở
+        nội dung..." for the whole passage. The harness answers instantly and
+        would never have shown it.
+        """
+
+        engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)
+        request_read, request_write = os.pipe()
+        reply_read, reply_write = os.pipe()
+        reader = os.fdopen(request_read, "r")
+        writer = os.fdopen(reply_write, "w")
+        requests = os.fdopen(request_write, "w")
+        replies = os.fdopen(reply_read, "r")
+        server = threading.Thread(
+            target=serve, args=(reader, writer, engine), daemon=True
+        )
+        server.start()
+        try:
+            passage = "Một câu rất dài."
+            requests.write(json.dumps({
+                "id": 40, "method": "read",
+                "params": {"text": passage, "voice_id": "adam"},
+            }) + "\n")
+            requests.flush()
+            self.assertEqual(_first_audio(replies)["event"], "chunk")
+            requests.write(json.dumps({
+                "id": 41, "method": "text.parts", "params": {"text": passage},
+            }) + "\n")
+            requests.write(json.dumps({"id": 42, "method": "stop"}) + "\n")
+            requests.flush()
+
+            order, parts = [], None
+            for line in replies:
+                message = json.loads(line)
+                if "ok" not in message:
+                    continue
+                order.append(message["id"])
+                if message["id"] == 41:
+                    parts = message["result"]["parts"]
+                if message["id"] == 40:
+                    break
+            self.assertLess(order.index(41), order.index(40))
+            self.assertEqual([part["segment_id"] for part in parts], ["part-0"])
+        finally:
+            requests.close()
+            reader.close()
+
     def test_stop_interrupts_a_reading_mid_stream(self) -> None:
         engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)
         request_read, request_write = os.pipe()
