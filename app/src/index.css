@@ -157,6 +157,19 @@
      app's mistake, and the owner caught it. secondary (b60) is the soft
      tier that reads on both themes without shouting. */
   --color-focus: var(--border-color-info-secondary);
+  /* An aside that EXPLAINS rather than reports: the callout that tells you
+     how to press a new shortcut, not a line saying something went wrong.
+     Alpha tiers, so the same two tokens composite correctly on the white
+     sheet and on the dark one instead of needing a second palette.
+
+     The BLUE is the ground, not the words. Measured 09/09 with the DS's own
+     `text-color-info-primary` on this fill: 3.15:1 on the dark sheet, under
+     the 4.5:1 a sentence has to clear - and this sentence is read WHILE the
+     reader is holding down keys, which is the worst moment to squint. Normal
+     ink on a tinted ground keeps the callout obvious and the words legible
+     on both papers. */
+  --color-info-wash: var(--fill-info-wash);
+  --color-info-edge: var(--border-color-info-haze);
 }
 
 /* Hover and press are a wash LAYERED OVER a control's own fill, never a

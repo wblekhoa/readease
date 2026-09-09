@@ -390,7 +390,11 @@ export function Notice({
   children,
   className = "",
 }: {
-  tone?: "ok" | "error";
+  /** `ok` and `error` are LINES: they sit under the control they belong to
+   * and report what happened, so they take no ground of their own. `info`
+   * is a CALLOUT - it explains something before you act, stands on its own,
+   * and gets the DS info fill to say so (owner, 09/09). */
+  tone?: "ok" | "error" | "info";
   /** Fine print: 12px and italic, for the aside that qualifies a control
    * rather than telling somebody something happened. A separate flag and not
    * a className, because `text-xs` handed in from outside would fight the
@@ -399,11 +403,15 @@ export function Notice({
   children: ReactNode;
   className?: string;
 }) {
+  const voice =
+    tone === "error"
+      ? "font-medium text-danger"
+      : tone === "info"
+        ? "rounded-2xl border border-info-edge bg-info-wash px-3.5 py-2.5 text-ink"
+        : "text-ink-mute";
   return (
     <p
-      className={`m-0 leading-relaxed ${fine ? "text-xs italic" : "text-sm"} ${
-        tone === "error" ? "font-medium text-danger" : "text-ink-mute"
-      } ${className}`}
+      className={`m-0 leading-relaxed ${fine ? "text-xs italic" : "text-sm"} ${voice} ${className}`}
     >
       {children}
     </p>

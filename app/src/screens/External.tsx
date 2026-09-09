@@ -280,9 +280,9 @@ export function External({
   const asides = (
     <>
       {recording && (
-        <p className="m-0 max-w-[52ch] text-sm text-ink-mute">
+        <Notice tone="info" className="max-w-[52ch]">
           {text("external.shortcut_hint")}
-        </p>
+        </Notice>
       )}
       {shortcutError && (
         <Notice tone="error" className="max-w-[52ch]">
