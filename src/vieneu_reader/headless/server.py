@@ -182,6 +182,7 @@ def _text_utterances(
                 else 0
             ),
             segment_id=f"part-{index}",
+            source=parts[index].text,
         )
         for index in range(len(parts))
     ]
@@ -243,6 +244,13 @@ class _Utterance:
     text: str
     pause_after_ms: int
     segment_id: str | None = None
+    # The same words as WRITTEN. `text` is what the voice says, and
+    # `speakable_text` has already been past it - shouted runs lowered,
+    # ordinals rewritten - so it is the wrong thing to show a reader who
+    # wants to see what was captured. A book hands its own text to the
+    # shell through `book.open`; a plain read had no such door until
+    # `text.parts` (09/09), and this field is what that door returns.
+    source: str = ""
     # Set on the spoken cue for a picture ("Xem hình 3."): rides the position
     # event so the shell can bring the picture into view exactly when the ear
     # hears the cue, not when the model synthesised it.
@@ -455,6 +463,10 @@ class _Session:
         # 02/09) and cached after the first ask - cheap enough between chunks.
         "book.cover",
         "config.get", "config.set", "config.verify_key", "model.status", "notes.books",
+        # Asked at the moment a scanned passage STARTS being read, so the
+        # reader can follow it. Held until the reading ended, the answer
+        # would arrive after the only minute it was for.
+        "text.parts",
         # The read button re-prices itself as the reader changes scope, and
         # they do that while listening.
         "estimate",
@@ -583,6 +595,8 @@ class _Session:
                 })
             elif method == "read":
                 self._read(request_id, request.get("params") or {})
+            elif method == "text.parts":
+                self._text_parts(request_id, request.get("params") or {})
             elif method == "read.book":
                 self._read_book(request_id, request.get("params") or {})
             elif method == "applebooks.shelf":
@@ -678,6 +692,26 @@ class _Session:
             request_id, utterances, voice_id, rate, settings,
             window=params.get("window"), language=language,
         )
+
+    def _text_parts(self, request_id: Any, params: dict[str, Any]) -> None:
+        """The same parts a `read` of this text would speak, as WRITTEN.
+
+        The shell already receives a `position` event per part - it just had
+        nothing to point those ids at, so a scanned passage could be heard
+        but never followed. This is that missing half, and it comes from the
+        SAME builder the reading uses: re-splitting in the shell would make
+        two rules for one id, and the day they disagreed the marker would
+        land on the wrong paragraph with nothing to say so.
+        """
+
+        text = str(params.get("text") or "")
+        utterances = _text_utterances(text, SynthesisSettings())
+        self._reply(request_id, {
+            "parts": [
+                {"segment_id": utterance.segment_id, "text": utterance.source}
+                for utterance in utterances
+            ],
+        })
 
     def _read_book(self, request_id: Any, params: dict[str, Any]) -> None:
         if self._repository is None:

@@ -543,8 +543,23 @@ const ANNOTATIONS = [
   { id: "applebooks:6", segment_id: "ch-3-seg-0", selected_text: "bỏ qua phần giá trị cộng thêm", note: null, style: 1 },
 ];
 
+/* The engine splits a captured passage ONCE and both the reading and the
+ * list of parts come from that one split. If the harness listed three parts
+ * and spoke a different three, the marker would sit in the wrong place here
+ * and nowhere else, which is exactly the bug the preview exists to catch. */
+function mockParts(text: string): { segment_id: string; text: string }[] {
+  const chunks = text
+    .split(/\n\s*\n/)
+    .flatMap((block) => block.match(/[^.!?]+[.!?]*\s*/g) ?? [block])
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return chunks.map((part, index) => ({ segment_id: `part-${index}`, text: part }));
+}
+
 function engineRequest(method: string, params: Record<string, unknown> = {}): unknown {
   switch (method) {
+    case "text.parts":
+      return { parts: mockParts(String(params.text ?? "")) };
     case "applebooks.shelf":
       return { books: APPLE_SHELF };
     case "applebooks.import": {
@@ -844,7 +859,7 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
       );
     }
     const from = (args.segmentId as string | null) ?? null;
-    const parts = ["part-0", "part-1", "part-2"];
+    const parts = mockParts(String(args.text ?? "")).map((part) => part.segment_id);
     const start = from ? parts.indexOf(from) : 0;
     startMockReading(parts.slice(start < 0 ? 0 : start));
     return Promise.resolve(null);

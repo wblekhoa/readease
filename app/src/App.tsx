@@ -209,6 +209,10 @@ export default function App() {
   const where = useRef<string | null>(null);
   const [figureCue, setFigureCue] = useState<string | null>(null);
   const [externalHistory, setExternalHistory] = useState<ExternalEntry[]>([]);
+  /* WHICH captured passage the voice is in. `position` alone cannot say:
+   * every passage in the history has a `part-2`, so without this the marker
+   * would land in all of them at once. */
+  const [readingAt, setReadingAt] = useState<number | null>(null);
   const [externalStatus, setExternalStatus] = useState<string | null>(null);
   const [modelPrecision, setModelPrecision] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -571,9 +575,13 @@ export default function App() {
     // the voice and rate, and the webview asks the engine to speak it.
     const external = listen<{ text: string }>("reading:external", (event) => {
       const captured = event.payload.text;
+      const at = Date.now();
       setExternalHistory((history) =>
-        [{ at: Date.now(), text: captured }, ...history].slice(0, 50),
+        [{ at, text: captured }, ...history].slice(0, 50),
       );
+      // Opens itself in the history, so the reader can follow the words
+      // being spoken instead of only hearing them.
+      setReadingAt(at);
       onPlayer({ type: "start" });
       setOrigin({ kind: "external" });
       current.current = { kind: "text", text: captured };
@@ -1046,14 +1054,34 @@ export default function App() {
             status={externalStatus}
             shortcut={accelerator}
             onChangeShortcut={changeShortcut}
+            /* `position` is app-wide; it only names a part of a SCANNED
+               passage while a scan is what is playing. */
+            readingAt={origin?.kind === "external" ? readingAt : null}
+            position={position}
             onReplay={(entry) => {
               onPlayer({ type: "start" });
               setOrigin({ kind: "external" });
+              setReadingAt(entry.at);
               current.current = { kind: "text", text: entry.text };
               setPosition(null);
               void invoke("read_selection_text", {
                 text: entry.text,
                 segmentId: null,
+                voiceId,
+                rate,
+              }).catch((error) => onPlayer({ type: "failed", error: String(error) }));
+            }}
+            /* The reader's own way in: the same "read from here" a book's
+               paragraph offers, on a passage that was never a book. */
+            onReadPart={(entry, segmentId) => {
+              onPlayer({ type: "start" });
+              setOrigin({ kind: "external" });
+              setReadingAt(entry.at);
+              current.current = { kind: "text", text: entry.text };
+              setPosition(segmentId);
+              void invoke("read_selection_text", {
+                text: entry.text,
+                segmentId,
                 voiceId,
                 rate,
               }).catch((error) => onPlayer({ type: "failed", error: String(error) }));

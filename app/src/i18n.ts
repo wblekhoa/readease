@@ -383,6 +383,10 @@ export const TEXT = {
     "Nothing yet. This list is gone when ReadEase closes.",
   ],
   "external.replay": ["Nghe lại phần đã chọn", "Read the selection again"],
+  "external.open_text": ["Xem toàn văn", "Show the whole passage"],
+  "external.close_text": ["Thu gọn", "Collapse"],
+  "external.read_from_here": ["Đọc từ đoạn này", "Read from this part"],
+  "external.parts_loading": ["Đang mở nội dung…", "Opening the passage..."],
   "external.reading": ["Đang đọc phần bạn vừa chọn…", "Reading your selection…"],
   "status.permission_required": [
     "ReadEase cần quyền Trợ năng để gửi lệnh sao chép tới ứng dụng bạn đang dùng. Hãy bật ReadEase trong Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng rồi thử lại.",

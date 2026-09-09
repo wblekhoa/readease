@@ -1978,6 +1978,60 @@ class ProtocolTests(unittest.TestCase):
         )[0]
         self.assertFalse(reply["ok"])
 
+    def test_the_parts_a_reader_can_see_are_the_parts_the_voice_will_speak(self) -> None:
+        """The one property the whole following-along feature rests on.
+
+        The shell paints a marker on the part whose id arrives in a
+        `position` event. If the list it paints onto were built by a second
+        rule, the day the two rules disagreed the marker would sit on the
+        wrong paragraph and nothing would say so.
+        """
+
+        passage = "Câu một. Câu hai.\n\nĐoạn sau, dài hơn một chút."
+
+        listed = run_server(
+            [{"id": 1, "method": "text.parts", "params": {"text": passage}}],
+            FakeEngine(),
+        )[0]["result"]["parts"]
+        spoken = run_server(
+            [{"id": 1, "method": "read", "params": {
+                "text": passage, "voice_id": "v",
+            }}],
+            FakeEngine(),
+        )
+
+        self.assertEqual(
+            [part["segment_id"] for part in listed],
+            [e["segment_id"] for e in spoken if e.get("event") == "position"],
+        )
+
+    def test_the_parts_come_back_as_written_not_as_pronounced(self) -> None:
+        """A reader is checking what was CAPTURED off the screen.
+
+        `speakable_text` lowers a shouted run on the way to the voice. Show
+        that rewrite back and the passage stops matching the page it was
+        taken from, which is the one thing this list is for.
+        """
+
+        parts = run_server(
+            [{"id": 1, "method": "text.parts", "params": {
+                "text": "NHÀ XUẤT BẢN nói thế.",
+            }}],
+            FakeEngine(),
+        )[0]["result"]["parts"]
+
+        self.assertEqual(parts[0]["text"], "NHÀ XUẤT BẢN nói thế.")
+
+    def test_nothing_captured_lists_nothing_rather_than_failing(self) -> None:
+        # The shell asks the moment a reading starts; an empty ask is a
+        # question, not a fault.
+        parts = run_server(
+            [{"id": 1, "method": "text.parts", "params": {"text": "   "}}],
+            FakeEngine(),
+        )[0]
+        self.assertTrue(parts["ok"])
+        self.assertEqual(parts["result"]["parts"], [])
+
     def test_apple_books_note_sync_modes_keep_what_was_asked_for(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
