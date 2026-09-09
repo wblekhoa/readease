@@ -385,6 +385,8 @@ export const TEXT = {
   "external.open_text": ["Xem toàn văn", "Show the whole passage"],
   "external.close_text": ["Thu gọn", "Collapse"],
   "external.read_from_here": ["Đọc từ đoạn này", "Read from this part"],
+  "external.focus_one": ["Xem riêng đoạn này", "Show only this passage"],
+  "external.focus_back": ["Về danh sách", "Back to the list"],
   "external.parts_loading": ["Đang mở nội dung…", "Opening the passage..."],
   "external.reading": ["Đang đọc phần bạn vừa chọn…", "Reading your selection…"],
   "status.permission_required": [

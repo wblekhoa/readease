@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { text, type TextKey } from "../i18n";
 import { Button, IconButton, Kbd, Notice, SectionTitle, Surface } from "../ui/controls";
-import { ChevronDownIcon, CursorTextIcon, InfoIcon, PlayIcon } from "../ui/icons";
+import { ArrowLeftIcon, ChevronDownIcon, CursorTextIcon, InfoIcon, PlayIcon, ScrollIcon } from "../ui/icons";
 import { EmptyState } from "../ui/patterns";
 import { currentPart, isOpen, summarise } from "../ui/scanHistory";
 import { comboFromEvent, displayShortcut } from "../ui/useShortcut";
@@ -26,16 +26,22 @@ function ScanEntry({
   entry,
   open,
   current,
+  solo = false,
   onToggle,
   onReplay,
   onReadPart,
+  onFocus,
 }: {
   entry: ExternalEntry;
   open: boolean;
   current: string | null;
+  /** Alone on the screen: the row of controls moved up to the screen's own
+   * bar, so the passage is all that is left here. */
+  solo?: boolean;
   onToggle: () => void;
   onReplay: () => void;
   onReadPart: (segmentId: string) => void;
+  onFocus: () => void;
 }) {
   /* Split by the ENGINE, never here. The ids painted below arrive in
    * `reading:position`, and the engine's `text.parts` answers from the same
@@ -75,32 +81,48 @@ function ScanEntry({
        the marker all but gone. The reader's line is painted on the plain
        page for exactly this reason; one colour means current position, and
        nothing sits under it. */
-    <div className="rounded-2xl">
-      <div className="flex items-center gap-1 pr-1.5">
-        <button
-          onClick={onToggle}
-          title={open ? text("external.close_text") : text("external.open_text")}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2 text-left"
-        >
-          <ChevronDownIcon
-            className={`shrink-0 text-ink-mute transition-transform ${
-              open ? "" : "-rotate-90"
-            }`}
-          />
-          <span className={`min-w-0 flex-1 text-sm leading-snug ${open ? "font-semibold" : "truncate"}`}>
-            {open ? summarise(entry.text, 40) : summarise(entry.text)}
-          </span>
-        </button>
-        <IconButton
-          aria-label={text("external.replay")}
-          title={text("external.replay")}
-          onClick={onReplay}
-        >
-          <PlayIcon />
-        </IconButton>
-      </div>
+    <div className={solo ? "" : "py-2.5"}>
+      {!solo && (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onToggle}
+            title={open ? text("external.close_text") : text("external.open_text")}
+            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
+          >
+            <ChevronDownIcon
+              className={`shrink-0 text-ink-mute transition-transform ${
+                open ? "" : "-rotate-90"
+              }`}
+            />
+            <span className={`min-w-0 flex-1 text-sm leading-snug ${open ? "font-semibold" : "truncate"}`}>
+              {open ? summarise(entry.text, 40) : summarise(entry.text)}
+            </span>
+          </button>
+          {/* A long capture pushes everything else off the screen when it
+              opens in place. This hands it the whole panel instead, which is
+              what a passage worth re-reading needs (owner, 09/09). */}
+          <IconButton
+            aria-label={text("external.focus_one")}
+            title={text("external.focus_one")}
+            onClick={onFocus}
+          >
+            <ScrollIcon />
+          </IconButton>
+          <IconButton
+            aria-label={text("external.replay")}
+            title={text("external.replay")}
+            onClick={onReplay}
+          >
+            <PlayIcon />
+          </IconButton>
+        </div>
+      )}
       {open && (
-        <div className="flex flex-col gap-0.5 px-2 pb-2">
+        /* The words start at the column edge, level with the heading above.
+           Only the band and the hover reach past them, by the 8px they are
+           outdented - the same trick the reader's own lines use, so a
+           highlight has room without the text stepping in. */
+        <div className="-mx-2 flex flex-col gap-0.5 px-2 pb-1">
           {parts === null ? (
             <p className="m-0 px-2 py-1 text-sm text-ink-mute">
               {text("external.parts_loading")}
@@ -116,7 +138,7 @@ function ScanEntry({
                    a tooltip promising something the click will not do is
                    the same lie the old replay tooltip told. */
                 title={part.segment_id ? text("external.read_from_here") : undefined}
-                className={`rounded-2xl px-2 py-1 text-left text-sm leading-relaxed whitespace-pre-line transition-colors ${
+                className={`rounded-2xl px-2 py-1.5 text-left text-sm leading-relaxed whitespace-pre-line transition-colors ${
                   part.segment_id === current ? "bg-band" : ""
                 } ${part.segment_id ? "hover:bg-wash" : "cursor-default"}`}
               >
@@ -160,6 +182,10 @@ export function External({
   const [granted, setGranted] = useState<boolean | null>(null);
   const [asked, setAsked] = useState(false);
   const [toggled, setToggled] = useState<Record<number, boolean>>({});
+  /* One passage, alone. Kept by `at` and looked up each render, so clearing
+     the history takes the reader back to the list instead of leaving them
+     staring at a passage that no longer exists. */
+  const [alone, setAlone] = useState<number | null>(null);
   const [recording, setRecording] = useState(false);
   const [shortcutError, setShortcutError] = useState(false);
 
@@ -199,6 +225,7 @@ export function External({
      uses, where the invitation IS the content (owner, 09/09). The bar goes
      back to the top the moment a passage lands. */
   const bare = history.length === 0;
+  const soloEntry = history.find((entry) => entry.at === alone) ?? null;
 
   const setup = (
     <>
@@ -305,6 +332,48 @@ export function External({
     </>
   );
 
+  if (soloEntry) {
+    return (
+      <section className="shell-inset flex min-h-0 flex-1 flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <IconButton
+            aria-label={text("external.focus_back")}
+            title={text("external.focus_back")}
+            onClick={() => setAlone(null)}
+          >
+            <ArrowLeftIcon />
+          </IconButton>
+          {/* Truncated on purpose and owed no tooltip: unlike a clipped
+              label on a card, the words it stands for are printed in full
+              directly underneath. It names the passage; it does not stand
+              in for it. */}
+          <SectionTitle className="min-w-0 flex-1 truncate">
+            {summarise(soloEntry.text, 60)}
+          </SectionTitle>
+          <IconButton
+            aria-label={text("external.replay")}
+            title={text("external.replay")}
+            onClick={() => onReplay(soloEntry)}
+          >
+            <PlayIcon />
+          </IconButton>
+        </div>
+        <div className="min-h-0 max-w-[80ch] flex-1 overflow-y-auto">
+          <ScanEntry
+            entry={soloEntry}
+            solo
+            open
+            current={currentPart(soloEntry.at, readingAt, position)}
+            onToggle={() => undefined}
+            onReplay={() => onReplay(soloEntry)}
+            onReadPart={(segmentId) => onReadPart(soloEntry, segmentId)}
+            onFocus={() => undefined}
+          />
+        </div>
+      </section>
+    );
+  }
+
   if (bare) {
     return (
       <section className="shell-inset flex min-h-0 flex-1 flex-col">
@@ -353,6 +422,7 @@ export function External({
             }
             onReplay={() => onReplay(entry)}
             onReadPart={(segmentId) => onReadPart(entry, segmentId)}
+            onFocus={() => setAlone(entry.at)}
           />
         ))}
       </div>
