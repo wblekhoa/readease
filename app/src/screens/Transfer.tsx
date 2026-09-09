@@ -183,7 +183,9 @@ export function Transfer() {
             the swap button between them. */}
         <EmptyState
           actions={
-            <div className="flex w-full flex-col items-center gap-4">
+            /* The sheet is empty apart from this, so the choosing gets room
+               to stand in rather than a tight stack (owner, 09/09). */
+            <div className="flex w-full flex-col items-center gap-7">
               <div className="text-center">
                 <SectionTitle>{text("transfer.title")}</SectionTitle>
                 <p className="m-0 mt-0.5 text-sm text-ink-mute">
@@ -214,7 +216,7 @@ export function Transfer() {
       <p className="m-0 text-sm text-ink-mute">
         {text("transfer.description")}
       </p>
-      <div className="mt-3 flex flex-wrap items-end gap-4">
+      <div className="mt-4 mb-1 flex flex-wrap items-end gap-4">
         {chooser}
         <Button disabled={!ready} onClick={() => void preview()}>
           {text("transfer.preview")}

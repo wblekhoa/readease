@@ -454,7 +454,7 @@ export function BookChoice({
       <span className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
         {label}
       </span>
-      <span className="relative flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-edge bg-paper p-3 transition-[border-color,box-shadow] hover:border-edge-strong hover:shadow-lifted focus-within:border-edge-strong focus-within:shadow-lifted">
+      <span className="relative flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-edge bg-paper px-3.5 py-4 transition-[border-color,box-shadow] hover:border-edge-strong hover:shadow-lifted focus-within:border-edge-strong focus-within:shadow-lifted">
         <MiniCover source={null} fallback={<BookClosedIcon />} size="md" muted={!chosen} />
         <span className="min-w-0 flex-1">
           <span
