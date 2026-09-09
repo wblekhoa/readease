@@ -10,6 +10,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { text, type TextKey } from "../i18n";
 import { Button, IconButton, Notice, SectionTitle, Surface } from "../ui/controls";
 import { BookChoice, EmptyState, GroupedSection } from "../ui/patterns";
+import { ArrowLeftIcon } from "../ui/icons";
 import { TransferIcon } from "../ui/icons";
 
 type NotesBook = {
@@ -207,21 +208,57 @@ export function Transfer() {
     );
   }
 
+  /* Which two books, said once - the plan's OWN record of them, not the
+     pickers re-read. A plan is about a pair; showing a control that can
+     change that pair while the plan is on screen invites a list that no
+     longer describes what the button would do. */
+  const facts = (title: string, assetId: string) => {
+    const book = (books ?? []).find((entry) => entry.asset_id === assetId);
+    return (
+      /* Sized to the title, not to half the row: stretched, the arrow drifted
+         out to the middle and stopped reading as "this one into that one".
+         Long titles still give way - they truncate rather than push. */
+      <span className="min-w-0 shrink">
+        <span className="block truncate text-sm font-semibold" title={title}>
+          {title}
+        </span>
+        {book && book.progress > 0 && (
+          <span className="block truncate text-xs text-ink-mute">
+            {text("library.progress", { percent: Math.round(book.progress * 100) })}
+          </span>
+        )}
+      </span>
+    );
+  };
+
   return (
     <section className="shell-inset flex min-h-0 flex-1 flex-col">
-      {/* No heading here. "Xem trước rồi chuyển…" tells somebody what to do,
-          and by now they have done it - the tab already carries the screen's
-          name, and the list below needs the height. The safety line stays:
-          it is a promise about what the button beside it will do. */}
-      <p className="m-0 text-sm text-ink-mute">
+      {/* Nothing to choose here any more. The pair is settled, so the screen
+          is the PREVIEW: the two books stated, the way back out, and the
+          list. Changing books means going back to choosing them - the same
+          shape a single scanned passage uses on the other screen (owner,
+          10/09). */}
+      <div className="flex items-center gap-3">
+        <IconButton
+          aria-label={text("transfer.change_books")}
+          title={text("transfer.change_books")}
+          onClick={() => {
+            setPlan(null);
+            setConfirming(false);
+            setNotice(null);
+          }}
+        >
+          <ArrowLeftIcon />
+        </IconButton>
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          {facts(plan.source_title, source)}
+          <ArrowLeftIcon className="shrink-0 rotate-180 text-ink-faint" />
+          {facts(plan.target_title, target)}
+        </div>
+      </div>
+      <p className="m-0 mt-3 text-sm text-ink-mute">
         {text("transfer.description")}
       </p>
-      <div className="mt-4 mb-1 flex flex-wrap items-end gap-4">
-        {chooser}
-        <Button disabled={!ready} onClick={() => void preview()}>
-          {text("transfer.preview")}
-        </Button>
-      </div>
       {notice && (
         <Notice tone="error" className="mt-3 max-w-[60ch]">{notice}</Notice>
       )}
