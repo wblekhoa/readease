@@ -168,6 +168,14 @@
      reader is holding down keys, which is the worst moment to squint. Normal
      ink on a tinted ground keeps the callout obvious and the words legible
      on both papers. */
+  /* A caveat, not a fault. The note transfer had one alarm colour for three
+     different outcomes - "will be copied", "will be LEFT BEHIND" and
+     "already there, nothing to do" - so a benign row shouted as loudly as a
+     lost one (measured 09/09). Danger stays for what went wrong; this is for
+     what needs looking at.
+     `stress`, not the `bold` tier the DS names first: bold amber measured
+     2.84:1 on the white sheet, and this is a word, not a chip. */
+  --color-warn: var(--text-color-warning-stress);
   --color-info-wash: var(--fill-info-wash);
   --color-info-edge: var(--border-color-info-haze);
 }

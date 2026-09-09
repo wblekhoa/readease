@@ -461,6 +461,10 @@ export const TEXT = {
   "transfer.verdict_already": ["Đã có ở cuốn kia", "Already in the other copy"],
   "transfer.count": ["Sẽ chép {count} mục.", "{count} items would be copied."],
   "transfer.truncated": ["Đang hiện {shown} mục đầu.", "Showing the first {shown}."],
+  "transfer.left_out": [
+    "{count} mục còn lại không được chép.",
+    "The other {count} are not copied.",
+  ],
   "transfer.copy": ["Chép sang", "Copy across"],
   "transfer.confirm_title": ["Chép ghi chú sang bản kia?", "Copy notes across?"],
   "transfer.confirm_body": [

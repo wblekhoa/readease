@@ -538,6 +538,11 @@ const NOTE_BOOKS = [
   { asset_id: "nb-1", title: "Universal Principles of UX", edition_id: "ed-2019", progress: 0.42 },
   { asset_id: "nb-2", title: "Universal Principles of UX (bản 2024)", edition_id: "ed-2024", progress: 0.0 },
   { asset_id: "nb-3", title: "Thiên Nga Đen", edition_id: "ed-swan", progress: 0.13 },
+  /* Shares `ed-2019` with nb-1 on purpose. Without a pair on the same
+     edition, `same_edition` was never true here and the "Đã có ở cuốn kia"
+     row - one of the three verdicts this screen exists to tell apart - could
+     not be looked at at all. */
+  { asset_id: "nb-4", title: "Universal Principles of UX (bản in lại)", edition_id: "ed-2019", progress: 0.05 },
 ];
 
 const PLAN_ITEMS = [
@@ -674,7 +679,12 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         source_title: source.title,
         target_title: target.title,
         same_edition: sameEdition,
-        copyable: items.filter((item) => item.verdict !== "already-there").length,
+        // What the engine counts, not something near it: `TransferPlan.copyable`
+        // is `verdict == "same-edition"` and nothing else - a note whose
+        // chapter differs is listed and never written. Counting it here made
+        // the preview promise three where the app writes two, on the one
+        // number this whole screen exists to state.
+        copyable: items.filter((item) => item.verdict === "same-edition").length,
         items,
         total: items.length,
       };

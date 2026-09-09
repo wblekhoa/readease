@@ -9,7 +9,8 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text, type TextKey } from "../i18n";
 import { Button, Field, Notice, SectionTitle, Select, Surface } from "../ui/controls";
-import { GroupedSection } from "../ui/patterns";
+import { EmptyState, GroupedSection } from "../ui/patterns";
+import { TransferIcon } from "../ui/icons";
 
 type NotesBook = {
   asset_id: string;
@@ -135,6 +136,41 @@ export function Transfer() {
 
   const ready = source && target && source !== target;
 
+  if (!plan) {
+    /* No plan yet: choosing the two books IS the screen, so it stands in the
+       middle rather than clinging to a corner of an empty sheet - the shape
+       the empty shelf and the empty scan list already use (owner, 09/09).
+       The moment a plan exists the list needs the room and this moves back up
+       to be a header for it. */
+    return (
+      <section className="shell-inset flex min-h-0 flex-1 flex-col">
+        <EmptyState
+          icon={<TransferIcon className="h-8 w-8" />}
+          actions={
+            <div className="flex flex-col items-center gap-3">
+              <div className="text-center">
+                <SectionTitle>{text("transfer.title")}</SectionTitle>
+                <p className="m-0 mt-0.5 text-sm text-ink-mute">
+                  {text("transfer.description")}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                {pickers}
+                <Button disabled={!ready} onClick={() => void preview()}>
+                  {text("transfer.preview")}
+                </Button>
+              </div>
+              {notice && (
+                <Notice tone="error" className="max-w-[60ch] text-center">{notice}</Notice>
+              )}
+            </div>
+          }
+          note={!ready ? text("transfer.pick_two") : undefined}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="shell-inset flex min-h-0 flex-1 flex-col">
       <SectionTitle>{text("transfer.title")}</SectionTitle>
@@ -147,11 +183,6 @@ export function Transfer() {
           {text("transfer.preview")}
         </Button>
       </div>
-      {!ready && (
-        <p className="m-0 mt-2 text-sm text-ink-mute">
-          {text("transfer.pick_two")}
-        </p>
-      )}
       {notice && (
         <Notice tone="error" className="mt-3 max-w-[60ch]">{notice}</Notice>
       )}
@@ -162,6 +193,15 @@ export function Transfer() {
             <span className="text-sm font-semibold">
               {text("transfer.count", { count: plan.copyable })}
             </span>
+            {/* Only `same-edition` is ever written (TransferPlan.copyable), so
+                a list of four with a count of two left the reader to work out
+                which two. `total` is the whole set even when the list is
+                capped, so this number is exact either way. */}
+            {plan.total > plan.copyable && (
+              <span className="text-xs text-ink-mute">
+                {text("transfer.left_out", { count: plan.total - plan.copyable })}
+              </span>
+            )}
             {plan.total > plan.items.length && (
               <span className="text-xs text-ink-mute">
                 {text("transfer.truncated", { shown: plan.items.length })}
@@ -198,17 +238,33 @@ export function Transfer() {
           )}
           <GroupedSection className="mt-2 min-h-0 flex-1 overflow-y-auto">
             {plan.items.map((item, index) => (
-              <div key={index} className="flex items-baseline gap-3 py-2.5">
+              /* Three verdicts, three different things to feel - and they
+                 shared one alarm colour. "Already in the other copy" is
+                 nothing to do, and it shouted exactly as loudly as a note
+                 that will be LEFT BEHIND. Danger is for what went wrong; a
+                 note that cannot carry over is a caveat, and one already
+                 there is barely news. */
+              <div
+                key={index}
+                className={`flex items-baseline gap-3 py-2.5 ${
+                  item.verdict === "already-there" ? "opacity-60" : ""
+                }`}
+              >
                 <span className="w-24 shrink-0 text-xs font-medium text-ink-mute">
                   {text(item.has_note ? "transfer.kind_note" : "transfer.kind_highlight")}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm">
+                {/* A clipped excerpt owes its own words back on hover - the
+                    rule the library's titles and fact lines follow. */}
+                <span
+                  className="min-w-0 flex-1 truncate text-sm"
+                  title={item.excerpt || undefined}
+                >
                   {item.excerpt || text("transfer.no_text")}
                 </span>
                 <span
                   className={
                     "shrink-0 text-xs font-medium " +
-                    (item.verdict === "same-edition" ? "text-ink-mute" : "text-danger")
+                    (item.verdict === "needs-review" ? "text-warn" : "text-ink-mute")
                   }
                 >
                   {text(VERDICT[item.verdict] ?? "transfer.verdict_review")}
