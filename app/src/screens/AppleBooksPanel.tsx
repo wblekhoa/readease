@@ -11,8 +11,8 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
 import { Button, IconButton, Input, Notice, Surface } from "../ui/controls";
-import { BookTile, MenuButton, MiniCover } from "../ui/patterns";
-import { BookIcon, ChevronDownIcon, CloseIcon, ImportIcon, LockIcon, SyncIcon } from "../ui/icons";
+import { BookTile, EmptyState, MenuButton, MiniCover } from "../ui/patterns";
+import { BookClosedIcon, BookIcon, ChevronDownIcon, CloseIcon, ImportIcon, LockIcon, SyncIcon } from "../ui/icons";
 import { useCover } from "../ui/useCover";
 import { SEARCH_ABOVE, matchesQuery, orderShelfItems } from "../ui/shelfFilter";
 
@@ -206,7 +206,10 @@ export function AppleBooksPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4">
         {shelf !== null && books.length === 0 && !notice && (
-          <p className="m-0 text-sm text-ink-mute">{text("apple.empty")}</p>
+          <EmptyState
+            icon={<BookClosedIcon className="h-8 w-8" />}
+            note={text("apple.empty")}
+          />
         )}
         {books.length > 0 && ordered.length === 0 && (
           <p className="m-0 text-sm text-ink-mute">{text("apple.no_match")}</p>

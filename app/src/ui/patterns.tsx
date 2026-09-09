@@ -195,15 +195,22 @@ export function GroupedRow({
 /** Nothing here yet: the way in stands where the content will be, and the
  * constraint sits under the choice it constrains. */
 export function EmptyState({
+  icon,
   actions,
   note,
 }: {
-  actions: ReactNode;
+  /** Drawn above, faint and large. For a list whose way in is elsewhere
+   * (a keyboard shortcut, a book you have not opened yet) there is no button
+   * to offer, and one grey sentence alone in a corner reads as a bug rather
+   * than as an empty shelf (owner, 09/09). */
+  icon?: ReactNode;
+  actions?: ReactNode;
   note?: ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3">
-      <div className="flex gap-2">{actions}</div>
+    <div className="flex h-full flex-1 flex-col items-center justify-center gap-3">
+      {icon && <span className="text-ink-faint">{icon}</span>}
+      {actions && <div className="flex gap-2">{actions}</div>}
       {note && (
         <p className="m-0 max-w-[42ch] text-center text-sm text-ink-mute">{note}</p>
       )}

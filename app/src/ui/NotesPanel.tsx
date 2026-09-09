@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from "react";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
-import { GroupedSection } from "./patterns";
+import { EmptyState, GroupedSection } from "./patterns";
 import { CloseIcon, HighlightIcon, NoteIcon, TrashIcon } from "./icons";
 import { groupAnnotations, type Annotation } from "./annotationsList";
 
@@ -95,7 +95,10 @@ export function NotesPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
       {groups.length === 0 ? (
-        <p className="m-0 mt-2 text-sm text-ink-mute">{text("notes.empty")}</p>
+        <EmptyState
+          icon={<HighlightIcon className="h-8 w-8" />}
+          note={text("notes.empty")}
+        />
       ) : (
         groups.map((group) => (
           /* Rows outdent by 8 so the hover wash reaches past the text; the

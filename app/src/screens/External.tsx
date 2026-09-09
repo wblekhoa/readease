@@ -7,7 +7,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { text, type TextKey } from "../i18n";
 import { Button, IconButton, Kbd, Notice, SectionTitle, Surface } from "../ui/controls";
-import { ChevronDownIcon, InfoIcon, PlayIcon } from "../ui/icons";
+import { ChevronDownIcon, CursorTextIcon, InfoIcon, PlayIcon } from "../ui/icons";
+import { EmptyState } from "../ui/patterns";
 import { currentPart, isOpen, summarise } from "../ui/scanHistory";
 import { comboFromEvent, displayShortcut } from "../ui/useShortcut";
 
@@ -287,9 +288,10 @@ export function External({
       )}
 
       {history.length === 0 ? (
-        <p className="m-0 mt-4 text-sm text-ink-mute">
-          {text("external.history_empty")}
-        </p>
+        <EmptyState
+          icon={<CursorTextIcon className="h-8 w-8" />}
+          note={text("external.history_empty")}
+        />
       ) : (
         /* Capped at a readable measure rather than stretched: the passages
            are prose, and prose that runs the whole window is harder to

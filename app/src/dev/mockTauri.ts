@@ -308,6 +308,17 @@ const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
 const PERMISSION = new URLSearchParams(window.location.search).get("permission");
+/* Which lists come back EMPTY. The harness answered every list with its
+   fixture, so "no books yet", "nothing marked in this book" and "Apple Books
+   has none" could not be reached at all - the first screen a new reader sees
+   is the one nobody could look at. `?empty=notes,apple,library` (or `all`). */
+const EMPTY = new Set(
+  (new URLSearchParams(window.location.search).get("empty") ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean),
+);
+const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
 
 const PAID_VOICES: Record<string, { id: string; label: string; languages?: string[]; gender?: "male" | "female" }[]> = {
   // ONE model per provider, as the engine now lists them: the catalogue used
@@ -562,7 +573,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     case "text.parts":
       return { parts: mockParts(String(params.text ?? "")) };
     case "applebooks.shelf":
-      return { books: APPLE_SHELF };
+      return { books: isEmpty("apple") ? [] : APPLE_SHELF };
     case "applebooks.import": {
       const row = APPLE_SHELF.find((b) => b.asset_id === params.asset_id);
       if (!row) throw new Error("applebooks.import failed: book_gone");
@@ -578,7 +589,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       return { book_id: row.book_id, matched: Math.max(0, row.highlights - 1), unmatched: row.highlights ? 1 : 0, skipped: 2 };
     }
     case "library.list":
-      return { books: LIBRARY };
+      return { books: isEmpty("library") ? [] : LIBRARY };
     case "book.set_language": {
       // The engine answers with what the book is in NOW, so withdrawing a
       // decision comes back as the DETECTED language rather than null. The
@@ -604,7 +615,11 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       };
     }
     case "book.open":
-      return { book: BOOK, annotations: ANNOTATIONS, progress: { segment_id: "ch-2-seg-1" } };
+      return {
+        book: BOOK,
+        annotations: isEmpty("notes") ? [] : ANNOTATIONS,
+        progress: { segment_id: "ch-2-seg-1" },
+      };
     case "book.cover": {
       const data = COVERS[String(params.book_id)];
       return data ? { media_type: "image/svg+xml", data } : { media_type: null, data: null };
