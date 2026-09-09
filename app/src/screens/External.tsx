@@ -90,7 +90,11 @@ function ScanEntry({
             {open ? summarise(entry.text, 40) : summarise(entry.text)}
           </span>
         </button>
-        <IconButton title={text("external.replay")} onClick={onReplay}>
+        <IconButton
+          aria-label={text("external.replay")}
+          title={text("external.replay")}
+          onClick={onReplay}
+        >
           <PlayIcon />
         </IconButton>
       </div>
@@ -214,6 +218,7 @@ export function External({
             open below. */}
         {granted === true && (
           <IconButton
+            aria-label={text("external.open_text")}
             title={
               <span className="block max-w-[44ch] whitespace-pre-line text-left">
                 {text("external.steps")}

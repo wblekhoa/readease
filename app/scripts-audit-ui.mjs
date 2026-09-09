@@ -43,8 +43,40 @@ function walk(directory) {
   }
 }
 walk(new URL("./src", import.meta.url).pathname);
+
+// An icon-only button says nothing out loud. controls.tsx has asked for an
+// aria-label in a comment since it was written ("Pass aria-label always"),
+// and a comment is not a gate: an unlabelled one went in on 09/09 and only a
+// rendered audit found it. This walks EVERY .tsx, src/ui included - the
+// pattern layer builds icon buttons too.
+function iconButtonsWithoutALabel(directory) {
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) { iconButtonsWithoutALabel(path); continue; }
+    if (!path.endsWith(".tsx")) continue;
+    const source = readFileSync(path, "utf-8");
+    for (const match of source.matchAll(/<IconButton\b/g)) {
+      // To the '>' that closes the opening tag, ignoring any inside a prop.
+      let index = match.index + match[0].length;
+      let depth = 0;
+      while (index < source.length) {
+        const character = source[index];
+        if (character === "{") depth += 1;
+        else if (character === "}") depth -= 1;
+        else if (character === ">" && depth === 0) break;
+        index += 1;
+      }
+      if (!source.slice(match.index, index).includes("aria-label")) {
+        const line = source.slice(0, match.index).split("\n").length;
+        violations.push(`${path}:${line}: <IconButton> không có aria-label`);
+      }
+    }
+  }
+}
+iconButtonsWithoutALabel(new URL("./src", import.meta.url).pathname);
+
 if (violations.length) {
-  console.error("UI_AUDIT FAIL — control thô ngoài src/ui:");
+  console.error("UI_AUDIT FAIL:");
   for (const violation of violations) console.error("  " + violation);
   process.exit(1);
 }

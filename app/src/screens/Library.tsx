@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
-import { formatSize } from "../ui/format";
+import { formatSize, hoverText } from "../ui/format";
 import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, EmptyState } from "../ui/patterns";
 import { orderShelf } from "../ui/libraryOrder";
@@ -77,12 +77,18 @@ function ShelfBook({
         // The chapter the voice is in rides as a tooltip on the fact line:
         // the one line under a cover has no room for it, and it only
         // matters for the book you are about to pick up again.
+        //
+        // The facts lead it. Measured 09/09: this line is truncated on every
+        // shelved book at the narrowest window, and the tooltip that sat
+        // here answered about the chapter instead - so hovering the words
+        // that were cut off returned a different subject. Own text first.
         <span
-          title={
+          title={hoverText(
+            meta,
             book.progress_chapter
               ? text("library.at_chapter", { chapter: book.progress_chapter })
-              : undefined
-          }
+              : null,
+          )}
         >
           {meta}
         </span>

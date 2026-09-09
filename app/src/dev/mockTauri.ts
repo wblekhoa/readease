@@ -802,6 +802,7 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   if (command === "plugin:macos-permissions|request_accessibility_permission") {
     return Promise.resolve(null);
   }
+  if (command === "plugin:opener|open_url") return Promise.resolve(null);
   if (command === "engine_voices") {
     return Promise.resolve([...VOICES, ...paidCatalogue()]);
   }
@@ -894,8 +895,24 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     }
     return Promise.resolve({ result });
   }
+  /* Anything a plugin asks for that this file does not know.
+   *
+   * MOCK_AUDIT reads OUR source for engine calls; a call a dependency makes
+   * on our behalf (`plugin:*|*`) is invisible to it, and the catch-all below
+   * used to answer those with `{}` - an object, so truthy, so neither `true`
+   * nor `false`. That is how "Quét đọc" sat in a third state that does not
+   * exist in the app and its everyday screen could never be looked at.
+   * `null` is at least a REAL answer (falsy, the "no" branch), and the name
+   * is recorded so an audit can ask what went unanswered. */
+  if (command.startsWith("plugin:")) {
+    unanswered.add(command);
+    console.error(`mockTauri: no answer for ${command}`);
+    return Promise.resolve(null);
+  }
   return Promise.resolve({ result: {} });
 }
+
+const unanswered = new Set<string>();
 
 window.__TAURI_INTERNALS__ = {
   invoke,
@@ -917,11 +934,13 @@ window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
   },
 };
 window.__mockEmit = emit;
+window.__mockUnanswered = () => [...unanswered];
 
 declare global {
   interface Window {
     __TAURI_INTERNALS__: Record<string, unknown>;
     __mockEmit: (event: string, payload: unknown) => number;
+    __mockUnanswered: () => string[];
   }
 }
 

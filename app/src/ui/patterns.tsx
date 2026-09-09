@@ -6,6 +6,7 @@
  * The written half lives in docs/readease-hig.md.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { hoverText } from "./format";
 import { IconButton, ProgressBar, Surface } from "./controls";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
 
@@ -304,7 +305,14 @@ export function BookCard({
       </div>
       {caption ?? (
         <div className="min-w-0">
-          <div className="line-clamp-2 text-sm font-semibold leading-snug">{title}</div>
+          {/* Clamped to two lines, so a long title loses its end. Measured
+              09/09 at the app's narrowest window: 96px of title shown in
+              39px, with nothing to recover it - a reader could not read the
+              name of their own book. The tooltip says the TEXT, which is
+              what was taken away; it is not an action. */}
+          <div className="line-clamp-2 text-sm font-semibold leading-snug" title={hoverText(title)}>
+            {title}
+          </div>
           {meta && <div className="mt-1.5 truncate text-xs text-ink-mute">{meta}</div>}
         </div>
       )}
@@ -434,7 +442,9 @@ export function BookTile({
     >
       {cover}
       <div className="min-w-0 flex-1">
-        <div className="line-clamp-2 text-sm font-semibold leading-snug">{title}</div>
+        <div className="line-clamp-2 text-sm font-semibold leading-snug" title={hoverText(title)}>
+          {title}
+        </div>
         {meta && <div className="mt-0.5 truncate text-xs text-ink-mute">{meta}</div>}
       </div>
       {action && <div className="flex shrink-0 items-center gap-1">{action}</div>}

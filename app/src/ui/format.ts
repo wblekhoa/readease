@@ -18,3 +18,18 @@ export function formatDate(stamp: string | null): string | null {
     day: "2-digit", month: "2-digit", year: "numeric",
   });
 }
+
+/** What a clipped line should say when hovered: its OWN text, plus anything
+ * that did not fit beside it.
+ *
+ * The Library's fact line was already carrying a tooltip - the chapter the
+ * voice is in - while the facts themselves were the part being cut off. So
+ * hovering the clipped words answered a question nobody had asked and left
+ * the one they had. A tooltip on clipped text owes the text first.
+ */
+export function hoverText(...parts: unknown[]): string | undefined {
+  const said = parts
+    .filter((part): part is string => typeof part === "string" && part.trim() !== "")
+    .map((part) => part.trim());
+  return said.length ? said.join(" · ") : undefined;
+}
