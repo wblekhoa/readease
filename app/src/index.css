@@ -388,6 +388,15 @@ select {
   cursor: default;
 }
 
+/* The book picker lays a transparent select over a card, so what the pointer
+   is actually over is a card you click - and the rule above was written for
+   the visible control. A utility cannot reach this: Tailwind's live in
+   `@layer utilities`, this rule is unlayered, and unlayered wins whatever the
+   specificity says (measured 09/09, after `cursor-pointer` had no effect). */
+select[data-overlay] {
+  cursor: pointer;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;

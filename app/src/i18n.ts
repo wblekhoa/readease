@@ -452,6 +452,7 @@ export const TEXT = {
   "transfer.source": ["Lấy ghi chú từ", "Take notes from"],
   "transfer.target": ["Chuyển sang", "Move them to"],
   "transfer.preview": ["Xem trước", "Preview"],
+  "transfer.swap": ["Đảo hai cuốn", "Swap the two books"],
   "transfer.pick_two": ["Chọn hai cuốn khác nhau để xem trước.", "Pick two different books to preview."],
   "transfer.kind_note": ["Ghi chú", "Note"],
   "transfer.kind_highlight": ["Đoạn bôi màu", "Highlight"],

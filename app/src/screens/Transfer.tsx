@@ -8,8 +8,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { text, type TextKey } from "../i18n";
-import { Button, Field, Notice, SectionTitle, Select, Surface } from "../ui/controls";
-import { EmptyState, GroupedSection } from "../ui/patterns";
+import { Button, IconButton, Notice, SectionTitle, Surface } from "../ui/controls";
+import { BookChoice, EmptyState, GroupedSection } from "../ui/patterns";
 import { TransferIcon } from "../ui/icons";
 
 type NotesBook = {
@@ -110,31 +110,66 @@ export function Transfer() {
     }
   }, [source, target]);
 
-  const pickers = (["source", "target"] as const).map((role) => (
-    <Field
-      key={role}
-      label={text(role === "source" ? "transfer.source" : "transfer.target")}
-    >
-      <Select
-        className="min-w-0 max-w-64"
-        value={role === "source" ? source : target}
-        onChange={(event) =>
-          role === "source"
-            ? setSource(event.target.value)
-            : setTarget(event.target.value)
-        }
-      >
-        <option value="">{text("transfer.pick_book")}</option>
-        {books?.map((book) => (
-          <option key={book.asset_id} value={book.asset_id}>
-            {book.title}
-          </option>
-        ))}
-      </Select>
-    </Field>
-  ));
+  /* How far this copy got is what tells three books of the same name apart,
+     and it is the fact the choice actually turns on: notes move OUT of the
+     one you have been reading. The old menu threw it away. */
+  const choices = (books ?? []).map((book) => ({
+    id: book.asset_id,
+    title: book.title,
+    note: book.progress > 0
+      ? text("library.progress", { percent: Math.round(book.progress * 100) })
+      : null,
+  }));
 
   const ready = source && target && source !== target;
+
+  /* Swapping used to mean re-picking both menus, having realised halfway
+     that the notes were about to go the wrong way. The plan goes with it:
+     a plan is a promise about a DIRECTION, and one kept across a swap would
+     state the wrong number for the wrong book. */
+  const swap = useCallback(() => {
+    setSource(target);
+    setTarget(source);
+    setPlan(null);
+    setConfirming(false);
+    setNotice(null);
+  }, [source, target]);
+
+  const chooser = (
+    <div className="grid w-full max-w-[46rem] grid-cols-[1fr_auto_1fr] gap-x-3">
+      <BookChoice
+        label={text("transfer.source")}
+        value={source}
+        placeholder={text("transfer.pick_book")}
+        books={choices}
+        onChange={setSource}
+      />
+      <div className="flex flex-col gap-1.5">
+        {/* An invisible copy of the pickers' label line, so the arrow sits on
+            the cards' own centre without anybody hardcoding a card height. */}
+        <span className="text-xs uppercase" aria-hidden="true">
+          &nbsp;
+        </span>
+        <div className="flex flex-1 items-center">
+          <IconButton
+            aria-label={text("transfer.swap")}
+            title={text("transfer.swap")}
+            disabled={!source && !target}
+            onClick={swap}
+          >
+            <TransferIcon />
+          </IconButton>
+        </div>
+      </div>
+      <BookChoice
+        label={text("transfer.target")}
+        value={target}
+        placeholder={text("transfer.pick_book")}
+        books={choices}
+        onChange={setTarget}
+      />
+    </div>
+  );
 
   if (!plan) {
     /* No plan yet: choosing the two books IS the screen, so it stands in the
@@ -144,22 +179,21 @@ export function Transfer() {
        to be a header for it. */
     return (
       <section className="shell-inset flex min-h-0 flex-1 flex-col">
+        {/* No icon: the two cards ARE the picture, and the same glyph is on
+            the swap button between them. */}
         <EmptyState
-          icon={<TransferIcon className="h-8 w-8" />}
           actions={
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex w-full flex-col items-center gap-4">
               <div className="text-center">
                 <SectionTitle>{text("transfer.title")}</SectionTitle>
                 <p className="m-0 mt-0.5 text-sm text-ink-mute">
                   {text("transfer.description")}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                {pickers}
-                <Button disabled={!ready} onClick={() => void preview()}>
-                  {text("transfer.preview")}
-                </Button>
-              </div>
+              {chooser}
+              <Button disabled={!ready} onClick={() => void preview()}>
+                {text("transfer.preview")}
+              </Button>
               {notice && (
                 <Notice tone="error" className="max-w-[60ch] text-center">{notice}</Notice>
               )}
@@ -173,12 +207,15 @@ export function Transfer() {
 
   return (
     <section className="shell-inset flex min-h-0 flex-1 flex-col">
-      <SectionTitle>{text("transfer.title")}</SectionTitle>
-      <p className="m-0 mt-0.5 text-sm text-ink-mute">
+      {/* No heading here. "Xem trước rồi chuyển…" tells somebody what to do,
+          and by now they have done it - the tab already carries the screen's
+          name, and the list below needs the height. The safety line stays:
+          it is a promise about what the button beside it will do. */}
+      <p className="m-0 text-sm text-ink-mute">
         {text("transfer.description")}
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        {pickers}
+      <div className="mt-3 flex flex-wrap items-end gap-4">
+        {chooser}
         <Button disabled={!ready} onClick={() => void preview()}>
           {text("transfer.preview")}
         </Button>

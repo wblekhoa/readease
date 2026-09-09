@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { hoverText } from "./format";
 import { IconButton, ProgressBar, Surface } from "./controls";
-import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
+import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "./icons";
 
 /** A row of controls that must share one corner.
  *
@@ -420,6 +420,75 @@ export function MiniCover({
     <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded bg-band text-ink-faint ${size === "md" ? "h-[66px] w-11" : "h-12 w-8"} ${muted ? "opacity-60" : ""}`}>
       {source ? <img src={source} alt="" className="h-full w-full object-cover" draggable={false} /> : fallback}
     </span>
+  );
+}
+
+/** Choosing ONE book, drawn as the book rather than as a row in a menu.
+ *
+ * A `<select>` collapses a book to a line of text and throws away the fact
+ * that decides the choice: which copy you have actually been reading. Three
+ * entries called "Universal Principles of UX" are indistinguishable in a
+ * menu and obvious as cards, once each carries how far it got.
+ *
+ * The picker itself is still a native `<select>`, laid transparent over the
+ * card: clicking anywhere opens the system menu, Tab reaches it, a screen
+ * reader reads it, and the card draws the focus ring through `focus-within`.
+ * A hand-built listbox would have been a second implementation of all four.
+ */
+export function BookChoice({
+  label,
+  value,
+  placeholder,
+  books,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  books: readonly { id: string; title: string; note?: string | null }[];
+  onChange: (id: string) => void;
+}) {
+  const chosen = books.find((book) => book.id === value) ?? null;
+  return (
+    <label className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
+        {label}
+      </span>
+      <span className="relative flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-edge bg-paper p-3 transition-[border-color,box-shadow] hover:border-edge-strong hover:shadow-lifted focus-within:border-edge-strong focus-within:shadow-lifted">
+        <MiniCover source={null} fallback={<BookClosedIcon />} size="md" muted={!chosen} />
+        <span className="min-w-0 flex-1">
+          <span
+            className={`line-clamp-2 text-sm leading-snug ${
+              chosen ? "font-semibold" : "text-ink-faint"
+            }`}
+            title={chosen ? chosen.title : undefined}
+          >
+            {chosen ? chosen.title : placeholder}
+          </span>
+          {chosen?.note && (
+            <span className="mt-1 block truncate text-xs text-ink-mute">
+              {chosen.note}
+            </span>
+          )}
+        </span>
+        <ChevronDownIcon className="shrink-0 text-ink-mute" />
+        <select
+          data-raw
+          data-overlay
+          aria-label={label}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="absolute inset-0 opacity-0"
+        >
+          <option value="">{placeholder}</option>
+          {books.map((book) => (
+            <option key={book.id} value={book.id}>
+              {book.title}
+            </option>
+          ))}
+        </select>
+      </span>
+    </label>
   );
 }
 
