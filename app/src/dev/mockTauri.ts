@@ -320,6 +320,20 @@ const EMPTY = new Set(
 );
 const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
 
+/* Passages the reader has "scanned" off another app.
+ *
+ * They only ever arrive as an event from the shortcut, so the scan history
+ * was empty in the preview unless someone fired the event by hand from the
+ * console - and gone again on the next reload. `?scanned=3` seeds them the
+ * way the shortcut does, through the same listener, so the screen can be
+ * used rather than only glanced at. The last one starts reading, which is
+ * exactly what pressing the shortcut does. */
+const SCANNED = [
+  "Vào những năm cuối thế kỷ trước, khi con đường đá còn chưa được trải nhựa, người ta vẫn đi bộ từ đầu làng tới chợ huyện mất gần hai tiếng đồng hồ. Mùa mưa, nước tràn qua cầu tre, ai cũng phải xắn quần lội qua.\n\nBà tôi kể rằng hồi ấy cả xóm chỉ có một cái đài bán dẫn, đặt ở nhà ông trưởng thôn. Tối đến, người lớn trẻ con kéo nhau tới ngồi kín cả sân gạch để nghe đọc truyện đêm khuya.",
+  "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet, which is why it has been used to test typefaces since the days of metal type.",
+  "Trong ngôn ngữ học, hiện tượng mất dấu thanh khi sao chép văn bản là một vấn đề dai dẳng. Máy dò ngôn ngữ đọc chuỗi ký tự Latin không dấu và kết luận đó là tiếng Anh, rồi từ chối đọc bằng giọng Việt.",
+];
+
 const PAID_VOICES: Record<string, { id: string; label: string; languages?: string[]; gender?: "male" | "female" }[]> = {
   // ONE model per provider, as the engine now lists them: the catalogue used
   // to emit models x voices and the same nine names appeared twice at two
@@ -950,6 +964,16 @@ window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
 };
 window.__mockEmit = emit;
 window.__mockUnanswered = () => [...unanswered];
+
+// After the app has mounted and its listeners are up. Staggered, because two
+// passages captured in the same millisecond would share an `at` and collide
+// as list keys - which is true of the real shortcut too, just harder to do.
+const scannedCount = Number(new URLSearchParams(window.location.search).get("scanned") ?? 0);
+if (scannedCount > 0) {
+  SCANNED.slice(0, scannedCount).forEach((passage, index) => {
+    setTimeout(() => emit("reading:external", { text: passage }), 600 + index * 160);
+  });
+}
 
 declare global {
   interface Window {
