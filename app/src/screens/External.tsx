@@ -106,10 +106,14 @@ function ScanEntry({
                 key={part.segment_id || index}
                 ref={part.segment_id === current ? here : undefined}
                 onClick={() => part.segment_id && onReadPart(part.segment_id)}
-                title={text("external.read_from_here")}
+                /* The fallback block (the engine could not be asked) has no
+                   id, so it cannot be read from. It must not offer to be:
+                   a tooltip promising something the click will not do is
+                   the same lie the old replay tooltip told. */
+                title={part.segment_id ? text("external.read_from_here") : undefined}
                 className={`rounded-2xl px-2 py-1 text-left text-sm leading-relaxed whitespace-pre-line transition-colors ${
-                  part.segment_id === current ? "bg-band" : "hover:bg-wash"
-                }`}
+                  part.segment_id === current ? "bg-band" : ""
+                } ${part.segment_id ? "hover:bg-wash" : "cursor-default"}`}
               >
                 {part.text}
               </button>
