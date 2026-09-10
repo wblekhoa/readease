@@ -59,7 +59,7 @@ class CeilingTests(unittest.TestCase):
         self.assertEqual(scope_start(CHAPTER_OF, 5, None), 0)
 
     def test_a_ceiling_is_never_smaller_than_what_resuming_would_cost(self) -> None:
-        price = price_for("tts-1")
+        price = price_for("gpt-4o-mini-tts")
         for start in range(len(CHAPTER_OF)):
             for chapters in (1, 2, None):
                 resume = estimate_scope(TEXTS, CHAPTER_OF, start, chapters, price)
@@ -73,24 +73,24 @@ class CeilingTests(unittest.TestCase):
                 )
 
     def test_the_ten_times_gap_this_was_written_for(self) -> None:
-        # A ten-paragraph chapter: resuming at the last one quoted $0.018
-        # while clicking the first cost $0.180 - the same scope, ten times
-        # the money, and only one of those numbers was ever on screen.
+        # A ten-paragraph chapter: resuming at the last one quotes a tenth of
+        # what clicking the first one does - the same scope, ten times the
+        # money, and only one of those numbers was ever on screen.
         texts = ["x" * 1200] * 10
         chapters = [0] * 10
-        price = price_for("tts-1")
-        self.assertEqual(estimate_scope(texts, chapters, 9, 1, price).usd, 0.018)
+        price = price_for("gpt-4o-mini-tts")
+        self.assertEqual(estimate_scope(texts, chapters, 9, 1, price).usd, 0.024)
         self.assertEqual(
             estimate_scope(
                 texts, chapters, scope_start(chapters, 9, 1), 1, price
             ).usd,
-            0.18,
+            0.24,
         )
 
 
 class EstimateTests(unittest.TestCase):
     def test_it_counts_the_characters_actually_in_scope(self) -> None:
-        price = price_for("tts-1")
+        price = price_for("gpt-4o-mini-tts")
         assert price is not None
         result = estimate_scope(TEXTS, CHAPTER_OF, 2, 1, price)
         self.assertEqual(result.chars, 300 + 400 + 500)
@@ -98,14 +98,34 @@ class EstimateTests(unittest.TestCase):
         self.assertEqual(result.chapters, 1)
 
     def test_the_price_is_the_provider_s_own_arithmetic(self) -> None:
-        # 1200 characters at $15 per 1M is 1.8 cents. A reader deciding
-        # whether to spend it deserves the real number, not a rounded one.
-        price = price_for("tts-1")
+        # 1200 characters at ElevenLabs Flash's $0.05 per 1k is 6 cents, and
+        # the credits are the same 1200. A reader deciding whether to spend
+        # it deserves the real number, not a rounded one.
+        price = price_for("eleven_flash_v2_5")
         assert price is not None
         result = estimate_scope(("x" * 1200,), (0,), 0, None, price)
-        self.assertEqual(result.usd, 0.018)
+        self.assertEqual(result.usd, 0.06)
         self.assertEqual(result.units, 1200)
-        self.assertEqual(result.unit, "characters")
+        self.assertEqual(result.unit, "credits")
+
+    def test_a_token_billed_voice_offers_no_unit_count_to_print(self) -> None:
+        # OpenAI bills tokens of GENERATED AUDIO. Handing back the character
+        # count under the word "tokens" would be a number the reader could
+        # check against their dashboard and find wrong, so there isn't one.
+        price = price_for("gpt-4o-mini-tts")
+        assert price is not None
+        result = estimate_scope(("x" * 1200,), (0,), 0, None, price)
+        self.assertEqual(result.usd, 0.024)
+        self.assertEqual(result.unit, "tokens")
+        self.assertEqual(result.units, 0)
+
+    def test_the_quote_carries_the_day_its_own_row_was_checked(self) -> None:
+        # One date for the whole table would stamp today onto a row nobody
+        # looked at. Each provider was checked on its own day and says so.
+        openai = estimate_scope(("x",), (0,), 0, None, price_for("gpt-4o-mini-tts"))
+        eleven = estimate_scope(("x",), (0,), 0, None, price_for("eleven_v3"))
+        self.assertEqual(openai.price_dated, "2026-09-10")
+        self.assertEqual(eleven.price_dated, "2026-09-04")
 
     def test_elevenlabs_counts_in_the_unit_its_own_dashboard_uses(self) -> None:
         price = price_for("eleven_flash_v2_5")
@@ -115,27 +135,28 @@ class EstimateTests(unittest.TestCase):
         self.assertEqual(result.unit, "credits")
 
     def test_a_chapter_of_a_real_size_lands_where_the_planning_said(self) -> None:
-        # ~12k characters is an ordinary chapter. The plan quoted ~$0.18 on
-        # tts-1 and ~$1.20 on ElevenLabs v3; if either drifts, the figure in
-        # the button drifts with it and this test says so.
+        # ~12k characters is an ordinary chapter: ~$0.24 on OpenAI and ~$1.20
+        # on ElevenLabs v3. If either drifts, the figure in the button drifts
+        # with it and this test says so.
         chapter = "x" * 12_000
-        cheap = estimate_scope((chapter,), (0,), 0, None, price_for("tts-1"))
+        cheap = estimate_scope((chapter,), (0,), 0, None, price_for("gpt-4o-mini-tts"))
         dear = estimate_scope((chapter,), (0,), 0, None, price_for("eleven_v3"))
-        self.assertEqual(cheap.usd, 0.18)
+        self.assertEqual(cheap.usd, 0.24)
         self.assertEqual(dear.usd, 1.2)
 
     def test_every_price_carries_the_day_it_was_quoted(self) -> None:
         for price in PRICES:
             result = estimate_scope(("x",), (0,), 0, None, price)
-            self.assertEqual(result.price_dated, "2026-09-04")
+            self.assertEqual(result.price_dated, price.fetched)
+            self.assertRegex(price.fetched, r"^\d{4}-\d{2}-\d{2}$")
             self.assertGreater(price.usd_per_1k_chars, 0)
 
     def test_mismatched_inputs_are_refused_rather_than_guessed(self) -> None:
         with self.assertRaises(ValueError):
-            estimate_scope(("a", "b"), (0,), 0, None, price_for("tts-1"))
+            estimate_scope(("a", "b"), (0,), 0, None, price_for("gpt-4o-mini-tts"))
 
     def test_nothing_in_scope_costs_nothing(self) -> None:
-        result = estimate_scope(TEXTS, CHAPTER_OF, 2, 0, price_for("tts-1"))
+        result = estimate_scope(TEXTS, CHAPTER_OF, 2, 0, price_for("gpt-4o-mini-tts"))
         self.assertEqual((result.chars, result.usd, result.utterances), (0, 0.0, 0))
         self.assertIsInstance(result, ScopeEstimate)
 

@@ -339,6 +339,10 @@ const PAID_VOICES: Record<string, { id: string; label: string; languages?: strin
   // to emit models x voices and the same nine names appeared twice at two
   // prices. Which model is a setting; these ids carry whichever is chosen.
   openai_api_key: [
+    // Marin and Cedar lead because OpenAI's own guide recommends them for
+    // best quality, and the catalogue keeps that order.
+    { id: "openai:{model}:marin", label: "Marin · OpenAI" },
+    { id: "openai:{model}:cedar", label: "Cedar · OpenAI" },
     { id: "openai:{model}:alloy", label: "Alloy · OpenAI" },
     { id: "openai:{model}:nova", label: "Nova · OpenAI" },
   ],
@@ -360,14 +364,13 @@ const PAID_VOICES: Record<string, { id: string; label: string; languages?: strin
  * they decide which model a voice id is built with.
  */
 const MODELS = [
-  { provider: "openai", model: "tts-1" },
-  { provider: "openai", model: "tts-1-hd" },
+  { provider: "openai", model: "gpt-4o-mini-tts" },
   { provider: "elevenlabs", model: "eleven_flash_v2_5" },
   { provider: "elevenlabs", model: "eleven_v3" },
 ];
 
 const DEFAULT_MODEL: Record<string, string> = {
-  openai: "tts-1",
+  openai: "gpt-4o-mini-tts",
   elevenlabs: "eleven_flash_v2_5",
 };
 
@@ -766,7 +769,8 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       if (!paid) {
         return { paid: false, chars, utterances: chapters * 9, chapters, spent_usd: 0 };
       }
-      const perThousand = voice.startsWith("elevenlabs") ? 0.1 : 0.015;
+      const elevenlabs = voice.startsWith("elevenlabs");
+      const perThousand = elevenlabs ? 0.1 : 0.02;
       return {
         paid: true,
         provider: voice.split(":")[0],
@@ -775,9 +779,11 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         utterances: chapters * 9,
         chapters,
         usd: Math.round(chars * perThousand) / 1000,
-        units: chars,
-        unit: voice.startsWith("elevenlabs") ? "credits" : "characters",
-        price_dated: "2026-09-04",
+        // OpenAI bills tokens of generated audio, which cannot be counted
+        // off the text - the engine sends 0 and the panel drops the line.
+        units: elevenlabs ? chars : 0,
+        unit: elevenlabs ? "credits" : "tokens",
+        price_dated: "2026-09-10",
         spent_usd: 0.042,
       };
     }

@@ -1467,7 +1467,7 @@ export default function App() {
                     voice apart from the others on offer, and the speed only
                     when it is not the plain 1×. Without a voice the old chip
                     read " · 1.25×", a separator with nothing on its left; a
-                    paid voice's id is `openai:tts-1:alloy`, an address, so
+                    paid voice's id is `openai:gpt-4o-mini-tts:alloy`, an address, so
                     the chip shows what the catalogue calls it. */}
                 {(voiceId || rate !== 1) && (
                   <span className="min-w-0 truncate font-normal">

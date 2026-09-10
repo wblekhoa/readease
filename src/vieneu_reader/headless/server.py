@@ -73,7 +73,7 @@ from vieneu_reader.speech.cache import AudioCache, audio_cache_key
 from vieneu_reader.speech.external.estimate import (
     estimate_scope, scope_end, scope_start,
 )
-from vieneu_reader.speech.external.pricing import PRICES, PRICES_FETCHED, price_for
+from vieneu_reader.speech.external.pricing import PRICES, price_for
 from vieneu_reader.speech.external.provider import ExternalVoiceError
 from vieneu_reader.speech.external.engine import ExternalSpeechEngine
 from vieneu_reader.speech.external.pricing import VoicePrice
@@ -111,7 +111,10 @@ MODEL_KEY_FOR_PROVIDER = {
     "elevenlabs": "elevenlabs_model",
 }
 DEFAULT_MODEL_FOR_PROVIDER = {
-    "openai": "tts-1",
+    # OpenAI's own words for it: "our newest and most reliable text-to-speech
+    # model" [fetched 2026-09-10]. It replaced tts-1/tts-1-hd outright rather
+    # than joining them - see `pricing.py` for what that cost in exactness.
+    "openai": "gpt-4o-mini-tts",
     # The model whose published language list names Vietnamese, and half the
     # price of v3 [fetched 2026-09-04]. A default that cannot say the language
     # this app exists for is not a default.
@@ -861,7 +864,7 @@ class _Session:
                 "usd": round(price.usd_for(chars), 4),
                 "units": price.units_for(chars),
                 "unit": price.unit,
-                "price_dated": PRICES_FETCHED,
+                "price_dated": price.fetched,
                 "spent_usd": self._spend.snapshot().usd,
             })
             return

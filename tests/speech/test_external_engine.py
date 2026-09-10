@@ -174,15 +174,15 @@ class EngineTests(unittest.TestCase):
     def test_it_answers_the_same_protocol_the_local_model_does(self) -> None:
         engine = self._engine([s16(0, 1000)])
         self.assertEqual(engine.engine_version, "external:openai")
-        self.assertEqual(engine.model_revision, "tts-1")
+        self.assertEqual(engine.model_revision, "gpt-4o-mini-tts")
         voices = engine.voices()
         self.assertTrue(voices)
         # Namespaced so a provider voice can never collide with a local one
         # in a shortlist or a cache key.
-        self.assertTrue(all(voice.id.startswith("openai:tts-1:") for voice in voices))
+        self.assertTrue(all(voice.id.startswith("openai:gpt-4o-mini-tts:") for voice in voices))
 
     def test_the_chunks_it_yields_are_what_the_cache_and_player_accept(self) -> None:
-        chunks = list(self._engine([s16(*range(200))]).stream("Một câu.", "openai:tts-1:alloy"))
+        chunks = list(self._engine([s16(*range(200))]).stream("Một câu.", "openai:gpt-4o-mini-tts:alloy"))
         self.assertTrue(chunks)
         for chunk in chunks:
             self.assertEqual(chunk.sample_rate, 48_000)
@@ -201,7 +201,7 @@ class EngineTests(unittest.TestCase):
             return FakeResponse(raw)
 
         engine = ExternalSpeechEngine(OpenAIVoiceProvider(KEY, opener=handler))
-        chunks = list(engine.stream("x", "openai:tts-1:alloy"))
+        chunks = list(engine.stream("x", "openai:gpt-4o-mini-tts:alloy"))
         self.assertEqual(sum(len(chunk.pcm) // 4 for chunk in chunks), 200)
 
 

@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from .pricing import PRICES_FETCHED, VoicePrice
+from .pricing import VoicePrice
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +30,7 @@ class ScopeEstimate:
     usd: float
     units: int
     unit: str
-    price_dated: str = PRICES_FETCHED
+    price_dated: str
 
 
 def scope_end(chapter_of: Sequence[int], start: int, chapters: int | None) -> int:
@@ -102,4 +102,5 @@ def estimate_scope(
         usd=round(price.usd_for(chars), 4),
         units=price.units_for(chars),
         unit=price.unit,
+        price_dated=price.fetched,
     )

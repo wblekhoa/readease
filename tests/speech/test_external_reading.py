@@ -22,7 +22,7 @@ from vieneu_reader.speech.external.provider import ExternalVoiceError, ProviderV
 
 KEY = "sk-proj-0123456789abcdefghijklmnopqrstuvwxyz"
 
-VOICE = "openai:tts-1:alloy"
+VOICE = "openai:gpt-4o-mini-tts:alloy"
 
 
 class FakeProvider:
@@ -30,7 +30,7 @@ class FakeProvider:
 
     asked: list[str] = []
 
-    def __init__(self, key: str, model: str = "tts-1", fail: ExternalVoiceError | None = None):
+    def __init__(self, key: str, model: str = "gpt-4o-mini-tts", fail: ExternalVoiceError | None = None):
         self._model = model
         self._fail = fail
 
@@ -239,8 +239,11 @@ class EstimateMethodTests(unittest.TestCase):
         self.assertEqual(result["chapters"], 1)
         self.assertGreater(result["chars"], 0)
         self.assertGreater(result["usd"], 0)
-        self.assertEqual(result["unit"], "characters")
-        self.assertEqual(result["price_dated"], "2026-09-04")
+        # OpenAI bills tokens of generated audio, so there is no unit count
+        # to hand back - see `pricing.py`.
+        self.assertEqual(result["unit"], "tokens")
+        self.assertEqual(result["units"], 0)
+        self.assertEqual(result["price_dated"], "2026-09-10")
 
     def test_the_number_counts_the_same_strings_the_reading_will_send(self) -> None:
         # The whole reason the utterance builder is shared. If the estimate
@@ -386,12 +389,44 @@ class CatalogueTests(unittest.TestCase):
         # prices, which is a list nobody can scan and a choice nobody should
         # have to make nine times. The model is a setting; the id still
         # carries it, so the price is still readable off the id.
-        self.assertEqual({voice["model"] for voice in paid}, {"tts-1"})
+        self.assertEqual({voice["model"] for voice in paid}, {"gpt-4o-mini-tts"})
 
     def test_changing_the_model_changes_which_voices_are_offered(self) -> None:
-        cheap = self._voices({"openai_api_key": KEY})
-        dear = self._voices({"openai_api_key": KEY, "openai_model": "tts-1-hd"})
-        self.assertEqual({voice["model"] for voice in dear if voice["paid"]}, {"tts-1-hd"})
+        # OpenAI is down to one model, so this is pinned on the provider that
+        # still has two. Its own `voices()` asks the account, which no test
+        # may do, so the provider is stood in for - the setting-to-id path
+        # under test is the server's, not the provider's.
+        from vieneu_reader.headless import server
+
+        class Library:
+            name = "elevenlabs"
+
+            def __init__(self, model):
+                self.model = model
+
+            def voices(self):
+                return tuple(
+                    ProviderVoice(id=name, label=name, model=self.model)
+                    for name in ("rachel", "antoni")
+                )
+
+        original = server._external_provider
+        server._external_provider = lambda provider, voice_id, settings: (
+            Library(server.chosen_model("elevenlabs", settings))
+            if provider == "elevenlabs" else None
+        )
+        try:
+            cheap = self._voices({"elevenlabs_api_key": KEY})
+            dear = self._voices(
+                {"elevenlabs_api_key": KEY, "elevenlabs_model": "eleven_v3"}
+            )
+        finally:
+            server._external_provider = original
+
+        self.assertEqual({v["model"] for v in dear if v["paid"]}, {"eleven_v3"})
+        self.assertEqual(
+            {v["model"] for v in cheap if v["paid"]}, {"eleven_flash_v2_5"}
+        )
         # Same voices, different price - so the ids differ in the middle and
         # nothing that keyed off the old id can silently be charged the new
         # rate.
@@ -407,7 +442,15 @@ class CatalogueTests(unittest.TestCase):
         # a model this one does not. Sending it anyway would be a request the
         # provider refuses AND a price this app cannot quote.
         voices = self._voices({"openai_api_key": KEY, "openai_model": "tts-9-imaginary"})
-        self.assertEqual({v["model"] for v in voices if v["paid"]}, {"tts-1"})
+        self.assertEqual({v["model"] for v in voices if v["paid"]}, {"gpt-4o-mini-tts"})
+
+    def test_the_model_this_app_used_to_ship_is_one_of_those(self) -> None:
+        # Everybody who used a paid OpenAI voice before today has
+        # `openai_model: "tts-1"` written down. This build does not offer it
+        # and cannot price it, so that settings file has to land on the new
+        # model rather than on a request nobody could quote.
+        voices = self._voices({"openai_api_key": KEY, "openai_model": "tts-1"})
+        self.assertEqual({v["model"] for v in voices if v["paid"]}, {"gpt-4o-mini-tts"})
 
     def test_the_other_provider_stays_out_until_it_has_its_own_key(self) -> None:
         voices = self._voices({"openai_api_key": KEY})
@@ -500,7 +543,7 @@ class VerifyKeyTests(unittest.TestCase):
 
         class Probe:
             name = "openai"
-            model = "tts-1"
+            model = "gpt-4o-mini-tts"
 
             def voices(self):
                 return ()
@@ -637,7 +680,7 @@ class CatalogueLanguageTests(unittest.TestCase):
         # Vietnamese after a fashion; hiding them would be a lie by filter.
         class Silent:
             name = "openai"
-            model = "tts-1"
+            model = "gpt-4o-mini-tts"
 
             def voices(self):
                 return (ProviderVoice(id="alloy", label="Alloy · OpenAI", model=self.model),)

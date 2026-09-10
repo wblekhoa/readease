@@ -25,7 +25,9 @@ export type Estimate =
       chapters: number;
       usd: number;
       units: number;
-      unit: "characters" | "credits";
+      /** What the provider bills. `tokens` cannot be counted off the text,
+       * and arrives with `units: 0` - see `pricing.py`. */
+      unit: "characters" | "credits" | "tokens";
       price_dated: string;
     };
 

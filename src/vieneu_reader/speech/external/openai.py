@@ -26,13 +26,22 @@ ENDPOINT = "https://api.openai.com/v1/audio/speech"
 #: this key real?" without buying any audio to find out.
 MODELS = "https://api.openai.com/v1/models"
 
-#: tts-1 / tts-1-hd take this set. The newer, token-billed models add more
-#: (ballad, verse, marin, cedar) and are deliberately not offered: they bill
-#: by token, so the exact character count in the button could not be honest
-#: about them. [fetched 2026-09-04]
+#: The 13 voices `gpt-4o-mini-tts` takes. The four the older `tts-1` pair
+#: could not say - ballad, verse, marin, cedar - are here because that pair is
+#: gone: OpenAI calls this "our newest and most reliable text-to-speech
+#: model", and "for best quality, we recommend using `marin` or `cedar`", so
+#: those two lead the list [fetched 2026-09-10].
+#:
+#: The caveat that comes with them, and it matters in a Vietnamese reader:
+#: the endpoint's language list is Whisper's - Vietnamese is on it - but the
+#: same page says the voices are "optimized for English". A Vietnamese book
+#: will be read in a Vietnamese accented by that.
 VOICES: tuple[tuple[str, str], ...] = (
+    ("marin", "Marin"),
+    ("cedar", "Cedar"),
     ("alloy", "Alloy"),
     ("ash", "Ash"),
+    ("ballad", "Ballad"),
     ("coral", "Coral"),
     ("echo", "Echo"),
     ("fable", "Fable"),
@@ -40,6 +49,7 @@ VOICES: tuple[tuple[str, str], ...] = (
     ("onyx", "Onyx"),
     ("sage", "Sage"),
     ("shimmer", "Shimmer"),
+    ("verse", "Verse"),
 )
 
 Opener = Callable[[urllib.request.Request], object]
@@ -49,7 +59,7 @@ class OpenAIVoiceProvider:
     def __init__(
         self,
         api_key: str,
-        model: str = "tts-1",
+        model: str = "gpt-4o-mini-tts",
         *,
         opener: Opener | None = None,
         timeout: float = 60.0,
