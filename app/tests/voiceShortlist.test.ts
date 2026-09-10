@@ -9,6 +9,7 @@ import {
   matchesVoiceFilters,
   offeredVoices,
   parseShortlist,
+  sampleLanguage,
   serializeShortlist,
   speaksVietnamese,
   tidyName,
@@ -226,4 +227,36 @@ test("nhãn ngôn ngữ chỉ nói điều nhà cung cấp ĐÃ xác nhận", ()
   for (const voice of [silent, both, { languages: ["vi"] }, {}]) {
     assert.equal(speaksVietnamese(voice), vouchedFor(voice, "vi"));
   }
+});
+
+/** Which language a voice auditions in.
+ *
+ * Before this, one Vietnamese sentence was handed to every voice: an
+ * ElevenLabs voice vouched for English only stumbled through Vietnamese, and
+ * a listener learned nothing about the voice they were considering paying
+ * for.
+ */
+test("giọng chỉ được xác nhận tiếng Anh thì nghe thử bằng tiếng Anh", () => {
+  assert.equal(sampleLanguage({ languages: ["en"] }, "vi"), "en");
+  assert.equal(sampleLanguage({ languages: ["en"] }, "en"), "en");
+});
+
+test("giọng nói được cả hai thì nghe thử bằng tiếng của người đọc", () => {
+  assert.equal(sampleLanguage({ languages: ["vi", "en"] }, "vi"), "vi");
+  assert.equal(sampleLanguage({ languages: ["vi", "en"] }, "en"), "en");
+});
+
+test("giọng không khai gì thì theo giao diện — vắng mặt không phải là 'không thể'", () => {
+  // Every OpenAI voice arrives this way; `canSpeak` reads absence the same.
+  assert.equal(sampleLanguage({}, "vi"), "vi");
+  assert.equal(sampleLanguage({ languages: [] }, "en"), "en");
+});
+
+/** The owner's standing rule, pinned rather than left to follow from the
+ * order of the branches: VieNeu is a Vietnamese model and must never be
+ * handed another language. It publishes `["vi"]`, so an English interface
+ * must NOT talk it into an English sample. */
+test("mô hình trên máy luôn nhận câu tiếng Việt, kể cả khi giao diện là tiếng Anh", () => {
+  assert.equal(sampleLanguage({ languages: ["vi"] }, "en"), "vi");
+  assert.equal(sampleLanguage({ languages: ["vi"] }, "vi"), "vi");
 });

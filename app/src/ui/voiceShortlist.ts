@@ -62,6 +62,41 @@ export function canSpeak(
   return named.some((tag) => tag.toLowerCase().split("-")[0] === wanted);
 }
 
+/** Which language to say the preview sentence in for THIS voice.
+ *
+ * The sample was one Vietnamese sentence for every voice, whatever the
+ * interface said and whatever the voice could speak. So an ElevenLabs voice
+ * the provider vouched for in English only - Antoni, say - auditioned by
+ * stumbling through Vietnamese, which tells a listener nothing about the
+ * voice and everything about the mismatch. A preview exists to be judged by.
+ *
+ * The reader's own language wins where the voice can speak it: somebody
+ * choosing a voice for their books wants to hear it in the language they
+ * read. Otherwise the voice's own vouched language decides. A voice that
+ * names nothing - every OpenAI voice, and `canSpeak` says absence is never
+ * "cannot" - falls back to the interface, which is the only preference this
+ * app has been told.
+ *
+ * The rule this must never break: the local model publishes `["vi"]`, so it
+ * takes the first branch on a Vietnamese interface and the second on an
+ * English one. Either way it is handed Vietnamese, which is the owner's
+ * standing rule (never read another language with VieNeu) and is pinned by
+ * its own test rather than left to follow from the order of these lines.
+ */
+export function sampleLanguage(
+  voice: Pick<Voice, "languages">,
+  interfaceLanguage: string,
+): "vi" | "en" {
+  const wanted = interfaceLanguage.toLowerCase().split("-")[0];
+  if ((wanted === "vi" || wanted === "en") && vouchedFor(voice, wanted)) {
+    return wanted;
+  }
+  if (vouchedFor(voice, "vi")) return "vi";
+  if (vouchedFor(voice, "en")) return "en";
+  return wanted === "en" ? "en" : "vi";
+}
+
+
 /** The engine labels a voice "Tên — Nữ · Bắc · Phong cách kể chuyện": the
  * part before the dash is the name, the rest describes it. Lived in
  * SettingsPanel; two panels now read labels, so it lives here instead.

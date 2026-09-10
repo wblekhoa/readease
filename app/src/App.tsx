@@ -13,6 +13,7 @@ import {
   initialShortlist,
   offeredVoices,
   serializeShortlist,
+  sampleLanguage,
   toggleShortlist,
   voiceName,
   type Voice, chipName } from "./ui/voiceShortlist";
@@ -689,8 +690,13 @@ export default function App() {
     current.current = { kind: "preview" };
     setPreviewing(id);
     setPosition(null);
+    // In a language this voice can actually speak. One Vietnamese sentence
+    // for every voice meant an English-only voice auditioned by stumbling
+    // through Vietnamese - which says nothing about the voice.
+    const voice = voices.find((candidate) => candidate.id === id);
+    const spoken = sampleLanguage(voice ?? {}, currentLanguage());
     invoke("read_text", {
-      text: text("voices.sample"),
+      text: text(spoken === "en" ? "voices.sample_en" : "voices.sample"),
       segmentId: null,
       voiceId: id,
       rate,
@@ -699,7 +705,7 @@ export default function App() {
       onPlayer({ type: "failed", error: String(error) });
       setPreviewing(null);
     });
-  }, [rate]);
+  }, [rate, voices]);
 
   const readNeighbour = useCallback(async (step: number) => {
     const anchor = position ?? openBook?.segment_id ?? null;

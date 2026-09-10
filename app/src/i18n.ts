@@ -256,7 +256,15 @@ export const TEXT = {
     "Chưa lấy được danh sách giọng đọc - không phải máy này không có giọng nào.",
     "The voice list could not be fetched - this is not the same as having no voices.",
   ],
+  // Both slots hold the SAME sentence on purpose: this is not a label to
+  // be translated, it is the Vietnamese utterance a voice auditions
+  // with. Which of the two samples a voice gets is `sampleLanguage()`'s
+  // decision, not the interface's.
   "voices.sample": ["Tôi sẽ đọc sách cho bạn nghe bằng giọng này.", "Tôi sẽ đọc sách cho bạn nghe bằng giọng này."],
+  "voices.sample_en": [
+    "I will read your books aloud in this voice.",
+    "I will read your books aloud in this voice.",
+  ],
   "voices.filters": ["Lọc danh sách", "Filter the list"],
   "voices.language": [
     "Cuốn này đọc bằng",
