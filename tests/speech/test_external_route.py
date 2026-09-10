@@ -22,6 +22,20 @@ class RouteTests(unittest.TestCase):
         route = pick_voice_route("openai:gpt-4o-mini-tts:alloy", keys=KEYS)
         self.assertEqual((route.kind, route.provider), ("external", "openai"))
 
+    def test_a_model_this_build_has_no_price_for_never_leaves_the_machine(self) -> None:
+        # Ids outlive the models they name - a book remembers the voice it
+        # was last read with. The provider may still serve that model and
+        # still bill for it, while nothing here could quote, cap or meter it.
+        route = pick_voice_route("openai:tts-1:alloy", keys=KEYS)
+        self.assertEqual(route.kind, "blocked")
+        self.assertEqual(route.reason, "unknown_model")
+
+    def test_it_says_that_before_it_says_the_key_is_missing(self) -> None:
+        # A missing key is something the reader can go and fix; this is not,
+        # so it is the more useful of the two to be told.
+        route = pick_voice_route("openai:tts-1:alloy", keys={})
+        self.assertEqual(route.reason, "unknown_model")
+
     def test_no_key_is_a_named_refusal_not_a_silent_fallback(self) -> None:
         # Falling back to the local voice without saying so would have the
         # reader hear a different voice than the one they picked and never

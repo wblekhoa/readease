@@ -230,6 +230,15 @@ export const TEXT = {
   "cost.budget_off": ["Không đặt trần", "No ceiling"],
   "cost.spent": ["Phiên này đã tiêu {usd}", "Spent this session: {usd}"],
   "cost.free": ["Giọng trên máy - không tốn gì.", "The voice on this Mac - it costs nothing."],
+  /* A voice id carries the model it was made with, and ids outlive models:
+     a book remembers the voice it was last read with. When that model is no
+     longer one this app can price, it cannot be capped or metered either -
+     so it is refused rather than read, and the reader is told which of their
+     choices to make again. */
+  "voiceerr.unknown_model": [
+    "Giọng này thuộc một model không còn được cung cấp nữa, nên app không tính được tiền cho nó. Hãy chọn lại một giọng khác.",
+    "This voice belongs to a model the app no longer offers, so it cannot price the reading. Pick another voice.",
+  ],
   "voiceerr.no_key": [
     "Chưa có khoá cho giọng này. Thêm khoá trong phần giọng đọc, hoặc chọn giọng trên máy.",
     "No key for this voice yet. Add one in the voice settings, or pick the voice on this Mac.",

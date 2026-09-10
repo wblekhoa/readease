@@ -833,6 +833,14 @@ class _Session:
 
         voice_id = str(params.get("voice_id") or "")
         price = price_for(model_of(voice_id) or "")
+        if price is None and provider_of(voice_id) is not None:
+            # A paid voice whose model this build cannot price. Answering
+            # "paid: False" here would put a FREE-looking button in front of
+            # a reading that bills - the exact thing the figure in the button
+            # exists to prevent. `_speak` refuses the same id by name; this
+            # is the half that keeps the button from inviting it.
+            self._fail(request_id, "voice_unavailable: unknown_model")
+            return
 
         # Pasted text is priced too, and it is the case that most needed it:
         # a paste can be 100,000 characters, which is one press of a button

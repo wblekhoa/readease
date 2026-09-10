@@ -33,6 +33,7 @@ export const FAULT_CODES = [
   "budget",
   "wrong_language",
   "language_choice",
+  "unknown_model",
 ] as const;
 
 export type FaultCode = (typeof FAULT_CODES)[number];

@@ -13,6 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Mapping
 
+from .pricing import price_for
+
 #: Which settings key holds which provider's credential.
 KEY_FOR_PROVIDER: Mapping[str, str] = {
     "openai": "openai_api_key",
@@ -29,7 +31,13 @@ KEY_FOR_PROVIDER: Mapping[str, str] = {
 #: because somebody set it that way, so "pick a voice that reads English"
 #: sends them to fix the voice while the Vietnamese book sits in front of
 #: them. Two situations, one sentence, until 10/09.
-BlockedReason = Literal["no_key", "budget", "wrong_language", "language_choice"]
+#:
+#: `unknown_model` is the one nobody can act on except by choosing another
+#: voice: the id names a model this build has no price for, so it cannot be
+#: quoted, capped or metered - and the provider might still serve it.
+BlockedReason = Literal[
+    "no_key", "budget", "wrong_language", "language_choice", "unknown_model",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +85,20 @@ def pick_voice_route(
     provider = provider_of(voice_id)
     if provider is None:
         return Route("local")
+    if price_for(model_of(voice_id) or "") is None:
+        # A voice id NAMES its model, and ids outlive the models they name: a
+        # book remembers the voice it was last read with, a settings file
+        # keeps one, and a shortlist keeps several. When this build has no
+        # price for that model the text must not go out - the provider may
+        # well still serve it and still bill for it, while the button carries
+        # no figure, the ceiling is never asked and the meter never moves.
+        # Refused by name, not remapped: swapping in another model would
+        # change both the voice they picked and what it costs, silently.
+        #
+        # Ahead of the key check on purpose. A missing key is something the
+        # reader can go and fix; this one they cannot, so it is the more
+        # useful of the two things to be told.
+        return Route("blocked", provider=provider, reason="unknown_model")
     if not keys.get(KEY_FOR_PROVIDER[provider]):
         return Route("blocked", provider=provider, reason="no_key")
     if would_exceed_budget:

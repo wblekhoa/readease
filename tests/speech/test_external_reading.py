@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from vieneu_reader.speech.external.provider import ExternalVoiceError, ProviderVoice  # noqa: E402
+from vieneu_reader.speech.external.route import model_of  # noqa: E402
 
 KEY = "sk-proj-0123456789abcdefghijklmnopqrstuvwxyz"
 
@@ -116,6 +117,60 @@ class PaidReadingTests(unittest.TestCase):
         repository, service, path = self._session(Path(directory), settings)
         return run_server(requests, FakeEngine(), repository=repository,
                           service=service, settings_path=path)
+
+    def test_a_voice_naming_a_model_this_build_cannot_price_is_never_sent(self) -> None:
+        """The regression that came with dropping tts-1 (10/09).
+
+        A voice id carries its model, and ids outlive models: a book
+        remembers the voice it was last read with, so a shelf still holds
+        `openai:tts-1:alloy` long after this build stopped pricing tts-1.
+        OpenAI still serves that model. Without this guard the text went out
+        and billed, while `price_for` returned None - which is the same
+        condition the budget gate and the spend meter are both written
+        behind, so neither ran, and the button carried no figure at all.
+        """
+
+        FakeProvider.asked = []
+        seen: list[str] = []
+
+        from vieneu_reader.headless import server
+
+        original = server._external_provider
+        self._patched.append((server, "_external_provider", original))
+
+        def factory(provider, voice_id, settings):
+            seen.append(model_of(voice_id) or "")
+            return FakeProvider(str(settings.get("openai_api_key") or ""))
+
+        server._external_provider = factory
+
+        with TemporaryDirectory() as directory:
+            replies = self._run([{
+                "id": 1, "method": "read.book",
+                "params": {"book_id": _BOOK.id, "segment_id": _first_segment(_BOOK),
+                           "voice_id": "openai:tts-1:alloy", "rate": 1.0,
+                           "chapters": 1},
+            }], directory, {"openai_api_key": KEY})
+
+        self.assertFalse(replies[-1]["ok"], replies[-1])
+        self.assertIn("unknown_model", replies[-1]["error"])
+        # Not one character reached a provider, and none was ever built.
+        self.assertEqual(seen, [])
+        self.assertEqual(FakeProvider.asked, [])
+
+    def test_the_voice_this_build_does_price_still_reads(self) -> None:
+        """The control: the guard refuses one model, not paid voices."""
+
+        FakeProvider.asked = []
+        self._patch_provider()
+        with TemporaryDirectory() as directory:
+            replies = self._run([{
+                "id": 1, "method": "read.book",
+                "params": {"book_id": _BOOK.id, "segment_id": _first_segment(_BOOK),
+                           "voice_id": VOICE, "rate": 1.0, "chapters": 1},
+            }], directory, {"openai_api_key": KEY})
+        self.assertTrue(replies[-1]["ok"], replies[-1])
+        self.assertTrue(FakeProvider.asked)
 
     def test_a_scope_of_one_chapter_never_sends_the_next_one(self) -> None:
         self._patch_provider()
@@ -245,6 +300,17 @@ class EstimateMethodTests(unittest.TestCase):
         self.assertEqual(result["units"], 0)
         self.assertEqual(result["billing"], "estimated")
         self.assertEqual(result["price_dated"], "2026-09-10")
+
+    def test_a_model_this_build_cannot_price_locks_the_button_rather_than_reading_free(self) -> None:
+        # "paid: False" means the local model, and the button then carries no
+        # figure and is enabled. Sending that for a PAID voice would put a
+        # free-looking button in front of a reading that bills.
+        reply = self._run({
+            "book_id": _BOOK.id, "segment_id": _first_segment(_BOOK),
+            "voice_id": "openai:tts-1:alloy", "chapters": 1,
+        })
+        self.assertFalse(reply["ok"], reply)
+        self.assertIn("unknown_model", reply["error"])
 
     def test_the_number_counts_the_same_strings_the_reading_will_send(self) -> None:
         # The whole reason the utterance builder is shared. If the estimate
