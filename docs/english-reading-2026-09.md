@@ -104,6 +104,7 @@ Bundle đã mang sẵn `onnxruntime` (44 MB), nên thêm một model ONNX chỉ 
 1. Đọc `misaki`: nó phát âm tiếng Anh bằng gì, có cần binary ngoài không, giấy phép ra sao.
    → verify: một script chạy Kokoro q8 offline trong `.venv`, không có espeak-ng trên máy, ra WAV.
 2. Nếu sạch: dựng bài nghe A/B — cùng 5 đoạn tiếng Anh qua Kokoro q8 · Kokoro fp32 · OpenAI tts-1 · ElevenLabs
+   <!-- 10/09/2026: `tts-1` đã bị bỏ khỏi app; bài A/B chạy bằng `gpt-4o-mini-tts` (giọng marin/cedar). -->
    Flash. Chủ chấm. → verify: bảng 4×5 điểm.
 3. Nếu chọn Kokoro: thêm nó thành **engine thứ hai** sau `SpeechEngine` (giao diện đã có sẵn, VieNeu chỉ là
    một bản cài của nó), tải theo yêu cầu như VieNeu, ghim revision + marker sẵn sàng như VieNeu.

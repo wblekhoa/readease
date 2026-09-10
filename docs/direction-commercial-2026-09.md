@@ -49,6 +49,10 @@ cuốn trên VPS thường. VieNeu chưa có server v3 (server v2 đã bỏ) `[f
 ONNX ta đang chạy trong sidecar, đem chạy trên server là xong. **Giọng của ta = VieNeu trên CPU server của ta;
 giọng trả phí vẫn là BYOK.**
 
+> **Cập nhật 10/09/2026** — bảng giá trong repo không còn dòng `tts-1`/`tts-1-hd`: OpenAI đã đổi sang
+> `gpt-4o-mini-tts`, ~**$0,02**/1k ký tự (ước lượng, model tính theo token). Con số trên giữ nguyên như bản ghi
+> ngày 07/09; kết luận không đổi — 600k ký tự vẫn ra ~**$12** mỗi cuốn, cùng bậc với $9.
+
 ## 1. Kiến trúc đích: một mã nguồn, hai bản build
 
 ```
