@@ -27,6 +27,8 @@ ErrorCode = Literal[
     "network",        # never reached them; nothing was charged
     "provider_down",  # reached them and they broke (5xx) - not the reader's fault
     "refused",        # they understood and said no (moderation, bad input)
+    "voice_gone",     # the id names a voice that is not there any more
+    "account_blocked",# the account itself is barred, not this request
     "budget",         # OUR ceiling, not theirs: nothing was sent
 ]
 VoiceGender = Literal["male", "female"]

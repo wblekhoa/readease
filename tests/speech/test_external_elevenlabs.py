@@ -112,15 +112,49 @@ class RefusalTests(unittest.TestCase):
 
     def test_every_documented_refusal_gets_a_name_a_person_can_act_on(self) -> None:
         cases = {
-            "detected_unusual_activity": "refused",
+            # Its own code since 10/09: the ACCOUNT is barred, not the text.
+            "detected_unusual_activity": "account_blocked",
             "max_character_limit_exceeded": "refused",
-            "voice_not_found": "refused",
+            # Its own code since 10/09 - see the test below for why.
+            "voice_not_found": "voice_gone",
         }
         for word, code in cases.items():
             with self.subTest(status=word):
                 with self.assertRaises(ExternalVoiceError) as caught:
                     self._synth(refuse(400, {"detail": {"status": word, "message": "m"}}))
                 self.assertEqual(caught.exception.code, code)
+
+    def test_a_voice_that_is_gone_is_not_the_same_as_a_passage_refused(self) -> None:
+        """The distinction the reader acts on, so the codes must differ.
+
+        `refused` says "the provider turned down this PASSAGE", which is true
+        of `max_character_limit_exceeded` and sends the reader to their text.
+        An ElevenLabs voice belongs to the reader's own account; deleted
+        there, the id here names nobody and their paragraph is blameless.
+        Sharing one code made them share one sentence, and half of it pointed
+        at the wrong thing.
+        """
+
+        def code_for(word: str) -> str:
+            with self.assertRaises(ExternalVoiceError) as caught:
+                self._synth(refuse(400, {"detail": {"status": word, "message": "m"}}))
+            return caught.exception.code
+
+        self.assertNotEqual(code_for("voice_not_found"), code_for("max_character_limit_exceeded"))
+        self.assertEqual(code_for("voice_not_found"), "voice_gone")
+        # And the passage refusal keeps the sentence that was always right
+        # for it - splitting one situation out must not move the others.
+        self.assertEqual(code_for("max_character_limit_exceeded"), "refused")
+
+        # And a barred account is a third thing again - not the passage, not
+        # a missing voice, and NOT `quota`: the free tier is disabled rather
+        # than spent, so "top it up" would send somebody to pay for credit
+        # they still have.
+        self.assertEqual(code_for("detected_unusual_activity"), "account_blocked")
+        self.assertNotIn(
+            code_for("detected_unusual_activity"),
+            {"refused", "quota", code_for("voice_not_found")},
+        )
 
     def test_a_body_that_says_nothing_falls_back_to_the_status(self) -> None:
         for status, code in ((429, "rate_limit"), (503, "provider_down"), (400, "refused")):

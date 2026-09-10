@@ -267,6 +267,23 @@ export const TEXT = {
     "Nhà cung cấp từ chối đoạn này.",
     "The provider refused this passage.",
   ],
+  /* Split out of `refused` on 10/09. That sentence blames the PASSAGE, and
+     for a voice that has been deleted from the reader's own provider account
+     the passage is fine - they would go and re-read their paragraph looking
+     for what upset anybody. Same shape as `language_choice`: two situations
+     wore one sentence, and only one of them was theirs to act on. */
+  "voiceerr.voice_gone": [
+    "Giọng này không còn ở bên nhà cung cấp nữa - có thể nó đã bị xoá khỏi tài khoản. Mở danh sách giọng đọc và chọn giọng khác.",
+    "This voice is not at the provider any more - it may have been deleted from the account. Open the voice list and pick another.",
+  ],
+  /* Also split out of `refused` on 10/09, and deliberately not `quota`:
+     the free tier is barred, not spent, so "hết lượt" would send somebody
+     to top up an account that still has every credit it started with. The
+     provider's own help page names the usual cause [fetched 2026-09-10]. */
+  "voiceerr.account_blocked": [
+    "Nhà cung cấp đã chặn tài khoản miễn phí này - thường là do dùng VPN hoặc chung mạng với một tài khoản khác. Đổi mạng, nâng lên gói trả phí, hoặc đọc bằng giọng trên máy.",
+    "The provider has blocked this free account - usually a VPN, or an address shared with another account. Change network, move to a paid plan, or read with the voice on this Mac.",
+  ],
   "voiceerr.wrong_language": [
     "Giọng trên máy chỉ đọc được tiếng Việt. Chọn một giọng đọc được tiếng Anh trong phần giọng đọc.",
     "The voice on this Mac reads Vietnamese only. Pick a voice that reads English in the voice settings.",

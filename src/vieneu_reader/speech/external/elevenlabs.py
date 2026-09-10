@@ -55,10 +55,26 @@ BY_STATUS = {
     "invalid_api_key": "bad_key",
     "missing_api_key": "bad_key",
     "quota_exceeded": "quota",
-    "detected_unusual_activity": "refused",
+    # Nothing to do with this passage either, and not "out of credit": the
+    # free tier is DISABLED for the account, which their own help page says
+    # is triggered by a VPN or an IP shared with another free account - the
+    # reader may still have every credit they started with. The ways out are
+    # a different network or a paid plan [fetched 2026-09-10].
+    "detected_unusual_activity": "account_blocked",
     "max_character_limit_exceeded": "refused",
+    # UNKNOWN, left where it was on purpose. Searched 10/09 and the provider
+    # does not document this one - "uid" could be the voice, the account or
+    # a request id, and each would want a different sentence. `refused` is
+    # the honest place for a refusal nobody here can explain; guessing would
+    # put a confident wrong instruction in front of a reader.
     "invalid_uid": "refused",
-    "voice_not_found": "refused",
+    # NOT "refused": that sentence says the provider turned down this
+    # PASSAGE, and sends a reader off to look for what is wrong with their
+    # paragraph. Nothing is wrong with it - an ElevenLabs voice belongs to
+    # the reader's own account, and one deleted there leaves an id here
+    # naming nobody. The fix is to pick another voice, so the code has to
+    # say so (10/09).
+    "voice_not_found": "voice_gone",
 }
 
 Opener = Callable[[urllib.request.Request], object]

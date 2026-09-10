@@ -34,6 +34,8 @@ export const FAULT_CODES = [
   "wrong_language",
   "language_choice",
   "unknown_model",
+  "voice_gone",
+  "account_blocked",
 ] as const;
 
 export type FaultCode = (typeof FAULT_CODES)[number];
