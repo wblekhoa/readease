@@ -612,6 +612,21 @@ class CatalogueTests(unittest.TestCase):
         voices = self._voices({"openai_api_key": KEY, "openai_model": "tts-1"})
         self.assertEqual({v["model"] for v in voices if v["paid"]}, {"gpt-4o-mini-tts"})
 
+    def test_the_catalogue_carries_gender_so_the_filter_can_reach_openai(self) -> None:
+        # The end the reader stands at. Gender is forwarded off the PROVIDER
+        # object, not the domain one, so it is worth proving it survives the
+        # whole way out rather than only that the table has it.
+        voices = self._voices({"openai_api_key": KEY})
+        paid = [v for v in voices if v.get("paid")]
+
+        self.assertEqual(len(paid), 13)
+        self.assertTrue([v for v in paid if v.get("gender") == "male"])
+        self.assertTrue([v for v in paid if v.get("gender") == "female"])
+        # And the one nobody places arrives with no gender key at all, which
+        # is what the panel counts.
+        alloy = next(v for v in paid if v["id"].endswith(":alloy"))
+        self.assertNotIn("gender", alloy)
+
     def test_the_other_provider_stays_out_until_it_has_its_own_key(self) -> None:
         voices = self._voices({"openai_api_key": KEY})
         self.assertFalse(any(v["id"].startswith("elevenlabs") for v in voices))

@@ -38,20 +38,38 @@ MODELS = "https://api.openai.com/v1/models"
 #: the endpoint's language list is Whisper's - Vietnamese is on it - but the
 #: same page says the voices are "optimized for English". A Vietnamese book
 #: will be read in a Vietnamese accented by that.
-VOICES: tuple[tuple[str, str], ...] = (
-    ("marin", "Marin"),
-    ("cedar", "Cedar"),
-    ("alloy", "Alloy"),
-    ("ash", "Ash"),
-    ("ballad", "Ballad"),
-    ("coral", "Coral"),
-    ("echo", "Echo"),
-    ("fable", "Fable"),
-    ("nova", "Nova"),
-    ("onyx", "Onyx"),
-    ("sage", "Sage"),
-    ("shimmer", "Shimmer"),
-    ("verse", "Verse"),
+#: The third column is GENDER, and it is not OpenAI's word - it is this
+#: app's. OpenAI publishes names only: their text-to-speech guide, their
+#: realtime guide and Microsoft's Azure documentation all describe a voice's
+#: character ("deep and authoritative", "bright and energetic") and none of
+#: them states a gender [fetched 2026-09-10]. So there was nothing to read,
+#: and with thirteen unlabelled voices the Nam/Nữ filter matched none of them
+#: - which read on screen as "OpenAI has no male voices" (owner asked exactly
+#: that, 10/09, then asked for the labels, 11/09).
+#:
+#: What makes this safe enough to ship: gender is NEVER printed beside a
+#: voice. There is no badge for it - only 💵, 🇻🇳 and 🇬🇧 reach the row. It
+#: exists to make a list of thirteen searchable, and the cost of a wrong
+#: guess is one preview under a cent, free to repeat.
+#:
+#: `alloy` is deliberately left out: every description of it says neutral,
+#: and one says it "could also pass for feminine". A voice the sources
+#: themselves will not place is one this table does not place either - the
+#: panel counts it and says so.
+VOICES: tuple[tuple[str, str, str | None], ...] = (
+    ("marin", "Marin", "female"),
+    ("cedar", "Cedar", "male"),
+    ("alloy", "Alloy", None),
+    ("ash", "Ash", "male"),
+    ("ballad", "Ballad", "male"),
+    ("coral", "Coral", "female"),
+    ("echo", "Echo", "male"),
+    ("fable", "Fable", "male"),
+    ("nova", "Nova", "female"),
+    ("onyx", "Onyx", "male"),
+    ("sage", "Sage", "female"),
+    ("shimmer", "Shimmer", "female"),
+    ("verse", "Verse", "male"),
 )
 
 Opener = Callable[[urllib.request.Request], object]
@@ -81,8 +99,13 @@ class OpenAIVoiceProvider:
 
     def voices(self) -> tuple[ProviderVoice, ...]:
         return tuple(
-            ProviderVoice(id=identifier, label=f"{label} · OpenAI", model=self._model)
-            for identifier, label in VOICES
+            ProviderVoice(
+                id=identifier,
+                label=f"{label} · OpenAI",
+                model=self._model,
+                gender=gender,  # type: ignore[arg-type]
+            )
+            for identifier, label, gender in VOICES
         )
 
     def cancel(self) -> None:

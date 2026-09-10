@@ -61,8 +61,14 @@ class ProviderVoice:
     # Vietnamese is one somebody at the provider checked; a voice it leaves
     # unmarked is one nobody has asked about.
     languages: tuple[str, ...] = ()
-    # Provider-supplied metadata only. `None` is deliberately "unknown": a
-    # voice name or preview is not evidence of somebody's gender.
+    # Where a provider states it, this is the provider's word (ElevenLabs
+    # supports gender as a voice-search label). Where none does - OpenAI
+    # publishes names only [fetched 2026-09-10] - it is this app's own
+    # reading, kept for one purpose: making a long list searchable. It is
+    # never PRINTED beside a voice, and no rule here reads a gender off a
+    # name or a preview. `None` stays "nobody placed this one", and the
+    # panel counts those and says so rather than letting them vanish under
+    # a filter.
     gender: VoiceGender | None = None
 
     def as_voice(self, provider: str) -> Voice:

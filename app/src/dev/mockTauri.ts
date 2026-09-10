@@ -341,10 +341,13 @@ const PAID_VOICES: Record<string, { id: string; label: string; languages?: strin
   openai_api_key: [
     // Marin and Cedar lead because OpenAI's own guide recommends them for
     // best quality, and the catalogue keeps that order.
-    { id: "openai:{model}:marin", label: "Marin · OpenAI" },
-    { id: "openai:{model}:cedar", label: "Cedar · OpenAI" },
+    // `gender` mirrors `openai.py`: this app's own reading, since OpenAI
+    // publishes none - and `alloy` deliberately carries none, so the panel's
+    // "chưa xếp được" line has something to count here too.
+    { id: "openai:{model}:marin", label: "Marin · OpenAI", gender: "female" },
+    { id: "openai:{model}:cedar", label: "Cedar · OpenAI", gender: "male" },
     { id: "openai:{model}:alloy", label: "Alloy · OpenAI" },
-    { id: "openai:{model}:nova", label: "Nova · OpenAI" },
+    { id: "openai:{model}:nova", label: "Nova · OpenAI", gender: "female" },
   ],
   elevenlabs_api_key: [
     // `languages` is what ElevenLabs verified; Rachel was never checked in

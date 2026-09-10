@@ -181,6 +181,46 @@ class EngineTests(unittest.TestCase):
         # in a shortlist or a cache key.
         self.assertTrue(all(voice.id.startswith("openai:gpt-4o-mini-tts:") for voice in voices))
 
+    def test_the_voices_carry_something_the_gender_filter_can_use(self) -> None:
+        """Thirteen voices nobody had placed matched no filter at all.
+
+        `voiceGender` treats "nobody said" as "not a match", so picking Nam
+        hid every OpenAI voice at once and the panel read as "OpenAI has no
+        male voices" - which is not what happened. OpenAI publishes names
+        only, so the table in `openai.py` carries this app's own reading
+        (owner asked for it, 11/09), and the point of this test is that it
+        stays a CLOSED vocabulary: two values or nothing, never a name, a
+        description, or free text off a label.
+        """
+
+        # The PROVIDER's catalogue, which is what the server forwards; the
+        # engine's `voices()` narrows to the domain type and drops it.
+        voices = OpenAIVoiceProvider(KEY).voices()
+        placed = [voice for voice in voices if voice.gender is not None]
+
+        self.assertEqual(len(voices), 13)
+        for voice in voices:
+            with self.subTest(voice=voice.id):
+                self.assertIn(voice.gender, ("male", "female", None))
+        # Both sides reachable, or the filter is still a dead end one way.
+        self.assertTrue(any(v.gender == "male" for v in placed))
+        self.assertTrue(any(v.gender == "female" for v in placed))
+
+    def test_the_one_every_source_calls_neutral_is_left_unplaced(self) -> None:
+        """Honesty where the evidence runs out, not a coin toss.
+
+        Every description of `alloy` says neutral, and one says it could pass
+        for feminine. A voice the sources will not place is one this table
+        does not place either; the panel counts it and says so.
+        """
+
+        alloy = next(
+            voice for voice in OpenAIVoiceProvider(KEY).voices()
+            if voice.id == "alloy"
+        )
+
+        self.assertIsNone(alloy.gender)
+
     def test_the_chunks_it_yields_are_what_the_cache_and_player_accept(self) -> None:
         chunks = list(self._engine([s16(*range(200))]).stream("Một câu.", "openai:gpt-4o-mini-tts:alloy"))
         self.assertTrue(chunks)
