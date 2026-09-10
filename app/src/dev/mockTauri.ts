@@ -784,7 +784,10 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         units: elevenlabs ? chars : 0,
         unit: elevenlabs ? "credits" : "tokens",
         billing: elevenlabs ? "counted" : "estimated",
-        price_dated: "2026-09-10",
+        // Each row in `pricing.py` carries the day IT was checked, and the
+        // two providers were checked on different days. One date here would
+        // teach the harness a table that does not exist.
+        price_dated: elevenlabs ? "2026-09-04" : "2026-09-10",
         spent_usd: 0.042,
       };
     }

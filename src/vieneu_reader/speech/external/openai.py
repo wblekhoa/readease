@@ -30,7 +30,9 @@ MODELS = "https://api.openai.com/v1/models"
 #: could not say - ballad, verse, marin, cedar - are here because that pair is
 #: gone: OpenAI calls this "our newest and most reliable text-to-speech
 #: model", and "for best quality, we recommend using `marin` or `cedar`", so
-#: those two lead the list [fetched 2026-09-10].
+#: those two head the catalogue [fetched 2026-09-10]. The voices panel sorts
+#: what it is given - Vietnamese first, then alphabetically - so this order
+#: is what everything else reads, not what that list shows.
 #:
 #: The caveat that comes with them, and it matters in a Vietnamese reader:
 #: the endpoint's language list is Whisper's - Vietnamese is on it - but the
