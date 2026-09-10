@@ -94,6 +94,12 @@ const PLAYER_LOOKAHEAD: usize = 2;
 /// loop hands room back one credit at a time (`Feedback::credit`).
 const ENGINE_WINDOW: usize = AUDIO_QUEUE_FRAMES - 1;
 
+/// What a reader is told when the engine process disappears underneath a
+/// reading. Written in Vietnamese, like the engine's own sentences, so the
+/// shell's `engineMessage()` says it in the reader's language; the pair
+/// lives in `RUNTIME_EN` and `engineMessage.test.ts` pins both halves.
+const ENGINE_GONE: &str = "Bộ máy đọc đã dừng đột ngột. Hãy khởi động lại ứng dụng.";
+
 /// What crosses into the audio thread, in the order the engine produced it.
 /// Positions travel the same queue as the audio they belong to, so they are
 /// announced when the ear reaches them, not when the model wrote them. Each
@@ -372,6 +378,30 @@ pub(crate) struct Pump {
 
 impl Pump {
     fn run(&self, lines: impl Iterator<Item = String>) {
+        self.pump(lines);
+        // stdout closed: the engine is gone - killed, crashed, or swapped
+        // out by `restart_engine`. A reading in flight has to END, because
+        // nothing else will ever end it: no final reply is coming, and the
+        // shell's only other signal is a request timing out 30 s later.
+        // Measured 10/09 before this existed: the pump returned in silence,
+        // the shell kept `reading` set and went on showing a reading that
+        // had stopped making sound, with nothing on screen and no way back.
+        //
+        // Down the audio queue like any other ending, so whatever is already
+        // in the device still plays and a stop meanwhile (epoch moved) makes
+        // this nobody's business - the same two rules `Frame::Done` follows
+        // for an ordinary reply.
+        let mut reading = self.current_read.lock().unwrap();
+        if reading.take().is_some() {
+            drop(reading);
+            let _ = self.audio.send(Frame::Done {
+                epoch: self.epoch.load(Ordering::SeqCst),
+                message: json!({"ok": false, "error": ENGINE_GONE}),
+            });
+        }
+    }
+
+    fn pump(&self, lines: impl Iterator<Item = String>) {
         for line in lines {
             let Ok(message) = serde_json::from_str::<Value>(&line) else {
                 continue;
@@ -819,6 +849,76 @@ mod tests {
 
     /// Ask something while a reading is in flight, the way `request()` does:
     /// register the waiter, then let the engine's reply line arrive.
+    /// The engine process disappearing under a reading, which is what a
+    /// crash, an OOM kill or `restart_engine` all look like from here:
+    /// stdout closes and no final reply is ever coming.
+    ///
+    /// Measured 10/09 BEFORE the fix, with the same harness: events reaching
+    /// the shell `[]`, the pending request never answered, and
+    /// `current_read` still set - so the shell went on showing a reading
+    /// that had stopped making sound, indefinitely, with nothing on screen.
+    /// A reading that ends has to SAY it ended; that is the whole finding.
+    #[test]
+    fn a_dead_engine_ends_the_reading_it_was_in() {
+        let h = harness(0, false);
+        h.lines.send(chunk_line()).unwrap();
+        // The engine dies: its stdout closes.
+        drop(h.lines);
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while !h.shell.saw("reading:done") && Instant::now() < deadline {
+            // The ear catches up. `Frame::Done` waits for the device by
+            // design, and this fake only drains when a test says so - so
+            // without this the wait below would time out on the harness,
+            // not on the behaviour being measured.
+            h.sink.play_out();
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        assert!(h.shell.saw("reading:done"), "vỏ không hề biết engine đã chết");
+        assert!(
+            h.current_read.lock().unwrap().is_none(),
+            "vỏ vẫn tin là đang đọc sau khi engine chết",
+        );
+    }
+
+    /// The regression the fix above could easily have introduced.
+    ///
+    /// `restart_engine` KILLS the engine on purpose - a model switch is the
+    /// ordinary reason - and it calls `stop()` first, which clears
+    /// `current_read`. So the EOF that follows must stay silent: telling a
+    /// reader "the engine stopped unexpectedly" every time they change voice
+    /// quality would be worse than the silence this fix replaced.
+    #[test]
+    fn an_engine_killed_on_purpose_does_not_cry_wolf() {
+        let h = harness(0, false);
+        h.stop();
+        drop(h.lines);
+
+        let deadline = Instant::now() + Duration::from_millis(400);
+        while Instant::now() < deadline {
+            h.sink.play_out();
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        assert!(
+            !h.shell.saw("reading:done"),
+            "một lần tắt engine có chủ ý bị báo thành engine chết",
+        );
+    }
+
+    /// And it says so with the sentence the shell can translate: the literal
+    /// is pinned here and its English half in `engineMessage.test.ts`, so a
+    /// reworded constant cannot quietly leave an English reader with
+    /// Vietnamese on screen.
+    #[test]
+    fn a_dead_engine_says_so_in_a_sentence_the_shell_can_translate() {
+        assert_eq!(
+            ENGINE_GONE,
+            "Bộ máy đọc đã dừng đột ngột. Hãy khởi động lại ứng dụng.",
+        );
+    }
+
     fn ask(h: &Harness, id: u64) -> Receiver<Value> {
         let (tx, rx) = channel();
         h.pending.lock().unwrap().insert(id, tx);

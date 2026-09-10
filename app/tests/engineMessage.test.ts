@@ -86,3 +86,26 @@ test("một lỗi đọc không có mã vẫn phải rụng vỏ truyền tin", 
   );
   setLanguage("vi");
 });
+
+/** The one sentence the shell writes for itself.
+ *
+ * When the engine process disappears there is no engine left to say
+ * anything, so `engine.rs` supplies the sentence (`ENGINE_GONE`) and sends it
+ * down the ordinary failed-reading path. It is written in Vietnamese like
+ * every engine sentence, which is what lets `engineMessage()` reach an
+ * English reader - but only while this pair stays in `RUNTIME_EN`. Pinned
+ * from both sides: the Rust test `a_dead_engine_ends_the_reading_it_was_in`
+ * pins the literal, and this pins the translation.
+ */
+test("câu 'bộ máy đọc đã dừng' tới được người đọc tiếng Anh", () => {
+  const said = "Bộ máy đọc đã dừng đột ngột. Hãy khởi động lại ứng dụng.";
+
+  setLanguage("vi");
+  assert.equal(engineMessage(said), said);
+  setLanguage("en");
+  assert.equal(
+    engineMessage(said),
+    "The reading engine stopped unexpectedly. Please restart the app.",
+  );
+  setLanguage("vi");
+});
