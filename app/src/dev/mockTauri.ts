@@ -432,7 +432,37 @@ const VOICES = [
  * the opposite of what the app does. The clock now schedules one step at a
  * time and can stop between them. */
 let readingTimers: number[] = [];
-let live: { steps: string[]; index: number; timer: number | null; paused: boolean } | null = null;
+/** What the session has run up, the way the engine's own meter does: one
+ *  counter that only grows while the app is open. */
+let MOCK_SPENT = 0.042;
+let live: {
+  steps: string[];
+  index: number;
+  timer: number | null;
+  paused: boolean;
+  /** What each step bills, or null for the voice on this Mac. The engine
+   *  announces `spend` per SENTENCE as it goes, so the harness does too -
+   *  a total that only appeared at the end could not show the one thing
+   *  the panel is for, which is watching it move. */
+  billing: { chars: number; usd: number } | null;
+} | null = null;
+
+/** What a voice costs per 1k characters, mirroring `pricing.py` closely
+ *  enough for a figure on screen. The real table lives there. */
+function mockRate(voiceId: string): number | null {
+  if (voiceId.split(":").length < 3) return null;
+  return voiceId.startsWith("elevenlabs") ? 0.1 : 0.02;
+}
+
+function chargeStep(): void {
+  if (!live?.billing) return;
+  MOCK_SPENT += live.billing.usd;
+  emit("engine:spend", {
+    event: "spend",
+    chars: live.billing.chars,
+    usd: Math.round(MOCK_SPENT * 10000) / 10000,
+  });
+}
 
 function stopMockReading() {
   for (const timer of readingTimers) clearTimeout(timer);
@@ -451,13 +481,14 @@ function stepReading(delay: number) {
       return;
     }
     emit("reading:position", { segment_id: live.steps[live.index] });
+    chargeStep();
     live.index += 1;
     stepReading(1200);
   }, delay) as unknown as number;
 }
-function startMockReading(steps: string[]) {
+function startMockReading(steps: string[], billing: { chars: number; usd: number } | null = null) {
   stopMockReading();
-  live = { steps, index: 0, timer: null, paused: false };
+  live = { steps, index: 0, timer: null, paused: false, billing };
   readingTimers.push(setTimeout(() => emit("reading:started", {}), 120) as unknown as number);
   stepReading(150);
 }
@@ -788,7 +819,10 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         // two providers were checked on different days. One date here would
         // teach the harness a table that does not exist.
         price_dated: elevenlabs ? "2026-09-04" : "2026-09-10",
-        spent_usd: 0.042,
+        // The same counter the `engine:spend` event reports, so the two
+        // ways the figure reaches the screen cannot disagree here in a way
+        // they never do in the engine.
+        spent_usd: Math.round(MOCK_SPENT * 10000) / 10000,
       };
     }
     case "voices":
@@ -908,7 +942,17 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
           : `voice_failed: ${VOICE_FAIL}: provider said no`,
       );
     }
-    startMockReading(bookSteps((args.segmentId as string | null) ?? null));
+    const bookRate = mockRate(String(args.voiceId ?? ""));
+    const bookWalk = bookSteps((args.segmentId as string | null) ?? null);
+    startMockReading(
+      bookWalk,
+      // ~11.8k characters a chapter, spread over the steps it walks - the
+      // same shape the estimate above quotes.
+      bookRate === null || !bookWalk.length
+        ? null
+        : { chars: Math.round(11_800 / bookWalk.length),
+            usd: (11_800 / bookWalk.length) * bookRate / 1000 },
+    );
     return Promise.resolve(null);
   }
   if (command === "read_text" || command === "read_selection_text") {
@@ -923,7 +967,20 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     const from = (args.segmentId as string | null) ?? null;
     const parts = mockParts(String(args.text ?? "")).map((part) => part.segment_id);
     const start = from ? parts.indexOf(from) : 0;
-    startMockReading(parts.slice(start < 0 ? 0 : start));
+    // A paid voice bills, and the engine says so on `spend` as it goes. The
+    // harness emitted nothing, so the one screen that shows a running total
+    // could not be looked at while it moved - which is how the shell came to
+    // ignore the event entirely.
+    const walk = parts.slice(start < 0 ? 0 : start);
+    const rate = mockRate(String(args.voiceId ?? ""));
+    const chars = String(args.text ?? "").length;
+    startMockReading(
+      walk,
+      rate === null || !walk.length
+        ? null
+        : { chars: Math.round(chars / walk.length),
+            usd: (chars / walk.length) * rate / 1000 },
+    );
     return Promise.resolve(null);
   }
   if (command === "stop_reading") {

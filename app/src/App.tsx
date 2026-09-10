@@ -601,12 +601,32 @@ export default function App() {
       "external:status",
       (event) => setExternalStatus(event.payload.reason),
     );
+    /* The running total, as the engine counts it up.
+     *
+     * It also rides back on every `estimate` reply, and that was the ONLY
+     * way it moved until 10/09 - so auditioning five paid voices left the
+     * figure under "Phiên này đã tiêu" exactly where it started, while the
+     * panel above it says previewing is charged to the ceiling. Estimates
+     * re-run when the book, position, voice, scope or text changes; tapping
+     * Preview changes none of those.
+     *
+     * The engine already emitted this and the Rust host already forwarded it
+     * under `engine:<name>`; nothing was listening. Assignment, not
+     * addition: `usd` is the session's whole total, from one counter that
+     * only grows while the app is open. A superseded reading's spend is
+     * deliberately NOT filtered out the way its audio is - money that went
+     * out was still spent. */
+    const spent = listen<{ usd: number }>(
+      "engine:spend",
+      (event) => setSpent(event.payload.usd),
+    );
     return () => {
       done.then((unlisten) => unlisten());
       moved.then((unlisten) => unlisten());
       started.then((unlisten) => unlisten());
       external.then((unlisten) => unlisten());
       externalState.then((unlisten) => unlisten());
+      spent.then((unlisten) => unlisten());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

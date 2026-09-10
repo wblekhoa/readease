@@ -1024,6 +1024,46 @@ mod tests {
         assert!(!h.shell.saw("reading:done"), "an unrelated reply was mistaken for the end of the reading");
     }
 
+    /// What the reader is TOLD they have spent has to keep arriving.
+    ///
+    /// The engine counts money up and announces it on `spend`; the pump has
+    /// no branch for that name, so it goes out under `engine:spend` like any
+    /// event this host does not know about. Nothing in Rust says "spend"
+    /// anywhere - which is exactly why it is worth a test: the catch-all is
+    /// load-bearing, and a later branch added "for tidiness" would take the
+    /// running total off the reader's screen with nothing going red.
+    #[test]
+    fn a_spend_the_engine_reports_reaches_the_webview() {
+        let h = harness(0, false);
+        h.lines
+            .send(json!({"id": 1, "event": "spend", "chars": 44, "usd": 0.06}).to_string())
+            .unwrap();
+        assert!(
+            wait_until(|| h.shell.saw("engine:spend"), Duration::from_secs(2)),
+            "vỏ không hề biết tiền đã tiêu",
+        );
+    }
+
+    /// And it must NOT be filtered the way audio is.
+    ///
+    /// `chunk` and `position` die here when they belong to a superseded
+    /// reading - a stopped reading must not keep speaking or moving the
+    /// highlight. Money is the opposite case: characters that went out were
+    /// paid for whether or not the reader stopped listening, so a spend from
+    /// an old reading is still theirs to see.
+    #[test]
+    fn a_spend_from_a_reading_already_stopped_is_still_reported() {
+        let h = harness(0, false);
+        h.stop();
+        h.lines
+            .send(json!({"id": 1, "event": "spend", "chars": 44, "usd": 0.06}).to_string())
+            .unwrap();
+        assert!(
+            wait_until(|| h.shell.saw("engine:spend"), Duration::from_secs(2)),
+            "tiền đã tiêu bị bỏ đi cùng lượt đọc đã dừng",
+        );
+    }
+
     /// The tail slot. A full window plus the final reply's own `Done` frame
     /// must still fit the queue, or the reader blocks on the very last line
     /// of a paused reading - F1 again, at the end of every chapter.
