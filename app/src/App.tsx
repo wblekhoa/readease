@@ -700,6 +700,10 @@ export default function App() {
       segmentId: null,
       voiceId: id,
       rate,
+      // This sentence is the app's, not the reader's, so the engine may keep
+      // the clip - which is what stops a second audition of a paid voice
+      // being a second charge.
+      appText: true,
     }).catch((error) => {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });

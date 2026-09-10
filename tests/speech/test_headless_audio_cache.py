@@ -11,6 +11,13 @@ nothing on disk (PRIVACY.md, "Data kept on the Mac"), and that promise has its
 own receipts in `TransientReadingsLeaveNothingBehind` below. Testing the cache
 through `read` is how the promise came to be broken without a test noticing:
 the suite asserted the caching, so the caching of the wrong path looked right.
+
+There is now ONE `read` that may be kept, and it is named rather than left to
+be discovered: the voice-preview sample, which the shell marks `app_text`. It
+is the app's own fixed sentence - the same words for every reader, written in
+`i18n.ts` - so keeping it says nothing about anybody. `ThePreviewSampleIsThe
+OneReadWorthKeeping` holds both halves: that the flag works, and that the
+promise above is untouched by it.
 """
 
 from __future__ import annotations
@@ -179,6 +186,82 @@ class HeadlessCacheTests(_CacheCase):
 
             self.assertEqual(self._kept(audio), [])
             self.assertEqual(len(engine.calls), 2)
+
+
+class ThePreviewSampleIsTheOneReadWorthKeeping(_CacheCase):
+    """Auditioning a paid voice twice must not be paid for twice.
+
+    Every tap on a voice's preview was a fresh purchase: the sample goes down
+    the `read` path, `read` never caches, so comparing five AI voices cost
+    five charges and listening to one of them again cost another. The clip is
+    the app's own sentence, identical for everyone, so there is nothing of the
+    reader's in it to keep.
+
+    The receipt is the number of times the ENGINE was asked, not the presence
+    of a file: a file proves something was written, and what matters here is
+    that the provider was not billed.
+    """
+
+    def _preview(self, identifier: int, *, voice: str = "V") -> dict:
+        return {
+            "id": identifier, "method": "read",
+            "params": {
+                "text": SENTENCE, "voice_id": voice, "rate": 1.0,
+                "app_text": True,
+            },
+        }
+
+    def test_the_second_audition_of_a_voice_asks_the_engine_nothing(self) -> None:
+        with TemporaryDirectory() as directory:
+            cache = AudioCache(Path(directory) / "Audio")
+            engine = CountingEngine()
+
+            first = self._run(engine, cache, [self._preview(1)])
+            self.assertTrue(first[-1]["ok"])
+            bought = len(engine.calls)
+            self.assertGreater(bought, 0, "lần nghe thử đầu phải thật sự mua")
+
+            second = self._run(engine, cache, [self._preview(2)])
+            self.assertTrue(second[-1]["ok"])
+            self.assertEqual(
+                len(engine.calls), bought, "nghe thử lần hai vẫn bị tính tiền"
+            )
+
+    def test_each_voice_is_still_its_own_purchase(self) -> None:
+        """The saving must not become a wrong answer: two voices saying the
+        same sentence are two different clips, and the key already separates
+        them. Without this, "cheaper" could mean "you heard the other one"."""
+
+        with TemporaryDirectory() as directory:
+            cache = AudioCache(Path(directory) / "Audio")
+            engine = CountingEngine()
+
+            self._run(engine, cache, [self._preview(1, voice="V")])
+            bought = len(engine.calls)
+            self._run(engine, cache, [self._preview(2, voice="W")])
+
+            self.assertGreater(len(engine.calls), bought)
+
+    def test_the_flag_is_the_shell_saying_whose_words_these_are(self) -> None:
+        """The same text, the same voice, WITHOUT the claim: still transient.
+
+        So the flag cannot be read as "cache this" - a reader's passage that
+        happens to match the sample is still kept out. It is a statement about
+        where the words came from, and only the preview makes it.
+        """
+
+        with TemporaryDirectory() as directory:
+            audio = Path(directory) / "Audio"
+            cache = AudioCache(audio)
+            engine = CountingEngine()
+
+            plain = {
+                "id": 1, "method": "read",
+                "params": {"text": SENTENCE, "voice_id": "V", "rate": 1.0},
+            }
+            self._run(engine, cache, [plain])
+
+            self.assertEqual(self._kept(audio), [])
 
 
 class TransientReadingsLeaveNothingBehind(_CacheCase):

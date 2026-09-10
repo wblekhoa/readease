@@ -78,10 +78,15 @@ fn read_text(
     segment_id: Option<String>,
     voice_id: String,
     rate: f64,
+    // The shell's word that this text is the app's own sample sentence and
+    // not the reader's. Only that lets the engine keep the clip; see
+    // `_speak`'s `app_text`.
+    app_text: Option<bool>,
 ) -> Result<(), String> {
     client_of(&engine).fire("read", serde_json::json!({
         "text": text, "segment_id": segment_id,
         "voice_id": voice_id, "rate": rate,
+        "app_text": app_text.unwrap_or(false),
     }))
 }
 

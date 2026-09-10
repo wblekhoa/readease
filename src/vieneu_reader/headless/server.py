@@ -691,6 +691,10 @@ class _Session:
         self._speak(
             request_id, utterances, voice_id, rate, settings,
             window=params.get("window"), language=language,
+            # The shell's word that this is the APP's own fixed sentence -
+            # the voice-preview sample - and not something the reader wrote
+            # or captured. It is what makes the clip cacheable; see `_speak`.
+            app_text=bool(params.get("app_text")),
         )
 
     def _text_parts(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -2120,6 +2124,7 @@ class _Session:
         window: Any = None,
         language: str | None = None,
         detected: str | None = None,
+        app_text: bool = False,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
@@ -2153,7 +2158,16 @@ class _Session:
         # person reading a selection out of their mail or their notes has not
         # asked this app to keep it. `book_id` is exactly the difference: the
         # library path passes one, `read` never does.
-        self._cache_reading = book_id is not None
+        #
+        # `app_text` is the one other thing that may be kept, and it does not
+        # touch that promise: the promise is about the READER'S text, and this
+        # is the app's own fixed sample sentence, the same words for everyone.
+        # Keeping it is what stops a paid voice being bought twice for the
+        # same audition - comparing five AI voices cost five charges, and
+        # listening to one of them again cost another. Deliberately a claim
+        # about PROVENANCE rather than a "cache this" bit: a caller cannot ask
+        # for the reader's words to be kept by setting a flag.
+        self._cache_reading = book_id is not None or app_text
         if book_id is not None:
             self._listening[request_id] = (book_id, rate, voice_id)
             while len(self._listening) > 4:
