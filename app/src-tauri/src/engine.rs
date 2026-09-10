@@ -376,6 +376,17 @@ pub(crate) struct Pump {
     shell: Arc<dyn Shell>,
 }
 
+/// Writing to the engine's stdin fails for exactly one reason: the engine is
+/// not there to read it. The reader is told that, in the sentence the shell
+/// can translate, rather than `engine write: Broken pipe (os error 32)` -
+/// which is what a Vietnamese reader got until 10/09, and got again on every
+/// action afterwards. The operating system's words still reach stderr, where
+/// they are useful; they were never useful on screen.
+fn write_failed(error: &std::io::Error) -> String {
+    eprintln!("[engine] write failed: {error}");
+    ENGINE_GONE.to_string()
+}
+
 impl Pump {
     fn run(&self, lines: impl Iterator<Item = String>) {
         self.pump(lines);
@@ -562,7 +573,7 @@ impl EngineClient {
     fn send(&self, id: u64, method: &str, params: Value) -> Result<(), String> {
         let line = json!({"id": id, "method": method, "params": params});
         let mut stdin = self.stdin.lock().unwrap();
-        writeln!(stdin, "{line}").map_err(|error| format!("engine write: {error}"))
+        writeln!(stdin, "{line}").map_err(|error| write_failed(&error))
     }
 
     /// Ask the engine something and wait for its answer.
@@ -880,6 +891,22 @@ mod tests {
             h.current_read.lock().unwrap().is_none(),
             "vỏ vẫn tin là đang đọc sau khi engine chết",
         );
+    }
+
+    /// The other half of the same finding: the engine can die while nobody
+    /// is reading - the shelf is open, the sidecar is killed under memory
+    /// pressure - and then the FIRST thing the reader does fails at the
+    /// write. Measured 10/09: `engineMessage()` returned
+    /// `engine write: Broken pipe (os error 32)` unchanged in Vietnamese,
+    /// because `ENGINE_REFUSAL` only ever strips `engine refused …:`. The
+    /// transport's own words are English by a documented choice; this is not
+    /// the transport reporting on itself, it is the one condition that has a
+    /// sentence written for it.
+    #[test]
+    fn a_write_to_a_dead_engine_speaks_to_the_reader_not_about_the_pipe() {
+        let broken = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "broken pipe");
+
+        assert_eq!(write_failed(&broken), ENGINE_GONE);
     }
 
     /// The regression the fix above could easily have introduced.
