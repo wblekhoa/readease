@@ -23,7 +23,13 @@ KEY_FOR_PROVIDER: Mapping[str, str] = {
 #: Vietnamese model, and a book being read in another language must not be
 #: handed to it. Refusing by name is the same rule the two money reasons
 #: follow - say why, rather than speak in a voice nobody chose.
-BlockedReason = Literal["no_key", "budget", "wrong_language"]
+#:
+#: `language_choice` is the same refusal for the reader who can undo it. A
+#: book whose OWN WORDS read as Vietnamese is only being read as English
+#: because somebody set it that way, so "pick a voice that reads English"
+#: sends them to fix the voice while the Vietnamese book sits in front of
+#: them. Two situations, one sentence, until 10/09.
+BlockedReason = Literal["no_key", "budget", "wrong_language", "language_choice"]
 
 
 @dataclass(frozen=True, slots=True)

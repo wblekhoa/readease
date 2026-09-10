@@ -752,6 +752,7 @@ class _Session:
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
             book_id=book_id, window=params.get("window"), language=language,
+            detected=self._detected_language(stored),
         )
 
     def _voice_catalogue(self) -> list[dict[str, Any]]:
@@ -1972,6 +1973,7 @@ class _Session:
         voice_id: str,
         settings: dict[str, Any],
         language_hint: str | None = None,
+        detected_hint: str | None = None,
     ) -> tuple[Any, "VoicePrice | None", str | None]:
         """The engine for this voice, its price, and why not if not.
 
@@ -1999,6 +2001,17 @@ class _Session:
             # language with it. So this is a refusal by name, like a paid
             # voice with no key, and the person picks a voice that can.
             if language != DEFAULT_SPEECH_LANGUAGE:
+                # Two different situations wore one sentence until 10/09, and
+                # only one of them was the reader's to act on. A book whose
+                # OWN WORDS read as Vietnamese can only be reading in another
+                # language because somebody set it that way - so telling that
+                # reader to "pick a voice that reads English" sends them to
+                # fix the wrong thing, while the book they are holding is in
+                # front of them in Vietnamese. Measured on the owner's shelf:
+                # a book 28.3% Vietnamese by orthography, stored as `en`,
+                # refused every local voice with no hint of why.
+                if detected_hint == DEFAULT_SPEECH_LANGUAGE:
+                    return None, None, "language_choice"
                 return None, None, "wrong_language"
             return self._engine, None, None
         if route.kind == "blocked":
@@ -2106,12 +2119,15 @@ class _Session:
         book_id: str | None = None,
         window: Any = None,
         language: str | None = None,
+        detected: str | None = None,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
         # the same road for both.
         document = self._settings_document()
-        engine, price, blocked = self._voice_engine(voice_id, document, language)
+        engine, price, blocked = self._voice_engine(
+            voice_id, document, language, detected
+        )
         if engine is None:
             # Named, not silently swapped for the local voice: hearing a
             # different voice than the one you chose, with no reason given,

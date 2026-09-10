@@ -1194,7 +1194,10 @@ export default function App() {
               </>
             )}
           </div>
-          <div className="flex items-center gap-2 justify-self-center">
+          {/* The transport keeps an open panel open (owner, 10/09): these
+              buttons act ON the reading the panel is about, so treating a
+              pause as "the reader went back to the book" was wrong. */}
+          <div data-keeps-popover className="flex items-center gap-2 justify-self-center">
             {reading === "idle" ? (
               /* Idle: what a click would do and where it would start, and
                  the voice it would use, side by side - one kind of thing,

@@ -538,6 +538,14 @@ export function BookTile({
  * The button that OPENED the panel is exempt, because it toggles: closing on
  * its mousedown and reopening on its click would leave the panel stuck open
  * and the button apparently dead. Mark such a button `data-popover-trigger`.
+ *
+ * The transport is exempt too, for a different reason (owner, 10/09). Pause,
+ * stop, skip and the speaker do not move the reader's attention anywhere -
+ * they act on the reading the open panel is ABOUT. Closing the voice list
+ * because somebody paused to hear a voice more clearly means reopening it and
+ * finding their place again, every time. Mark such a control
+ * `data-keeps-popover`; it is deliberately not the same mark as the trigger,
+ * which is exempt because it toggles rather than because it belongs.
  */
 export function useDismiss(onClose: () => void, enabled = true) {
   const panel = useRef<HTMLDivElement>(null);
@@ -547,6 +555,7 @@ export function useDismiss(onClose: () => void, enabled = true) {
       const target = event.target as HTMLElement | null;
       if (!target || panel.current?.contains(target)) return;
       if (target.closest("[data-popover-trigger]")) return;
+      if (target.closest("[data-keeps-popover]")) return;
       onClose();
     };
     const onKey = (event: KeyboardEvent) => {

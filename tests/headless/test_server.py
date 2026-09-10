@@ -395,6 +395,64 @@ class ProtocolTests(unittest.TestCase):
         ]),
     ]
 
+    VIETNAMESE_BOOK = [
+        ("Một", [
+            ("Họ có thể xuất thân từ kỹ thuật, thiết kế hình ảnh, viết tài "
+             "liệu kỹ thuật, quản lý dự án và nhiều lĩnh vực khác.", "paragraph"),
+            ("Đây là một cộng đồng đa dạng, và điều đó không ngăn họ bắt "
+             "đầu công việc của mình.", "paragraph"),
+        ]),
+    ]
+
+    def test_a_vietnamese_book_marked_english_says_which_setting_did_it(self) -> None:
+        """The refusal a reader can actually act on.
+
+        Found on the owner's own shelf (10/09): a book 28.3% Vietnamese by
+        orthography, stored as `en` because somebody once tapped the other
+        option - very likely to reveal a paid voice the filter was hiding -
+        and every local voice refused with "pick a voice that reads English".
+        That sentence is true for a book that IS English and useless for this
+        one: the reader is holding a Vietnamese book and is being sent to fix
+        the voice. The book's own words are the tell, and the engine already
+        computes them for the shelf, so the two cases can be told apart.
+        """
+
+        repository, root = self._shelf_with(self.VIETNAMESE_BOOK)
+        replies = run_server(
+            [
+                {"id": 5, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": "en"}},
+                {"id": 8, "method": "read.book",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        # The setting took, and the text disagrees with it - which is exactly
+        # the pair that makes this case tellable.
+        self.assertEqual(replies[0]["result"]["language"], "en")
+        self.assertEqual(replies[0]["result"]["language_detected"], "vi")
+        self.assertFalse(replies[-1]["ok"])
+        self.assertIn("language_choice", replies[-1]["error"])
+
+    def test_a_book_that_really_is_english_still_says_pick_another_voice(self) -> None:
+        """The control. Nothing here may weaken the owner's rule: a book whose
+        own words are English is still refused by the Vietnamese model, and
+        still with the sentence that sends the reader to the voice list."""
+
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        replies = run_server(
+            [{"id": 8, "method": "read.book",
+              "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        self.assertFalse(replies[-1]["ok"])
+        self.assertIn("wrong_language", replies[-1]["error"])
+        self.assertNotIn("language_choice", replies[-1]["error"])
+
     def test_a_reader_can_say_a_book_is_vietnamese_after_all(self) -> None:
         # The case with no way out before this: a Vietnamese book that lost
         # its diacritics reads as English, is refused by the Vietnamese voice,
