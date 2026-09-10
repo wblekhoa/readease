@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { text } from "../i18n";
+import { engineMessage, text } from "../i18n";
 import { Button, Field, ProgressBar, Select } from "../ui/controls";
 
 export function Setup({
@@ -65,7 +65,7 @@ export function Setup({
       await invoke("prepare_model");
     } catch (error) {
       setBusy(false);
-      setNote(String(error));
+      setNote(engineMessage(error));
     }
   }, [choice, precision]);
 

@@ -954,7 +954,7 @@ export function Reader({
               annotations: [...(book.annotations ?? []), removed],
             });
           }
-          setNoteError(String(error));
+          setNoteError(engineMessage(error));
         });
       }}
       onClose={() => onNotes(false)}

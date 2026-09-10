@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { text } from "../i18n";
+import { engineMessage, text } from "../i18n";
 import { Button, ProgressBar } from "./controls";
 import { GroupedRow, GroupedSection } from "./patterns";
 
@@ -42,7 +42,7 @@ export function ModelChoices({
       params: {},
     })
       .then((reply) => setStatus(reply.result))
-      .catch((error) => setNote(String(error)));
+      .catch((error) => setNote(engineMessage(error)));
   }, []);
 
   useEffect(refresh, [refresh]);
@@ -97,7 +97,7 @@ export function ModelChoices({
       setNote(text("model.preparing"));
       await invoke("prepare_model");
     } catch (error) {
-      setNote(String(error));
+      setNote(engineMessage(error));
       setBusy(null);
     }
   }, [refresh]);
@@ -111,7 +111,7 @@ export function ModelChoices({
       });
       refresh();
     } catch (error) {
-      setNote(String(error));
+      setNote(engineMessage(error));
     } finally {
       setBusy(null);
     }

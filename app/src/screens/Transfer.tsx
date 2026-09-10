@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { text, type TextKey } from "../i18n";
+import { engineMessage, text, type TextKey } from "../i18n";
 import { Button, IconButton, Notice, SectionTitle, Surface } from "../ui/controls";
 import { BookChoice, EmptyState, GroupedSection } from "../ui/patterns";
 import { ArrowLeftIcon } from "../ui/icons";
@@ -47,7 +47,7 @@ function errorText(raw: unknown): string {
   for (const name of known) {
     if (token.includes(name)) return text(`noteserr.${name}` as TextKey);
   }
-  return message;
+  return engineMessage(message);
 }
 
 const VERDICT: Record<string, TextKey> = {

@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { text } from "../i18n";
+import { engineMessage, text } from "../i18n";
 import { Button, IconButton, Input, Notice, Surface } from "../ui/controls";
 import { BookTile, EmptyState, MenuButton, MiniCover } from "../ui/patterns";
 import { BookClosedIcon, BookIcon, ChevronDownIcon, CloseIcon, ImportIcon, LockIcon, SyncIcon } from "../ui/icons";
@@ -44,7 +44,7 @@ const ERROR_KEYS = {
 
 function errorText(raw: unknown): string {
   const token = String(raw).replace(/^.*failed: /, "") as keyof typeof ERROR_KEYS;
-  return token in ERROR_KEYS ? text(ERROR_KEYS[token]) : String(raw);
+  return token in ERROR_KEYS ? text(ERROR_KEYS[token]) : engineMessage(raw);
 }
 
 /** One book as a tile (owner, 02/09: two to a row, short, no colour). The

@@ -63,7 +63,7 @@ import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
 import { Setup } from "./screens/Setup";
 import { Transfer } from "./screens/Transfer";
-import { currentLanguage, setLanguage, text, type Language } from "./i18n";
+import { currentLanguage, engineMessage, setLanguage, text, type Language } from "./i18n";
 
 const PASTE_LIMIT = 100_000;
 const RATES = [0.5, 0.75, 1.0, 1.15, 1.2, 1.25, 1.5, 2.0];
@@ -504,7 +504,7 @@ export default function App() {
       })
       .catch((error) => {
         console.error(error);
-        setVoicesError(String(error));
+        setVoicesError(engineMessage(error));
       });
     invoke<{ result: { value: string | null } }>("engine_request", {
       method: "config.get",
@@ -1142,7 +1142,7 @@ export default function App() {
           const key = faultKey(fault);
           return (
             <div className="relative z-10 px-6 pt-3">
-              <Notice tone="error">{key ? text(key) : fault.raw}</Notice>
+              <Notice tone="error">{key ? text(key) : engineMessage(fault.raw)}</Notice>
             </div>
           );
         })()}

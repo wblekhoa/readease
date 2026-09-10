@@ -75,6 +75,45 @@ function iconButtonsWithoutALabel(directory) {
 }
 iconButtonsWithoutALabel(new URL("./src", import.meta.url).pathname);
 
+// A rejection from the engine arrives wrapped by the Rust transport
+// (`engine refused read_book: <câu tiếng Việt>`). engineMessage() drops that
+// wrapper and says the rest in the reader's language; anything that puts the
+// rejection on screen without it prints an English wrapper in front of a
+// Vietnamese sentence - which is the exact failure engineMessage exists to
+// prevent. Seven surfaces did this at once (10/09), so it is a gate, not a
+// sweep. Two shapes are allowed through on purpose: a plain `const x =
+// String(raw)` that is later handed to engineMessage, and the player's fault
+// channel (`type: "failed"`), whose raw string readingFault() classifies.
+function rawEngineErrorOnScreen(directory) {
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) { rawEngineErrorOnScreen(path); continue; }
+    if (!path.endsWith(".tsx") && !path.endsWith(".ts")) continue;
+    if (path.endsWith("/i18n.ts")) continue; // where engineMessage lives
+    const source = readFileSync(path, "utf-8");
+    const shapes = [
+      // Straight into displayed state: setNote(String(error)).
+      /set[A-Z][A-Za-z]*\(\s*String\(\s*(?:error|err|raw)\b/g,
+      // Straight into JSX: {fault.raw} or {String(error)}.
+      /\{[^{}]*(?:\b\w+\.raw\b|String\(\s*(?:error|err|raw)\s*\))[^{}]*\}/g,
+    ];
+    for (const shape of shapes) {
+      for (const match of source.matchAll(shape)) {
+        if (match[0].includes("engineMessage")) continue;
+        // The player's fault channel: readingFault() reads this raw
+        // string to pick a code, and App.tsx translates at the render.
+        if (match[0].includes('type: "failed"')) continue;
+        const line = source.slice(0, match.index).split("\n").length;
+        violations.push(
+          `${path}:${line}: lỗi engine ra màn hình không qua engineMessage() — ` +
+          match[0].replace(/\s+/g, " ").slice(0, 60),
+        );
+      }
+    }
+  }
+}
+rawEngineErrorOnScreen(new URL("./src", import.meta.url).pathname);
+
 if (violations.length) {
   console.error("UI_AUDIT FAIL:");
   for (const violation of violations) console.error("  " + violation);

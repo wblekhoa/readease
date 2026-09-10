@@ -8,6 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { engineMessage, runtime, setLanguage } from "../src/i18n.ts";
+import { faultKey, readingFault } from "../src/ui/voiceFault.ts";
 
 const WRAPPED =
   "engine refused library.import: PDF không có lớp văn bản; bản MVP chưa hỗ trợ OCR.";
@@ -57,5 +58,31 @@ test("câu không ai dịch thì giữ nguyên, không bị nuốt", () => {
   // This side's own transport words are already English and stay untouched.
   assert.equal(engineMessage("engine timeout on library.list"),
                "engine timeout on library.list");
+  setLanguage("vi");
+});
+
+/** The shell asked for this and did not do it (10/09).
+ *
+ * `readingFault()` keeps `raw` untouched on purpose - it classifies on that
+ * string, and a fault it has no code for must not be dressed up as one it
+ * knows. But App.tsx then printed that same `raw` when there was no code,
+ * so a reader whose PDF had no text layer met the Rust transport's English
+ * wrapper standing in front of a sentence written for them in Vietnamese.
+ * Classifying and displaying are two jobs; only the second one translates. */
+test("một lỗi đọc không có mã vẫn phải rụng vỏ truyền tin", () => {
+  const fault = readingFault(WRAPPED);
+  assert.equal(fault.code, null, "câu này cố tình không có mã");
+  assert.equal(faultKey(fault), null);
+
+  setLanguage("vi");
+  assert.equal(
+    engineMessage(fault.raw),
+    "PDF không có lớp văn bản; bản MVP chưa hỗ trợ OCR.",
+  );
+  setLanguage("en");
+  assert.equal(
+    engineMessage(fault.raw),
+    "This PDF has no text layer; OCR is not supported yet.",
+  );
   setLanguage("vi");
 });
