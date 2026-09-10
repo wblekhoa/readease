@@ -260,6 +260,99 @@ class PaidReadingTests(unittest.TestCase):
             self.assertEqual([r for r in replies if r.get("event") == "spend"], [])
 
 
+class AuditioningAPaidVoiceIsSpendingTests(unittest.TestCase):
+    """The two sentences the voices panel now puts on screen (10/09).
+
+    "Nghe thử giọng ở đây là có tốn tiền - chưa tới $0,01 mỗi lần, trừ vào
+    trần chi tiêu. Giọng đã nghe rồi thì lần sau không tính nữa."
+
+    Three claims, and a reader can act on all three: it costs · the ceiling
+    applies to it · the second listen is free. Each one is a promise about
+    money, so each one is pinned here rather than left to the reading path
+    to happen to keep.
+    """
+
+    SAMPLE = "Tôi sẽ đọc sách cho bạn nghe bằng giọng này."
+
+    def setUp(self) -> None:
+        from vieneu_reader.headless import server
+
+        self._original = server._external_provider
+        server._external_provider = lambda provider, voice_id, settings: (
+            FakeProvider(str(settings.get("openai_api_key") or ""))
+            if provider == "openai" and settings.get("openai_api_key") else None
+        )
+        FakeProvider.asked = []
+
+    def tearDown(self) -> None:
+        from vieneu_reader.headless import server
+
+        server._external_provider = self._original
+
+
+    def _preview(self, identifier: int = 1) -> dict:
+        return {
+            "id": identifier, "method": "read",
+            "params": {
+                "text": self.SAMPLE, "voice_id": VOICE, "rate": 1.0,
+                "app_text": True,
+            },
+        }
+
+    def _serve(self, requests, settings, cache=None):
+        from tests.headless.test_server import FakeEngine, run_server
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(json.dumps(settings), encoding="utf-8")
+            return run_server(requests, FakeEngine(), settings_path=path,
+                              audio_cache=cache)
+
+    def test_the_ceiling_stops_an_audition_the_way_it_stops_a_reading(self) -> None:
+        # A ceiling that a preview walked straight past would make the
+        # sentence "trừ vào trần chi tiêu" false, and the reader who set
+        # $0.25 to feel safe would be safe everywhere except the one screen
+        # that invites tapping five voices in a row.
+        replies = self._serve(
+            [self._preview()],
+            {"openai_api_key": KEY, "external_voice_budget": 0.0000001},
+        )
+        self.assertFalse(replies[-1]["ok"], replies[-1])
+        self.assertIn("budget", replies[-1]["error"])
+        # Asked BEFORE the characters went out, not noticed on the way back.
+        self.assertEqual(FakeProvider.asked, [])
+
+    def test_an_audition_moves_the_meter_the_reader_is_shown(self) -> None:
+        replies = self._serve([self._preview()], {"openai_api_key": KEY})
+        self.assertTrue(replies[-1]["ok"], replies[-1])
+        spends = [r for r in replies if r.get("event") == "spend"]
+        self.assertTrue(spends, "nghe thử phải được ghi vào đồng hồ")
+        self.assertEqual(spends[-1]["chars"], len(self.SAMPLE))
+        self.assertGreater(spends[-1]["usd"], 0)
+
+    def test_the_second_audition_of_a_voice_moves_it_no_further(self) -> None:
+        # The clip is the app's own sentence, so the second listen comes off
+        # the disk. The meter must not charge for what nobody was billed for
+        # - that is what "lần sau không tính nữa" says.
+        from vieneu_reader.speech.cache import AudioCache
+
+        with TemporaryDirectory() as directory:
+            cache = AudioCache(Path(directory) / "Audio")
+            first = self._serve([self._preview(1)], {"openai_api_key": KEY}, cache)
+            self.assertTrue(first[-1]["ok"], first[-1])
+            bought = len(FakeProvider.asked)
+            self.assertGreater(bought, 0, "lần nghe thử đầu phải thật sự mua")
+
+            second = self._serve([self._preview(2)], {"openai_api_key": KEY}, cache)
+            self.assertTrue(second[-1]["ok"], second[-1])
+
+        # Nothing new was bought...
+        self.assertEqual(len(FakeProvider.asked), bought)
+        # ...so nothing new was counted. A meter that charged for a cache hit
+        # would be lying to the reader in the direction that costs them.
+        self.assertEqual([r for r in second if r.get("event") == "spend"], [])
+
+
 class EstimateMethodTests(unittest.TestCase):
     def _run(self, params, settings=None):
         from tests.headless.test_server import FakeEngine, run_server
