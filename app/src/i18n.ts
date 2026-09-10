@@ -300,7 +300,17 @@ export const TEXT = {
   "library.at_chapter": ["Đang ở: {chapter}", "At: {chapter}"],
   "library.open_book": ["Mở {title}", "Open {title}"],
   "library.remove": ["Xoá", "Remove"],
-  "library.remove_confirm": ["Xoá khỏi thư viện?", "Remove from the library?"],
+  // Naming the cost, because the app promises the opposite one dialog
+  // over: `notes.remove_confirm` says a highlight deleted here does not
+  // come back "đồng bộ lại cũng không quay về". Removing the BOOK drops
+  // that record with it (measured 10/09), so a re-import plus a sync
+  // undoes both - the deletion and the reader's own edited words. Until
+  // the migration that keeps those two tables lands, the question has to
+  // say so rather than let a written promise quietly become untrue.
+  "library.remove_confirm": [
+    "Xoá khỏi thư viện? Ghi chú bạn đã sửa và highlight đã xoá hẳn sẽ không quay lại.",
+    "Remove from the library? Notes you edited and highlights you deleted for good will not come back.",
+  ],
   "library.remove_keep": ["Giữ lại", "Keep"],
   "library.removed": ["Đã xoá khỏi thư viện.", "Removed from the library."],
   "library.load_failed": [
