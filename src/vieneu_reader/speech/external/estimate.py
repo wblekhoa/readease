@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from .pricing import VoicePrice
+from .pricing import Billing, VoicePrice
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +30,9 @@ class ScopeEstimate:
     usd: float
     units: int
     unit: str
+    #: "counted" may be quoted as a ceiling; "estimated" may only ever be
+    #: called approximate. The shell picks its wording off this.
+    billing: Billing
     price_dated: str
 
 
@@ -102,5 +105,6 @@ def estimate_scope(
         usd=round(price.usd_for(chars), 4),
         units=price.units_for(chars),
         unit=price.unit,
+        billing=price.billing,
         price_dated=price.fetched,
     )

@@ -243,6 +243,7 @@ class EstimateMethodTests(unittest.TestCase):
         # to hand back - see `pricing.py`.
         self.assertEqual(result["unit"], "tokens")
         self.assertEqual(result["units"], 0)
+        self.assertEqual(result["billing"], "estimated")
         self.assertEqual(result["price_dated"], "2026-09-10")
 
     def test_the_number_counts_the_same_strings_the_reading_will_send(self) -> None:

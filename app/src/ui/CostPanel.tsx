@@ -187,12 +187,19 @@ export function CostPanel({
       </Notice>
       {paid && estimate?.paid && (
         <Notice className="mt-1 block">
-          {text("cost.units", {
-            units: formatCount(estimate.units),
-            unit: text(
-              estimate.unit === "credits" ? "cost.unit_credits" : "cost.unit_characters",
-            ),
-          })}
+          {/* A token-billed voice has no unit count anybody could check
+              against their dashboard, so the line says what it is instead of
+              printing a character count under the wrong word. */}
+          {estimate.billing === "estimated"
+            ? text("cost.estimated")
+            : text("cost.units", {
+                units: formatCount(estimate.units),
+                unit: text(
+                  estimate.unit === "credits"
+                    ? "cost.unit_credits"
+                    : "cost.unit_characters",
+                ),
+              })}
         </Notice>
       )}
     </Surface>

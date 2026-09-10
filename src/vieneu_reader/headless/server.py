@@ -864,6 +864,7 @@ class _Session:
                 "usd": round(price.usd_for(chars), 4),
                 "units": price.units_for(chars),
                 "unit": price.unit,
+                "billing": price.billing,
                 "price_dated": price.fetched,
                 "spent_usd": self._spend.snapshot().usd,
             })
@@ -918,6 +919,7 @@ class _Session:
             "usd": result.usd,
             "units": result.units,
             "unit": result.unit,
+            "billing": result.billing,
             "price_dated": result.price_dated,
             # What this session has already run up. It rides here rather than
             # on an event of its own because the Rust host forwards only the

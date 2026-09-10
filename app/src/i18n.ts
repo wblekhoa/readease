@@ -184,6 +184,11 @@ export const TEXT = {
      anywhere inside it. Saying "tối đa" is what makes the number true for
      every way of starting a reading (owner chose this, 04/09). */
   "cost.at_most": ["tối đa {usd}", "up to {usd}"],
+  /* And where the figure is NOT arithmetic. OpenAI's current model bills
+     tokens of the audio it generates, which nothing here can count off the
+     text, so the number rests on an assumed reading pace. "Tối đa" would be
+     a promise this app cannot keep; "khoảng" is what it can say. */
+  "cost.about": ["khoảng {usd}", "about {usd}"],
   "cost.unavailable": ["chưa có giá", "no price yet"],
   "cost.failed": [
     "Chưa tính được giá cho giọng này, nên nút đọc còn khoá - sẽ không có chuyện tiêu tiền mà chưa biết bao nhiêu.",
@@ -202,6 +207,12 @@ export const TEXT = {
     "{chars} characters · price quoted {date}",
   ],
   "cost.units": ["≈ {units} {unit}", "≈ {units} {unit}"],
+  /* Takes the place of the unit line for a voice whose provider bills
+     something the text cannot be counted into. */
+  "cost.estimated": [
+    "Model này tính theo token của âm thanh sinh ra, không theo ký tự - nên con số trên là ước lượng, không phải mức trần. Hoá đơn thật nằm ở trang của nhà cung cấp.",
+    "This model bills tokens of the audio it generates, not characters - so the figure above is an estimate, not a ceiling. The real bill is on the provider's own page.",
+  ],
   "cost.unit_characters": ["ký tự", "characters"],
   "cost.unit_credits": ["credit", "credits"],
   "cost.budget": ["Dừng lại khi đã tiêu", "Stop once spent"],

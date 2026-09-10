@@ -783,6 +783,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         // off the text - the engine sends 0 and the panel drops the line.
         units: elevenlabs ? chars : 0,
         unit: elevenlabs ? "credits" : "tokens",
+        billing: elevenlabs ? "counted" : "estimated",
         price_dated: "2026-09-10",
         spent_usd: 0.042,
       };

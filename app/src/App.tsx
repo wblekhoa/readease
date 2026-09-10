@@ -52,6 +52,7 @@ import { ReadingSettingsPanel } from "./ui/ReadingSettingsPanel";
 import { CostPanel } from "./ui/CostPanel";
 import {
   buttonCost,
+  costPhrase,
   isPaidVoice,
   PROVIDERS,
   rememberScope,
@@ -1281,14 +1282,16 @@ export default function App() {
                               : estimate === null
                                 ? `· ${text("cost.measuring")}`
                                 : buttonCost(estimate) &&
-                                /* "tối đa" only where there IS a scope to be
-                                   the ceiling OF. Pasted text has no chapters
-                                   and no click-to-read: the whole of it is
-                                   what gets read, so the figure is exact and
-                                   hedging it would overstate the doubt. */
-                                (estimate?.paid && estimate.chapters > 0
+                                /* Which promise the figure can carry lives in
+                                   `costPhrase`: a ceiling over a scope, an
+                                   approximation where the provider bills
+                                   something the text cannot be counted into,
+                                   or the bare number for pasted text. */
+                                (costPhrase(estimate) === "at_most"
                                   ? `· ${text("cost.at_most", { usd: buttonCost(estimate) })}`
-                                  : `· ${buttonCost(estimate)}`)}
+                                  : costPhrase(estimate) === "about"
+                                    ? `· ${text("cost.about", { usd: buttonCost(estimate) })}`
+                                    : `· ${buttonCost(estimate)}`)}
                           </span>
                         )}
                       </span>

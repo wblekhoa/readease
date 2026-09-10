@@ -28,6 +28,9 @@ export type Estimate =
       /** What the provider bills. `tokens` cannot be counted off the text,
        * and arrives with `units: 0` - see `pricing.py`. */
       unit: "characters" | "credits" | "tokens";
+      /** Whether the figure is arithmetic over the text (`counted`) or rests
+       * on an assumed reading pace (`estimated`). See `pricing.py`. */
+      billing: "counted" | "estimated";
       price_dated: string;
     };
 
@@ -86,6 +89,24 @@ export function formatCount(value: number): string {
 export function buttonCost(estimate: Estimate | null): string {
   if (estimate === null || !estimate.paid) return "";
   return formatUsd(estimate.usd);
+}
+
+/** Which promise the button is allowed to make about that figure.
+ *
+ * `at_most` - the ceiling for a whole scope, and true for every way of
+ *   starting a reading inside it (owner, 04/09).
+ * `about` - the provider bills something the text cannot be counted into,
+ *   so no ceiling can be promised at all. This outranks the scope: an
+ *   estimate over one pasted paragraph is still an estimate.
+ * `exact` - pasted text on a counted voice. The whole of it gets read, so
+ *   the figure is the figure and hedging it would overstate the doubt.
+ */
+export function costPhrase(
+  estimate: Estimate | null,
+): "at_most" | "about" | "exact" | null {
+  if (estimate === null || !estimate.paid) return null;
+  if (estimate.billing === "estimated") return "about";
+  return estimate.chapters > 0 ? "at_most" : "exact";
 }
 
 /** The providers a key can be given to, in the order they are offered. */
