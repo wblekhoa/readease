@@ -260,3 +260,44 @@ test("mô hình trên máy luôn nhận câu tiếng Việt, kể cả khi giao 
   assert.equal(sampleLanguage({ languages: ["vi"] }, "en"), "vi");
   assert.equal(sampleLanguage({ languages: ["vi"] }, "vi"), "vi");
 });
+
+test("một giọng trả phí đổi model vẫn ở lại danh sách đổi nhanh", () => {
+  // Id của giọng trả phí mang theo MODEL, mà nhà cung cấp bỏ model không hỏi
+  // ai. Khi tts-1 biến mất (10/09), sáu giọng người đọc tự tay chọn vẫn còn
+  // bán dưới model mới, cùng tên - nhưng id cũ không khớp gì trong catalogue
+  // nữa nên sẽ rụng khỏi bảng đổi nhanh mà không ai nói gì.
+  const catalogue = [
+    { id: "Phạm Tuyên", label: "Phạm Tuyên" },
+    { id: "openai:gpt-4o-mini-tts:alloy", label: "Alloy · OpenAI" },
+    { id: "openai:gpt-4o-mini-tts:coral", label: "Coral · OpenAI" },
+  ];
+  const stored = JSON.stringify([
+    "Phạm Tuyên", "openai:tts-1:alloy", "openai:tts-1:coral",
+  ]);
+
+  assert.deepEqual(initialShortlist(stored, catalogue), [
+    "Phạm Tuyên",
+    "openai:gpt-4o-mini-tts:alloy",
+    "openai:gpt-4o-mini-tts:coral",
+  ]);
+});
+
+test("chỉ có model được đổi - không bao giờ trả về một giọng khác", () => {
+  const catalogue = [
+    // Cùng tên nhưng KHÁC nhà cung cấp: không phải giọng người ta chọn.
+    { id: "elevenlabs:eleven_v3:alloy", label: "Alloy · ElevenLabs" },
+    // Nhà cung cấp đúng nhưng giọng đó không còn bán nữa.
+    { id: "openai:gpt-4o-mini-tts:marin", label: "Marin · OpenAI" },
+  ];
+  const stored = JSON.stringify(["openai:tts-1:alloy"]);
+
+  // Để nguyên id cũ, rồi bị lọc khỏi bảng đổi nhanh như trước - thà mất một
+  // dòng còn hơn đưa nhầm giọng của người khác.
+  assert.deepEqual(initialShortlist(stored, catalogue), ["openai:tts-1:alloy"]);
+});
+
+test("giọng vẫn còn thì id giữ nguyên từng chữ", () => {
+  const catalogue = [{ id: "openai:gpt-4o-mini-tts:alloy", label: "Alloy" }];
+  const stored = JSON.stringify(["openai:gpt-4o-mini-tts:alloy"]);
+  assert.deepEqual(initialShortlist(stored, catalogue), ["openai:gpt-4o-mini-tts:alloy"]);
+});

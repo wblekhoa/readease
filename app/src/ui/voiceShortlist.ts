@@ -234,7 +234,33 @@ export function initialShortlist(
       .filter((voice) => (STARTING_VOICES as readonly string[]).includes(voice.id))
       .map((voice) => voice.id);
   }
-  return parseShortlist(stored);
+  return parseShortlist(stored).map((id) => rehomed(id, catalogue));
+}
+
+/** The same voice under the model this build actually offers.
+ *
+ * A paid voice id is `provider:model:voice`, so the reader's own list of
+ * voices carries a MODEL inside every entry - and a provider retires a model
+ * without asking. When OpenAI's tts-1 went (10/09), six voices this reader
+ * had picked by hand were still on offer under the new model, with the same
+ * names, and would have vanished from the switcher anyway because the ids no
+ * longer matched anything in the catalogue.
+ *
+ * Only the model moves. The provider and the voice have to match exactly, so
+ * this can never hand somebody a different voice than the one they chose -
+ * and when there is no such voice, the id is left alone to be filtered out
+ * the way it always was.
+ */
+function rehomed(id: string, catalogue: readonly Voice[]): string {
+  if (catalogue.some((voice) => voice.id === id)) return id;
+  const parts = id.split(":");
+  if (parts.length !== 3) return id;
+  const [provider, , name] = parts;
+  const moved = catalogue.find((voice) => {
+    const other = voice.id.split(":");
+    return other.length === 3 && other[0] === provider && other[2] === name;
+  });
+  return moved ? moved.id : id;
 }
 
 /** Read the stored list. Anything unreadable is an empty list, never a
