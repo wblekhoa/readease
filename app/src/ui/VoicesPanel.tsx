@@ -142,6 +142,19 @@ export function VoicesPanel({
     activeProvider,
     genderFilter,
   ));
+  /* How many voices this gender filter could not place.
+   *
+   * `voiceGender` returns null for "nobody said", and the filter treats that
+   * as "not a match" - so filtering by Nam drops all thirteen OpenAI voices
+   * at once, and the panel then reads as "OpenAI has no male voices". It
+   * does not: OpenAI publishes no gender for any of its voices [fetched
+   * 2026-09-10], which is a different fact and the reader has to be able to
+   * tell the two apart. Same shape as the language line above it. */
+  const unplacedByGender = genderFilter === "all" ? 0 : speakableVoices.filter(
+    (voice) =>
+      matchesVoiceFilters(voice, query, sourceOf(voice.id), activeProvider, "all")
+      && voiceGender(voice, sourceOf(voice.id) === "local") === null,
+  ).length;
   const groups = providerOrder
     .map((key) => ({
       key,
@@ -364,6 +377,11 @@ export function VoicesPanel({
         {found > 0 && hiddenByLanguage > 0 && (
           <p className="mb-1 mt-4 text-xs text-ink-mute">
             {text("voices.hidden_for_language", { count: hiddenByLanguage })}
+          </p>
+        )}
+        {unplacedByGender > 0 && (
+          <p className="mb-1 mt-4 text-xs text-ink-mute">
+            {text("voices.gender_unknown", { count: unplacedByGender })}
           </p>
         )}
         {groups.map((group) => (

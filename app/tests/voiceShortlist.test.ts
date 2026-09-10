@@ -301,3 +301,18 @@ test("giọng vẫn còn thì id giữ nguyên từng chữ", () => {
   const stored = JSON.stringify(["openai:gpt-4o-mini-tts:alloy"]);
   assert.deepEqual(initialShortlist(stored, catalogue), ["openai:gpt-4o-mini-tts:alloy"]);
 });
+
+test("giọng chưa ai cho biết giới tính không khớp bộ lọc nào - tiền đề của dòng nhắc trong bảng", () => {
+  // OpenAI không công bố giới tính cho bất kỳ giọng nào [fetched 2026-09-10],
+  // nên `voiceGender` trả null và bộ lọc coi là KHÔNG khớp. Lọc "Nam" vì thế
+  // giấu sạch cả mười ba giọng cùng lúc, và bảng đọc thành "OpenAI không có
+  // giọng nam" - một điều khác hẳn. VoicesPanel đếm đúng số này để nói ra;
+  // nếu luật khớp đổi, dòng nhắc kia thành sai và test này đỏ trước.
+  const openai = { id: "openai:gpt-4o-mini-tts:onyx", label: "Onyx · OpenAI" };
+
+  assert.equal(voiceGender(openai, false), null);
+  assert.equal(matchesVoiceFilters(openai, "", "openai", "all", "male"), false);
+  assert.equal(matchesVoiceFilters(openai, "", "openai", "all", "female"), false);
+  // Nhưng vẫn ở đó khi không lọc - nó không biến mất, chỉ là không xếp được.
+  assert.equal(matchesVoiceFilters(openai, "", "openai", "all", "all"), true);
+});

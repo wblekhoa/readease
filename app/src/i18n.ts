@@ -139,6 +139,14 @@ export const TEXT = {
   "voices.filter_all": ["Tất cả", "All"],
   "voices.filter_gender": ["Giới tính", "Gender"],
   "voices.gender_all": ["Tất cả giới tính", "All genders"],
+  /* Said rather than left to be inferred. A voice nobody has labelled is not
+     a match for either filter, so filtering by Nam hides all thirteen OpenAI
+     voices at once - and the panel then reads as "OpenAI has no male
+     voices", which is not what happened (owner asked exactly that, 10/09). */
+  "voices.gender_unknown": [
+    "Còn {count} giọng nữa không hiện ở đây - nhà cung cấp không cho biết nam hay nữ nên bộ lọc không xếp được. Chọn \"Tất cả giới tính\" để thấy.",
+    "{count} more voices are not shown - the provider never said male or female, so the filter cannot place them. Pick \"All genders\" to see them.",
+  ],
   "voices.gender_male": ["Nam", "Male"],
   "voices.gender_female": ["Nữ", "Female"],
   "voices.speaks_vi": ["Tiếng Việt", "Vietnamese"],
