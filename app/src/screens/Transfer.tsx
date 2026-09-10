@@ -263,11 +263,13 @@ export function Transfer() {
           {facts(plan.target_title, target)}
         </div>
       </div>
-      {/* Small print, and it was competing at the same size as the count.
-          It qualifies the button; it is not a thing to read first. */}
-      <p className="m-0 mt-2.5 text-xs text-ink-mute">
+      {/* A callout, not a line in the type ladder. As plain text it competed
+          with the count for the same rung; on its own ground it reads as
+          what it is - a standing promise about what the button will do -
+          without having to win a size contest to be noticed. */}
+      <Notice tone="info" className="mt-3 max-w-[60ch]">
         {text("transfer.description")}
-      </p>
+      </Notice>
       {notice && (
         <Notice tone="error" className="mt-3 max-w-[60ch]">{notice}</Notice>
       )}
