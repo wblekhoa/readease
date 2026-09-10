@@ -45,3 +45,22 @@ test("placeholder {x} khớp nhau giữa hai ngôn ngữ", () => {
   }
   setLanguage("vi");
 });
+
+/** The panel tells a reader a preview costs "chưa tới $0,01". That is
+ * arithmetic over the sample sentence, not a hedge, so the sentence has a
+ * length it may not exceed. The other half of the claim - that 90 characters
+ * comes to under a cent on every price this app quotes - is pinned in
+ * tests/speech/test_external_estimate.py, which cites this test by name. */
+test("câu nghe thử đủ ngắn để lời hứa 'chưa tới $0,01' còn đúng", () => {
+  const LIMIT = 90;
+  for (const key of ["voices.sample", "voices.sample_en"] as TextKey[]) {
+    for (const language of ["vi", "en"] as const) {
+      setLanguage(language);
+      assert.ok(
+        text(key).length <= LIMIT,
+        `${key} (${language}): ${text(key).length} ký tự, quá ${LIMIT}`,
+      );
+    }
+  }
+  setLanguage("vi");
+});

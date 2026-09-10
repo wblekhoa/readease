@@ -151,6 +151,21 @@ class EstimateTests(unittest.TestCase):
             self.assertRegex(price.fetched, r"^\d{4}-\d{2}-\d{2}$")
             self.assertGreater(price.usd_per_1k_chars, 0)
 
+    def test_a_preview_of_any_sample_this_app_ships_stays_under_a_cent(self) -> None:
+        """The voices panel says a preview costs "chưa tới $0,01".
+
+        That sentence is on screen before anybody presses anything, so it is
+        a price quote and has to be arithmetic. This is one half of it: 90
+        characters - the cap the sample sentences are held to - comes to less
+        than a cent on every price in the table, dearest included. The other
+        half, that the samples really are within 90 characters, is pinned by
+        "câu nghe thử đủ ngắn…" in app/tests/i18n.test.ts.
+        """
+
+        for price in PRICES:
+            with self.subTest(model=price.model):
+                self.assertLess(price.usd_for(90), 0.01)
+
     def test_mismatched_inputs_are_refused_rather_than_guessed(self) -> None:
         with self.assertRaises(ValueError):
             estimate_scope(("a", "b"), (0,), 0, None, price_for("gpt-4o-mini-tts"))

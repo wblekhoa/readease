@@ -121,6 +121,17 @@ export const TEXT = {
   "voices.in_switcher": ["Đưa {name} vào danh sách đổi nhanh", "Keep {name} in the quick switcher"],
   "voices.marked": ["Đã chọn {count} giọng để đổi nhanh.", "{count} voices marked for quick switching."],
   "voices.paid": ["Trả phí", "Paid"],
+  /* The banknote says WHICH voices bill; this says that pressing "Nghe thử"
+     is itself one of the presses that bills (owner, 10/09). "Chưa tới $0,01"
+     is arithmetic, not a hedge: the sample sentences are capped at 90
+     characters, and 90 characters comes to under a cent on every price in
+     the table - pinned at both ends, by `a_preview_of_any_sample...` in
+     tests/speech/test_external_estimate.py and by the sample-length test in
+     app/tests/i18n.test.ts. */
+  "voices.paid_preview": [
+    "Nghe thử giọng ở đây là có tốn tiền - chưa tới $0,01 mỗi lần, trừ vào trần chi tiêu. Giọng đã nghe rồi thì lần sau không tính nữa.",
+    "Previewing a voice here costs money - under $0.01 each time, taken off your ceiling. A voice you have already heard is free the next time.",
+  ],
   "voices.pick": ["Chọn giọng…", "Pick a voice…"],
   "voices.search": ["Tìm giọng…", "Search voices…"],
   "voices.filter_provider": ["Nhà cung cấp", "Provider"],

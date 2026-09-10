@@ -368,6 +368,14 @@ export function VoicesPanel({
         )}
         {groups.map((group) => (
         <GroupedSection key={group.key} title={`${group.title} (${group.voices.length})`}>
+          {/* Said once at the head of the group rather than on every row: it
+              is true of all of them, and twenty copies of it is a warning
+              nobody reads. The group on this Mac never shows it. */}
+          {group.key !== "local" && (
+            <p className="mb-1.5 text-xs text-ink-mute">
+              {text("voices.paid_preview")}
+            </p>
+          )}
           {group.voices.map((voice) => {
             const inList = shortlist.includes(voice.id);
             const playing = previewing === voice.id;
