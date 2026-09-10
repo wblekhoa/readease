@@ -219,7 +219,10 @@ export function Transfer() {
          out to the middle and stopped reading as "this one into that one".
          Long titles still give way - they truncate rather than push. */
       <span className="min-w-0 shrink">
-        <span className="block truncate text-sm font-semibold" title={title}>
+        {/* The subject of the whole screen, so it leads the type scale: the
+            count below it decides an action, but only once you know which
+            two books it is about. */}
+        <span className="block truncate text-base font-bold leading-6" title={title}>
           {title}
         </span>
         {book && book.progress > 0 && (
@@ -238,7 +241,7 @@ export function Transfer() {
           list. Changing books means going back to choosing them - the same
           shape a single scanned passage uses on the other screen (owner,
           10/09). */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <IconButton
           aria-label={text("transfer.change_books")}
           title={text("transfer.change_books")}
@@ -250,13 +253,19 @@ export function Transfer() {
         >
           <ArrowLeftIcon />
         </IconButton>
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {/* Top-aligned, not centred: one copy carries a progress line and the
+            other may not, and centring each block against the other put the
+            two titles on different lines (owner, 10/09). They share the
+            first line; whatever hangs below it hangs. */}
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           {facts(plan.source_title, source)}
-          <ArrowLeftIcon className="shrink-0 rotate-180 text-ink-faint" />
+          <ArrowLeftIcon className="h-6 shrink-0 rotate-180 text-ink-faint" />
           {facts(plan.target_title, target)}
         </div>
       </div>
-      <p className="m-0 mt-3 text-sm text-ink-mute">
+      {/* Small print, and it was competing at the same size as the count.
+          It qualifies the button; it is not a thing to read first. */}
+      <p className="m-0 mt-2.5 text-xs text-ink-mute">
         {text("transfer.description")}
       </p>
       {notice && (
@@ -264,7 +273,7 @@ export function Transfer() {
       )}
 
       {plan && (
-        <div className="mt-4 flex min-h-0 flex-1 flex-col">
+        <div className="mt-5 flex min-h-0 flex-1 flex-col">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold">
               {text("transfer.count", { count: plan.copyable })}
