@@ -129,8 +129,8 @@ export const TEXT = {
      tests/speech/test_external_estimate.py and by the sample-length test in
      app/tests/i18n.test.ts. */
   "voices.paid_preview": [
-    "Nghe thử giọng ở đây là có tốn tiền - chưa tới $0,01 mỗi lần, trừ vào trần chi tiêu. Giọng đã nghe rồi thì lần sau không tính nữa.",
-    "Previewing a voice here costs money - under $0.01 each time, taken off your ceiling. A voice you have already heard is free the next time.",
+    "Nghe thử tốn chưa tới $0,01 mỗi lần, trừ vào trần chi tiêu. Nghe lại thì miễn phí.",
+    "Previews cost under $0.01 each, taken off your ceiling. Listening again is free.",
   ],
   "voices.pick": ["Chọn giọng…", "Pick a voice…"],
   "voices.search": ["Tìm giọng…", "Search voices…"],
@@ -143,9 +143,11 @@ export const TEXT = {
      a match for either filter, so filtering by Nam hides all thirteen OpenAI
      voices at once - and the panel then reads as "OpenAI has no male
      voices", which is not what happened (owner asked exactly that, 10/09). */
+  /* Terse on purpose (owner, 11/09): one line where the box allows, and
+     still all three facts - how many, whose silence it is, where to look. */
   "voices.gender_unknown": [
-    "Còn {count} giọng nữa không hiện ở đây - nhà cung cấp không cho biết nam hay nữ nên bộ lọc không xếp được. Chọn \"Tất cả giới tính\" để thấy.",
-    "{count} more voices are not shown - the provider never said male or female, so the filter cannot place them. Pick \"All genders\" to see them.",
+    "{count} giọng nhà cung cấp chưa ghi nam/nữ - chọn \"Tất cả giới tính\" để thấy.",
+    "{count} voices carry no male/female label from the provider - pick \"All genders\" to see them.",
   ],
   "voices.gender_male": ["Nam", "Male"],
   "voices.gender_female": ["Nữ", "Female"],

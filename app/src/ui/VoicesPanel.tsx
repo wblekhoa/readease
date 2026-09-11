@@ -374,20 +374,16 @@ export function VoicesPanel({
                 : text("voices.no_filter_match")}
           </Notice>
         )}
-        {/* `pr-24` on both: a row's text column stops where its speaker and
-            switch begin, and the header's caption stops where the search and
-            close buttons do - measured 49→269 and 49→283 against these two
-            running the whole 49→371 (11/09). Prose that runs past where every
-            other line in the panel stops reads as if it fell out of the
-            layout. A fixed inset rather than a proportion, because what it
-            is clearing is a fixed column of controls. */}
+        {/* Full width of the box, and short enough to need one line where the
+            box allows (owner, 11/09). An inset to match the rows' text column
+            was tried first; it cost a line per hint and read as worse. */}
         {found > 0 && hiddenByLanguage > 0 && (
-          <p className="mb-1 mt-4 pr-24 text-xs text-ink-mute">
+          <p className="mb-1 mt-4 text-xs text-ink-mute">
             {text("voices.hidden_for_language", { count: hiddenByLanguage })}
           </p>
         )}
         {unplacedByGender > 0 && (
-          <p className="mb-1 mt-4 pr-24 text-xs text-ink-mute">
+          <p className="mb-1 mt-4 text-xs text-ink-mute">
             {text("voices.gender_unknown", { count: unplacedByGender })}
           </p>
         )}
@@ -397,7 +393,7 @@ export function VoicesPanel({
               is true of all of them, and twenty copies of it is a warning
               nobody reads. The group on this Mac never shows it. */}
           {group.key !== "local" && (
-            <p className="mb-3 pr-24 text-xs text-ink-mute">
+            <p className="mb-3 text-xs text-ink-mute">
               {text("voices.paid_preview")}
             </p>
           )}

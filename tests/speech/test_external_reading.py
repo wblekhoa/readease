@@ -263,8 +263,8 @@ class PaidReadingTests(unittest.TestCase):
 class AuditioningAPaidVoiceIsSpendingTests(unittest.TestCase):
     """The two sentences the voices panel now puts on screen (10/09).
 
-    "Nghe thử giọng ở đây là có tốn tiền - chưa tới $0,01 mỗi lần, trừ vào
-    trần chi tiêu. Giọng đã nghe rồi thì lần sau không tính nữa."
+    "Nghe thử tốn chưa tới $0,01 mỗi lần, trừ vào trần chi tiêu. Nghe lại
+    thì miễn phí."
 
     Three claims, and a reader can act on all three: it costs · the ceiling
     applies to it · the second listen is free. Each one is a promise about
