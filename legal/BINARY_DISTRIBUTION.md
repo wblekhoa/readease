@@ -37,9 +37,9 @@ with no licence text to ship stops the build.
   copyright notice accompany the binary — `THIRD_PARTY_LICENSES.txt`, with the
   copyright holder named in each section header where the upstream text has
   none of its own.
-- **Apache-2.0** (VieNeu SDK, tokenizers, the models, Tauri): the licence
-  text is carried; no upstream NOTICE files apply to the components in this
-  build.
+- **Apache-2.0** (VieNeu SDK, tokenizers, the models, Tauri, and others):
+  the licence text is carried, and where an upstream ships a NOTICE file
+  (`requests`, `setuptools`) that file is carried with it, as §4(d) asks.
 - **MPL-2.0** (the `symphonia` crates, `certifi`, `tqdm`): the crates ship
   unmodified; the inventory records the repository each one's source is at,
   which is the notice §3.2 requires for an executable form.
