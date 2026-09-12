@@ -1,9 +1,29 @@
 #!/usr/bin/env python3
-"""Build a deterministic license payload from the actual locked environment."""
+"""Build the licence payload from what the bundle actually contains.
+
+Three inventories, each read from the artefact rather than from a wish list:
+
+  * the Python engine - every distribution PyInstaller froze into the sidecar,
+    read from its own `PYZ-*.toc` / `COLLECT-*.toc` and mapped back to the
+    installed distribution through `packages_distributions()`;
+  * the Rust host - every crate in `Cargo.lock`, with its licence expression,
+    source repository and licence texts read from the local registry cache;
+  * the models and tools that do not appear in either lock - the voice models
+    (downloaded later, never bundled) and the PyInstaller bootloader that is
+    linked into the frozen engine.
+
+Every component must end with a licence receipt. A component whose upstream
+ships no licence file gets the canonical SPDX text from `legal/spdx/` and its
+copyright line from the package metadata; an SPDX id this tree carries no text
+for is an error, not a blank. The payload is deterministic: sorted, hashed,
+and the manifest records the digests of both locks so a payload can be tied
+to exactly one build.
+"""
 
 from __future__ import annotations
 
 import argparse
+import ast
 from hashlib import sha256
 import importlib.metadata as metadata
 import json
@@ -11,45 +31,48 @@ from pathlib import Path
 import re
 import sys
 import sysconfig
-import xml.etree.ElementTree as ElementTree
+import tomllib
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DISTRIBUTIONS = {
-    "Nuitka",
-    "PySide6",
-    "PySide6_Addons",
-    "PySide6_Essentials",
-    "kaldi-native-fbank",
-    "numpy",
-    "onnxruntime",
-    "shiboken6",
-    "soundfile",
-    "soxr",
-    "tokenizers",
-    "vieneu",
+SPDX_TEXTS = ROOT / "legal" / "spdx"
+STATIC_FILES = {
+    "LICENSE": ROOT / "LICENSE",
+    "NOTICE.md": ROOT / "NOTICE.md",
+    "THIRD_PARTY_NOTICES.md": ROOT / "THIRD_PARTY_NOTICES.md",
+    "BINARY_DISTRIBUTION.md": ROOT / "legal" / "BINARY_DISTRIBUTION.md",
 }
-PYSIDE_DISTRIBUTIONS = {
-    "pyside6",
-    "pyside6-addons",
-    "pyside6-essentials",
-    "shiboken6",
-}
-MANUAL_RECEIPTS = {
-    "tokenizers": (ROOT / "legal" / "APACHE-2.0.txt",),
-    **{
-        name: (
-            ROOT / "legal" / "GNU_GPL_v3.txt",
-            ROOT / "legal" / "GNU_LGPL_v3.txt",
-            ROOT / "legal" / "QT_THIRD_PARTY_NOTICES.md",
-        )
-        for name in PYSIDE_DISTRIBUTIONS
+MODELS = (
+    {
+        "name": "VieNeu-TTS v3 Turbo model",
+        "version": "2da0efab622a1722125991736524f080b751ef5b",
+        "license": "Apache-2.0 (publisher declaration)",
+        "source": "https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo",
     },
+    {
+        "name": "MOSS Audio Tokenizer Nano ONNX",
+        "version": "ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae",
+        "license": "Apache-2.0 (publisher declaration)",
+        "source": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX",
+    },
+)
+# The SPDX word for a licence a package names by hand rather than by id.
+LICENSE_ALIASES = {
+    "apache license": "Apache-2.0",
+    "apache software license": "Apache-2.0",
+    "apache license 2.0": "Apache-2.0",
+    "mit license": "MIT",
+    "bsd license": "BSD-3-Clause",
+    "bsd": "BSD-3-Clause",
+    "isc license": "ISC",
+    "python software foundation license": "PSF-2.0",
+    "mit-cmu": "MIT-CMU",
 }
+_SPDX_ID = re.compile(r"[A-Za-z0-9.+-]+")
 
 
-def _normalized_name(value: str) -> str:
-    return re.sub(r"[-_.]+", "-", value).casefold()
+class PayloadError(RuntimeError):
+    pass
 
 
 def _digest(path: Path) -> str:
@@ -60,38 +83,127 @@ def _digest(path: Path) -> str:
     return result.hexdigest()
 
 
-def _report_distributions(path: Path) -> set[str]:
-    root = ElementTree.parse(path).getroot()
-    if root.attrib.get("completion") != "yes":
-        raise RuntimeError("Nuitka compilation report is incomplete")
-    names: set[str] = set()
-    for module in root.findall(".//module"):
-        value = module.attrib.get("distribution", "")
-        names.update(item.strip() for item in value.split(",") if item.strip())
-    for usage in root.findall(".//distribution-usage"):
-        if usage.attrib.get("name"):
-            names.add(usage.attrib["name"])
-    return names
+def _readable(path: Path) -> str:
+    return path.read_text(encoding="utf-8", errors="replace").strip()
 
 
-def _is_license_receipt(relative_path: str) -> bool:
-    normalized = relative_path.replace("\\", "/").casefold()
-    name = Path(normalized).name
-    return (
-        "/licenses/" in f"/{normalized}"
-        or normalized.startswith("licensing/")
-        or name.startswith(("license", "licence", "copying", "notice", "copyright"))
-        or "thirdpartynotice" in name
+def _spdx_alternatives(expression: str) -> list[list[str]]:
+    """The licence ids an SPDX expression lets a recipient choose between.
+
+    `A OR B` is a choice: satisfying either is enough, and this build takes
+    the first alternative it carries a text for. `A AND B` needs both.
+    `X WITH exception` is X for the purpose of which text to ship. Parentheses
+    are flattened - the expressions in this tree nest no deeper than
+    `MPL-2.0 AND (Apache-2.0 OR MIT)`, and for those the flattening yields the
+    same set of required texts.
+    """
+
+    # `MIT/Apache-2.0` is the pre-SPDX spelling of `MIT OR Apache-2.0`, and
+    # a few older crates still carry it.
+    expression = re.sub(r"(?<=[A-Za-z0-9.+-])/(?=[A-Za-z])", " OR ", expression)
+    tokens = [t for t in re.split(r"[\s()]+", expression) if t]
+    alternatives: list[list[str]] = [[]]
+    skip = False
+    for token in tokens:
+        upper = token.upper()
+        if skip:
+            skip = False
+            continue
+        if upper == "WITH":
+            skip = True
+            continue
+        if upper == "OR":
+            alternatives.append([])
+            continue
+        if upper == "AND":
+            continue
+        alternatives[-1].append(token)
+    return [group for group in alternatives if group]
+
+
+def _canonical_texts(expression: str, component: str) -> tuple[Path, ...]:
+    """Canonical SPDX texts for a component that ships none of its own."""
+
+    missing: list[str] = []
+    for group in _spdx_alternatives(expression):
+        paths = [SPDX_TEXTS / f"{spdx_id}.txt" for spdx_id in group]
+        if all(path.is_file() for path in paths):
+            return tuple(paths)
+        missing.extend(spdx_id for spdx_id, path in zip(group, paths) if not path.is_file())
+    raise PayloadError(
+        f"{component}: no licence file upstream and no canonical text for "
+        f"{', '.join(sorted(set(missing)))} in legal/spdx/ - add one before shipping"
     )
 
 
+def _is_license_receipt(name: str) -> bool:
+    lowered = name.casefold()
+    return (
+        lowered.startswith(("license", "licence", "copying", "notice", "copyright"))
+        or "thirdpartynotice" in lowered
+        or lowered.endswith((".license", "-license", "_license"))
+    )
+
+
+# --------------------------------------------------------------------------
+# The Python engine
+# --------------------------------------------------------------------------
+
+def _toc_entries(path: Path) -> list:
+    text = path.read_text(encoding="utf-8")
+    match = re.search(r"\[.*\]", text, re.S)
+    if match is None:
+        raise PayloadError(f"unreadable PyInstaller TOC: {path}")
+    return ast.literal_eval(match.group(0))
+
+
+def _frozen_top_levels(engine_build: Path) -> set[str]:
+    tops: set[str] = set()
+    pyz = sorted(engine_build.glob("PYZ-*.toc"))
+    collect = sorted(engine_build.glob("COLLECT-*.toc"))
+    if not pyz or not collect:
+        raise PayloadError(f"no PyInstaller TOC files under {engine_build}")
+    for entry in _toc_entries(pyz[0]):
+        tops.add(str(entry[0]).split(".")[0])
+    for entry in _toc_entries(collect[0]):
+        tops.add(str(entry[0]).split("/")[0].split(".")[0])
+    return tops
+
+
+def _distribution_license(distribution: metadata.Distribution) -> str:
+    expression = distribution.metadata.get("License-Expression")
+    if expression:
+        return expression
+    declared = (distribution.metadata.get("License") or "").strip()
+    first = declared.splitlines()[0].strip() if declared else ""
+    if first and len(first) <= 60:
+        return LICENSE_ALIASES.get(first.casefold(), first)
+    for classifier in distribution.metadata.get_all("Classifier") or ():
+        if classifier.startswith("License ::"):
+            label = classifier.split("::")[-1].strip()
+            return LICENSE_ALIASES.get(label.casefold(), label)
+    raise PayloadError(f"{distribution.metadata['Name']}: no licence declared in metadata")
+
+
 def _distribution_receipts(distribution: metadata.Distribution) -> tuple[Path, ...]:
+    """The licence texts a distribution ships: its `.dist-info/licenses/`
+    directory, or files named like a licence anywhere in it. Source files are
+    never receipts - setuptools carries a `licenses/` PACKAGE whose parser
+    lists every SPDX id, which is not a licence of anything."""
+
     receipts: list[Path] = []
     for entry in distribution.files or ():
-        if not _is_license_receipt(str(entry)):
+        parts = str(entry).replace("\\", "/").split("/")
+        name = parts[-1]
+        if name.casefold().endswith((".py", ".pyc", ".pyi", ".so", ".dylib")):
+            continue
+        in_dist_info_licenses = (
+            len(parts) >= 3 and parts[0].endswith(".dist-info") and parts[1].casefold() == "licenses"
+        )
+        if not in_dist_info_licenses and not _is_license_receipt(name):
             continue
         path = Path(distribution.locate_file(entry)).resolve()
-        if path.is_file() and path.stat().st_size <= 10 * 1024 * 1024:
+        if path.is_file() and path.stat().st_size <= 2 * 1024 * 1024:
             receipts.append(path)
     return tuple(sorted(set(receipts), key=str))
 
@@ -99,9 +211,132 @@ def _distribution_receipts(distribution: metadata.Distribution) -> tuple[Path, .
 def _source_url(distribution: metadata.Distribution) -> str:
     for value in distribution.metadata.get_all("Project-URL") or ():
         label, separator, url = value.partition(",")
-        if separator and label.strip().casefold() in {"repository", "source", "homepage"}:
+        if separator and label.strip().casefold() in {"repository", "source", "source code", "homepage"}:
             return url.strip()
-    return distribution.metadata.get("Home-page") or "See locked package metadata"
+    home = distribution.metadata.get("Home-page")
+    if home:
+        return home
+    name = distribution.metadata["Name"]
+    return f"https://pypi.org/project/{name}/{distribution.version}/"
+
+
+def engine_components(engine_build: Path) -> list[dict[str, object]]:
+    tops = _frozen_top_levels(engine_build)
+    by_top = metadata.packages_distributions()
+    names: dict[str, metadata.Distribution] = {}
+    for top in sorted(tops):
+        for name in by_top.get(top, ()):
+            distribution = metadata.distribution(name)
+            names[distribution.metadata["Name"]] = distribution
+    components = []
+    for name, distribution in sorted(names.items(), key=lambda item: item[0].casefold()):
+        if name.casefold() == "vieneu-reader":
+            continue  # first-party, listed as ReadEase
+        license_name = _distribution_license(distribution)
+        receipts = _distribution_receipts(distribution)
+        if not receipts:
+            receipts = _canonical_texts(license_name, name)
+        display = "VieNeu SDK" if name.casefold() == "vieneu" else name
+        components.append({
+            "name": display,
+            "version": distribution.version,
+            "kind": "python",
+            "license": license_name,
+            "source": _source_url(distribution),
+            "bundled": True,
+            "receipts": receipts,
+        })
+    return components
+
+
+# --------------------------------------------------------------------------
+# The Rust host
+# --------------------------------------------------------------------------
+
+def _registry_roots() -> list[Path]:
+    registry = Path.home() / ".cargo" / "registry" / "src"
+    return sorted(registry.glob("*")) if registry.is_dir() else []
+
+
+def crate_components(cargo_lock: Path) -> list[dict[str, object]]:
+    lock = tomllib.loads(cargo_lock.read_text(encoding="utf-8"))
+    roots = _registry_roots()
+    components = []
+    for package in lock.get("package", ()):
+        name, version = package["name"], package["version"]
+        if "source" not in package:
+            continue  # the app crate itself, first-party
+        crate_dir = next((root / f"{name}-{version}" for root in roots if (root / f"{name}-{version}").is_dir()), None)
+        if crate_dir is None:
+            raise PayloadError(f"crate {name} {version} is in Cargo.lock but not in the local registry cache")
+        manifest = tomllib.loads((crate_dir / "Cargo.toml").read_text(encoding="utf-8", errors="replace"))
+        meta = manifest.get("package", {})
+        license_name = meta.get("license")
+        license_file = meta.get("license-file")
+        receipts = tuple(sorted(
+            (p for p in crate_dir.iterdir() if p.is_file() and _is_license_receipt(p.name) and p.stat().st_size <= 2 * 1024 * 1024),
+            key=str,
+        ))
+        if license_file and (crate_dir / license_file).is_file():
+            receipts = tuple(sorted(set(receipts) | {(crate_dir / license_file).resolve()}, key=str))
+        if not license_name:
+            license_name = "See licence file" if receipts else None
+        if license_name is None:
+            raise PayloadError(f"crate {name} {version}: no licence declared and no licence file")
+        if not receipts:
+            receipts = _canonical_texts(license_name, f"crate {name}")
+        authors = meta.get("authors") or []
+        components.append({
+            "name": name,
+            "version": version,
+            "kind": "crate",
+            "license": license_name,
+            "source": meta.get("repository") or f"https://crates.io/crates/{name}/{version}",
+            "copyright": "; ".join(str(a) for a in authors) if authors else None,
+            "bundled": True,
+            "receipts": receipts,
+        })
+    components.sort(key=lambda item: (str(item["name"]).casefold(), str(item["version"])))
+    return components
+
+
+# --------------------------------------------------------------------------
+# Everything else, and the payload
+# --------------------------------------------------------------------------
+
+def other_components() -> list[dict[str, object]]:
+    python_license = Path(sysconfig.get_path("stdlib")) / "LICENSE.txt"
+    if not python_license.is_file():
+        raise PayloadError(f"CPython licence not found at {python_license}")
+    pyinstaller = metadata.distribution("pyinstaller")
+    bootloader = tuple(
+        p for p in _distribution_receipts(pyinstaller) if p.name.casefold() in {"copying.txt", "license", "license.txt"}
+    )
+    if not bootloader:
+        raise PayloadError("PyInstaller ships no COPYING.txt - the bootloader licence must travel with the frozen engine")
+    model_receipts = (ROOT / "legal" / "spdx" / "Apache-2.0.txt", ROOT / "legal" / "MODEL_PROVENANCE.md")
+    components: list[dict[str, object]] = [
+        {
+            "name": "ReadEase", "version": "0.1.0", "kind": "first-party",
+            "license": "PolyForm-Noncommercial-1.0.0", "source": "This source tree",
+            "bundled": True, "receipts": (ROOT / "LICENSE",),
+        },
+        {
+            "name": "CPython", "version": sys.version.split()[0], "kind": "runtime",
+            "license": "PSF-2.0 and bundled third-party terms",
+            "source": "https://www.python.org/downloads/source/",
+            "bundled": True, "receipts": (python_license,),
+        },
+        {
+            "name": "PyInstaller bootloader", "version": pyinstaller.version, "kind": "tool",
+            "license": "GPL-2.0-or-later WITH Bootloader-exception",
+            "source": "https://github.com/pyinstaller/pyinstaller",
+            "bundled": True, "receipts": bootloader,
+        },
+    ]
+    for model in MODELS:
+        components.append({**model, "kind": "model", "bundled": False, "receipts": model_receipts})
+    return components
 
 
 def _receipt_record(path: Path) -> dict[str, str]:
@@ -112,230 +347,94 @@ def _receipt_record(path: Path) -> dict[str, str]:
     return {"path": display, "sha256": _digest(path)}
 
 
-def _component(
-    *,
-    name: str,
-    version: str,
-    license_name: str,
-    source: str,
-    bundled: bool,
-    receipts: tuple[Path, ...],
-) -> dict[str, object]:
-    if not receipts:
-        raise RuntimeError(f"no license receipt for component: {name}")
-    return {
-        "name": name,
-        "version": version,
-        "license": license_name,
-        "source": source,
-        "bundled": bundled,
-        "receipts": [_receipt_record(path) for path in receipts],
-    }
-
-
-def _readable(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="replace").strip()
-
-
-def build_payload(output: Path, report: Path | None) -> None:
-    static_files = {
-        "LICENSE": ROOT / "LICENSE",
-        "NOTICE.md": ROOT / "NOTICE.md",
-        "THIRD_PARTY_NOTICES.md": ROOT / "THIRD_PARTY_NOTICES.md",
-        "BINARY_DISTRIBUTION.md": ROOT / "legal" / "BINARY_DISTRIBUTION.md",
-    }
-    for path in (
-        *static_files.values(),
-        ROOT / "legal" / "GNU_GPL_v3.txt",
-        ROOT / "legal" / "GNU_LGPL_v3.txt",
-        ROOT / "legal" / "APACHE-2.0.txt",
-        ROOT / "legal" / "QT_THIRD_PARTY_NOTICES.md",
-        ROOT / "legal" / "MODEL_PROVENANCE.md",
-    ):
+def build_payload(output: Path, engine_build: Path, cargo_lock: Path) -> dict[str, int]:
+    for path in STATIC_FILES.values():
         if not path.is_file() or path.stat().st_size < 1:
-            raise RuntimeError(f"missing legal source: {path}")
-
-    names = _report_distributions(report) if report else set(DEFAULT_DISTRIBUTIONS)
-    resolved: dict[str, metadata.Distribution] = {}
-    for requested_name in sorted(names, key=str.casefold):
-        distribution = metadata.distribution(requested_name)
-        canonical = distribution.metadata.get("Name") or requested_name
-        resolved[_normalized_name(canonical)] = distribution
-
-    components: list[dict[str, object]] = []
-    receipt_paths: set[Path] = {
-        ROOT / "legal" / "GNU_GPL_v3.txt",
-        ROOT / "legal" / "GNU_LGPL_v3.txt",
-        ROOT / "legal" / "APACHE-2.0.txt",
-        ROOT / "legal" / "QT_THIRD_PARTY_NOTICES.md",
-        ROOT / "legal" / "MODEL_PROVENANCE.md",
-    }
-    components.append(
-        _component(
-            name="ReadEase",
-            version="0.1.0",
-            license_name="PolyForm-Noncommercial-1.0.0",
-            source="This source tree",
-            bundled=True,
-            receipts=(ROOT / "LICENSE",),
-        )
-    )
-
-    python_license = Path(sysconfig.get_path("stdlib")) / "LICENSE.txt"
-    components.append(
-        _component(
-            name="CPython",
-            version=sys.version.split()[0],
-            license_name="PSF-2.0 and bundled third-party terms",
-            source="https://www.python.org/downloads/source/",
-            bundled=True,
-            receipts=(python_license,),
-        )
-    )
-    receipt_paths.add(python_license)
-
-    pyside = metadata.distribution("PySide6")
-    qt_receipts = (
-        ROOT / "legal" / "GNU_GPL_v3.txt",
-        ROOT / "legal" / "GNU_LGPL_v3.txt",
-        ROOT / "legal" / "QT_THIRD_PARTY_NOTICES.md",
-    )
-    components.extend(
-        (
-            _component(
-                name="PySide6 / Qt",
-                version=pyside.version,
-                license_name="LGPL-3.0 selected",
-                source="https://code.qt.io/cgit/pyside/pyside-setup.git/",
-                bundled=True,
-                receipts=qt_receipts,
-            ),
-            _component(
-                name="QtPdf / PDFium",
-                version=pyside.version,
-                license_name="LGPL-3.0 selected; embedded third-party terms",
-                source="https://doc.qt.io/qt-6/qtpdf-licensing.html",
-                bundled=True,
-                receipts=qt_receipts,
-            ),
-        )
-    )
-
-    model_receipts = (
-        ROOT / "legal" / "APACHE-2.0.txt",
-        ROOT / "legal" / "MODEL_PROVENANCE.md",
-    )
-    components.extend(
-        (
-            _component(
-                name="VieNeu-TTS v3 Turbo model",
-                version="2da0efab622a1722125991736524f080b751ef5b",
-                license_name="Apache-2.0 (publisher declaration)",
-                source="https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo",
-                bundled=False,
-                receipts=model_receipts,
-            ),
-            _component(
-                name="MOSS Audio Tokenizer Nano ONNX",
-                version="ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae",
-                license_name="Apache-2.0 (publisher declaration)",
-                source="https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX",
-                bundled=False,
-                receipts=model_receipts,
-            ),
-        )
-    )
-
-    for normalized, distribution in sorted(resolved.items()):
-        if normalized in PYSIDE_DISTRIBUTIONS or normalized == "nuitka":
-            continue
-        receipts = _distribution_receipts(distribution)
-        if not receipts:
-            receipts = MANUAL_RECEIPTS.get(normalized, ())
-        receipt_paths.update(receipts)
-        display_name = distribution.metadata.get("Name") or normalized
-        if normalized == "vieneu":
-            display_name = "VieNeu SDK"
-        components.append(
-            _component(
-                name=display_name,
-                version=distribution.version,
-                license_name=(
-                    distribution.metadata.get("License-Expression")
-                    or distribution.metadata.get("License")
-                    or "See included receipt"
-                ),
-                source=_source_url(distribution),
-                bundled=True,
-                receipts=receipts,
-            )
-        )
-
-    nuitka = metadata.distribution("Nuitka")
-    nuitka_receipts = tuple(
-        path
-        for path in _distribution_receipts(nuitka)
-        if path.name in {"LICENSE-RUNTIME.txt", "NOTICE.txt"}
-    )
-    receipt_paths.update(nuitka_receipts)
-    components.append(
-        _component(
-            name="Nuitka runtime",
-            version=nuitka.version,
-            license_name="Nuitka runtime exception and notices",
-            source="https://github.com/Nuitka/Nuitka",
-            bundled=True,
-            receipts=nuitka_receipts,
-        )
-    )
+            raise PayloadError(f"missing legal source: {path}")
+    components = other_components() + engine_components(engine_build) + crate_components(cargo_lock)
+    for component in components:
+        if not component["receipts"]:
+            raise PayloadError(f"no licence receipt for component: {component['name']}")
 
     if output.exists() and any(output.iterdir()):
-        raise RuntimeError(f"legal output must be empty: {output}")
+        raise PayloadError(f"legal output must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
-    for destination_name, source in static_files.items():
+    for destination_name, source in STATIC_FILES.items():
         (output / destination_name).write_bytes(source.read_bytes())
 
-    sections: list[str] = []
-    seen_digests: set[str] = set()
-    for path in sorted(receipt_paths, key=str):
-        digest = _digest(path)
-        if digest in seen_digests:
+    # One text per distinct receipt, named for every component that relies on it.
+    # A canonical text carries no copyright line of its own, so the header
+    # names the holder for every component that relies on it - that line is
+    # what MIT and BSD ask to travel with the software.
+    by_digest: dict[str, tuple[Path, list[str]]] = {}
+    for component in components:
+        if component["kind"] == "first-party":
+            continue  # ReadEase's own terms are the LICENSE file beside this one
+        holder = component.get("copyright")
+        label = f"{component['name']} {component['version']}" + (f" (Copyright {holder})" if holder else "")
+        for receipt in component["receipts"]:
+            digest = _digest(receipt)
+            entry = by_digest.setdefault(digest, (receipt, []))
+            entry[1].append(label)
+    sections = []
+    for digest, (path, users) in sorted(by_digest.items(), key=lambda item: (item[1][0].name.casefold(), item[0])):
+        header = f"===== {path.name} | sha256:{digest} =====\nApplies to: {'; '.join(sorted(set(users)))}"
+        sections.append(f"{header}\n\n{_readable(path)}")
+    (output / "THIRD_PARTY_LICENSES.txt").write_text("\n\n".join(sections) + "\n", encoding="utf-8")
+
+    rows = ["# Third-party inventory", "",
+            "Generated from the frozen engine's PyInstaller TOC and the Rust host's `Cargo.lock`.",
+            "Licence texts: `THIRD_PARTY_LICENSES.txt`. Machine-readable: `THIRD_PARTY_MANIFEST.json`.", ""]
+    for kind, title in (("python", "Python engine (frozen by PyInstaller)"), ("crate", "Rust host (Cargo.lock)"),
+                        ("runtime", "Runtime"), ("tool", "Tools linked into the bundle"), ("model", "Models (downloaded on first run, never bundled)")):
+        chosen = [c for c in components if c["kind"] == kind]
+        if not chosen:
             continue
-        seen_digests.add(digest)
-        sections.append(f"===== {path.name} | sha256:{digest} =====\n{_readable(path)}")
-    (output / "THIRD_PARTY_LICENSES.txt").write_text(
-        "\n\n".join(sections) + "\n",
-        encoding="utf-8",
-    )
+        rows += [f"## {title}", "", "| Component | Version | Licence | Source |", "| --- | ---: | --- | --- |"]
+        rows += [f"| {c['name']} | {c['version']} | {c['license']} | <{c['source']}> |" for c in chosen]
+        rows.append("")
+    (output / "THIRD_PARTY_INVENTORY.md").write_text("\n".join(rows), encoding="utf-8")
 
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_license": "PolyForm-Noncommercial-1.0.0",
-        "binary_distribution_status": "candidate-requires-signing-and-legal-review",
-        "lock_sha256": _digest(ROOT / "uv.lock"),
-        "nuitka_report_sha256": _digest(report) if report else None,
-        "components": sorted(components, key=lambda item: str(item["name"]).casefold()),
+        "binary_distribution_status": "ad-hoc-signed-not-notarized",
+        "uv_lock_sha256": _digest(ROOT / "uv.lock"),
+        "cargo_lock_sha256": _digest(cargo_lock),
+        "components": [
+            {k: v for k, v in {
+                "name": c["name"], "version": c["version"], "kind": c["kind"], "license": c["license"],
+                "source": c["source"], "copyright": c.get("copyright"), "bundled": c["bundled"],
+                "receipts": [_receipt_record(p) for p in c["receipts"]],
+            }.items() if v is not None}
+            for c in sorted(components, key=lambda c: (str(c["kind"]), str(c["name"]).casefold(), str(c["version"])))
+        ],
     }
     (output / "THIRD_PARTY_MANIFEST.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+    counts = {
+        "components": len(components),
+        "python": sum(c["kind"] == "python" for c in components),
+        "crates": sum(c["kind"] == "crate" for c in components),
+        "receipts": len(by_digest),
+    }
     print(
-        "LICENSE_PAYLOAD PASS "
-        f"components={len(components)} receipts={len(seen_digests)} output={output}"
+        "LICENSE_PAYLOAD PASS components={components} python={python} crates={crates} "
+        "receipts={receipts} output={output}".format(output=output, **counts)
     )
+    return counts
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--report", type=Path)
+    parser.add_argument("--engine-build", type=Path, default=ROOT / "build" / "engine-build" / "readease-engine")
+    parser.add_argument("--cargo-lock", type=Path, default=ROOT / "app" / "src-tauri" / "Cargo.lock")
     arguments = parser.parse_args()
-    if arguments.report is not None and not arguments.report.is_file():
-        parser.error(f"report does not exist: {arguments.report}")
     try:
-        build_payload(arguments.output, arguments.report)
-    except (OSError, RuntimeError, metadata.PackageNotFoundError, ElementTree.ParseError) as error:
+        build_payload(arguments.output, arguments.engine_build, arguments.cargo_lock)
+    except (OSError, PayloadError, metadata.PackageNotFoundError, tomllib.TOMLDecodeError) as error:
         print(f"LICENSE_PAYLOAD RED {error}", file=sys.stderr)
         return 1
     return 0

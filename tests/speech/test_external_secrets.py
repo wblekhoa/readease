@@ -53,15 +53,15 @@ class RedactionTests(unittest.TestCase):
 
 
 class ExportTests(unittest.TestCase):
-    def test_the_public_source_export_can_never_carry_a_key_file(self) -> None:
-        # The exporter is allowlist-based, so a key in Application Support is
+    def test_the_public_source_audit_can_never_pass_a_key_file(self) -> None:
+        # The audit is allowlist-based, so a key in Application Support is
         # already out of reach. This is the second lock: even a stray
         # settings.json or .env INSIDE the tree is refused by name, wherever
         # it sits.
         import importlib.util
 
-        script = ROOT / "scripts" / "export-public-source.py"
-        spec = importlib.util.spec_from_file_location("export_public_source", script)
+        script = ROOT / "scripts" / "audit-public-release.py"
+        spec = importlib.util.spec_from_file_location("audit_public_release", script)
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(module)
@@ -77,7 +77,7 @@ class ExportTests(unittest.TestCase):
         ):
             self.assertTrue(
                 module._excluded(leaky, manifest),
-                f"{leaky} would have been copied into a public source export",
+                f"{leaky} would pass the public-source audit",
             )
         # And the allowlist does not name them either.
         self.assertNotIn("settings.json", manifest["root_files"])

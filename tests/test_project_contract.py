@@ -25,15 +25,12 @@ class ProjectContractTests(unittest.TestCase):
             project["dependencies"],
             [
                 "vieneu==3.6.3",
-                "PySide6>=6.8,<7",
                 "numpy>=2,<3",
                 # pypdfium2 replaced QtPdf for PDF extraction so the headless
-                # sidecar can import books without a Qt runtime (Tauri plan,
-                # milestone B). The Qt shell has retired; PySide6 stays
-                # until `integrations/macos_selection.py`,
-                # `integrations/macos_settings.py` and
-                # `playback/qt_audio.py` are decided - they still import
-                # it and are the owner's call, not a cleanup.
+                # sidecar can import books without a Qt runtime. PySide6 left
+                # with the last three modules that imported it (12/09/2026);
+                # the shipped app is a Rust host, a WebKit view and a
+                # PyInstaller sidecar, none of which touch Qt.
                 "pypdfium2>=5.13.0",
             ],
         )

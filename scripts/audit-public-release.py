@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed checks for a clean source export and optional local bundle."""
+"""Fail-closed checks for a clean source export and, optionally, a built bundle."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import re
 import subprocess
 import sys
 import tomllib
-import xml.etree.ElementTree as ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +32,15 @@ FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",
     "QtVirtualKeyboardQml",
     "libqtvirtualkeyboardplugin.dylib",
+}
+LEGAL_PAYLOAD = {
+    "BINARY_DISTRIBUTION.md",
+    "LICENSE",
+    "NOTICE.md",
+    "THIRD_PARTY_INVENTORY.md",
+    "THIRD_PARTY_LICENSES.txt",
+    "THIRD_PARTY_MANIFEST.json",
+    "THIRD_PARTY_NOTICES.md",
 }
 FORBIDDEN_MODEL_NAMES = {
     "moss_audio_tokenizer_decode_full.onnx",
@@ -218,24 +226,8 @@ def _audit_source(root: Path, errors: list[str]) -> tuple[int, str]:
     return checked, history
 
 
-def _audit_report(path: Path, errors: list[str]) -> str:
-    root = ElementTree.parse(path).getroot()
-    if root.attrib.get("completion") != "yes":
-        errors.append("Nuitka report is incomplete")
-    distributions = {
-        item.strip().casefold()
-        for module in root.findall(".//module")
-        for item in module.attrib.get("distribution", "").split(",")
-        if item.strip()
-    }
-    if any("pymupdf" in name for name in distributions):
-        errors.append("Nuitka report contains PyMuPDF")
-    return _digest(path)
-
-
 def _audit_bundle(
     bundle: Path,
-    report: Path | None,
     source_root: Path,
     errors: list[str],
 ) -> str:
@@ -249,26 +241,24 @@ def _audit_bundle(
             errors.append(f"forbidden bundle artifact: {forbidden}")
     if any("mupdf" in str(path).casefold() for path in paths):
         errors.append("bundle contains MuPDF")
-    if not (bundle / "Contents" / "MacOS" / "QtPdf").is_file():
-        errors.append("bundle is missing QtPdf")
+    for qt in ("QtPdf", "PySide6", "libshiboken"):
+        if any(qt in str(path) for path in paths):
+            errors.append(f"bundle carries Qt-era artifact: {qt}")
 
     legal = bundle / "Contents" / "Resources" / "Legal"
-    required = {
-        "BINARY_DISTRIBUTION.md",
-        "LICENSE",
-        "NOTICE.md",
-        "THIRD_PARTY_LICENSES.txt",
-        "THIRD_PARTY_MANIFEST.json",
-        "THIRD_PARTY_NOTICES.md",
-    }
-    if not legal.is_dir() or {path.name for path in legal.iterdir()} != required:
+    if not legal.is_dir() or {path.name for path in legal.iterdir()} != LEGAL_PAYLOAD:
         errors.append("bundle legal payload is missing or has unexpected files")
         return "unknown"
     manifest = json.loads(
         (legal / "THIRD_PARTY_MANIFEST.json").read_text(encoding="utf-8")
     )
+    if manifest.get("schema_version") != 2:
+        errors.append("bundle manifest is not schema 2")
     if manifest.get("source_license") != SOURCE_LICENSE:
         errors.append("bundle manifest has the wrong first-party source license")
+    for lock, key in (("uv.lock", "uv_lock_sha256"), ("app/src-tauri/Cargo.lock", "cargo_lock_sha256")):
+        if manifest.get(key) != _digest(source_root / lock):
+            errors.append(f"bundle manifest is not bound to this tree's {lock}")
     if _digest(legal / "LICENSE") != _digest(source_root / "LICENSE"):
         errors.append("bundle first-party LICENSE does not match the source")
     if _digest(legal / "NOTICE.md") != _digest(source_root / "NOTICE.md"):
@@ -309,10 +299,6 @@ def _audit_bundle(
             errors.append("Info.plist must declare non-tracking provenance")
     except (OSError, ValueError, json.JSONDecodeError, plistlib.InvalidFileException) as error:
         errors.append(f"bundle provenance audit failed: {error}")
-    report_digest = _digest(report) if report else None
-    if manifest.get("nuitka_report_sha256") != report_digest:
-        errors.append("bundle manifest is not bound to the supplied Nuitka report")
-
     completed = subprocess.run(
         ["codesign", "-dv", "--verbose=4", str(bundle)],
         check=False,
@@ -328,25 +314,15 @@ def main() -> int:
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--bundle", type=Path)
-    parser.add_argument("--report", type=Path)
     parser.add_argument("--require-distribution-signing", action="store_true")
     arguments = parser.parse_args()
-    if (arguments.bundle is None) != (arguments.report is None):
-        parser.error("--bundle and --report must be supplied together")
 
     errors: list[str] = []
     source_root = arguments.source_root.expanduser().resolve()
     checked, history = _audit_source(source_root, errors)
-    report_digest = None
     signing = "not-checked"
-    if arguments.report is not None:
-        report_digest = _audit_report(arguments.report, errors)
-        signing = _audit_bundle(
-            arguments.bundle,
-            arguments.report,
-            source_root,
-            errors,
-        )
+    if arguments.bundle is not None:
+        signing = _audit_bundle(arguments.bundle, source_root, errors)
     if arguments.require_distribution_signing and signing != "developer-id-or-unknown":
         errors.append("Developer ID signing is required for public binary distribution")
 
@@ -356,8 +332,7 @@ def main() -> int:
         return 1
     print(
         "PUBLIC_RELEASE_AUDIT PASS "
-        f"files={checked} history={history} signing={signing} "
-        f"report_sha256={report_digest or 'not-checked'}"
+        f"files={checked} history={history} signing={signing}"
     )
     return 0
 

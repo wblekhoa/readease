@@ -57,7 +57,7 @@ class LicenseContractTests(unittest.TestCase):
         self.assertIn("commercial use", notice.casefold())
         self.assertIn("third-party", notice.casefold())
 
-        apache_receipt = (ROOT / "legal" / "APACHE-2.0.txt").read_text(
+        apache_receipt = (ROOT / "legal" / "spdx" / "Apache-2.0.txt").read_text(
             encoding="utf-8"
         )
         self.assertIn("Apache License", apache_receipt)
@@ -75,35 +75,49 @@ class LicenseContractTests(unittest.TestCase):
             self.assertIn("(LICENSE)", head, filename)
             self.assertIn(permission, head.casefold(), filename)
 
-    def test_checked_in_binary_distribution_contract_names_lgpl_obligations(self) -> None:
+    def test_binary_distribution_receipt_describes_the_tauri_bundle(self) -> None:
         distribution = (ROOT / "legal" / "BINARY_DISTRIBUTION.md").read_text(
             encoding="utf-8"
         )
-        qt_notice = (ROOT / "legal" / "QT_THIRD_PARTY_NOTICES.md").read_text(
-            encoding="utf-8"
-        )
+        notices = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
         for phrase in (
-            "LGPL-3.0",
-            "relink",
-            "reverse engineering",
-            "Qt 6.11.2",
-            "QtPdf",
-            "soxr",
-            "source code",
+            "Tauri",
+            "PyInstaller",
+            "THIRD_PARTY_INVENTORY.md",
+            "THIRD_PARTY_LICENSES.txt",
+            "THIRD_PARTY_MANIFEST.json",
+            "MPL-2.0",
+            "Bootloader",
+            "no Qt",
         ):
-            self.assertIn(phrase.casefold(), distribution.casefold())
-        for phrase in ("PDFium", "FFmpeg", "Chromium", "third-party"):
-            self.assertIn(phrase.casefold(), qt_notice.casefold())
+            self.assertIn(phrase, distribution, phrase)
+        for phrase in ("VieNeu", "ONNX Runtime", "pypdfium2", "PDFium", "Tauri", "symphonia", "MODEL_PROVENANCE.md"):
+            self.assertIn(phrase, notices, phrase)
+        # The Qt shell is gone; a receipt that still promised LGPL relinking
+        # would be describing a binary nobody builds.
+        for gone in ("LGPL-3.0", "relink", "QtPdf", "Nuitka"):
+            self.assertNotIn(gone, distribution, gone)
 
-    def test_license_payload_is_generated_from_the_locked_environment(self) -> None:
+    def test_license_payload_is_generated_from_what_the_bundle_contains(self) -> None:
+        """The payload is read off the artefact: the frozen engine's TOC and Cargo.lock.
+
+        Needs a frozen engine on this machine (`scripts/build-sidecar.sh`); the
+        bundle gate checks the same payload inside a finished bundle.
+        """
+
+        engine_build = ROOT / "build" / "engine-build" / "readease-engine"
+        if not list(engine_build.glob("PYZ-*.toc")):
+            self.skipTest("no frozen engine under build/engine-build - run scripts/build-sidecar.sh")
+        cargo_lock = ROOT / "app" / "src-tauri" / "Cargo.lock"
         with TemporaryDirectory() as directory:
             output = Path(directory) / "Legal"
             completed = subprocess.run(
                 [
                     sys.executable,
                     ROOT / "scripts" / "package-license-payload.py",
-                    "--output",
-                    output,
+                    "--output", output,
+                    "--engine-build", engine_build,
+                    "--cargo-lock", cargo_lock,
                 ],
                 check=False,
                 capture_output=True,
@@ -115,6 +129,7 @@ class LicenseContractTests(unittest.TestCase):
                 "LICENSE",
                 "NOTICE.md",
                 "THIRD_PARTY_NOTICES.md",
+                "THIRD_PARTY_INVENTORY.md",
                 "THIRD_PARTY_LICENSES.txt",
                 "THIRD_PARTY_MANIFEST.json",
                 "BINARY_DISTRIBUTION.md",
@@ -127,48 +142,76 @@ class LicenseContractTests(unittest.TestCase):
             manifest = json.loads(
                 (output / "THIRD_PARTY_MANIFEST.json").read_text(encoding="utf-8")
             )
-            self.assertEqual(manifest["schema_version"], 1)
+            self.assertEqual(manifest["schema_version"], 2)
+            self.assertEqual(manifest["source_license"], "PolyForm-Noncommercial-1.0.0")
             self.assertEqual(
-                manifest["source_license"],
-                "PolyForm-Noncommercial-1.0.0",
+                manifest["cargo_lock_sha256"], sha256(cargo_lock.read_bytes()).hexdigest()
             )
-            names = {component["name"] for component in manifest["components"]}
+            self.assertEqual(
+                manifest["uv_lock_sha256"], sha256((ROOT / "uv.lock").read_bytes()).hexdigest()
+            )
+            components = {
+                (component["name"], component["version"]): component
+                for component in manifest["components"]
+            }
+            names = {name for name, _ in components}
             for name in (
                 "ReadEase",
                 "CPython",
-                "PySide6 / Qt",
-                "QtPdf / PDFium",
+                "PyInstaller bootloader",
                 "VieNeu SDK",
                 "VieNeu-TTS v3 Turbo model",
                 "MOSS Audio Tokenizer Nano ONNX",
                 "onnxruntime",
-                "soxr",
-                "Nuitka runtime",
-            ):
-                self.assertIn(name, names)
-            components = {
-                component["name"]: component for component in manifest["components"]
-            }
-            self.assertEqual(
-                components["ReadEase"]["license"],
-                "PolyForm-Noncommercial-1.0.0",
-            )
-            for name in (
+                "pypdfium2",
                 "tokenizers",
-                "VieNeu-TTS v3 Turbo model",
-                "MOSS Audio Tokenizer Nano ONNX",
+                "tauri",
+                "wry",
             ):
-                receipt_paths = {
-                    receipt["path"] for receipt in components[name]["receipts"]
-                }
-                self.assertIn("legal/APACHE-2.0.txt", receipt_paths)
-                self.assertNotIn("LICENSE", receipt_paths)
-            licenses = (output / "THIRD_PARTY_LICENSES.txt").read_text(
-                encoding="utf-8"
+                self.assertIn(name, names, name)
+            for gone in ("PySide6 / Qt", "QtPdf / PDFium", "Nuitka runtime", "shiboken6"):
+                self.assertNotIn(gone, names, gone)
+
+            # Every crate the host links is in the inventory - the check that
+            # keeps this payload from going stale a second time.
+            lock = tomllib.loads(cargo_lock.read_text(encoding="utf-8"))
+            crates = {
+                (package["name"], package["version"])
+                for package in lock["package"]
+                if "source" in package
+            }
+            self.assertGreater(len(crates), 400)
+            self.assertTrue(crates.issubset(components), sorted(crates - set(components))[:10])
+            self.assertEqual(
+                sum(component["kind"] == "crate" for component in manifest["components"]),
+                len(crates),
             )
-            self.assertGreater(len(licenses), 40_000)
+            kinds = {component["kind"] for component in manifest["components"]}
+            self.assertEqual(kinds, {"first-party", "runtime", "tool", "model", "python", "crate"})
+            self.assertGreater(
+                sum(component["kind"] == "python" for component in manifest["components"]), 30
+            )
+            for component in manifest["components"]:
+                self.assertTrue(component["receipts"], component["name"])
+                self.assertTrue(component["source"], component["name"])
+            self.assertEqual(
+                components[("ReadEase", "0.1.0")]["license"], "PolyForm-Noncommercial-1.0.0"
+            )
+            for name in ("VieNeu-TTS v3 Turbo model", "MOSS Audio Tokenizer Nano ONNX"):
+                component = next(c for c in manifest["components"] if c["name"] == name)
+                self.assertFalse(component["bundled"])
+                self.assertIn(
+                    "legal/spdx/Apache-2.0.txt",
+                    {receipt["path"] for receipt in component["receipts"]},
+                )
+            licenses = (output / "THIRD_PARTY_LICENSES.txt").read_text(encoding="utf-8")
+            self.assertGreater(len(licenses), 1_000_000)
             self.assertIn("Version 2.0, January 2004", licenses)
+            self.assertIn("Mozilla Public License Version 2.0", licenses)
             self.assertNotIn("PolyForm Noncommercial License", licenses)
+            inventory = (output / "THIRD_PARTY_INVENTORY.md").read_text(encoding="utf-8")
+            for name in ("VieNeu SDK", "tauri", "symphonia-core", "PyInstaller bootloader"):
+                self.assertIn(f"| {name} |", inventory, name)
 
     def test_public_source_audit_passes_the_allowlisted_export_surface(self) -> None:
         completed = subprocess.run(

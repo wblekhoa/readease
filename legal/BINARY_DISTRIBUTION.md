@@ -1,58 +1,65 @@
-# Binary distribution and LGPL compliance
+# Binary distribution
 
-This document describes the intended compliance path for a ReadEase macOS
-binary built from this repository. It is an engineering receipt, not legal
-advice and not a statement that an unsigned local build has been published.
+What a ReadEase macOS bundle built from this repository is, and what a person
+who receives one may rely on. An engineering receipt, not legal advice.
 
-## Selected license path
+## The bundle
 
-ReadEase first-party source and scaffold use
-PolyForm-Noncommercial-1.0.0. The supported macOS bundle dynamically links
-Qt 6.11.2 through PySide6 under the LGPL-3.0 option. QtPdf is used under its
-LGPL-3.0 option. The complete GPL-3.0 and LGPL-3.0 texts are included in the
-generated `Legal/THIRD_PARTY_LICENSES.txt` payload because LGPL-3.0 supplements
-GPL-3.0.
+`ReadEase.app` is built by `scripts/build-release-app.sh`: a Tauri shell (Rust
+host, WebKit view) with the Python speech engine frozen by PyInstaller as a
+sidecar at `Contents/Resources/engine/`. It is signed ad hoc and is not
+notarized; macOS asks once, on first launch, and the READMEs say how to
+answer. It links no Qt, no PySide and no copyleft library that would reach
+the binary.
 
-The app does not use or intentionally package Qt Virtual Keyboard. The bundle
-audit fails if `QtVirtualKeyboard`, `QtVirtualKeyboardQml`, or the virtual
-keyboard platform plugin appears. Voice cloning is not a ReadEase feature;
-optional VieNeu cloning dependencies such as soxr, SoundFile, and
-kaldi-native-fbank are excluded from the supported bundle. Reintroducing one of
-them requires a new license and relinking audit.
+## Licences travel with the app
 
-## Replacement, relink, and reverse engineering
+`Contents/Resources/Legal/` carries, for every build:
 
-Qt dynamic libraries are emitted beside the executable under
-`ReadEase.app/Contents/MacOS`. A recipient may replace compatible LGPL
-libraries, rebuild or relink the application from the corresponding source and
-locked build scripts, and reverse engineer the binary when necessary to debug
-such modifications. The ReadEase license and provenance marker do not restrict
-those LGPL rights. Replacing a library invalidates an Apple code signature; a
-locally modified bundle can be signed ad-hoc by its recipient.
+| File | What it is |
+| --- | --- |
+| `LICENSE` | PolyForm-Noncommercial-1.0.0, ReadEase's own terms |
+| `NOTICE.md` | The required notice and provenance ID |
+| `THIRD_PARTY_NOTICES.md` | Human-readable attribution (this repository's copy) |
+| `THIRD_PARTY_INVENTORY.md` | Every component in this build, with version, licence, source |
+| `THIRD_PARTY_LICENSES.txt` | Every licence text, once, with the components it covers |
+| `THIRD_PARTY_MANIFEST.json` | The inventory, machine-readable, bound to `uv.lock` and `Cargo.lock` by SHA-256 |
+| `BINARY_DISTRIBUTION.md` | This file |
 
-The source code, `uv.lock`, `pysidedeploy.spec`, and scripts in this repository
-are the preferred form for rebuilding ReadEase. Exact component versions,
-license receipts, source locations, and the Nuitka compilation-report digest
-are recorded in `Legal/THIRD_PARTY_MANIFEST.json` for each build.
+The inventory is generated from the artefact, not from a list somebody
+maintains: the engine's components are read from PyInstaller's table of
+contents for the frozen sidecar, the host's from `Cargo.lock`. A component
+with no licence text to ship stops the build.
 
-## Corresponding source code
+## Obligations this build meets, and how
 
-- Qt/PySide 6.11.2 source: <https://code.qt.io/cgit/pyside/pyside-setup.git/> and
-  <https://code.qt.io/cgit/qt/>.
-- QtPdf/PDFium licensing: <https://doc.qt.io/qt-6/qtpdf-licensing.html>.
-- VieNeu SDK and runtime model sources are identified at exact revisions in
-  `THIRD_PARTY_NOTICES.md` and the generated manifest.
-- Python distribution sources and license receipts are derived from the locked
-  environment and fresh Nuitka report by `scripts/package-license-payload.py`.
+- **MIT / BSD / ISC / Zlib** (most of the graph): the licence text and the
+  copyright notice accompany the binary — `THIRD_PARTY_LICENSES.txt`, with the
+  copyright holder named in each section header where the upstream text has
+  none of its own.
+- **Apache-2.0** (VieNeu SDK, tokenizers, the models, Tauri): the licence
+  text is carried; no upstream NOTICE files apply to the components in this
+  build.
+- **MPL-2.0** (the `symphonia` crates, `certifi`, `tqdm`): the crates ship
+  unmodified; the inventory records the repository each one's source is at,
+  which is the notice §3.2 requires for an executable form.
+- **PyInstaller bootloader** (GPL-2.0-or-later with the Bootloader
+  exception): the exception grants that a program frozen with it may be
+  distributed under its own terms. `COPYING.txt` is carried.
+- **PolyForm-Noncommercial-1.0.0** (ReadEase): noncommercial use, with the
+  required notice in `NOTICE.md`, `Info.plist` (`ReadEaseRequiredNotice`) and
+  the provenance record.
 
-Anyone distributing a ReadEase binary must make the corresponding source code
-and relink instructions available for at least the period required by the
-applicable license. Developer ID signing and Apple notarization do not replace
-these obligations.
+## Rebuilding
 
-## Release boundary
+The preferred form for rebuilding is this repository at the commit stamped
+into the bundle's `CFBundleVersion` (`<version>+<git sha>`), with `uv.lock`
+and `app/src-tauri/Cargo.lock` as the two locks. `scripts/build-release-app.sh`
+is the whole path: sidecar, host, payload, provenance, signing, verification,
+zip.
 
-The local ad-hoc bundle is for verification. A public binary remains held until
-the strict public-release audit passes against a fresh bundle and compilation
-report, Developer ID signing/notarization is completed, and the publisher has
-reviewed trademark, voice/model provenance, and LGPL source-offer obligations.
+## Not done, on purpose
+
+Developer ID signing and notarization. The owner accepted one Control-click →
+Open on first launch as the cost of not buying a certificate. If that changes,
+it is a separate lane with its own gates; nothing above depends on it.

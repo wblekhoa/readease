@@ -145,17 +145,16 @@ class ProvenanceContractTests(unittest.TestCase):
             self.assertEqual(plist["ReadEaseRequiredNotice"], provenance.REQUIRED_NOTICE)
             self.assertFalse(plist["ReadEaseProvenanceTracking"])
 
-    def test_build_and_clean_export_include_the_provenance_contract(self) -> None:
-        runtime_assets = (ROOT / "scripts" / "package-runtime-assets.sh").read_text(
-            encoding="utf-8"
-        )
+    def test_build_and_public_source_include_the_provenance_contract(self) -> None:
+        build = (ROOT / "scripts" / "build-release-app.sh").read_text(encoding="utf-8")
         manifest = json.loads(
             (ROOT / "scripts" / "public-source-manifest.json").read_text(
                 encoding="utf-8"
             )
         )
 
-        self.assertIn("package-provenance.py", runtime_assets)
+        self.assertIn("package-provenance.py", build)
+        self.assertIn("package-license-payload.py", build)
         self.assertIn("NOTICE.md", manifest["root_files"])
 
         privacy = (ROOT / "PRIVACY.md").read_text(encoding="utf-8")

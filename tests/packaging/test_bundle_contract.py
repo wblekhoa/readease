@@ -144,29 +144,54 @@ class BundleContractTests(unittest.TestCase):
         self.assertEqual(linkers, [])
 
     def test_bundle_carries_its_licence_and_notices(self) -> None:
-        """The three documents that are true of ANY build, in the bundle.
+        """The payload in the bundle is the one generated for THIS bundle.
 
-        The fuller payload this once required - a generated
-        `THIRD_PARTY_MANIFEST.json` with per-component receipts - is bound to a
-        Nuitka compilation report, and the sidecar is PyInstaller now. Rather
-        than emit a manifest naming PySide6 and Nuitka as shipped components,
-        which would be a legal document that is simply false, the bundle
-        carries the static documents and the gap is named out loud here and in
-        PUBLIC_RELEASE_CHECKLIST.md. A manifest derived from the `.dist-info`
-        directories actually inside the frozen engine is the honest way to
-        restore it; that work has not been done.
+        Four static documents match the source tree byte for byte; the three
+        generated ones are bound to the locks this tree was built from, and
+        every crate the host links appears in the inventory - the check that
+        keeps the shipped attribution from going stale.
         """
 
+        import tomllib
+        from hashlib import sha256
+
         legal = BUNDLE / "Contents" / "Resources" / "Legal"
-        required = {"LICENSE", "NOTICE.md", "THIRD_PARTY_NOTICES.md"}
+        static = {"LICENSE", "NOTICE.md", "THIRD_PARTY_NOTICES.md"}
+        generated = {
+            "THIRD_PARTY_INVENTORY.md",
+            "THIRD_PARTY_LICENSES.txt",
+            "THIRD_PARTY_MANIFEST.json",
+        }
         self.assertTrue(legal.is_dir(), f"no licence payload at {legal}")
-        self.assertEqual({path.name for path in legal.iterdir()}, required)
-        for name in sorted(required):
+        self.assertEqual(
+            {path.name for path in legal.iterdir()},
+            static | generated | {"BINARY_DISTRIBUTION.md"},
+        )
+        for name in sorted(static):
             self.assertEqual(
                 (legal / name).read_bytes(),
                 (ROOT / name).read_bytes(),
                 f"{name} in the bundle differs from the one in the source tree",
             )
+        self.assertEqual(
+            (legal / "BINARY_DISTRIBUTION.md").read_bytes(),
+            (ROOT / "legal" / "BINARY_DISTRIBUTION.md").read_bytes(),
+        )
+        cargo_lock = ROOT / "app" / "src-tauri" / "Cargo.lock"
+        manifest = json.loads((legal / "THIRD_PARTY_MANIFEST.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["schema_version"], 2)
+        self.assertEqual(manifest["cargo_lock_sha256"], sha256(cargo_lock.read_bytes()).hexdigest())
+        self.assertEqual(manifest["uv_lock_sha256"], sha256((ROOT / "uv.lock").read_bytes()).hexdigest())
+        shipped = {(c["name"], c["version"]) for c in manifest["components"]}
+        crates = {
+            (package["name"], package["version"])
+            for package in tomllib.loads(cargo_lock.read_text(encoding="utf-8"))["package"]
+            if "source" in package
+        }
+        self.assertTrue(crates.issubset(shipped), sorted(crates - shipped)[:10])
+        for name in ("VieNeu SDK", "onnxruntime", "pypdfium2", "PyInstaller bootloader"):
+            self.assertIn(name, {n for n, _ in shipped}, name)
+        self.assertGreater((legal / "THIRD_PARTY_LICENSES.txt").stat().st_size, 1_000_000)
 
     def test_bundle_contains_deterministic_nontracking_provenance(self) -> None:
         from vieneu_reader.provenance import provenance_payload

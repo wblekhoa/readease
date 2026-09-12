@@ -5,7 +5,6 @@
     "CONTRIBUTING.md",
     "INSTALL.md",
     "INSTALL.en.md",
-    "Install ReadEase.command",
     "LICENSE",
     "NOTICE.md",
     "PRIVACY.md",
@@ -15,14 +14,12 @@
     "SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
     "pyproject.toml",
-    "pysidedeploy.spec",
     "uv.lock"
   ],
   "directories": [
     "assets",
     "legal",
     "native",
-    "script",
     "scripts",
     "src",
     "tests"

@@ -12,7 +12,6 @@ license-files = ["LICENSE", "NOTICE.md"]
 requires-python = ">=3.13,<3.14"
 dependencies = [
   "vieneu==3.6.3",
-  "PySide6>=6.8,<7",
   # Already in the bundle by way of vieneu; named here because playback now
   # uses it directly, and depending on a transitive package is a trap.
   "numpy>=2,<3",
@@ -25,6 +24,5 @@ packages = ["src/vieneu_reader"]
 
 [dependency-groups]
 dev = [
-    "nuitka==4.1.1",
     "pyinstaller>=6.22.2",
 ]

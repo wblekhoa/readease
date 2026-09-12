@@ -63,17 +63,18 @@ echo "==> building the app"
 
 # The licence and notices travel WITH the app. A binary handed to someone else
 # carries the terms it is given under; leaving them only in the repository puts
-# them where the person holding the app is not. Three static documents, true of
-# any build - the generated component manifest is still Qt-era work, and
-# PUBLIC_RELEASE_CHECKLIST.md names that gap rather than shipping a manifest
-# that names PySide6 and Nuitka as components of a bundle that has neither.
+# them where the person holding the app is not. The payload is generated from
+# what this build actually contains - the frozen engine's PyInstaller TOC and
+# the host's Cargo.lock - so the inventory cannot describe a different build,
+# and the generator refuses to finish with a component that has no licence
+# text to ship.
 echo "==> writing the licence payload"
 legal="$app/Contents/Resources/Legal"
 rm -rf "$legal"
-mkdir -p "$legal"
-for document in LICENSE NOTICE.md THIRD_PARTY_NOTICES.md; do
-  /usr/bin/install -m 0644 "$document" "$legal/$document"
-done
+.venv/bin/python scripts/package-license-payload.py \
+  --output "$legal" \
+  --engine-build build/engine-build/readease-engine \
+  --cargo-lock app/src-tauri/Cargo.lock
 
 echo "==> writing the provenance record"
 .venv/bin/python scripts/package-provenance.py --bundle "$app"
