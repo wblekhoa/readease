@@ -37,7 +37,8 @@ Any of 3, 6 or 7 failing stops the script before it packages anything.
 Then, against the finished bundle:
 
 ```bash
-.venv/bin/python scripts/audit-public-release.py --strict --bundle dist/ReadEase.app
+.venv/bin/python scripts/audit-public-release.py --strict \
+  --bundle app/src-tauri/target/release/bundle/macos/ReadEase.app
 ```
 
 ## What the recipient does
