@@ -1,6 +1,8 @@
 # Contributing to ReadEase
 
-ReadEase is a Vietnamese-first, local macOS reading app. Keep changes scoped,
+ReadEase is a Vietnamese-first, local macOS reading app. Contributions are
+welcome and none are expected: a bug report, or a check that the privacy
+claims hold, is as useful here as code. Keep changes scoped,
 preserve users' existing library data, and avoid adding background services,
 telemetry, API keys, model weights, copyrighted books, or generated audio.
 
@@ -16,7 +18,8 @@ uv sync --locked --managed-python --python 3.13
 
 `uv.lock` is the dependency source of truth. Adding or upgrading a dependency
 requires an explicit license, size, offline-behavior, and bundle-impact review.
-PDF support must continue to use QtPdf rather than adding a second PDF engine.
+PDF extraction runs on `pypdfium2` inside the headless sidecar; keep it there
+rather than adding a second PDF engine.
 
 ## Change quality
 
@@ -24,8 +27,8 @@ PDF support must continue to use QtPdf rather than adding a second PDF engine.
   full verification script.
 - Keep model and book fixtures small; never commit `.onnx`, PDF/EPUB books,
   databases, cache files, or user data.
-- For packaging changes, produce a fresh Nuitka report and run the strict
-  public-release audit against the built app.
+- For packaging changes, rebuild through `scripts/build-release-app.sh` and run
+  `scripts/audit-public-release.py --strict` against the result.
 - Do not claim a public binary is ready from an ad-hoc signature. Developer ID,
   notarization, license review, and a clean export are separate release gates.
 
