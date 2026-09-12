@@ -23,33 +23,18 @@ Download `ReadEase-<version>-arm64.zip`, unzip it, and **drag `ReadEase.app` int
 
 | Requirement | Details |
 | --- | --- |
-| Mac | Apple Silicon: M1, M2, M3, M4 or newer |
+| Mac | Apple Silicon: M1, M2, M3, M4 or newer. Intel Macs are not supported yet. |
 | macOS | macOS 15 or newer |
-| Free disk space | About 450 MB for the app, plus a one-time 331 MB of voice data |
+| Free disk space | About 220 MB for the app, plus a one-time voice download: ~330 MB (Standard) or ~625 MB (Highest) |
 | Internet | Required to download the app and for the first voice-model download |
 
 You do not need an API key, Homebrew, Python or programming knowledge.
-
-## The other way - build from source
-
-Building on your own Mac is **never blocked by macOS**, at the cost of 10-25 minutes and about 6 GB of free space while it builds. Use it if you would rather not do the Open Anyway step above.
-
-> [!IMPORTANT]
-> **The source install does not build right now.** It builds the older Qt shell, and the Qt shell has been removed from the source. Download the `.zip` above instead — that is the complete, current app. The steps below are kept for reference.
-
-Open **Terminal**, paste this and press Enter:
-
-```bash
-git clone https://github.com/wblekhoa/readease.git ~/Downloads/readease && "$HOME/Downloads/readease/Install ReadEase.command"
-```
-
-The installer lists everything it will install, replace, close and remove **before** it starts, then asks **one** question, and installs to `~/Applications/ReadEase.app`.
 
 ## First launch
 
 In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build. Only the build you pick is downloaded, never both: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower.
 
-See [INSTALL.en.md](INSTALL.en.md) for screenshots-message wording, Gatekeeper details, compatibility checks and troubleshooting.
+Books, progress, notes and downloaded voices live in `~/Library/Application Support/VieNeu Reader/`, outside the app - upgrading is dragging the new build over the old one, and nothing is lost. Gatekeeper details, permissions and troubleshooting: [INSTALL.en.md](INSTALL.en.md).
 
 ## Main features
 

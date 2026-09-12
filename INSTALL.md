@@ -1,207 +1,73 @@
 # Cài đặt ReadEase — Thư Âm
 
-Hướng dẫn này dành cho người muốn cài ReadEase từ mã nguồn trên máy Mac mà không cần biết lập trình.
+Dành cho người muốn cài ReadEase lên máy Mac mà không cần biết lập trình. Không mất phí, không cần tài khoản, không cần API key.
 
-> **English installation guide:** [INSTALL.en.md](INSTALL.en.md)
+> **English:** [INSTALL.en.md](INSTALL.en.md) · **Giới thiệu app:** [README.md](README.md)
 
-> [!IMPORTANT]
-> **Đường cài từ nguồn trong tài liệu này đang không dựng được.** Nó dựng bản
-> vỏ Qt cũ, và vỏ Qt đã bị gỡ khỏi mã nguồn (08/09/2026). Cách cài đang dùng
-> được là tải bản `.zip` dựng sẵn — xem [README.md](README.md). Tài liệu này
-> giữ nguyên để tham khảo.
-
-## Trước khi bắt đầu
-
-ReadEase hiện được chia sẻ dưới dạng **source build**. File cài chưa được ký bằng Apple Developer ID và chưa được Apple notarize, nên macOS có thể chặn `Install ReadEase.command` ở lần mở đầu tiên. Đây là cơ chế Gatekeeper của macOS, không phải thông báo app bị crash.
-
-Chỉ tiếp tục nếu bạn tải source từ repository chính thức:
-
-- Repository: <https://github.com/wblekhoa/readease>
-- Tải trực tiếp: <https://github.com/wblekhoa/readease/archive/refs/heads/main.zip>
-
-## Yêu cầu hệ thống
+## Máy của bạn cần có gì
 
 | Yêu cầu | Chi tiết |
 | --- | --- |
-| Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn |
+| Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn. Máy Intel chưa được hỗ trợ. |
 | macOS | macOS 15 trở lên |
-| Dung lượng trống | Tối thiểu 6 GB **trong lúc** build. Cài xong chỉ còn ~324 MB cho app + ~331 MB giọng đọc tải một lần; phần lớn 6 GB kia là Python, thư viện và mã trung gian của trình biên dịch, xoá ngay khi cài xong. |
-| Kết nối mạng | Cần cho lần build đầu và lần tải giọng đọc đầu tiên |
-| Công cụ của Apple | Xcode Command Line Tools |
-
-Bạn không cần API key, Homebrew, Python hoặc `uv`. Installer tự chuẩn bị môi trường build đã khóa phiên bản và checksum, không dùng `sudo`, không sửa shell profile và dọn môi trường tạm sau khi cài thành công.
+| Dung lượng trống | Khoảng 220 MB cho app, cộng giọng đọc tải một lần: *Tiêu chuẩn* ~330 MB hoặc *Cao nhất* ~625 MB |
+| Kết nối mạng | Chỉ cần lúc tải app và lúc chuẩn bị giọng đọc lần đầu. Sau đó đọc offline. |
 
 ## Cài đặt từng bước
 
-### Bước 1 — Tải source
+### Bước 1 — Tải app
 
-Bấm [**Tải ReadEase — Source ZIP**](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip). Mở file ZIP vừa tải để giải nén thành thư mục `readease-main`.
+Vào trang [**Releases**](https://github.com/wblekhoa/readease/releases/latest) và tải file `ReadEase-<phiên bản>-arm64.zip`. Bấm đúp file zip để giải nén — bạn có `ReadEase.app`.
 
-### Bước 2 — Mở installer
+### Bước 2 — Kéo vào Applications
 
-Trong thư mục `readease-main`, bấm đúp **Install ReadEase.command**.
+Kéo `ReadEase.app` vào thư mục **Applications** (hoặc `~/Applications`). Xong. Không cần Terminal, không cần cài thêm gì.
 
-Nếu cửa sổ Terminal mở và installer bắt đầu kiểm tra máy, chuyển tới [Bước 4](#bước-4--cài-công-cụ-của-apple-nếu-còn-thiếu).
+### Bước 3 — Mở lần đầu: qua cảnh báo của macOS
 
-### Bước 3 — Nếu macOS báo “Not Opened”
+Bản này **không mua chứng chỉ Apple Developer** và không notarize, nên lần mở đầu tiên macOS sẽ chặn với dòng *"Apple could not verify ReadEase is free of malware"*. Đây là cơ chế Gatekeeper cho app của nhà phát triển chưa đăng ký, không phải app bị lỗi. Chỉ phải làm **một lần**.
 
-Bạn có thể thấy thông báo:
+**Cách nhanh:** bấm **chuột phải** (hoặc Control-click) vào `ReadEase.app` → chọn **Open** → trong hộp thoại bấm **Open** lần nữa.
 
-> “Install ReadEase.command” Not Opened
->
-> Apple could not verify “Install ReadEase.command” is free of malware…
+**Nếu bạn lỡ bấm đúp** và thấy hộp thoại có nút **Move to Trash**:
 
-Làm theo đúng thứ tự sau:
+1. Bấm **Done**. **Không bấm Move to Trash.**
+2. Mở **System Settings** → **Privacy & Security**.
+3. Kéo xuống phần **Security**, tìm dòng *"ReadEase" was blocked…*
+4. Bấm **Open Anyway**, xác nhận bằng Touch ID hoặc mật khẩu đăng nhập Mac.
+5. Mở lại app; khi hỏi lần nữa, bấm **Open**.
 
-1. Bấm **Done**. **Không bấm Move to Trash**.
-2. Mở **System Settings**.
-3. Chọn **Privacy & Security** (**Quyền riêng tư & Bảo mật**).
-4. Kéo xuống phần **Security**. Tìm thông báo `Install ReadEase.command was blocked…`.
-5. Bấm **Open Anyway** (**Vẫn mở**).
-6. Xác nhận bằng Touch ID hoặc mật khẩu đăng nhập Mac.
-7. Khi cảnh báo xuất hiện lại, bấm **Open**.
+Nút **Open Anyway** chỉ hiện trong khoảng một giờ sau lần bị chặn. Không thấy thì bấm đúp app thêm một lần rồi quay lại **Privacy & Security**. Apple mô tả cùng quy trình tại [Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/mh40616/mac). Thao tác này chỉ tạo ngoại lệ cho đúng app này, không tắt Gatekeeper toàn hệ thống.
 
-`Open Anyway` thường chỉ xuất hiện trong khoảng một giờ sau lần macOS chặn file. Nếu chưa thấy nút này, thử bấm đúp `Install ReadEase.command` thêm một lần rồi quay lại **Privacy & Security**.
+> Nếu hộp thoại nói app **"is damaged and can't be opened"** thì đó là chuyện khác: file zip bị đổi sau khi tải (trình duyệt hoặc phần mềm diệt virus can thiệp). Xoá và tải lại từ trang Releases chính thức; đừng dùng lệnh `xattr` hay tắt bảo mật.
 
-Nếu bạn đã bấm **Move to Trash**, hãy khôi phục file/thư mục từ Trash hoặc tải ZIP lại từ repository chính thức rồi làm lại các bước trên.
+### Bước 4 — Chuẩn bị giọng đọc
 
-Apple mô tả cùng quy trình tại [Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/mh40616/mac). Chỉ dùng **Open Anyway** cho source bạn tin tưởng; thao tác này tạo ngoại lệ cho đúng file, không yêu cầu tắt Gatekeeper toàn hệ thống.
+Mở app, bấm **Chuẩn bị giọng đọc**. App tải mô hình giọng tiếng Việt về máy — *Tiêu chuẩn* khoảng 330 MB, hoặc *Cao nhất* khoảng 625 MB nếu bạn chọn ở ô **Chất lượng giọng đọc** ngay phía trên (đọc hay hơn một chút, chậm hơn chừng 11%). App chỉ tải đúng bản bạn chọn. Sau bước này mọi thứ chạy trên máy, không cần mạng.
 
-### Bước 4 — Đọc bản kê rồi đồng ý một lần
+### Bước 5 (tuỳ chọn) — Quét đọc ở app khác
 
-Installer in ra một bảng liệt kê **trước khi động vào bất cứ thứ gì**: sẽ cài gì, thay gì, đóng gì, dọn gì, và những thứ nó **không bao giờ** đụng tới (sudo, mật khẩu, shell profile, sách và tiến độ đọc của bạn). Đọc xong bấm Enter là nó chạy một mạch tới cuối, không hỏi thêm câu nào.
+Muốn bôi đen chữ ở trang web, PDF, Apple Books… rồi nhấn phím tắt để nghe, ReadEase cần quyền **Accessibility** (Trợ năng). Lần đầu dùng tính năng **Quét đọc**, macOS sẽ hỏi; bạn bật cho ReadEase trong **System Settings → Privacy & Security → Accessibility**. Không dùng tính năng này thì không cần cấp quyền.
 
-Nếu máy chưa có Xcode Command Line Tools, bản kê sẽ ghi rõ điều đó ở dòng đầu. Sau khi bạn đồng ý, installer tự mở cửa sổ cài của Apple và **chờ** bạn bấm Install xong mới đi tiếp — bạn không phải tự chạy lệnh rồi khởi động lại installer. Bạn không cần cài toàn bộ ứng dụng Xcode.
+## Nâng cấp, gỡ, dữ liệu ở đâu
 
-Muốn xem trước bản kê mà chưa cài gì:
+- **Nâng cấp:** tải zip mới, kéo `ReadEase.app` đè lên bản cũ. Sách, tiến độ, ghi chú và giọng đã tải **không mất** — chúng nằm ngoài app, ở `~/Library/Application Support/VieNeu Reader/`.
+- **Gỡ:** kéo `ReadEase.app` vào Thùng rác. Muốn xoá cả sách và giọng đã tải thì xoá thêm thư mục ở trên.
+- **Chi phí:** không có. Giọng trên máy miễn phí vĩnh viễn. Chỉ khi **bạn tự** nhập khoá OpenAI/ElevenLabs để dùng giọng AI trả phí thì bạn trả cho nhà cung cấp đó, theo giá hiện sẵn trong nút đọc; app không thu gì.
 
-```bash
-./scripts/install-from-source.sh --check
-```
+## Lỗi thường gặp
 
-### Bước 5 — Chờ app được build và cài
+| Bạn thấy | Nghĩa là | Làm gì |
+| --- | --- | --- |
+| "Apple could not verify…" | Gatekeeper, app chưa đăng ký với Apple | Bước 3 ở trên |
+| "…is damaged and can't be opened" | File zip bị đổi sau khi tải | Xoá, tải lại từ Releases |
+| App không mở trên máy Intel | Bản này chỉ dựng cho Apple Silicon | Chưa hỗ trợ |
+| "Requires macOS 15" | Máy đang chạy macOS cũ hơn | Cập nhật macOS |
+| Phím tắt Quét đọc không đọc gì | Chưa cấp quyền Accessibility | Bước 5 |
+| Giọng đọc chưa sẵn sàng | Chưa tải mô hình | Bước 4 |
 
-Lần đầu thường mất khoảng 10–25 phút. Installer sẽ:
+Vẫn kẹt? Mở issue tại <https://github.com/wblekhoa/readease/issues> kèm phiên bản macOS và dòng chữ macOS hiện ra.
 
-1. Kiểm tra kiến trúc máy, phiên bản macOS, dung lượng và công cụ build.
-2. Tải công cụ build đã khóa checksum nếu máy chưa có bản phù hợp.
-3. Build và kiểm tra ReadEase ngay trên máy của bạn.
-4. Cài app vào `~/Applications/ReadEase.app`.
-5. Tự mở ReadEase khi hoàn tất.
+## Tại sao có cảnh báo lần đầu?
 
-Đừng đóng cửa sổ Terminal trong lúc cài. Khi thành công, cửa sổ sẽ hiện:
-
-```text
-READEASE_SOURCE_INSTALL PASS target=.../Applications/ReadEase.app
-```
-
-### Bước 6 — Chuẩn bị giọng đọc
-
-Trong ReadEase, bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu. Sau khi hoàn tất, việc đọc diễn ra cục bộ và có thể dùng offline.
-
-Ô **Chất lượng giọng đọc** ngay phía trên chọn bản mô hình. App **chỉ tải đúng bản bạn chọn**: *Tiêu chuẩn* (mặc định) tổng cộng khoảng 330 MB, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Đổi lựa chọn có hiệu lực ở lần mở app kế tiếp, và bản chưa tải sẽ được tải khi đó.
-
-Giữ hai bản cùng lúc là không cần thiết: khi phát hiện có bản đã tải mà không dùng tới, app hiện một dòng cho biết nó chiếm bao nhiêu kèm nút xoá. Bản đang dùng thì không bao giờ bị xoá.
-
-## Kiểm tra máy mà chưa cài
-
-Mở Terminal tại thư mục `readease-main` và chạy:
-
-```bash
-./Install\ ReadEase.command --check
-```
-
-Kết quả tương thích sẽ chứa:
-
-```text
-READEASE_PREFLIGHT PASS
-```
-
-## Nhờ AI cài giúp
-
-Mở thư mục `readease-main` trong công cụ AI có quyền chạy Terminal và gửi:
-
-> Hãy chạy `./Install ReadEase.command`, sửa lỗi cài đặt nếu có, rồi xác nhận `~/Applications/ReadEase.app` đã mở được. Không publish hay thay dependency.
-
-## Xử lý lỗi thường gặp
-
-### Không thấy Open Anyway
-
-- Bấm đúp installer để macOS ghi nhận lần chặn mới.
-- Ngay sau đó mở **System Settings → Privacy & Security** và kéo xuống phần **Security**.
-- Nút có thể bị ẩn sau khoảng một giờ hoặc không khả dụng trên máy do công ty/trường học quản lý. Với máy được quản lý, hãy liên hệ quản trị viên.
-
-### `Permission denied`
-
-Mở Terminal tại thư mục source và chạy:
-
-```bash
-chmod u+x "Install ReadEase.command"
-./Install\ ReadEase.command
-```
-
-Lệnh này chỉ khôi phục quyền chạy cho installer; nó không tắt Gatekeeper.
-
-### `unsupported_arch`
-
-Máy đang dùng Intel. Bản ReadEase hiện tại chỉ hỗ trợ Apple Silicon.
-
-### `unsupported_macos`
-
-Cập nhật lên macOS 15 trở lên rồi thử lại.
-
-### `insufficient_disk`
-
-Giải phóng để có ít nhất 6 GB trống rồi chạy lại installer.
-
-### Cài đặt dừng giữa chừng
-
-Giữ nguyên toàn bộ nội dung cửa sổ Terminal và gửi cho người hỗ trợ hoặc trợ lý AI. Khi cài thất bại, installer in đường dẫn `READEASE_BUILD_PRESERVED` để giữ môi trường chẩn đoán; khi cài thành công, môi trường tạm được dọn tự động.
-
-## Tại sao không thể bỏ hoàn toàn cảnh báo này ngay?
-
-Để tất cả người dùng có thể mở app theo cách thông thường mà không cần **Open Anyway**, bản phát hành phải được ký bằng chứng chỉ Apple Developer ID, bật hardened runtime, gửi Apple notarize và đóng gói thành artifact phát hành. Bản source build hiện tại chỉ được ký ad-hoc trên máy người dùng, nên hướng dẫn Gatekeeper ở trên vẫn cần thiết.
-
----
-
-<a id="english"></a>
-
-# Install ReadEase
-
-ReadEase is currently distributed as a local **source build**, not a Developer ID-signed and Apple-notarized binary. macOS Gatekeeper may therefore block `Install ReadEase.command` the first time you open it.
-
-Only proceed with source downloaded from:
-
-- Repository: <https://github.com/wblekhoa/readease>
-- Direct ZIP: <https://github.com/wblekhoa/readease/archive/refs/heads/main.zip>
-
-## Requirements
-
-- Apple Silicon Mac (M1 or newer)
-- macOS 15 or newer
-- At least 6 GB of free disk space during installation
-- Internet access for the first build and first voice-model download
-- Xcode Command Line Tools
-
-No API key, Homebrew, Python or `uv` installation is required.
-
-## Installation
-
-1. [Download the source ZIP](https://github.com/wblekhoa/readease/archive/refs/heads/main.zip) and extract `readease-main`.
-2. Double-click **Install ReadEase.command**.
-3. If macOS shows **“Install ReadEase.command” Not Opened**, click **Done**, not **Move to Trash**.
-4. Open **System Settings → Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the blocked installer message.
-5. Authenticate with Touch ID or your Mac password, then click **Open** when prompted again.
-6. Read the plan the installer prints and answer its single question. If Xcode Command Line Tools are missing, it opens Apple’s installer for you and waits for it to finish.
-7. Wait about 10–25 minutes. ReadEase will be built, checked, installed at `~/Applications/ReadEase.app` and opened automatically.
-8. In ReadEase, click **Chuẩn bị giọng đọc** once to download about 330 MB of voice data.
-
-The **Open Anyway** option is normally available for about one hour after the blocked launch. If it is missing, double-click the installer again and immediately revisit **Privacy & Security**. Apple documents this flow in [Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/mh40616/mac).
-
-You can run a compatibility-only check from Terminal:
-
-```bash
-./Install\ ReadEase.command --check
-```
-
-If installation fails, keep the full Terminal output for support. A successfully installed build cleans its temporary environment automatically; a failed build prints a `READEASE_BUILD_PRESERVED` path for diagnosis.
+Để app mở như mọi app khác mà không cần bước Open Anyway, bản phát hành phải được ký bằng chứng chỉ Apple Developer ID và gửi Apple notarize. ReadEase là dự án cá nhân, miễn phí, chưa làm việc đó; đổi lại bạn có toàn bộ mã nguồn để tự kiểm tra rằng app không gửi sách của bạn đi đâu.
