@@ -32,7 +32,6 @@ export const FAULT_CODES = [
   "refused",
   "budget",
   "wrong_language",
-  "language_choice",
   "unknown_model",
   "voice_gone",
   "account_blocked",

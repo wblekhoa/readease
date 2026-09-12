@@ -404,17 +404,16 @@ class ProtocolTests(unittest.TestCase):
         ]),
     ]
 
-    def test_a_vietnamese_book_marked_english_says_which_setting_did_it(self) -> None:
-        """The refusal a reader can actually act on.
+    def test_a_word_cannot_unprove_what_the_text_proves(self) -> None:
+        """The tap that once left a Vietnamese book unreadable by every voice.
 
-        Found on the owner's own shelf (10/09): a book 28.3% Vietnamese by
-        orthography, stored as `en` because somebody once tapped the other
-        option - very likely to reveal a paid voice the filter was hiding -
-        and every local voice refused with "pick a voice that reads English".
-        That sentence is true for a book that IS English and useless for this
-        one: the reader is holding a Vietnamese book and is being sent to fix
-        the voice. The book's own words are the tell, and the engine already
-        computes them for the shelf, so the two cases can be told apart.
+        Found on the owner's own shelf (12/09): a book 29.1% Vietnamese by
+        orthography, stored as `en` by one tap on the other option, and from
+        then on refused by the local voice as English - with no other voice
+        on the machine to read it. Until 10/09 the refusal named the wrong
+        fix; from 10/09 it named the right one; both left the reader doing by
+        hand what the engine already knew. The marks are on the page: a word
+        may fill the gap the text leaves, not deny what it proves.
         """
 
         repository, root = self._shelf_with(self.VIETNAMESE_BOOK)
@@ -429,12 +428,58 @@ class ProtocolTests(unittest.TestCase):
             settings_path=root / "settings.json",
         )
 
-        # The setting took, and the text disagrees with it - which is exactly
-        # the pair that makes this case tellable.
-        self.assertEqual(replies[0]["result"]["language"], "en")
-        self.assertEqual(replies[0]["result"]["language_detected"], "vi")
-        self.assertFalse(replies[-1]["ok"])
-        self.assertIn("language_choice", replies[-1]["error"])
+        self.assertFalse(replies[0]["ok"])
+        self.assertIn("language_proven", replies[0]["error"])
+        self.assertIsNone(repository.book_language(BOOK_ID))
+        self.assertTrue(replies[-1]["ok"])
+
+    def test_a_row_an_older_build_stored_is_inert_not_fatal(self) -> None:
+        # The owner's own row: `en` on a Vietnamese book, written by a build
+        # that let the word win outright. Nothing deletes it - it is a
+        # reader's data - but the shelf and the reading both say what the
+        # words say, and the book is read.
+        repository, root = self._shelf_with(self.VIETNAMESE_BOOK)
+        repository.set_book_language(BOOK_ID, "en")
+        replies = run_server(
+            [
+                {"id": 1, "method": "library.list"},
+                {"id": 8, "method": "read.book",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        shelved = replies[0]["result"]["books"][0]
+        self.assertEqual(shelved["language"], "vi")
+        self.assertEqual(shelved["language_detected"], "vi")
+        self.assertTrue(shelved["language_set"])
+        self.assertTrue(replies[-1]["ok"])
+        self.assertEqual(repository.book_language(BOOK_ID), "en")
+
+    def test_the_guard_is_only_as_wide_as_the_proof(self) -> None:
+        # Where the text proves nothing, every word is still the reader's to
+        # give and to take back: English on an English book, and withdrawing
+        # it. The word that FILLS the gap - Vietnamese on a book that reads as
+        # English - is `test_a_reader_can_say_a_book_is_vietnamese_after_all`.
+        repository, root = self._shelf_with(self.ENGLISH_BOOK)
+        replies = run_server(
+            [
+                {"id": 5, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": "en"}},
+                {"id": 6, "method": "book.set_language",
+                 "params": {"book_id": BOOK_ID, "language": None}},
+            ],
+            FakeEngine(), repository=repository,
+            settings_path=root / "settings.json",
+        )
+
+        self.assertTrue(replies[0]["ok"])
+        self.assertEqual(
+            replies[0]["result"],
+            {"language": "en", "language_set": True, "language_detected": "en"},
+        )
+        self.assertTrue(replies[1]["ok"])
 
     def test_a_book_that_really_is_english_still_says_pick_another_voice(self) -> None:
         """The control. Nothing here may weaken the owner's rule: a book whose
@@ -451,7 +496,6 @@ class ProtocolTests(unittest.TestCase):
 
         self.assertFalse(replies[-1]["ok"])
         self.assertIn("wrong_language", replies[-1]["error"])
-        self.assertNotIn("language_choice", replies[-1]["error"])
 
     def test_a_reader_can_say_a_book_is_vietnamese_after_all(self) -> None:
         # The case with no way out before this: a Vietnamese book that lost

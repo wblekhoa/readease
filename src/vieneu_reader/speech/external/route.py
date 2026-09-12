@@ -26,17 +26,11 @@ KEY_FOR_PROVIDER: Mapping[str, str] = {
 #: handed to it. Refusing by name is the same rule the two money reasons
 #: follow - say why, rather than speak in a voice nobody chose.
 #:
-#: `language_choice` is the same refusal for the reader who can undo it. A
-#: book whose OWN WORDS read as Vietnamese is only being read as English
-#: because somebody set it that way, so "pick a voice that reads English"
-#: sends them to fix the voice while the Vietnamese book sits in front of
-#: them. Two situations, one sentence, until 10/09.
-#:
 #: `unknown_model` is the one nobody can act on except by choosing another
 #: voice: the id names a model this build has no price for, so it cannot be
 #: quoted, capped or metered - and the provider might still serve it.
 BlockedReason = Literal[
-    "no_key", "budget", "wrong_language", "language_choice", "unknown_model",
+    "no_key", "budget", "wrong_language", "unknown_model",
 ]
 
 

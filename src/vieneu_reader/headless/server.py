@@ -51,7 +51,11 @@ from typing import Any, Iterator, Protocol, TextIO
 import numpy as np
 
 from vieneu_reader.domain.models import AudioChunk, Segment, Voice
-from vieneu_reader.domain.language import language_of_text, language_of_texts
+from vieneu_reader.domain.language import (
+    language_in_use,
+    language_of_text,
+    language_of_texts,
+)
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
     SENTENCE_PAUSE_MS,
@@ -759,7 +763,6 @@ class _Session:
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
             book_id=book_id, window=params.get("window"), language=language,
-            detected=self._detected_language(stored),
         )
 
     def _voice_catalogue(self) -> list[dict[str, Any]]:
@@ -1139,11 +1142,7 @@ class _Session:
                 # the language and then asking AGAIN whether it was set read
                 # the same row twice on every shelf open; the detector only
                 # ever ran once, so this is the query, not the reading.
-                "language": (
-                    chosen_language
-                    if chosen_language in SPEECH_LANGUAGES
-                    else detected_language
-                ),
+                "language": language_in_use(chosen_language, detected_language),
                 "language_set": chosen_language is not None,
                 # What the TEXT says, whatever the reader decided. The shell
                 # needs both to offer a suggestion rather than an argument:
@@ -1923,22 +1922,24 @@ class _Session:
         Getting this from the book is what makes "never read English with the
         Vietnamese model" true for somebody whose interface is Vietnamese.
 
-        A reader's own word outranks the text. The detector reads Vietnamese
-        orthography, so a Vietnamese book that lost its diacritics - scanned
-        by OCR, or typed without them - reads as English and is then refused
-        by the Vietnamese voice. Without this line that book cannot be read at
-        all, which is a worse failure than the one the detector prevents.
+        A reader's word and the text's are weighed by `language_in_use`: the
+        word fills the gap the text leaves - a Vietnamese book that lost its
+        diacritics reads as English and would be refused by the Vietnamese
+        voice, so the reader says so and it is read - and does not overrule
+        what the text proves. Until 12/09 the word won outright, and a book
+        29% Vietnamese by orthography, set to English by a tap, could be read
+        by no voice at all: the local one refused it as English, and there
+        was no other.
 
-        One door on purpose: `read.book` and the book half of `estimate` both
-        arrive here, so the price and the reading can never disagree about
-        which language a book is in.
+        One door on purpose: `read.book`, the book half of `estimate` and the
+        shelf all come to this rule, so the price, the reading and the
+        listing can never disagree about which language a book is in.
         """
 
+        chosen = None
         if self._repository is not None:
             chosen = self._repository.book_language(stored.book.id)
-            if chosen in SPEECH_LANGUAGES:
-                return chosen
-        return self._detected_language(stored)
+        return language_in_use(chosen, self._detected_language(stored))
 
     def _book_set_language(self, request_id: Any, params: dict[str, Any]) -> None:
         """A reader's word about one book's language; `null` withdraws it.
@@ -1961,6 +1962,19 @@ class _Session:
             self._fail(request_id, f"unknown language: {raw}")
             return
         chosen = None if raw is None else str(raw)
+        if chosen is not None and chosen != DEFAULT_SPEECH_LANGUAGE:
+            if self._detected_language(stored) == DEFAULT_SPEECH_LANGUAGE:
+                # A word may fill the gap the text leaves; it may not deny
+                # what the text proves. This is the tap that once left a
+                # Vietnamese book unreadable by every voice (12/09). The
+                # shell no longer offers it on such a book, and a pipe is
+                # refused by name because it cannot be trusted to.
+                self._fail(
+                    request_id,
+                    f"language_proven: the book's own words are "
+                    f"{DEFAULT_SPEECH_LANGUAGE}, not {chosen}",
+                )
+                return
         self._repository.set_book_language(book_id, chosen)
         # What the book is in NOW, so the shell shows the answer rather than
         # asking for it again.
@@ -1990,7 +2004,6 @@ class _Session:
         voice_id: str,
         settings: dict[str, Any],
         language_hint: str | None = None,
-        detected_hint: str | None = None,
     ) -> tuple[Any, "VoicePrice | None", str | None]:
         """The engine for this voice, its price, and why not if not.
 
@@ -2018,17 +2031,10 @@ class _Session:
             # language with it. So this is a refusal by name, like a paid
             # voice with no key, and the person picks a voice that can.
             if language != DEFAULT_SPEECH_LANGUAGE:
-                # Two different situations wore one sentence until 10/09, and
-                # only one of them was the reader's to act on. A book whose
-                # OWN WORDS read as Vietnamese can only be reading in another
-                # language because somebody set it that way - so telling that
-                # reader to "pick a voice that reads English" sends them to
-                # fix the wrong thing, while the book they are holding is in
-                # front of them in Vietnamese. Measured on the owner's shelf:
-                # a book 28.3% Vietnamese by orthography, stored as `en`,
-                # refused every local voice with no hint of why.
-                if detected_hint == DEFAULT_SPEECH_LANGUAGE:
-                    return None, None, "language_choice"
+                # A book whose own words read as Vietnamese cannot arrive
+                # here in another language: `language_in_use` settles that
+                # before any voice is asked. What is left is a book, or a
+                # passage, that really is in another language.
                 return None, None, "wrong_language"
             return self._engine, None, None
         if route.kind == "blocked":
@@ -2136,16 +2142,13 @@ class _Session:
         book_id: str | None = None,
         window: Any = None,
         language: str | None = None,
-        detected: str | None = None,
         app_text: bool = False,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
         # the same road for both.
         document = self._settings_document()
-        engine, price, blocked = self._voice_engine(
-            voice_id, document, language, detected
-        )
+        engine, price, blocked = self._voice_engine(voice_id, document, language)
         if engine is None:
             # Named, not silently swapped for the local voice: hearing a
             # different voice than the one you chose, with no reason given,

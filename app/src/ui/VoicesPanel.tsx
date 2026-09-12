@@ -255,8 +255,15 @@ export function VoicesPanel({
           lost in a scan.
 
           Only when a book is open. A pasted passage is judged by its own
-          words on every read, so there would be nothing to remember. */}
-      {bookLanguage && onSetLanguage && (
+          words on every read, so there would be nothing to remember.
+
+          And only where the text leaves something to decide. A book whose
+          own words read as Vietnamese is proven Vietnamese - the marks are
+          on the page - and the English option on it was the tap that once
+          left a book unreadable by every voice (12/09). A book that reads
+          as English may be a Vietnamese one that lost its diacritics, which
+          is the case this control exists for. */}
+      {bookLanguage && onSetLanguage && detectedLanguage !== "vi" && (
         <div className="px-6 pb-4">
           <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">
             {text("voices.language")}

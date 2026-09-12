@@ -11,6 +11,7 @@ from __future__ import annotations
 import unittest
 
 from vieneu_reader.domain.language import (
+    language_in_use,
     language_of_text,
     language_of_texts,
     vietnamese_share,
@@ -95,3 +96,24 @@ class BookTests(unittest.TestCase):
         # The server hands this a generator over every segment in the book.
         segments = (text for text in [VIETNAMESE] * 40)
         self.assertEqual(language_of_texts(segments), "vi")
+
+
+class WordAndTextTests(unittest.TestCase):
+    """A reader's word fills the gap the text leaves; it does not overrule proof."""
+
+    def test_the_word_fills_the_gap_the_text_leaves(self) -> None:
+        # A Vietnamese book that lost its diacritics reads as English. The
+        # reader says otherwise, and the reader is right.
+        self.assertEqual(language_in_use("vi", "en"), "vi")
+
+    def test_the_word_cannot_unprove_what_the_text_proves(self) -> None:
+        # The marks are on the page. A stray tap does not take them off.
+        self.assertEqual(language_in_use("en", "vi"), "vi")
+
+    def test_no_word_means_the_text_decides(self) -> None:
+        self.assertEqual(language_in_use(None, "en"), "en")
+        self.assertEqual(language_in_use(None, "vi"), "vi")
+
+    def test_a_word_nobody_can_read_is_ignored_not_obeyed(self) -> None:
+        # Storage is a string column; the rule is the last line of defence.
+        self.assertEqual(language_in_use("klingon", "en"), "en")

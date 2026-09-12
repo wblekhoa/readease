@@ -30,7 +30,7 @@ from __future__ import annotations
 import unicodedata
 from typing import Iterable, Sequence
 
-from .prosody import DEFAULT_SPEECH_LANGUAGE, speech_language
+from .prosody import DEFAULT_SPEECH_LANGUAGE, SPEECH_LANGUAGES, speech_language
 
 
 #: Letters only Vietnamese uses, before any tone mark is applied.
@@ -100,3 +100,25 @@ def language_of_texts(
     per_part = max(40, SAMPLE_LETTERS // len(chosen))
     sample = " ".join(part[:per_part] for part in chosen)
     return language_of_text(sample, fallback)
+
+
+def language_in_use(chosen: str | None, detected: str) -> str:
+    """The language a book is read in, given a reader's word and the text's.
+
+    The two are not equal witnesses. The detector can PROVE Vietnamese - the
+    marks are on the page - but it can never prove English: the absence of
+    marks is the absence of evidence, and a Vietnamese book scanned without
+    its diacritics leaves exactly that absence behind. So a reader's word
+    fills the gap the text leaves (that scanned book, set to Vietnamese, is
+    read) and does not overrule what the text proves (a book 29% marked, set
+    to English by a stray tap, stays Vietnamese instead of becoming a book no
+    voice will read - the owner's shelf, 12/09/2026).
+
+    One edge to know about: a book too short to judge falls back to the
+    interface language, and with a Vietnamese interface that fallback looks
+    like proof here. Nothing is lost by it - there was nothing to read.
+    """
+
+    if detected == DEFAULT_SPEECH_LANGUAGE:
+        return DEFAULT_SPEECH_LANGUAGE
+    return chosen if chosen in SPEECH_LANGUAGES else detected

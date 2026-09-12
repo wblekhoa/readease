@@ -654,6 +654,11 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       const shelved = LIBRARY.find((entry) => entry.id === String(params.book_id));
       if (!shelved) return { language: "vi", language_set: false, language_detected: "vi" };
       const asked = params.language;
+      // Mirrors the engine: a word may fill the gap the text leaves, not
+      // deny what it proves. Refused by name, as the engine refuses it.
+      if (asked === "en" && (DETECTED_LANGUAGE[shelved.id] ?? "vi") === "vi") {
+        throw new Error("book.set_language failed: language_proven");
+      }
       if (asked === null || asked === undefined) {
         shelved.language = DETECTED_LANGUAGE[shelved.id] ?? "vi";
         shelved.language_set = false;

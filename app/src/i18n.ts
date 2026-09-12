@@ -280,8 +280,8 @@ export const TEXT = {
   /* Split out of `refused` on 10/09. That sentence blames the PASSAGE, and
      for a voice that has been deleted from the reader's own provider account
      the passage is fine - they would go and re-read their paragraph looking
-     for what upset anybody. Same shape as `language_choice`: two situations
-     wore one sentence, and only one of them was theirs to act on. */
+     for what upset anybody. Two situations wore one sentence, and only one
+     of them was theirs to act on. */
   "voiceerr.voice_gone": [
     "Giọng này không còn ở bên nhà cung cấp nữa - có thể nó đã bị xoá khỏi tài khoản. Mở danh sách giọng đọc và chọn giọng khác.",
     "This voice is not at the provider any more - it may have been deleted from the account. Open the voice list and pick another.",
@@ -297,14 +297,6 @@ export const TEXT = {
   "voiceerr.wrong_language": [
     "Giọng trên máy chỉ đọc được tiếng Việt. Chọn một giọng đọc được tiếng Anh trong phần giọng đọc.",
     "The voice on this Mac reads Vietnamese only. Pick a voice that reads English in the voice settings.",
-  ],
-  // The same refusal, but for the reader whose book is Vietnamese and is
-  // being read as English because a setting says so. Sending them to pick an
-  // English voice would be sending them to fix the wrong thing: the book in
-  // their hands is Vietnamese, and one tap puts it back.
-  "voiceerr.language_choice": [
-    "Cuốn này đang được đặt là sách tiếng Anh, nhưng chữ trong sách là tiếng Việt. Mở danh sách giọng đọc và đặt \"Cuốn này đọc bằng\" về Tiếng Việt.",
-    "This book is set to English, but its own words are Vietnamese. Open the voice list and set \"This book reads in\" back to Vietnamese.",
   ],
   "voiceerr.budget": [
     "Đã chạm trần chi tiêu bạn đặt. Nâng trần trong phần chi phí, hoặc đọc bằng giọng trên máy.",
