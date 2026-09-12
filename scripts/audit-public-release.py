@@ -98,6 +98,29 @@ def _excluded(path: Path, manifest: dict[str, object]) -> bool:
     )
 
 
+def _tracked_files(root: Path) -> list[Path] | None:
+    """Exactly what this repository publishes, asked of git rather than guessed.
+
+    The manifest allowlist was written for a clean source export that no
+    longer exists (`export-public-source.py` went with the Qt lane). In a
+    worktree the honest answer is `git ls-files`: it is the set a push makes
+    public, it needs no maintenance when a directory is added, and it leaves
+    out build output that happens to sit in the tree - which an allowlist
+    naming `app` would otherwise scan, reporting the frozen sidecar's own
+    dist-info as findings.
+    """
+
+    completed = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z"],
+        check=False,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        return None
+    names = completed.stdout.decode("utf-8").split("\0")
+    return [root / name for name in names if name]
+
+
 def _public_files(
     root: Path,
     manifest: dict[str, object],
@@ -139,12 +162,19 @@ def _is_git_worktree(root: Path) -> bool:
 
 
 def _audit_source(root: Path, errors: list[str]) -> tuple[int, str]:
-    try:
-        manifest = _load_manifest(root)
-    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
-        errors.append(f"public-source manifest error: {error}")
-        return 0, "unknown"
-    public_files = _public_files(root, manifest, errors)
+    # A worktree publishes what git tracks; a downloaded source tree has no
+    # git, and then the manifest allowlist is the only description of the
+    # surface there is. The manifest is read only when it is needed, so a
+    # tree without one is still auditable through git.
+    manifest: dict[str, object] = {"excluded_names": [], "excluded_suffixes": []}
+    public_files = _tracked_files(root)
+    if public_files is None:
+        try:
+            manifest = _load_manifest(root)
+        except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+            errors.append(f"public-source manifest error: {error}")
+            return 0, "unknown"
+        public_files = _public_files(root, manifest, errors)
     try:
         with (root / "pyproject.toml").open("rb") as source:
             project_license = tomllib.load(source)["project"]["license"]

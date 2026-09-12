@@ -104,6 +104,17 @@ fi
 echo "==> Gatekeeper says (rejection here is normal, Open Anyway clears it):"
 spctl -a -t exec -vv "$app" 2>&1 | sed 's/^/    /' || true
 
+# Every Mach-O in the bundle must run on the macOS the plist claims. A single
+# dylib built against a newer SDK floor turns "macOS 15+" into a launch
+# failure on exactly the Macs the README invites - and the person sees a
+# crash, not a requirement. The check existed and was reachable only from
+# verify-app.sh, which went with the Qt lane.
+echo "==> macOS floor"
+.venv/bin/python scripts/audit-macos-compatibility.py "$app" || {
+  echo "MACOS_FLOOR_FAILED: something in the bundle needs a newer macOS than the plist declares" >&2
+  exit 1
+}
+
 # The bundle contract, run against the finished bundle rather than skipped.
 # These eight assertions were written for exactly this moment and had never
 # been pointed at a Tauri build: the first run found LSMinimumSystemVersion

@@ -1,5 +1,14 @@
 # Kế hoạch chuyển ReadEase sang Tauri — và khai tử vỏ Qt
 
+> [!NOTE]
+> **Chiến dịch đã xong (12/09/2026).** Doc này giữ làm lịch sử: quyết định,
+> đường đi, cổng kiểm chứng của từng phase. Vỏ Qt đã bị xoá; P6 hoàn tất —
+> `pysidedeploy.spec`, `build-app.sh`, `verify-app.sh`, `Install ReadEase.command`,
+> `qt_audio.py`, `macos_selection.py`, `macos_settings.py` và PySide6/Nuitka
+> trong `pyproject.toml` đều không còn. Đường phát hành hiện tại là
+> `scripts/build-release-app.sh` → `PUBLIC_RELEASE_CHECKLIST.md`; cách cài là
+> `INSTALL.md`. Đừng làm theo các bước "chưa làm" bên dưới.
+
 > Trạng thái: **đã duyệt hướng đi** (2026-08-31, chủ chọn Tauri sau khi cân với SwiftUI).
 > Doc này là nguồn sự thật của chiến dịch. Mỗi phase kết thúc bằng cổng kiểm chứng
 > chạy được bằng lệnh; app cũ chỉ bị xoá khi cổng nghỉ hưu (P6) xanh toàn bộ.

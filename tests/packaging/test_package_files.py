@@ -24,6 +24,69 @@ class PackagePreparationTests(unittest.TestCase):
             self.assertTrue(output.is_file())
             self.assertGreater(output.stat().st_size, 50_000)
 
+    def test_the_release_build_gates_the_macos_floor_and_the_licence_payload(self) -> None:
+        """Two checks a recipient cannot run for themselves, run before packaging.
+
+        The macOS floor decides whether the app launches at all on the oldest
+        Mac the READMEs invite; the licence payload is what the binary owes
+        the people whose code is inside it. Both were reachable only from
+        scripts that went with the Qt lane.
+        """
+
+        build = (ROOT / "scripts" / "build-release-app.sh").read_text(encoding="utf-8")
+        audit = ROOT / "scripts" / "audit-macos-compatibility.py"
+
+        self.assertTrue(audit.is_file())
+        self.assertIn("audit-macos-compatibility.py", build)
+        self.assertIn("package-license-payload.py", build)
+        self.assertIn("tests.packaging.test_bundle_contract", build)
+        # Each one stops the script rather than being reported and ignored.
+        for gate in ("MACOS_FLOOR_FAILED", "CONTRACT_FAILED", "SIGN_FAILED"):
+            self.assertIn(gate, build, gate)
+
+    def test_the_public_audit_scans_everything_the_repository_publishes(self) -> None:
+        """The audit asks git what is public; it does not guess from a list.
+
+        With an allowlist it scanned 149 of 304 tracked files - `app/` and
+        `docs/` were outside it, so nothing in the frontend or the planning
+        notes was ever checked for a personal path, an email or a
+        credential-shaped string. Proven by injection rather than by reading:
+        a tracked file with a personal path must fail.
+        """
+
+        import subprocess
+        import sys
+        from tempfile import TemporaryDirectory
+
+        script = ROOT / "scripts" / "audit-public-release.py"
+        source = script.read_text(encoding="utf-8")
+        self.assertIn("git", source)
+        self.assertIn("ls-files", source)
+
+        with TemporaryDirectory() as directory:
+            tree = Path(directory) / "repo"
+            tree.mkdir()
+            subprocess.run(["git", "-C", tree, "init", "-q"], check=True)
+            # The allowlist named none of these directories; git names both.
+            for relative in ("docs/notes.md", "app/src/App.tsx"):
+                path = tree / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                # Assembled, not written out: a literal home path in this
+                # file would be a finding in the very audit it exercises.
+                home = "/" + "Users" + "/somebody/secret-project"
+                path.write_text(f"{home}\n", encoding="utf-8")
+            subprocess.run(["git", "-C", tree, "add", "-A"], check=True)
+            completed = subprocess.run(
+                [sys.executable, script, "--source-root", tree],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(completed.returncode, 1, completed.stdout)
+        for relative in ("docs/notes.md", "app/src/App.tsx"):
+            self.assertIn(f"personal absolute path: {relative}", completed.stderr)
+
     def test_native_selection_bridge_has_a_build_and_test_gate(self) -> None:
         build_script = ROOT / "scripts" / "build-native-selection-bridge.sh"
         test_script = ROOT / "scripts" / "test-native-selection-bridge.sh"
