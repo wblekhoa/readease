@@ -1,5 +1,7 @@
 # ReadEase — Thư Âm
 
+**Source-available · free for noncommercial use** ([PolyForm Noncommercial 1.0.0](LICENSE)). The source is public so anyone can check the promise below for themselves: with the on-device voice, nothing leaves the Mac.
+
 ReadEase is a local-first macOS app that reads text-based PDFs, reflowable EPUBs and pasted text with Vietnamese VieNeu-TTS. By default it requires **no API key**, sends no book content anywhere and works offline after the first voice-model setup.
 
 > **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).

@@ -64,6 +64,17 @@ class LicenseContractTests(unittest.TestCase):
         self.assertIn("Version 2.0, January 2004", apache_receipt)
         self.assertGreater(len(apache_receipt), 10_000)
 
+    def test_both_readmes_name_the_licence_above_the_pitch(self) -> None:
+        """A reader decides whether they may use this before they read what it does."""
+        for filename, permission in (
+            ("README.md", "phi thương mại"),
+            ("README.en.md", "noncommercial"),
+        ):
+            head = (ROOT / filename).read_text(encoding="utf-8")[:500]
+            self.assertIn("PolyForm Noncommercial 1.0.0", head, filename)
+            self.assertIn("(LICENSE)", head, filename)
+            self.assertIn(permission, head.casefold(), filename)
+
     def test_checked_in_binary_distribution_contract_names_lgpl_obligations(self) -> None:
         distribution = (ROOT / "legal" / "BINARY_DISTRIBUTION.md").read_text(
             encoding="utf-8"

@@ -1,5 +1,7 @@
 # ReadEase — Thư Âm
 
+**Miễn phí, mã nguồn công khai — dùng phi thương mại** ([PolyForm Noncommercial 1.0.0](LICENSE)). Công khai để ai cũng tự kiểm được lời hứa bên dưới: đọc bằng giọng trên máy thì sách không đi đâu cả.
+
 Ứng dụng macOS đọc PDF, EPUB và văn bản tiếng Việt bằng **VieNeu-TTS chạy cục bộ**. Mặc định ReadEase không cần API key, không gửi nội dung sách đi đâu cả và đọc được offline sau khi chuẩn bị giọng lần đầu.
 
 > **Một ngoại lệ, và bạn phải tự bật:** ReadEase đọc được bằng **giọng AI trả phí của OpenAI hoặc ElevenLabs**, bằng khoá của chính bạn. Khi dùng, đoạn văn sắp đọc sẽ được gửi thẳng từ máy bạn tới nhà cung cấp đó — không qua máy chủ nào của ReadEase, vì không có máy chủ nào cả. Không gửi tên sách, tiến độ, ghi chú hay bất cứ thứ gì nhận dạng bạn. Giá tính theo ký tự và **hiện sẵn trong nút đọc trước khi bấm**; bạn đặt được trần cho cả phạm vi đọc lẫn số tiền mỗi phiên. Không bật thì không có gì rời khỏi máy. Chi tiết: [PRIVACY.md](PRIVACY.md).
