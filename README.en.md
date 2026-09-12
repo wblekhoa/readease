@@ -8,6 +8,17 @@ ReadEase is a local-first macOS app that reads text-based PDFs, reflowable EPUBs
 
 > [Đọc tài liệu tiếng Việt](README.md) · [Full English installation guide](INSTALL.en.md)
 
+<p align="center">
+  <img src="assets/screenshots/reader.png" width="800" alt="The reader: two pages, the passage being read highlighted, a figure captioned Figure 3.1, the Read on button and the current voice in the corner">
+</p>
+<p align="center"><sub>The reader - the passage being read is highlighted; figures are numbered and announced in place. Demo content.</sub></p>
+
+<p align="center">
+  <img src="assets/screenshots/shelf.png" width="400" alt="The library: covers, reading progress, From Apple Books and Open PDF or EPUB buttons">
+  <img src="assets/screenshots/voices.png" width="400" alt="The voice list: 20 on-device voices, a male/female filter, preview and quick-switch toggles">
+</p>
+<p align="center"><sub>The library with per-book progress · 20 on-device voices, each with a preview before you commit.</sub></p>
+
 ## Download ReadEase
 
 ### [⬇️ Download ReadEase (.zip) - Releases](https://github.com/wblekhoa/readease/releases/latest)

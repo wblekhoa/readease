@@ -8,6 +8,17 @@
 
 > **English documentation:** [README.en.md](README.en.md)
 
+<p align="center">
+  <img src="assets/screenshots/reader.png" width="800" alt="Trình đọc: hai trang, đoạn đang đọc được tô sáng, hình có chú thích Hình 3.1, nút Đọc tiếp và giọng đang dùng ở góc dưới">
+</p>
+<p align="center"><sub>Trình đọc — đoạn đang đọc được tô sáng, hình được đánh số và nhắc đúng chỗ. Nội dung minh hoạ.</sub></p>
+
+<p align="center">
+  <img src="assets/screenshots/shelf.png" width="400" alt="Thư viện: bìa sách, tiến độ đã đọc, nút Từ Apple Books và Mở PDF hoặc EPUB">
+  <img src="assets/screenshots/voices.png" width="400" alt="Danh sách giọng đọc: 20 giọng trên máy, lọc nam/nữ, nghe thử và bật giọng để đổi nhanh">
+</p>
+<p align="center"><sub>Thư viện với tiến độ từng cuốn · Danh sách 20 giọng trên máy, nghe thử trước khi chọn.</sub></p>
+
 ## Tải và cài ngay
 
 ### [⬇️ Tải ReadEase (.zip) — trang Releases](https://github.com/wblekhoa/readease/releases/latest)
