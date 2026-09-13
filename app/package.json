@@ -10,6 +10,7 @@
     "tauri": "tauri",
     "audit:ui": "node scripts-audit-ui.mjs",
     "audit:mock": "node scripts-audit-mock.mjs",
+    "audit:render": "node scripts-audit-render.mjs",
     "test:ui": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {

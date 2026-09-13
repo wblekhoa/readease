@@ -25,6 +25,12 @@ rather than adding a second PDF engine.
 
 - Add a failing test before changing behavior, then run the narrow test and the
   full verification script.
+- For a change anyone can see, run the render audit against the dev server:
+  `cd app && pnpm dev` in one terminal, `pnpm audit:render` in another. It
+  opens every screen in every state the mock backend offers, in both
+  languages and both themes, at the window floor, and reports console
+  errors, leaked i18n keys and horizontal overflow. `--only reader/default`
+  narrows it to one cell; `--shots DIR` keeps a PNG per cell.
 - Keep model and book fixtures small; never commit `.onnx`, PDF/EPUB books,
   databases, cache files, or user data.
 - For packaging changes, rebuild through `scripts/build-release-app.sh` and run
