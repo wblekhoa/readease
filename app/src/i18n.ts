@@ -108,8 +108,8 @@ export const TEXT = {
     "The note could not be saved - the old one is still here.",
   ],
   "reader.note_gone": [
-    "Highlight này không còn nữa, nên ghi chú không lưu được.",
-    "That highlight is gone, so the note could not be saved.",
+    "Highlight này không còn nữa, nên ghi chú không lưu được. Bôi đen lại đoạn đó và ghi chú lần nữa.",
+    "That highlight is gone, so the note could not be saved. Highlight the passage again and add the note once more.",
   ],
   "voices.title": ["Danh sách giọng đọc", "Voices"],
   "voices.caption": ["Nghe thử, rồi bật những giọng bạn muốn đổi nhanh khi đang đọc.", "Listen, then switch on the voices you want to swap between while reading."],
@@ -280,16 +280,16 @@ export const TEXT = {
     "Too fast for them. Wait a moment and read on.",
   ],
   "voiceerr.network": [
-    "Không nối được tới nhà cung cấp - chưa tốn gì cả.",
-    "Could not reach the provider - nothing was charged.",
+    "Không nối được tới nhà cung cấp - chưa tốn gì cả. Kiểm tra mạng rồi bấm đọc lại, hoặc đọc bằng giọng trên máy.",
+    "Could not reach the provider - nothing was charged. Check the connection and press read again, or read with the voice on this Mac.",
   ],
   "voiceerr.provider_down": [
     "Nhà cung cấp đang lỗi bên họ. Thử lại sau, hoặc dùng giọng trên máy.",
     "The provider is broken on their side. Try later, or use the voice on this Mac.",
   ],
   "voiceerr.refused": [
-    "Nhà cung cấp từ chối đoạn này.",
-    "The provider refused this passage.",
+    "Nhà cung cấp từ chối đoạn này. Thử đoạn ngắn hơn, hoặc đọc bằng giọng khác.",
+    "The provider refused this passage. Try a shorter one, or another voice.",
   ],
   /* Split out of `refused` on 10/09. That sentence blames the PASSAGE, and
      for a voice that has been deleted from the reader's own provider account
@@ -496,8 +496,8 @@ export const TEXT = {
     "The selection is marked concealed, so ReadEase will not read it.",
   ],
   "status.clipboard_restore_failed": [
-    "ReadEase không thể xác nhận đã khôi phục clipboard nên đã dừng trước khi đọc.",
-    "ReadEase could not confirm the clipboard was restored, so it stopped before reading.",
+    "ReadEase không xác nhận được đã trả lại clipboard nên đã dừng trước khi đọc. Nếu bạn vừa copy thứ gì, copy lại; rồi bôi đen và nhấn phím tắt lần nữa.",
+    "ReadEase could not confirm your clipboard was put back, so it stopped before reading. If you had just copied something, copy it again; then select and press the shortcut once more.",
   ],
   "status.unavailable": [
     "Phím tắt quét đọc chưa sẵn sàng. Hãy mở lại ReadEase.",
@@ -597,8 +597,8 @@ export const TEXT = {
     "Nothing was copied and your Apple Books data is exactly as it was. The backup is at {path}.",
   ],
   "outcome.unsupported": [
-    "Không đọc được thư viện Apple Books trên máy này.",
-    "The Apple Books library could not be read on this Mac.",
+    "Không thấy thư viện ghi chú của Apple Books trên máy này. Mở Apple Books một lần, đăng nhập iCloud nếu dùng, rồi thử lại.",
+    "The Apple Books notes library is not on this Mac. Open Apple Books once, sign in to iCloud if you use it, then try again.",
   ],
   "noteserr.not_permitted": [
     "ReadEase chưa được phép đọc thư mục Apple Books. Cấp quyền trong Cài đặt hệ thống rồi mở lại mục này.",
