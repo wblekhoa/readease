@@ -28,7 +28,7 @@ import {
   speaksVietnamese,
   vouchedFor,
   tidyName,
-  voiceDescription,
+  voiceDescriptionShown,
   voiceGender,
   type Voice,
   type VoiceGender,
@@ -448,7 +448,7 @@ export function VoicesPanel({
                       <span className="text-xs font-normal text-ink-faint">{text("voices.in_use")}</span>
                     )}
                   </div>
-                  <div className="mt-0.5 text-xs text-ink-mute">{voiceDescription(voice.label)}</div>
+                  <div className="mt-0.5 text-xs text-ink-mute">{voiceDescriptionShown(voice.label)}</div>
                 </div>
                 <IconButton
                   onClick={() => (playing ? onStopPreview() : onPreview(voice.id))}

@@ -15,10 +15,12 @@ import {
   tidyName,
   toggleShortlist,
   voiceDescription,
+  voiceDescriptionShown,
   voiceGender,
   voiceName,
   vouchedFor,
 } from "../src/ui/voiceShortlist.ts";
+import { setLanguage } from "../src/i18n.ts";
 
 const CATALOGUE = [
   { id: "a", label: "Trúc Ly - Nữ · Bắc · Phong cách tự nhiên" },
@@ -315,4 +317,25 @@ test("giọng chưa ai cho biết giới tính không khớp bộ lọc nào - t
   assert.equal(matchesVoiceFilters(openai, "", "openai", "all", "female"), false);
   // Nhưng vẫn ở đó khi không lọc - nó không biến mất, chỉ là không xếp được.
   assert.equal(matchesVoiceFilters(openai, "", "openai", "all", "all"), true);
+});
+
+test("the description a person reads says the region as a place, in their language", () => {
+  const southMale = "Adam — Nam · Nam · Giọng đọc tự nhiên";
+  const northFemale = "Trúc Ly — Nữ · Bắc · Phong cách tự nhiên";
+  const central = "Quang Sơn — Nam · Trung · Phong cách tự nhiên";
+  // What the filters read stays the SDK's own words.
+  assert.equal(voiceDescription(southMale), "Nam · Nam · Giọng đọc tự nhiên");
+  assert.equal(voiceGender({ id: "a", label: southMale }), "male");
+  // What the person reads is not a stutter.
+  setLanguage("vi");
+  assert.equal(voiceDescriptionShown(southMale), "Nam · miền Nam · Giọng đọc tự nhiên");
+  assert.equal(voiceDescriptionShown(northFemale), "Nữ · miền Bắc · Phong cách tự nhiên");
+  assert.equal(voiceDescriptionShown(central), "Nam · miền Trung · Phong cách tự nhiên");
+  setLanguage("en");
+  assert.equal(voiceDescriptionShown(southMale), "Male · Southern · Natural voice");
+  assert.equal(voiceDescriptionShown(northFemale), "Female · Northern · Natural");
+  // A cloned voice's free-text description is passed through untouched.
+  assert.equal(voiceDescriptionShown("JM – Husky & Engaging"), undefined);
+  assert.equal(voiceDescriptionShown("Rachel — Warm, mid-range"), "Warm, mid-range");
+  setLanguage("vi");
 });

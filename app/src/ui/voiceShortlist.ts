@@ -6,6 +6,7 @@
  * 03/09: "nơi để người dùng chọn để đưa voice vào danh sách muốn đổi khi
  * đọc"). Pure functions, so the rules are testable without a shell.
  */
+import { text, type TextKey } from "../i18n.ts";
 
 export type VoiceGender = "male" | "female";
 
@@ -179,6 +180,41 @@ export function matchesVoice(voice: Voice, query: string): boolean {
  * is exactly `Nam` or `Nữ`, so that field is safe to translate. External
  * voices only qualify when their provider supplied an explicit value.
  */
+/** The description line under a voice's name, in the interface language.
+ *
+ * `voiceDescription` hands back the SDK's own words - "Nam · Nam · Phong
+ * cách kể chuyện" - and the filters read those. This is what a PERSON reads:
+ * each field the SDK vocabulary has a word for is said in their language,
+ * and the region gets its noun, because "Nam" alone is also the word for
+ * "male". A field the table does not know (a cloned voice's free text) is
+ * passed through as it is. */
+const DESCRIPTION_WORDS: Record<string, TextKey> = {
+  "nam": "voices.gender_male",
+  "nữ": "voices.gender_female",
+  "bắc": "voices.region_north",
+  "trung": "voices.region_central",
+  "phong cách tự nhiên": "voices.style_natural",
+  "giọng đọc tự nhiên": "voices.style_natural_voice",
+  "phong cách kể chuyện": "voices.style_storytelling",
+  "phong cách tin tức": "voices.style_news",
+  "phong cách đọc truyện": "voices.style_reading",
+};
+
+export function voiceDescriptionShown(label: string | undefined): string | undefined {
+  const raw = voiceDescription(label);
+  if (raw === undefined) return undefined;
+  return raw
+    .split("·")
+    .map((field, index) => {
+      const word = field.trim();
+      const key = word.toLowerCase();
+      // Second field, "Nam": the South, not a man - the SDK puts region second.
+      if (index === 1 && key === "nam") return text("voices.region_south");
+      return key in DESCRIPTION_WORDS ? text(DESCRIPTION_WORDS[key]) : word;
+    })
+    .join(" · ");
+}
+
 export function voiceGender(voice: Voice, local = true): VoiceGender | null {
   if (voice.gender === "male" || voice.gender === "female") return voice.gender;
   if (!local) return null;

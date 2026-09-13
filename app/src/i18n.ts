@@ -151,6 +151,20 @@ export const TEXT = {
   ],
   "voices.gender_male": ["Nam", "Male"],
   "voices.gender_female": ["Nữ", "Female"],
+  // The words the VieNeu SDK describes a preset with - gender, region,
+  // style - shown in the reader's language. In Vietnamese "Nam" is both
+  // "male" and "the South", so the region carries its noun; four of the
+  // twenty-three voices read as "Nam · Nam" without it (owner's screenshot,
+  // 13/09). The SDK string itself is untouched: the male/female filter
+  // reads the raw first word.
+  "voices.region_north": ["miền Bắc", "Northern"],
+  "voices.region_south": ["miền Nam", "Southern"],
+  "voices.region_central": ["miền Trung", "Central"],
+  "voices.style_natural": ["Phong cách tự nhiên", "Natural"],
+  "voices.style_natural_voice": ["Giọng đọc tự nhiên", "Natural voice"],
+  "voices.style_storytelling": ["Phong cách kể chuyện", "Storytelling"],
+  "voices.style_news": ["Phong cách tin tức", "News"],
+  "voices.style_reading": ["Phong cách đọc truyện", "Read-aloud"],
   "voices.speaks_vi": ["Tiếng Việt", "Vietnamese"],
   "voices.speaks_en": ["Tiếng Anh", "English"],
   "voices.group_local": ["Trên máy", "On this Mac"],
