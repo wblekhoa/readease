@@ -27,6 +27,7 @@ const args = process.argv.slice(2);
 const opt = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
 const PORT = Number(opt("--port", "1420"));
 const SHOTS = opt("--shots", null);
+const ONLY = opt("--only", null); // e.g. "voices/default" narrows a run to one screen/state
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const CDP_PORT = 9333 + Math.floor(Math.random() * 500);
 const W = 960, H = 600; // tauri.conf.json minWidth/minHeight - the floor a person can shrink to
@@ -88,7 +89,13 @@ async function main() {
     await send("Page.enable"); await send("Runtime.enable"); await send("Log.enable");
     await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 
+    // A click lands only once its target exists: the shelf is still being
+    // drawn when the tab switch returns, and a click fired into that gap
+    // reached nothing - one cell in 216 read as unreachable on the second
+    // full run, and three re-probes with a wait in front reached it every
+    // time.
     const findAndClick = async (re) => {
+      await waitFor(re, 4000);
       const box = await evalJs(`(() => {
         const re = ${re.toString()};
         const el = [...document.querySelectorAll("button,[role=button],[role=radio],[role=tab],a,summary")]
@@ -99,14 +106,14 @@ async function main() {
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
       await sleep(350); return true;
     };
-    const waitFor = async (re, ms = 6000) => {
+    async function waitFor(re, ms = 6000) {
       const until = Date.now() + ms;
       while (Date.now() < until) {
         if (await evalJs(`!![...document.querySelectorAll("button,[role=button],a,h1,h2,h3")].find((e) => ${re.toString()}.test((e.getAttribute("aria-label") || e.textContent || "").trim()))`)) return true;
         await sleep(150);
       }
       return false;
-    };
+    }
     const setLanguage = async (lang) => {
       await evalJs(`(() => { const s = document.querySelector('select[aria-label]'); if (!s) return false;
         const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set; setter.call(s, ${JSON.stringify(lang)});
@@ -121,11 +128,16 @@ async function main() {
         for (const theme of THEMES) {
           await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: theme }] });
           for (const screen of Object.keys(SCREENS)) {
-            const cell = `${screen}/${stateName}/${lang}/${theme}`; cells++;
+            const cell = `${screen}/${stateName}/${lang}/${theme}`;
+            if (ONLY && !cell.startsWith(ONLY)) continue;
+            cells++;
             // With no model on the machine the shell shows the setup screen
             // and nothing else - there are no tabs to reach. That screen is
             // the cell; walking to a tab would be walking into a wall.
             const steps = stateName === "model_missing" ? [["wait", /Chuẩn bị giọng đọc|Set up voice/]] : SCREENS[screen];
+            // An empty shelf has no book to open: the reader and the voice
+            // panel do not exist in that state, so neither does the cell.
+            if (stateName === "empty" && (screen === "reader" || screen === "voices")) { cells--; continue; }
             events.length = 0;
             await send("Page.navigate", { url: `http://localhost:${PORT}/?${query}` });
             await sleep(900);

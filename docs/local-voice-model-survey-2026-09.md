@@ -1,5 +1,10 @@
 # Có model đọc tiếng Việt cục bộ nào hơn model đang dùng không? — khảo sát 07/09/2026
 
+> [!NOTE]
+> **Tài liệu đề xuất (09/2026), chưa đối chiếu lại với hiện trạng.** Một phần đã
+> thành mã, một phần chưa; doc này không được cập nhật theo. Muốn biết app hiện
+> làm gì, đọc mã nguồn và `README.md` — không đọc doc này như bản mô tả hiện trạng.
+
 Chủ hỏi: *"có model local nào đọc tiếng Việt chất lượng hơn model local hiện tại của chúng ta không?"*
 Mọi số liệu dưới đây lấy từ web ngày **07/09/2026** (`[fetched]`) hoặc từ mã nguồn repo này; chỗ nào là
 kiến thức nền chưa kiểm lại thì ghi `[from training — may be stale]`.

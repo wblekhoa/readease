@@ -1,5 +1,10 @@
 # Cơ chế đọc - audit và đề xuất nâng cấp (2026-09-02)
 
+> [!NOTE]
+> **Tài liệu đề xuất (09/2026), chưa đối chiếu lại với hiện trạng.** Một phần đã
+> thành mã, một phần chưa; doc này không được cập nhật theo. Muốn biết app hiện
+> làm gì, đọc mã nguồn và `README.md` — không đọc doc này như bản mô tả hiện trạng.
+
 Chủ đặt bài: giọng đọc thông minh hơn - nhắc khi tới hình, đánh số hình tự động, ngắt nghỉ
 theo nội dung, giọng có lên xuống chứ không ngang. Tài liệu này soi cơ chế HIỆN CÓ trước,
 rồi đề xuất theo thứ tự giá trị. Mọi khẳng định đều dẫn mã nguồn.

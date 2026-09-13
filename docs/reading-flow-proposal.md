@@ -1,5 +1,10 @@
 # Flow nghe sách - nghiên cứu và đề xuất hoàn thiện (2026-09-02)
 
+> [!NOTE]
+> **Tài liệu đề xuất (09/2026), chưa đối chiếu lại với hiện trạng.** Một phần đã
+> thành mã, một phần chưa; doc này không được cập nhật theo. Muốn biết app hiện
+> làm gì, đọc mã nguồn và `README.md` — không đọc doc này như bản mô tả hiện trạng.
+
 Mục tiêu sản phẩm: **nghe sách tiếng Việt** - người dùng phần lớn thời gian KHÔNG nhìn màn
 hình. Mọi đề xuất dưới đây xét theo hành trình một buổi nghe, và mỗi mục ghi rõ: đã có gì
 (kiểm bằng lệnh, không tin doc), còn thiếu gì, đề xuất gì, và cần chủ quyết gì.

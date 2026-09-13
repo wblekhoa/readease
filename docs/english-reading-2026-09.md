@@ -1,5 +1,10 @@
 # Đọc tiếng Anh trong ReadEase — đường đi
 
+> [!NOTE]
+> **Tài liệu đề xuất (09/2026), chưa đối chiếu lại với hiện trạng.** Một phần đã
+> thành mã, một phần chưa; doc này không được cập nhật theo. Muốn biết app hiện
+> làm gì, đọc mã nguồn và `README.md` — không đọc doc này như bản mô tả hiện trạng.
+
 Chủ đặt bài 07/09/2026: "app sẽ có thể đọc tiếng Anh để phục vụ international", kèm một luật cứng:
 **tuyệt đối không dùng model VieNeu cho tiếng Anh** — VieNeu làm riêng cho tiếng Việt.
 
