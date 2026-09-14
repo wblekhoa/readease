@@ -194,8 +194,11 @@ class LicenseContractTests(unittest.TestCase):
             for component in manifest["components"]:
                 self.assertTrue(component["receipts"], component["name"])
                 self.assertTrue(component["source"], component["name"])
+            shipped = json.loads(
+                (ROOT / "app" / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
+            )["version"]
             self.assertEqual(
-                components[("ReadEase", "0.1.0")]["license"], "PolyForm-Noncommercial-1.0.0"
+                components[("ReadEase", shipped)]["license"], "PolyForm-Noncommercial-1.0.0"
             )
             for name in ("VieNeu-TTS v3 Turbo model", "MOSS Audio Tokenizer Nano ONNX"):
                 component = next(c for c in manifest["components"] if c["name"] == name)

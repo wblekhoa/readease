@@ -185,6 +185,16 @@ def _distribution_license(distribution: metadata.Distribution) -> str:
     raise PayloadError(f"{distribution.metadata['Name']}: no licence declared in metadata")
 
 
+def _app_version() -> str:
+    """The version the bundle carries, read from the file the release build
+    reads it from - so the payload cannot name a different one."""
+    config = json.loads((ROOT / "app" / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
+    version = str(config.get("version") or "")
+    if not version:
+        raise PayloadError("tauri.conf.json names no version")
+    return version
+
+
 def _distribution_receipts(distribution: metadata.Distribution) -> tuple[Path, ...]:
     """The licence texts a distribution ships: its `.dist-info/licenses/`
     directory, or files named like a licence anywhere in it. Source files are
@@ -317,7 +327,7 @@ def other_components() -> list[dict[str, object]]:
     model_receipts = (ROOT / "legal" / "spdx" / "Apache-2.0.txt", ROOT / "legal" / "MODEL_PROVENANCE.md")
     components: list[dict[str, object]] = [
         {
-            "name": "ReadEase", "version": "0.1.0", "kind": "first-party",
+            "name": "ReadEase", "version": _app_version(), "kind": "first-party",
             "license": "PolyForm-Noncommercial-1.0.0", "source": "This source tree",
             "bundled": True, "receipts": (ROOT / "LICENSE",),
         },
