@@ -380,19 +380,26 @@ export const TEXT = {
   "library.at_chapter": ["Đang ở: {chapter}", "At: {chapter}"],
   "library.open_book": ["Mở {title}", "Open {title}"],
   "library.remove": ["Xoá", "Remove"],
-  // Naming the cost, because the app promises the opposite one dialog
-  // over: `notes.remove_confirm` says a highlight deleted here does not
-  // come back "đồng bộ lại cũng không quay về". Removing the BOOK drops
-  // that record with it (measured 10/09), so a re-import plus a sync
-  // undoes both - the deletion and the reader's own edited words. Until
-  // the migration that keeps those two tables lands, the question has to
-  // say so rather than let a written promise quietly become untrue.
+  // What is and is not lost. The file the book was imported from is never
+  // the app's to delete; and since schema v2 the reader's decisions about
+  // its highlights (deleted for good, notes in their own words) outlive
+  // the book, so a re-import finds them in force - the promise
+  // `notes.remove_confirm` makes holds across a removal too.
   "library.remove_confirm": [
-    "Xoá khỏi thư viện? Ghi chú bạn đã sửa và highlight đã xoá hẳn sẽ không quay lại.",
-    "Remove from the library? Notes you edited and highlights you deleted for good will not come back.",
+    "Xoá khỏi thư viện? Tệp gốc trên máy vẫn còn; vị trí đang đọc sẽ mất.",
+    "Remove from the library? The original file stays on this Mac; the reading position is lost.",
   ],
   "library.remove_keep": ["Giữ lại", "Keep"],
   "library.removed": ["Đã xoá khỏi thư viện.", "Removed from the library."],
+  // A row the engine cannot decode any more. It keeps its place so the
+  // person can act on it; the line names the state, the hint names the
+  // next step (the file itself is fine - importing it again heals the row).
+  "library.damaged": ["Dữ liệu sách bị hỏng", "Book data is damaged"],
+  "library.damaged_hint": [
+    "Xoá rồi nhập lại tệp gốc.",
+    "Remove it, then import the original file again.",
+  ],
+  "library.damaged_open": ["Xoá {title}", "Remove {title}"],
   "library.load_failed": [
     "Không mở được thư viện. Sách trên máy KHÔNG bị xoá - ứng dụng chỉ chưa đọc được danh sách.",
     "Could not open the library. Nothing on this Mac was deleted - the app just could not read the list.",

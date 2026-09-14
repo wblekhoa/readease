@@ -33,6 +33,10 @@ export type LibraryBook = {
    * only when a reader disagreed with the text, and that is exactly when the
    * voices panel has a suggestion to offer. */
   language_detected?: string;
+  /** The engine could not decode this book's stored data. It stays on the
+   * shelf so it can be removed or healed by importing the file again; it
+   * cannot be opened. */
+  damaged?: boolean;
 };
 
 /** The cover as a data URL: undefined while loading, null when the book has
@@ -55,10 +59,14 @@ function ShelfBook({
 }) {
   const cover = useCover(book.id);
   const reading = book.segment_id !== null;
+  // A damaged book has one fact - that it is damaged - and one thing to do
+  // about it. Its cover is the one way in, and the way in is the removal
+  // question, not the reader.
+  const damaged = book.damaged === true;
   // One line under a 150px cover holds about 24 characters: the fact that
   // changes what you do (how far you are) leads, the format - which only
   // tells two copies of one title apart - trails and is the first to clip.
-  const meta = [
+  const meta = damaged ? text("library.damaged") : [
     reading && book.progress_ratio !== null
       ? text("library.progress", { percent: Math.round(book.progress_ratio * 100) })
       : reading && text("library.in_progress"),
@@ -109,8 +117,8 @@ function ShelfBook({
           </span>
         ) : undefined
       }
-      onOpen={onOpen}
-      openLabel={text("library.open_book", { title: book.title })}
+      onOpen={damaged ? onAskRemove : onOpen}
+      openLabel={text(damaged ? "library.damaged_open" : "library.open_book", { title: book.title })}
       accessory={
         !confirming && (
           <IconButton
@@ -136,6 +144,18 @@ function ShelfBook({
                 {text("library.remove_keep")}
               </Button>
             </span>
+          </div>
+        ) : damaged ? (
+          // The caption stands in for title and fact line, so a damaged
+          // book keeps its name and gains the two lines that matter: what
+          // is wrong, and what to do about it. Nothing here clips - the
+          // next step must be readable, not hovered for.
+          <div className="flex min-w-0 flex-col gap-1 text-sm">
+            <span className="line-clamp-2 font-semibold leading-snug" title={hoverText(book.title)}>
+              {book.title}
+            </span>
+            <span className="text-xs text-danger">{text("library.damaged")}</span>
+            <span className="text-xs text-ink-mute">{text("library.damaged_hint")}</span>
           </div>
         ) : undefined
       }

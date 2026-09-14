@@ -1892,6 +1892,63 @@ class ProtocolTests(unittest.TestCase):
             self.assertTrue(replies[0]["ok"])
             self.assertEqual(replies[0]["result"], {"media_type": None, "data": None})
 
+    def test_a_damaged_book_keeps_its_place_on_the_shelf_marked(self) -> None:
+        """One row the engine cannot decode is listed as damaged, beside the
+        healthy book; its cover is the ordinary "none"; removing it works.
+        Skipped, it would be a ghost the same file could not replace."""
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tests.importers.epub_fixture import make_epub
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = AppPaths.create(root / "app-data")
+            repository = LibraryRepository(paths.database)
+            service = LibraryService(paths, repository)
+            sources = root / "sources"
+            sources.mkdir()
+            healthy = service.import_book(
+                make_epub(sources, name="healthy.epub", title="Cuốn lành"))
+            damaged = service.import_book(
+                make_epub(sources, name="damaged.epub", title="Cuốn hỏng"))
+            with repository._connection:
+                repository._connection.execute(
+                    "UPDATE books SET document_json = '{' WHERE id = ?",
+                    (damaged.book.id,))
+
+            replies = run_server(
+                [{"id": 80, "method": "library.list"},
+                 {"id": 81, "method": "book.cover",
+                  "params": {"book_id": damaged.book.id}},
+                 {"id": 82, "method": "library.remove",
+                  "params": {"book_id": damaged.book.id}},
+                 {"id": 83, "method": "library.list"}],
+                FakeEngine(), repository=repository, service=service,
+            )
+
+            self.assertTrue(replies[0]["ok"], replies[0])
+            rows = {row["id"]: row for row in replies[0]["result"]["books"]}
+            self.assertEqual(set(rows), {healthy.book.id, damaged.book.id})
+            self.assertFalse(rows[healthy.book.id]["damaged"])
+            broken = rows[damaged.book.id]
+            self.assertTrue(broken["damaged"])
+            self.assertEqual(broken["title"], "Cuốn hỏng")
+            self.assertEqual(broken["source_format"], "epub")
+            self.assertIsNone(broken["segment_id"])
+            self.assertEqual(broken["chapters"], 0)
+            self.assertGreater(broken["size_bytes"], 0)
+            self.assertRegex(broken["imported_at"], r"^\d{4}-\d{2}-\d{2}")
+            self.assertTrue(replies[1]["ok"], replies[1])
+            self.assertEqual(replies[1]["result"], {"media_type": None, "data": None})
+            self.assertTrue(replies[2]["ok"], replies[2])
+            self.assertEqual(
+                [row["id"] for row in replies[3]["result"]["books"]],
+                [healthy.book.id],
+            )
+
     def test_library_list_says_how_far_and_in_which_chapter(self) -> None:
         from vieneu_reader.storage.repository import LibraryRepository, Progress
         from tempfile import TemporaryDirectory

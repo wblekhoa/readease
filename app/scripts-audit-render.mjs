@@ -56,6 +56,7 @@ const STATES = {
   permission: "permission=missing",
   model_missing: "model=missing",
   scanned: "scanned=3",
+  damaged: "damaged=1",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];

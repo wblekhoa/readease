@@ -18,7 +18,7 @@ from typing import BinaryIO, Callable, Mapping
 from vieneu_reader.config import AppPaths
 from vieneu_reader.domain.models import BookDocument, stable_id
 from vieneu_reader.domain.presentation import BookPresentation, FigureRef
-from vieneu_reader.storage.errors import RepositoryError
+from vieneu_reader.storage.errors import RepositoryCorruptionError, RepositoryError
 from vieneu_reader.storage.repository import LibraryRepository
 
 from .epub import import_epub
@@ -159,20 +159,24 @@ class LibraryService:
         the app's own managed copy inside the library folder. A source file
         the user imported FROM is never the app's to delete."""
         with self._import_lock:
-            stored = self._repository.get_book(book_id)
-            if stored is None:
-                return False
-            managed = stored.managed_path
-            removed = self._repository.delete_book(book_id)
-            if removed:
-                try:
-                    if managed.is_relative_to(self._paths.books):
-                        managed.unlink(missing_ok=True)
-                except OSError:
-                    # The record is gone either way; a stranded copy is
-                    # harmless and visible, a surprise deletion is not.
-                    pass
-            return removed
+            return self._drop_book(book_id)
+
+    def _drop_book(self, book_id: str) -> bool:
+        """Rows first, then the owned copy. Reads the path off the column
+        rather than through `get_book`, so a damaged row - one this build
+        cannot decode - can still be removed; that is the whole way out of
+        a damaged book."""
+        managed = self._repository.managed_path_of(book_id)
+        removed = self._repository.delete_book(book_id)
+        if removed and managed is not None:
+            try:
+                if managed.is_relative_to(self._paths.books):
+                    managed.unlink(missing_ok=True)
+            except OSError:
+                # The record is gone either way; a stranded copy is
+                # harmless and visible, a surprise deletion is not.
+                pass
+        return removed
 
     def _remove_owned_managed_copy(
         self,
@@ -283,7 +287,17 @@ class LibraryService:
         temporary_path: Path,
         suffix: str,
     ) -> ImportResult:
-        existing = self._repository.get_book(book.id)
+        try:
+            existing = self._repository.get_book(book.id)
+        except RepositoryCorruptionError:
+            # The row for THIS file is one this build cannot read, and the
+            # file in hand is the way back: drop the damaged row and its
+            # owned copy, then store the book afresh below. The reading
+            # position goes with the row; the reader's decisions about its
+            # highlights do not (schema v2), and the same id brings them
+            # back into force.
+            self._drop_book(book.id)
+            existing = None
         if existing is not None:
             return ImportResult(existing.book, existing.managed_path, True)
 

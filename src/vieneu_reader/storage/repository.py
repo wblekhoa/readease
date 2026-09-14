@@ -118,6 +118,24 @@ class StoredBook:
 
 
 @dataclass(frozen=True, slots=True)
+class DamagedBook:
+    """A `books` row this build cannot decode.
+
+    It still holds its place in the table - its id, its UNIQUE source hash,
+    its managed path - so it is a book on the shelf that cannot be opened,
+    not a book that is gone. Shown as such, it can be removed, or healed by
+    importing the same file again. Skipped silently it would be a ghost:
+    nothing to click, nothing to delete, and the file it came from refused
+    at import because "that book already exists".
+    """
+
+    id: str
+    title: str
+    source_format: str
+    managed_path: Path | None
+
+
+@dataclass(frozen=True, slots=True)
 class StoredAnnotation:
     """A highlight brought in from elsewhere, pinned to one segment."""
 
@@ -285,6 +303,24 @@ def _document_from_payload(payload: str) -> BookDocument:
         raise RepositoryCorruptionError(
             "Dữ liệu sách trong thư viện cục bộ bị hỏng."
         ) from error
+
+
+def _damaged_book_from_row(row: sqlite3.Row) -> DamagedBook:
+    """What can still be said about a row whose document cannot be read:
+    the raw columns, taken as text, and the path only if it is one."""
+    managed_path: Path | None = None
+    try:
+        candidate = Path(str(row["managed_path"] or ""))
+        if candidate.is_absolute():
+            managed_path = candidate
+    except (TypeError, ValueError):
+        managed_path = None
+    return DamagedBook(
+        id=str(row["id"] or ""),
+        title=str(row["title"] or ""),
+        source_format=str(row["source_format"] or ""),
+        managed_path=managed_path,
+    )
 
 
 def _stored_book_from_row(row: sqlite3.Row) -> StoredBook:
@@ -580,6 +616,48 @@ class LibraryRepository:
                     "ORDER BY created_at DESC, id"
                 ).fetchall()
             return tuple(_stored_book_from_row(row) for row in rows)
+
+    def list_shelf(self) -> tuple[StoredBook | DamagedBook, ...]:
+        """Every row, readable or not.
+
+        `list_books` stays strict: a caller that needs whole books gets an
+        error rather than a shorter list. The shelf is different - it has
+        to SHOW a damaged row so the person can act on it, and the two
+        things it can do (remove, re-import) need nothing the row cannot
+        give.
+        """
+
+        with _database_errors():
+            with self._lock:
+                rows = self._connection.execute(
+                    "SELECT id, title, source_format, source_hash, "
+                    "document_json, managed_path FROM books "
+                    "ORDER BY created_at DESC, id"
+                ).fetchall()
+        shelf: list[StoredBook | DamagedBook] = []
+        for row in rows:
+            try:
+                shelf.append(_stored_book_from_row(row))
+            except RepositoryCorruptionError:
+                shelf.append(_damaged_book_from_row(row))
+        return tuple(shelf)
+
+    def managed_path_of(self, book_id: str) -> Path | None:
+        """The managed copy's path straight from the column, without
+        decoding the book - so a damaged row can still be cleaned up.
+        None when there is no row, or the column is not a path."""
+        with _database_errors():
+            with self._lock:
+                row = self._connection.execute(
+                    "SELECT managed_path FROM books WHERE id = ?", (book_id,)
+                ).fetchone()
+        if row is None:
+            return None
+        try:
+            candidate = Path(str(row[0] or ""))
+        except (TypeError, ValueError):
+            return None
+        return candidate if candidate.is_absolute() else None
 
     def delete_book(self, book_id: str) -> bool:
         """Forget one book and its reading position. Files are the service's

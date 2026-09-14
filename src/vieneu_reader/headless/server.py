@@ -86,7 +86,12 @@ from vieneu_reader.speech.external.route import (
 )
 from vieneu_reader.speech.external.spend import SpendMeter
 from vieneu_reader.storage.errors import RepositoryCorruptionError
-from vieneu_reader.storage.repository import LibraryRepository, Progress, StoredBook
+from vieneu_reader.storage.repository import (
+    DamagedBook,
+    LibraryRepository,
+    Progress,
+    StoredBook,
+)
 
 PROTOCOL_VERSION = 1
 
@@ -1083,7 +1088,33 @@ class _Session:
         # against Apple's own database, which would mean copying it every time
         # the library is opened, for a badge (owner, 03/09).
         paired = set(self._repository.apple_book_links().values())
-        for stored in self._repository.list_books():
+        for stored in self._repository.list_shelf():
+            if isinstance(stored, DamagedBook):
+                # A row this build cannot decode keeps its place on the
+                # shelf, marked, with the two ways out (remove, re-import)
+                # still open. Skipped, it would be a ghost: gone from the
+                # shelf, yet refusing the same file at import.
+                try:
+                    size_bytes = (
+                        stored.managed_path.stat().st_size
+                        if stored.managed_path is not None else None
+                    )
+                except OSError:
+                    size_bytes = None
+                books.append({
+                    "id": stored.id,
+                    "title": stored.title,
+                    "source_format": stored.source_format,
+                    "segment_id": None,
+                    "progress_ratio": None,
+                    "progress_chapter": None,
+                    "chapters": 0,
+                    "size_bytes": size_bytes,
+                    "imported_at": self._repository.imported_at(stored.id),
+                    "from_apple_books": stored.id in paired,
+                    "damaged": True,
+                })
+                continue
             try:
                 progress = self._repository.load_progress(stored.book.id)
             except RepositoryCorruptionError:
@@ -1133,6 +1164,7 @@ class _Session:
                 # True while the pairing holds, which is what makes a note
                 # sync land on this book rather than a guess at its title.
                 "from_apple_books": stored.book.id in paired,
+                "damaged": False,
                 # Which language this book gets read in, and whether that was
                 # a reader's decision or the detector's. Both, because "đã
                 # đặt" is what the shell needs to offer an undo - and because
@@ -1261,7 +1293,12 @@ class _Session:
 
         deps = self._notes()
         apple = deps["library"].books()
-        stored = self._repository.list_books() if self._repository else ()
+        # The readable books only: a damaged row has no title worth
+        # pairing on, and must not cost every other book its note sync.
+        stored = tuple(
+            item for item in self._repository.list_shelf()
+            if isinstance(item, StoredBook)
+        ) if self._repository else ()
         links = self._repository.apple_book_links() if self._repository else {}
         pairs: dict[str, str] = {}
         for book in apple:
@@ -1820,7 +1857,13 @@ class _Session:
             self._fail(request_id, "no library on this server")
             return
         book_id = str(params.get("book_id") or "")
-        stored = self._repository.get_book(book_id)
+        try:
+            stored = self._repository.get_book(book_id)
+        except RepositoryCorruptionError:
+            # A damaged book is on the shelf with no cover to show; that is
+            # the ordinary "none" answer, not an error the shelf must wear.
+            self._reply(request_id, {"media_type": None, "data": None})
+            return
         if stored is None:
             self._fail(request_id, f"unknown book: {book_id}")
             return

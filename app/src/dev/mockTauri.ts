@@ -189,7 +189,26 @@ const BOOK = {
  * `language_set` says whether a reader has since disagreed. Book four is
  * English on purpose: it is the one the Vietnamese voice refuses, which is
  * the whole reason the language row in the voices panel exists. */
-const LIBRARY = [
+/* The shelf as `library.list` returns it. Typed by hand rather than
+   inferred so an optional state (a damaged row) can be pushed in without
+   every fixture having to carry it. */
+type ShelfRow = {
+  id: string;
+  title: string;
+  source_format: string;
+  segment_id: string | null;
+  progress_ratio: number | null;
+  progress_chapter: string | null;
+  chapters: number;
+  size_bytes: number | null;
+  imported_at: string | null;
+  from_apple_books: boolean;
+  language?: string;
+  language_set?: boolean;
+  language_detected?: string;
+  damaged?: boolean;
+};
+const LIBRARY: ShelfRow[] = [
   {
     id: "book-ux",
     title: "Universal Principles of UX",
@@ -259,7 +278,7 @@ const LIBRARY = [
  * withdrawing a reader's decision has to fall back to THIS, not to whatever
  * the row happened to be holding. */
 const DETECTED_LANGUAGE: Record<string, string> = Object.fromEntries(
-  LIBRARY.map((entry) => [entry.id, entry.language]),
+  LIBRARY.map((entry) => [entry.id, entry.language ?? "vi"]),
 );
 
 /* Two drawn covers so the shelf can be LOOKED at with real proportions; the
@@ -319,6 +338,27 @@ const EMPTY = new Set(
     .filter(Boolean),
 );
 const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
+
+/* One book whose stored data the engine can no longer decode - `?damaged=1`.
+   Not in the default shelf: the hero screenshot is the ordinary shelf, and
+   this state exists so the card can be looked at, not so it is always
+   there. The engine answers a null cover for it and `library.remove`
+   works on it; opening it is not offered. */
+if (new URLSearchParams(window.location.search).get("damaged") === "1") {
+  LIBRARY.push({
+    id: "book-damaged",
+    title: "Sổ tay thiết kế bìa sách",
+    source_format: "epub",
+    segment_id: null,
+    progress_ratio: null,
+    progress_chapter: null,
+    chapters: 0,
+    size_bytes: 1_204_000,
+    imported_at: "2026-08-02T14:30:00Z",
+    from_apple_books: false,
+    damaged: true,
+  });
+}
 
 /* Passages the reader has "scanned" off another app.
  *
