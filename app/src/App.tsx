@@ -22,6 +22,7 @@ import {
   ArrowLeftIcon,
   NextIcon,
   PauseIcon,
+  AiSpeakerIcon,
   PlayIcon,
   PreviousIcon,
   BookClosedIcon,
@@ -1313,14 +1314,12 @@ export default function App() {
                         else void startReading();
                       }}
                     >
-                      {/* The same glyph the transport wears for "play", so
-                          the button that STARTS a reading and the control
-                          that resumes one say the same thing. Drawn in this
-                          app rather than imported: DOL sources icons from DS
-                          Studio's DsIcon and that registry is not consumable
-                          outside the DS repo (ui/icons.tsx, same gap note as
-                          ToggleButtonGroup). */}
-                      <PlayIcon />
+                      {/* The speaker with a sparkle - the owner's own
+                          "ai-speaker" glyph (14/09) - on the button that
+                          STARTS a reading: a voice about to speak, which is
+                          what this button does. The transport keeps the
+                          plain play for resuming. */}
+                      <AiSpeakerIcon />
                       {/* The words travel together, inset 4px from the icon
                           and from the edge. A `span` rather than the `div`
                           asked for: a button may only contain phrasing
