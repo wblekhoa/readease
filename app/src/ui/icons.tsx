@@ -515,6 +515,20 @@ export function SyncIcon({ className }: { className?: string }) {
   );
 }
 
+/** The voice itself - a microphone - for the button that opens the voice
+ * settings. It wore the sliders glyph, which is the filters' glyph inside
+ * the same panel, so the footer promised "adjust something" where the panel
+ * answers "who reads to you" (owner, 14/09). Bulk manner like its
+ * neighbours: the capsule is the light layer, the stand is the solid one. */
+export function VoiceIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M12 1.75c-2.07 0-3.75 1.68-3.75 3.75v4c0 2.07 1.68 3.75 3.75 3.75s3.75-1.68 3.75-3.75v-4c0-2.07-1.68-3.75-3.75-3.75Z" />
+      <path d="M18.25 9.5a.75.75 0 0 1 .75.75c0 3.6-2.74 6.58-6.25 6.96v2.04h2.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1 0-1.5h2.5v-2.04C7.74 16.83 5 13.85 5 10.25a.75.75 0 0 1 1.5 0c0 3.03 2.47 5.5 5.5 5.5s5.5-2.47 5.5-5.5a.75.75 0 0 1 .75-.75Z" />
+    </svg>
+  );
+}
+
 export function SpeakerIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>

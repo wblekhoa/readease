@@ -29,7 +29,7 @@ import {
   ReadingSettingsIcon,
   SearchIcon,
   InfoIcon,
-  SlidersIcon,
+  VoiceIcon,
   CoinIcon,
   SunIcon,
   MoonIcon,
@@ -1526,7 +1526,7 @@ export default function App() {
                    instead of sliding under the transport (owner, 06/09). */
                 className={`min-w-0 ${settingsOpen ? "text-ink" : ""}`}
               >
-                <SlidersIcon />
+                <VoiceIcon />
                 {/* A reminder, not a description: the name that tells this
                     voice apart from the others on offer, and the speed only
                     when it is not the plain 1×. Without a voice the old chip
