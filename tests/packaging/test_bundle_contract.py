@@ -53,7 +53,11 @@ class BundleContractTests(unittest.TestCase):
         )
         self.assertEqual(self.plist["CFBundleName"], "ReadEase")
         self.assertEqual(self.plist["CFBundleDisplayName"], "ReadEase")
-        self.assertEqual(self.plist["CFBundleShortVersionString"], "0.1.0")
+        # The version the build reads from tauri.conf.json, not a copy of it.
+        shipped = json.loads(
+            (ROOT / "app" / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
+        )["version"]
+        self.assertEqual(self.plist["CFBundleShortVersionString"], shipped)
         self.assertEqual(self.plist["LSMinimumSystemVersion"], "15.0")
         self.assertTrue(self.plist.get("NSHighResolutionCapable", False))
         icon_name = self.plist.get("CFBundleIconFile")
