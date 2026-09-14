@@ -895,11 +895,23 @@ class _Session:
         cache_key = _catalogue_key(provider, model, key)
         with self._catalogue_lock:
             remembered = self._catalogues.get(cache_key)
+            if cache_key in self._catalogue_fetching:
+                return None, _PENDING
             if remembered is not None:
                 offered, code, asked_at = remembered
                 if offered is not None or time.monotonic() - asked_at < _FAILURE_MEMORY:
                     return offered, code
-            if cache_key in self._catalogue_fetching:
+                # A refusal whose memory has lapsed is asked again - in the
+                # background. On a network that swallows packets the ask is
+                # a 60 s timeout, and the request loop must never carry
+                # that: everything behind it (the shelf, a book opening)
+                # would wait too. The listing says what it last knew.
+                self._catalogue_fetching.add(cache_key)
+                threading.Thread(
+                    target=self._refetch_catalogue,
+                    args=(cache_key, provider, model, settings),
+                    name="voices-refetch", daemon=True,
+                ).start()
                 return None, _PENDING
             self._catalogue_fetching.add(cache_key)
         try:
@@ -907,6 +919,18 @@ class _Session:
         finally:
             with self._catalogue_lock:
                 self._catalogue_fetching.discard(cache_key)
+
+    def _refetch_catalogue(
+        self, cache_key: tuple[str, str, str], provider: str, model: str, settings: dict
+    ) -> None:
+        try:
+            self._fetch_catalogue(cache_key, provider, model, settings)
+        except Exception:
+            pass
+        finally:
+            with self._catalogue_lock:
+                self._catalogue_fetching.discard(cache_key)
+        self._send({"event": "voices", "providers": [provider]})
 
     def _fetch_catalogue(
         self, cache_key: tuple[str, str, str], provider: str, model: str, settings: dict

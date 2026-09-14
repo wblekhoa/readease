@@ -339,3 +339,15 @@ test("the description a person reads says the region as a place, in their langua
   assert.equal(voiceDescriptionShown("Rachel — Warm, mid-range"), "Warm, mid-range");
   setLanguage("vi");
 });
+
+test("a stored paid voice keeps its place while its provider is still being asked", () => {
+  // At start-up the catalogue may hold the local voices only; the paid
+  // provider answers later by event. The stored list must not lose the
+  // entry in the meantime - it is filtered at display time, not here.
+  const partial: Voice[] = [{ id: "Adam", label: "Adam — Nam Bộ", languages: [] }];
+  const stored = JSON.stringify(["Adam", "elevenlabs:eleven_flash_v2_5:nhu"]);
+  assert.deepEqual(initialShortlist(stored, partial), ["Adam", "elevenlabs:eleven_flash_v2_5:nhu"]);
+  // And once the whole catalogue is in, the same call re-homes a moved model.
+  const full: Voice[] = [...partial, { id: "elevenlabs:eleven_v3:nhu", label: "Nhu · ElevenLabs", languages: ["vi"] }];
+  assert.deepEqual(initialShortlist(stored, full), ["Adam", "elevenlabs:eleven_v3:nhu"]);
+});

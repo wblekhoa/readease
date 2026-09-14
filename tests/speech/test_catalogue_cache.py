@@ -106,12 +106,36 @@ class CatalogueCacheTests(unittest.TestCase):
         self.assertEqual(
             replies[1]["result"]["unreachable"], [{"provider": "elevenlabs", "code": "network"}]
         )
-        # And once the memory has lapsed, the same session asks again.
+
+    def test_a_lapsed_refusal_is_asked_again_off_the_request_loop(self) -> None:
+        """On a network that swallows packets the ask is a 60 s timeout; the
+        listing must not carry it, nor anything queued behind the listing."""
+        self.provider.fail = "network"
+        gate = threading.Event()
+        writer = io.StringIO()
         with unittest.mock.patch.object(server, "_FAILURE_MEMORY", 0.0):
-            reader = io.StringIO(json.dumps({"id": 3, "method": "voices"}) + "\n"
-                                 + json.dumps({"id": 4, "method": "voices"}) + "\n")
-            server._Session(reader, io.StringIO(), FakeEngine(), settings_path=self.settings).run()
-        self.assertEqual(self.provider.asked, 3)
+            reader = io.StringIO(json.dumps({"id": 1, "method": "voices"}) + "\n")
+            session = server._Session(reader, writer, FakeEngine(), settings_path=self.settings)
+            session.run()   # first ask: synchronous, refused, remembered
+            self.assertEqual(self.provider.asked, 1)
+            # The memory has lapsed (0 s). The next listing hangs on nothing.
+            self.provider.gate = gate
+            started = time.monotonic()
+            catalogue, unreachable, pending = session._voice_catalogue()
+        self.assertLess(time.monotonic() - started, 1.0)
+        self.assertEqual(pending, ["elevenlabs"])
+        self.assertEqual(unreachable, [])
+        self.assertTrue(all(not voice["paid"] for voice in catalogue))
+        gate.set()
+        deadline = time.monotonic() + 5
+        while self.provider.asked < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        deadline = time.monotonic() + 5
+        while "\"event\": \"voices\"" not in writer.getvalue() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(self.provider.asked, 2)
+        self.assertIn({"event": "voices", "providers": ["elevenlabs"]},
+                      [json.loads(line) for line in writer.getvalue().splitlines()])
 
     def test_a_listing_during_the_prefetch_does_not_wait_for_it(self) -> None:
         gate = threading.Event()
