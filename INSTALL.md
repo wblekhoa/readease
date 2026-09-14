@@ -51,7 +51,7 @@ Muốn bôi đen chữ ở trang web, PDF, Apple Books… rồi nhấn phím t�
 
 ## Nâng cấp, gỡ, dữ liệu ở đâu
 
-- **Nâng cấp:** tải zip mới, kéo `ReadEase.app` đè lên bản cũ. Sách, tiến độ, ghi chú và giọng đã tải **không mất** — chúng nằm ngoài app, ở `~/Library/Application Support/VieNeu Reader/`.
+- **Nâng cấp:** tải zip mới, kéo `ReadEase.app` đè lên bản cũ. Sách, tiến độ, ghi chú và giọng đã tải **không mất** — chúng nằm ngoài app, ở `~/Library/Application Support/VieNeu Reader/`. Bản mới là một tệp tải mới nên macOS hỏi lại một lần (chuột phải → Open), và vì app ký ad-hoc nên quyền **Accessibility** phải bật lại cho bản mới nếu bạn dùng Quét đọc.
 - **Gỡ:** kéo `ReadEase.app` vào Thùng rác. Muốn xoá cả sách và giọng đã tải thì xoá thêm thư mục ở trên.
 - **Chi phí:** không có. Giọng trên máy miễn phí vĩnh viễn. Chỉ khi **bạn tự** nhập khoá OpenAI/ElevenLabs để dùng giọng AI trả phí thì bạn trả cho nhà cung cấp đó, theo giá hiện sẵn trong nút đọc; app không thu gì.
 
