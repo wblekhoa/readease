@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -6,10 +6,11 @@ import { engineMessage, text } from "../i18n";
 import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { formatSize, hoverText } from "../ui/format";
 import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
-import { BookCard, BookCover, BookGrid, EmptyState } from "../ui/patterns";
+import { BookCard, BookCover, BookGrid, DropZone, EmptyState } from "../ui/patterns";
+import { dropHeadline, importNotice, type ImportTally } from "../ui/importFeedback";
 import { orderShelf } from "../ui/libraryOrder";
 import { forgetCover, useCover } from "../ui/useCover";
-import { AppleBooksIcon, ShelfIcon, TrashIcon } from "../ui/icons";
+import { AppleBooksIcon, ImportIcon, ShelfIcon, TrashIcon } from "../ui/icons";
 import { AppleBooksPanel } from "./AppleBooksPanel";
 
 export type LibraryBook = {
@@ -184,9 +185,15 @@ export function Library({
   const [importing, setImporting] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [applePanel, setApplePanel] = useState(false);
-  /** A file is being dragged over the window - the moment the shelf says
-   * "thả tệp để nhập sách" instead of making the person guess. */
-  const [dragging, setDragging] = useState(false);
+  /** Something is being dragged over the window: how many of the things in
+   * hand are books. Null when nothing is. The overlay says what a drop will
+   * do instead of making the person drop to find out. */
+  const [dragging, setDragging] = useState<number | null>(null);
+  /** Paths waiting to be imported, in the order they arrived. A second drop
+   * or pick while one is running joins the same queue and the same report,
+   * rather than racing it for the notice line. */
+  const queue = useRef<string[]>([]);
+  const draining = useRef(false);
 
   const refresh = useCallback(() => {
     invoke<{ result: { books: LibraryBook[] } }>("engine_request", {
@@ -222,32 +229,35 @@ export function Library({
    * written to a temp file, then copied again by the engine: seven copies
    * and about a second of the interface frozen for a 46 MB book (measured
    * 14/09), and the 200 MiB the engine accepts was out of reach. A path
-   * costs nothing to carry. */
+   * costs nothing to carry.
+   *
+   * One file at a time, in order, until the queue is empty; a file that
+   * fails does not stop the ones behind it, it is counted and named. */
   const importPaths = useCallback(async (paths: string[]) => {
-    if (!paths.length) return;
+    queue.current.push(...paths);
+    if (draining.current || !queue.current.length) return;
+    draining.current = true;
     setImporting(true);
     setNotice(null);
-    let added = 0;
-    let existing = 0;
+    const tally: ImportTally = { added: 0, existing: 0, failed: 0, lastError: null };
     try {
-      for (const path of paths) {
-        const reply = await invoke<{ result: { was_existing: boolean } }>(
-          "engine_request",
-          { method: "library.import", params: { path } },
-        );
-        if (reply.result.was_existing) existing += 1;
-        else added += 1;
+      while (queue.current.length) {
+        const path = queue.current.shift() as string;
+        try {
+          const reply = await invoke<{ result: { was_existing: boolean } }>(
+            "engine_request",
+            { method: "library.import", params: { path } },
+          );
+          if (reply.result.was_existing) tally.existing += 1;
+          else tally.added += 1;
+        } catch (error) {
+          tally.failed += 1;
+          tally.lastError = engineMessage(error);
+        }
       }
-      setNotice({
-        tone: "ok",
-        message:
-          paths.length === 1
-            ? text(existing ? "library.duplicate" : "library.imported")
-            : text("library.imported_many", { added, existing }),
-      });
-    } catch (error) {
-      setNotice({ tone: "error", message: engineMessage(error) });
+      setNotice(importNotice(tally));
     } finally {
+      draining.current = false;
       setImporting(false);
       refresh();
     }
@@ -260,10 +270,10 @@ export function Library({
     const listening = getCurrentWebview().onDragDropEvent((event) => {
       if (!live) return;
       const kind = event.payload.type;
-      if (kind === "enter") setDragging(true);
-      else if (kind === "leave") setDragging(false);
+      if (kind === "enter") setDragging(bookPaths(event.payload.paths).length);
+      else if (kind === "leave") setDragging(null);
       else if (kind === "drop") {
-        setDragging(false);
+        setDragging(null);
         void importPaths(bookPaths(event.payload.paths));
       }
     });
@@ -300,7 +310,7 @@ export function Library({
   };
 
   const importButton = (
-    <Button onClick={() => void openPicker()} disabled={importing}>
+    <Button onClick={() => void openPicker()} disabled={importing} title={text("library.drop_invite")}>
       {importing ? text("library.importing") : text("toolbar.open")}
     </Button>
   );
@@ -337,6 +347,13 @@ export function Library({
       {applePanel && (
         <AppleBooksPanel onClose={() => setApplePanel(false)} onLibraryChanged={refresh} />
       )}
+      {dragging !== null && (
+        <DropZone
+          icon={<ImportIcon className="h-10 w-10" />}
+          headline={dropHeadline(dragging).headline}
+          detail={dropHeadline(dragging).detail}
+        />
+      )}
       <div className={empty ? "flex min-h-0 flex-1 flex-col" : "shell-inset-content"}>
         <div className="flex items-center gap-3">
           <SectionTitle className="flex-1">{text("library.title")}</SectionTitle>
@@ -357,16 +374,20 @@ export function Library({
             {notice.message}
           </Notice>
         )}
-        {dragging && (
-          <Notice tone="info" className="mt-2">
-            {text("library.drop_hint")}
-          </Notice>
-        )}
         {empty ? (
           // Nothing to list means the invitation IS the content: the way in
           // stands where the books will be, the constraint sits beside the
           // choice it constrains - the layout the Qt shell settled on.
-          <EmptyState actions={emptyActions} note={text("library.description")} />
+          <EmptyState
+            actions={emptyActions}
+            note={
+              <>
+                {text("library.drop_invite")}
+                <br />
+                {text("library.description")}
+              </>
+            }
+          />
         ) : (
           <div className="mt-4">
             <BookGrid>

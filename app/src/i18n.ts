@@ -378,7 +378,21 @@ export const TEXT = {
     "Đã thêm {added} sách; {existing} đã có sẵn trong thư viện.",
     "Added {added} books; {existing} already in the library.",
   ],
+  // The overlay while something is dragged over the window. It says what
+  // the drop will do - how many books are in hand - so nobody has to drop
+  // to find out, and it says when nothing in hand is a book.
   "library.drop_hint": ["Thả tệp để nhập sách", "Drop the file to import it"],
+  "library.drop_many": ["Thả để thêm {count} sách vào thư viện", "Drop to add {count} books to the library"],
+  "library.drop_anywhere": ["Thả vào bất cứ đâu trong cửa sổ này.", "Drop anywhere in this window."],
+  "library.drop_none": ["Chỉ nhận PDF hoặc EPUB", "Only PDF or EPUB files can be added"],
+  "library.drop_none_hint": ["Những tệp đang kéo không phải sách.", "None of what is being dragged is a book."],
+  // On the empty shelf and on the open button: the second door, named, so
+  // it is found without anybody having to try dragging first.
+  "library.drop_invite": ["Hoặc kéo tệp PDF, EPUB từ Finder thả vào cửa sổ này.", "Or drag PDF or EPUB files from Finder into this window."],
+  "library.import_failed_some": [
+    "Đã thêm {added} sách; {failed} tệp không nhập được. {error}",
+    "Added {added} books; {failed} could not be imported. {error}",
+  ],
   "library.chapter_count": ["{count} chương", "{count} chapters"],
   "library.imported_on": ["Nhập {date}", "Imported {date}"],
   "library.in_progress": ["Đang đọc dở", "In progress"],

@@ -57,6 +57,7 @@ const STATES = {
   model_missing: "model=missing",
   scanned: "scanned=3",
   damaged: "damaged=1",
+  dragging: "drag=3",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];

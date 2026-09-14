@@ -218,6 +218,38 @@ export function EmptyState({
   );
 }
 
+/** The whole window as a target while something is dragged over it.
+ *
+ * Over everything and under the pointer's notice - `pointer-events-none`,
+ * because the drop is the window's to receive (the webview hands it over as
+ * paths) and this layer only says what will happen. It appears on drag-enter
+ * and goes on leave or drop; a drop target that is always on screen would
+ * be a second empty state under every shelf. */
+export function DropZone({
+  icon,
+  headline,
+  detail,
+}: {
+  icon: ReactNode;
+  headline: ReactNode;
+  detail?: ReactNode;
+}) {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 bg-paper/80 p-6" role="status">
+      <div className="flex h-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-edge-strong">
+        {/* The words on their own sheet: the shelf shows through the wash,
+            and a headline laid straight over a cover was read against
+            whatever picture happened to be under it (measured 14/09). */}
+        <div className="flex max-w-[28rem] flex-col items-center gap-3 rounded-3xl bg-paper px-8 py-6 text-center shadow-lifted">
+          <span className="text-ink-mute">{icon}</span>
+          <p className="m-0 text-lg font-semibold text-ink" style={{ textWrap: "balance" }}>{headline}</p>
+          {detail && <p className="m-0 text-sm text-ink-mute">{detail}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** A book's cover, the object a shelf is made of.
  *
  * Printed proportions (2:3) and a small corner, because a cover is a

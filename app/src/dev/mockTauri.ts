@@ -307,6 +307,7 @@ const COVERS: Record<string, string> = {
    with no key would put the refusal after the choice: they pick it, press
    read, and are told no. */
 const FAIL = new URLSearchParams(window.location.search).get("fail");
+const DRAG = new URLSearchParams(window.location.search).get("drag");
 // What the engine says when it refuses. A real importer sentence by default
 // - `?said=…` puts any other one in its place.
 const FAIL_SAID = new URLSearchParams(window.location.search).get("said")
@@ -933,6 +934,20 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
     if (handler) {
       handlers.set(event, [...(handlers.get(event) ?? []), handler]);
       listeners.set(listenerId, { event, handler });
+    }
+    /* `?drag=3` (or `drag=none`): something is being dragged over the
+       window. The harness has no Finder, so the moment the shelf starts
+       listening for the window's drag events, one arrives - three books
+       and a picture, or a picture alone - and stays, so the overlay can be
+       LOOKED at. The raw payload shape is what the webview hands over;
+       the api wraps it into `{type, paths, position}`. */
+    if (event === "tauri://drag-enter" && DRAG !== null) {
+      const books = DRAG === "none" ? 0 : Math.max(0, Number(DRAG) || 0);
+      const paths = [
+        ...Array.from({ length: books }, (_, i) => `/Volumes/Sách/Cuốn thứ ${i + 1}.${i % 2 ? "pdf" : "epub"}`),
+        "/Volumes/Sách/ảnh bìa.png",
+      ];
+      setTimeout(() => emit("tauri://drag-enter", { paths, position: { x: 240, y: 200 } }), 30);
     }
     return Promise.resolve(listenerId);
   }
