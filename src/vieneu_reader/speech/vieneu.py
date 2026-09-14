@@ -50,6 +50,14 @@ CODEC_FILES = (
     "moss_audio_tokenizer_encode.data",
 )
 _READY_MARKER = ".vieneu-ready-{precision}.json"
+# What the SDK said its voices were, the last time the model was loaded -
+# kept beside the ready marker and stamped the same way, so the list can be
+# answered without waking the model. Listing voices is the FIRST thing the
+# shell asks, and it used to be the thing that loaded the weights: 1.5-2 s
+# (measured 14/09) spent before the window could decide which screen to
+# show. Read as far as 64 KiB; the list is a few KiB.
+_VOICES_FILE = ".vieneu-voices-{precision}.json"
+_VOICES_FILE_LIMIT = 65536
 # What installs made before the model build became a choice wrote.
 _LEGACY_READY_MARKER = ".vieneu-ready.json"
 # What a ready marker has to agree on. The engine version is still written -
@@ -212,7 +220,7 @@ class VieNeuSpeechEngine:
         )
         return model_present and codec_present
 
-    def _read_marker(self, path: Path) -> Any:
+    def _read_marker(self, path: Path, limit: int = 4096) -> Any:
         flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
         flags |= getattr(os, "O_NOFOLLOW", 0)
         try:
@@ -224,10 +232,10 @@ class VieNeuSpeechEngine:
             if (
                 not stat.S_ISREG(metadata.st_mode)
                 or metadata.st_uid != os.getuid()
-                or metadata.st_size > 4096
+                or metadata.st_size > limit
             ):
                 return None
-            payload = os.read(descriptor, 4097)
+            payload = os.read(descriptor, limit + 1)
         finally:
             os.close(descriptor)
         try:
@@ -281,6 +289,13 @@ class VieNeuSpeechEngine:
         return arguments
 
     def _write_ready_marker(self) -> None:
+        self._write_private_json(
+            self._ready_marker, self._expected_marker(self.model_revision)
+        )
+
+    def _write_private_json(self, target: Path, document: Any) -> None:
+        """Owner-only, written whole or not at all: a temp file beside the
+        target, fsynced, then renamed over it."""
         descriptor, temporary_name = tempfile.mkstemp(
             prefix=".vieneu-ready-",
             suffix=".tmp",
@@ -289,17 +304,14 @@ class VieNeuSpeechEngine:
         temporary_path = Path(temporary_name)
         try:
             os.fchmod(descriptor, 0o600)
-            payload = json.dumps(
-                self._expected_marker(self.model_revision),
-                sort_keys=True,
-            ).encode("utf-8")
+            payload = json.dumps(document, sort_keys=True).encode("utf-8")
             marker_file = os.fdopen(descriptor, "wb")
             descriptor = -1
             with marker_file:
                 marker_file.write(payload)
                 marker_file.flush()
                 os.fsync(marker_file.fileno())
-            temporary_path.replace(self._ready_marker)
+            temporary_path.replace(target)
         finally:
             if descriptor >= 0:
                 os.close(descriptor)
@@ -307,6 +319,68 @@ class VieNeuSpeechEngine:
                 temporary_path.unlink()
             except FileNotFoundError:
                 pass
+
+    @property
+    def _voices_file(self) -> Path:
+        return self._models_path / _VOICES_FILE.format(precision=self._precision)
+
+    def _remembered_voices(self) -> tuple[Voice, ...] | None:
+        """The list the SDK gave last time, if it was for THIS model."""
+        document = self._read_marker(self._voices_file, limit=_VOICES_FILE_LIMIT)
+        if not isinstance(document, dict):
+            return None
+        expected = self._expected_marker(self.model_revision)
+        if any(document.get(key) != expected[key] for key in expected):
+            return None
+        listed = document.get("voices")
+        if not isinstance(listed, list) or not listed:
+            return None
+        voices: list[Voice] = []
+        for entry in listed:
+            if not isinstance(entry, dict):
+                return None
+            voice_id, label = entry.get("id"), entry.get("label")
+            if not isinstance(voice_id, str) or not isinstance(label, str):
+                return None
+            voices.append(Voice(id=voice_id, label=label))
+        return tuple(voices)
+
+    def _remember_voices(self, voices: tuple[Voice, ...]) -> None:
+        if not voices:
+            return
+        document = dict(self._expected_marker(self.model_revision))
+        document["voices"] = [
+            {"id": voice.id, "label": voice.label} for voice in voices
+        ]
+        try:
+            self._write_private_json(self._voices_file, document)
+        except OSError:
+            # Not being able to remember costs the next launch a model load,
+            # nothing more; it is not a reason to fail a listing that worked.
+            pass
+
+    def _voices_from_sdk(self) -> tuple[Voice, ...]:
+        return tuple(
+            Voice(id=voice_id, label=label)
+            for label, voice_id in self._instance().list_preset_voices()
+        )
+
+    def warm(self) -> bool:
+        """Load the model now, so the first reading does not have to.
+
+        Meant for a background thread at start-up. Returns whether the
+        model is loaded afterwards; a model that is not prepared yet is
+        left alone - the setup screen owns that path.
+        """
+        if not self.is_model_ready:
+            return False
+        try:
+            with self._lock:
+                voices = self._voices_from_sdk()
+        except ModelNotReadyError:
+            return False
+        self._remember_voices(voices)
+        return True
 
     def installed_builds(self) -> dict[str, int]:
         """How much room each build of the model takes, or 0 if absent."""
@@ -396,6 +470,7 @@ class VieNeuSpeechEngine:
                     raise RuntimeError("VieNeu exposes no preset voices")
                 self._sdk = sdk
                 self._write_ready_marker()
+                self._remember_voices(self._voices_from_sdk())
             except Exception as error:
                 self._sdk = None
                 raise ModelPreparationError(_preparation_message(error)) from error
@@ -416,10 +491,22 @@ class VieNeuSpeechEngine:
             return self._sdk
 
     def voices(self) -> tuple[Voice, ...]:
-        return tuple(
-            Voice(id=voice_id, label=label)
-            for label, voice_id in self._instance().list_preset_voices()
-        )
+        """The local voices - from the SDK when the model is loaded, from
+        the remembered list when it is not, and by loading the model only
+        when neither can answer."""
+        # Without the lock: the reference is either the loaded SDK or None,
+        # and while a background warm holds the lock for the whole load, a
+        # listing that queued behind it would be waiting on the very thing
+        # this exists to avoid (measured 14/09: 1.0 s).
+        if self._sdk is not None:
+            return self._voices_from_sdk()
+        remembered = self._remembered_voices()
+        if remembered is not None:
+            return remembered
+        with self._lock:
+            voices = self._voices_from_sdk()
+        self._remember_voices(voices)
+        return voices
 
     def stream(
         self,

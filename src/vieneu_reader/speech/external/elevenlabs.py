@@ -206,15 +206,16 @@ class ElevenLabsVoiceProvider:
             if not payload.get("has_more") or not token:
                 return tuple(found)
 
-    def verify(self) -> None:
+    def verify(self) -> tuple[ProviderVoice, ...]:
         """Is this key usable? Raises `ExternalVoiceError` if not.
 
         Listing voices is the check: it is the cheapest authenticated call
         the app already needs, and a key that cannot list voices cannot read
-        a book either.
+        a book either. What it listed is returned, so the caller need not
+        ask the network the same question twice.
         """
 
-        self.voices()
+        return self.voices()
 
     def synthesize(self, text: str, voice_id: str) -> Iterator[bytes]:
         self._cancelled = False

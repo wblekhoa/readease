@@ -44,6 +44,8 @@ from dataclasses import dataclass
 import json
 import sys
 import threading
+import time
+from hashlib import sha256
 from pathlib import Path
 from queue import SimpleQueue
 from typing import Any, Iterator, Protocol, TextIO
@@ -139,6 +141,21 @@ def chosen_model(provider: str, settings: dict) -> str:
     if isinstance(stored, str) and stored in known:
         return stored
     return DEFAULT_MODEL_FOR_PROVIDER.get(provider, "")
+
+
+#: How long a provider's refusal is taken at its word before it is asked
+#: again - long enough that a dead network costs one wait, short enough that
+#: a fixed one is noticed on the next visit to the voices panel.
+_FAILURE_MEMORY = 60.0
+#: Stands in for an error code while the background thread is still asking.
+_PENDING = "pending"
+
+
+def _catalogue_key(provider: str, model: str, key: str) -> tuple[str, str, str]:
+    """The credential never sits in memory as a dictionary key: its digest
+    does. A different key is a different question; the same key asked
+    twice is the same answer."""
+    return provider, model, sha256(key.encode("utf-8")).hexdigest()
 
 
 def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
@@ -421,10 +438,38 @@ class _Session:
         # which may land after its reply - can be written with the right
         # rate and voice. Bounded: only the last few readings matter.
         self._listening: dict[Any, tuple[str, float, str]] = {}
+        # What each paid provider offered, remembered for this process and
+        # keyed by the credential it was asked with - a new key is a new
+        # question. ElevenLabs' catalogue is a network round trip (1-1.8 s
+        # measured 14/09) that used to be paid on every listing, at start-up
+        # ahead of the request that decides which screen to show. A failed
+        # ask is remembered too, briefly, so a dead network costs one wait
+        # rather than one per listing.
+        self._catalogues: dict[
+            tuple[str, str, str], tuple[tuple[Any, ...] | None, str | None, float]
+        ] = {}
+        self._catalogue_fetching: set[tuple[str, str, str]] = set()
+        self._catalogue_lock = threading.Lock()
+        # Two threads may have something to say - the request loop and a
+        # background fetch - and a line is only a line if it is written whole.
+        self._send_lock = threading.Lock()
         pump = threading.Thread(
             target=self._pump, args=(reader,), daemon=True
         )
         pump.start()
+
+    def start_background_work(self) -> None:
+        """What can be done before anybody asks: load the model so the first
+        reading does not have to, and ask the paid providers for their
+        catalogues so the first listing does not have to wait on the
+        network. Both off the request thread; neither is required for any
+        answer, so a failure here is a slower answer later, not an error."""
+        warm = getattr(self._engine, "warm", None)
+        if callable(warm):
+            threading.Thread(target=warm, name="model-warm", daemon=True).start()
+        threading.Thread(
+            target=self._prefetch_catalogues, name="voices-prefetch", daemon=True
+        ).start()
 
     def _pump(self, reader: TextIO) -> None:
         for line in reader:
@@ -434,8 +479,9 @@ class _Session:
         self._requests.put(_EOF)
 
     def _send(self, payload: dict[str, Any]) -> None:
-        self._writer.write(json.dumps(payload) + "\n")
-        self._writer.flush()
+        with self._send_lock:
+            self._writer.write(json.dumps(payload) + "\n")
+            self._writer.flush()
 
     def _reply(self, request_id: Any, result: dict[str, Any]) -> None:
         self._send({"id": request_id, "ok": True, "result": result})
@@ -591,7 +637,7 @@ class _Session:
                     "sample_rate": SAMPLE_RATE,
                 })
             elif method == "voices":
-                catalogue, unreachable = self._voice_catalogue()
+                catalogue, unreachable, pending = self._voice_catalogue()
                 # A provider that could not be ASKED is not the same as one
                 # that offers nothing, and neither is a voice. It travels
                 # beside the list so the shell can say which is which.
@@ -604,6 +650,9 @@ class _Session:
                 # live and tested.
                 self._reply(request_id, {
                     "voices": catalogue, "unreachable": unreachable,
+                    # Providers still being asked in the background. The
+                    # `voices` event says when the answer is in.
+                    "pending": pending,
                 })
             elif method == "read":
                 self._read(request_id, request.get("params") or {})
@@ -794,23 +843,27 @@ class _Session:
             for voice in self._engine.voices()
         ]
         unreachable: list[dict[str, Any]] = []
+        pending: list[str] = []
         settings = self._settings_document()
         for provider in sorted(KEY_FOR_PROVIDER):
-            if not settings.get(KEY_FOR_PROVIDER[provider]):
+            key = settings.get(KEY_FOR_PROVIDER[provider])
+            if not key:
                 continue
             model = chosen_model(provider, settings)
-            external = _external_provider(provider, f"{provider}:{model}:x", settings)
-            if external is None:
+            offered, code = self._catalogue_of(provider, model, str(key), settings)
+            if code == _PENDING:
+                # Being asked right now, in the background. Not waiting is
+                # the point: the listing answers with what it has, and the
+                # `voices` event brings the rest.
+                pending.append(provider)
                 continue
-            try:
-                offered = external.voices()
-            except ExternalVoiceError as error:
+            if offered is None:
                 # ElevenLabs' catalogue is a NETWORK call, unlike OpenAI's
                 # constant. Letting it out of here took the whole catalogue
                 # with it - including the local voices, which need nothing
                 # and were working. The provider drops out and says why; the
                 # reader keeps the voices that were never in question.
-                unreachable.append({"provider": provider, "code": error.code})
+                unreachable.append({"provider": provider, "code": code})
                 continue
             catalogue.extend(
                 {
@@ -828,7 +881,84 @@ class _Session:
                 }
                 for voice in offered
             )
-        return catalogue, unreachable
+        return catalogue, unreachable, pending
+
+    def _catalogue_of(
+        self, provider: str, model: str, key: str, settings: dict
+    ) -> tuple[tuple[Any, ...] | None, str | None]:
+        """One provider's offer: remembered, being fetched, or fetched now.
+
+        Fetched NOW only when nobody else is fetching it - the request loop
+        never waits on the background thread, it either has the answer or
+        says the answer is pending.
+        """
+        cache_key = _catalogue_key(provider, model, key)
+        with self._catalogue_lock:
+            remembered = self._catalogues.get(cache_key)
+            if remembered is not None:
+                offered, code, asked_at = remembered
+                if offered is not None or time.monotonic() - asked_at < _FAILURE_MEMORY:
+                    return offered, code
+            if cache_key in self._catalogue_fetching:
+                return None, _PENDING
+            self._catalogue_fetching.add(cache_key)
+        try:
+            return self._fetch_catalogue(cache_key, provider, model, settings)
+        finally:
+            with self._catalogue_lock:
+                self._catalogue_fetching.discard(cache_key)
+
+    def _fetch_catalogue(
+        self, cache_key: tuple[str, str, str], provider: str, model: str, settings: dict
+    ) -> tuple[tuple[Any, ...] | None, str | None]:
+        external = _external_provider(provider, f"{provider}:{model}:x", settings)
+        if external is None:
+            return None, "no_key"
+        try:
+            offered: tuple[Any, ...] | None = tuple(external.voices())
+            code: str | None = None
+        except ExternalVoiceError as error:
+            offered, code = None, error.code
+        with self._catalogue_lock:
+            self._catalogues[cache_key] = (offered, code, time.monotonic())
+        return offered, code
+
+    def _remember_catalogue(
+        self, provider: str, model: str, key: str, offered: tuple[Any, ...]
+    ) -> None:
+        with self._catalogue_lock:
+            self._catalogues[_catalogue_key(provider, model, key)] = (
+                tuple(offered), None, time.monotonic()
+            )
+
+    def _prefetch_catalogues(self) -> None:
+        """Ask every keyed provider once, off the request thread, and say
+        so when done - the shell lists again on the `voices` event."""
+        settings = self._settings_document()
+        asked: list[str] = []
+        for provider in sorted(KEY_FOR_PROVIDER):
+            key = settings.get(KEY_FOR_PROVIDER[provider])
+            if not key:
+                continue
+            model = chosen_model(provider, settings)
+            cache_key = _catalogue_key(provider, model, str(key))
+            with self._catalogue_lock:
+                if cache_key in self._catalogues or cache_key in self._catalogue_fetching:
+                    continue
+                self._catalogue_fetching.add(cache_key)
+            try:
+                self._fetch_catalogue(cache_key, provider, model, settings)
+            except Exception:
+                # A provider module that throws something other than its own
+                # error must not kill the thread silently: the entry stays
+                # absent, and the next listing asks in the open.
+                pass
+            finally:
+                with self._catalogue_lock:
+                    self._catalogue_fetching.discard(cache_key)
+            asked.append(provider)
+        if asked:
+            self._send({"event": "voices", "providers": asked})
 
     def _estimate(self, request_id: Any, params: dict[str, Any]) -> None:
         """What one press of the read button would cost, before it is pressed.
@@ -1699,13 +1829,17 @@ class _Session:
             self._fail(request_id, f"unknown provider: {provider}")
             return
         try:
-            external.verify()
+            listed = external.verify()
         except ExternalVoiceError as error:
             # NOT saved. A key the service refuses is not a setting worth
             # keeping - it would sit there looking configured and fail again
             # at the worst moment.
             self._reply(request_id, {"saved": False, "ok": False, "code": error.code})
             return
+        if listed is not None:
+            # ElevenLabs' check IS a listing; the shell lists again right
+            # after this reply and must not pay the network a second time.
+            self._remember_catalogue(provider, model, value, tuple(listed))
         update_settings(self._settings_path, {key_name: value})
         self._reply(request_id, {"saved": True, "ok": True})
 
@@ -2364,13 +2498,21 @@ def serve(
     settings_path: "Path | None" = None,
     notes_deps: "dict[str, Any] | None" = None,
     audio_cache: "AudioCache | None" = None,
+    background: bool = False,
 ) -> None:
-    """Answer requests until the reader closes."""
-    _Session(
+    """Answer requests until the reader closes.
+
+    `background` starts the work that needs nobody to ask for it - warming
+    the model, prefetching paid catalogues - which the app wants and a test
+    does not."""
+    session = _Session(
         reader, writer, engine,
         repository=repository, service=service, settings_path=settings_path,
         notes_deps=notes_deps, audio_cache=audio_cache,
-    ).run()
+    )
+    if background:
+        session.start_background_work()
+    session.run()
 
 
 def main() -> int:
@@ -2400,6 +2542,7 @@ def main() -> int:
         repository=repository, service=service,
         settings_path=paths.root / "settings.json",
         audio_cache=audio_cache,
+        background=True,
     )
     return 0
 

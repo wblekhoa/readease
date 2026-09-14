@@ -104,7 +104,7 @@ class ExternalVoiceProvider(Protocol):
         it is finished. Raises ExternalVoiceError, never a bare HTTP error.
         """
 
-    def verify(self) -> None:
+    def verify(self) -> "tuple[ProviderVoice, ...] | None":
         """Ask the service whether this credential works. Raises on no.
 
         Separate from `voices()` because for one provider the catalogue is a

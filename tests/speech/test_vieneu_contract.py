@@ -1,4 +1,5 @@
 import errno
+import json
 import os
 from pathlib import Path
 import struct
@@ -251,7 +252,15 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
             sdk_factory=restarted_factory,
             model_downloader=download_model,
         )
-        restarted.voices()
+        # Listing voices no longer wakes the model: the prepared engine
+        # wrote down what the SDK said, and the restart answers from that.
+        self.assertEqual(
+            [(voice.id, voice.label) for voice in restarted.voices()],
+            [("Adam", "Adam — Nam Bộ"), ("Trúc Ly", "Trúc Ly — Bắc Bộ")],
+        )
+        self.assertEqual(restarted_created, [])
+        # The first reading does, offline, with the prepared arguments.
+        list(restarted.stream("Xin chào", "Adam"))
         self.assertEqual(restarted_created[0].kwargs, created[0].kwargs)
         self.assertEqual(len(download_calls), 2)
 
@@ -433,3 +442,95 @@ class HubCacheRetentionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VoicesWithoutWakingTheModelTests(unittest.TestCase):
+    """Listing voices is the first thing the shell asks; it must not be the
+    thing that loads the model."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.models = Path(self.temp_dir.name) / "Models"
+        self.original_offline = os.environ.pop("HF_HUB_OFFLINE", None)
+
+    def tearDown(self):
+        if self.original_offline is not None:
+            os.environ["HF_HUB_OFFLINE"] = self.original_offline
+        else:
+            os.environ.pop("HF_HUB_OFFLINE", None)
+
+    def _engine(self, created: list) -> VieNeuSpeechEngine:
+        def factory(**kwargs):
+            sdk = FakeVieNeuSDK(**kwargs)
+            created.append(sdk)
+            return sdk
+
+        return VieNeuSpeechEngine(self.models, sdk_factory=factory)
+
+    def test_the_first_listing_loads_the_model_and_writes_the_list_down(self):
+        created: list = []
+        engine = self._engine(created)
+
+        voices = engine.voices()
+
+        self.assertEqual(len(created), 1)
+        self.assertEqual([voice.id for voice in voices], ["Adam", "Trúc Ly"])
+        listed = list(self.models.glob(".vieneu-voices-*.json"))
+        self.assertEqual(len(listed), 1)
+        self.assertEqual(listed[0].stat().st_mode & 0o077, 0)
+
+    def test_the_next_process_answers_from_the_list_without_the_model(self):
+        self._engine([]).voices()
+        created: list = []
+
+        voices = self._engine(created).voices()
+
+        self.assertEqual([voice.label for voice in voices], ["Adam — Nam Bộ", "Trúc Ly — Bắc Bộ"])
+        self.assertEqual(created, [])
+
+    def test_a_list_written_for_another_model_is_not_trusted(self):
+        self._engine([]).voices()
+        listed = next(self.models.glob(".vieneu-voices-*.json"))
+        document = json.loads(listed.read_text(encoding="utf-8"))
+        document["model_revision"] = "somebody-else's-model+int8"
+        listed.write_text(json.dumps(document), encoding="utf-8")
+        created: list = []
+
+        self._engine(created).voices()
+
+        self.assertEqual(len(created), 1)
+
+    def test_a_list_that_is_not_a_list_is_ignored(self):
+        self._engine([]).voices()
+        listed = next(self.models.glob(".vieneu-voices-*.json"))
+        listed.write_text("{", encoding="utf-8")
+        created: list = []
+
+        voices = self._engine(created).voices()
+
+        self.assertEqual(len(created), 1)
+        self.assertEqual([voice.id for voice in voices], ["Adam", "Trúc Ly"])
+
+    def test_once_the_model_is_loaded_the_sdk_answers(self):
+        self._engine([]).voices()
+        created: list = []
+        engine = self._engine(created)
+        list(engine.stream("Xin chào", "Adam"))
+
+        engine.voices()
+
+        self.assertEqual(len(created), 1)
+
+    def test_warm_loads_a_ready_model_once_and_leaves_an_unprepared_one_alone(self):
+        created: list = []
+        engine = self._engine(created)
+        # The fake factory needs no prepared model, but warm() asks the
+        # question the real one would: is it ready? Not yet - nothing on disk.
+        self.assertFalse(engine.warm())
+        self.assertEqual(created, [])
+
+        with patch.object(VieNeuSpeechEngine, "is_model_ready", return_value=True):
+            self.assertTrue(engine.warm())
+            list(engine.stream("Xin chào", "Adam"))
+        self.assertEqual(len(created), 1)

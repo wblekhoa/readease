@@ -119,6 +119,9 @@ export default function App() {
    * Mac has no voices" - and a failed request is not that claim. */
   const [voicesError, setVoicesError] = useState<string | null>(null);
   const [voiceId, setVoiceId] = useState<string>("");
+  /** The saved voice the first listing could not honour because its
+   * provider had not answered yet: id, and what was chosen instead. */
+  const stillWanted = useRef<{ id: string; fallback: string } | null>(null);
   const [rate, setRate] = useState(1.0);
   /** The voices worth offering mid-reading, in the person's own words:
    * twenty is a catalogue, this is the handful they switch between. */
@@ -476,6 +479,22 @@ export default function App() {
   where.current = position;
 
   useEffect(() => {
+    // FIRST, because the engine answers one request at a time and this is
+    // the one that decides which screen to show: until it lands the window
+    // is blank. It used to queue behind the voice listing, which loaded
+    // the model - 1.5-2 s of nothing on screen at every launch (measured
+    // 14/09), more with a paid provider to ask over the network.
+    invoke<{ result: { precision: string | null; ready: boolean } }>(
+      "engine_request",
+      { method: "model.status", params: {} },
+    )
+      .then((reply) => {
+        setModelPrecision(reply.result.precision);
+        setGate(reply.result.ready ? "ready" : "setup");
+      })
+      // A dead engine still deserves a visible app: errors surface on use,
+      // a blank window surfaces nothing.
+      .catch(() => setGate("ready"));
     // The Qt shell remembered the voice and the speed; losing that in the
     // rewrite would be a downgrade nobody asked for. Same settings file, same
     // two keys, so an existing choice carries over.
@@ -498,11 +517,12 @@ export default function App() {
         const wanted = saved?.result.value;
         // A remembered voice that this build no longer ships must not leave
         // the picker empty - fall back to the first one, as the Qt shell did.
-        setVoiceId(
-          wanted && list.some((voice) => voice.id === wanted)
-            ? wanted
-            : list[0].id,
-        );
+        // A remembered PAID voice may simply not be listed yet - its
+        // provider is still being asked in the background - so the wish is
+        // kept until the catalogue event says whether it can be honoured.
+        const present = Boolean(wanted && list.some((voice) => voice.id === wanted));
+        if (wanted && !present) stillWanted.current = { id: wanted, fallback: list[0].id };
+        setVoiceId(present ? (wanted as string) : list[0].id);
       })
       .catch((error) => {
         console.error(error);
@@ -537,17 +557,6 @@ export default function App() {
         }
       })
       .catch(() => undefined);
-    invoke<{ result: { precision: string | null; ready: boolean } }>(
-      "engine_request",
-      { method: "model.status", params: {} },
-    )
-      .then((reply) => {
-        setModelPrecision(reply.result.precision);
-        setGate(reply.result.ready ? "ready" : "setup");
-      })
-      // A dead engine still deserves a visible app: errors surface on use,
-      // a blank window surfaces nothing.
-      .catch(() => setGate("ready"));
     const done = listen<{ ok: boolean; error?: string }>(
       "reading:done",
       (event) => {
@@ -573,6 +582,23 @@ export default function App() {
       },
     );
     const started = listen("reading:started", () => onPlayer({ type: "voice" }));
+    // A paid provider's catalogue arrives after the first listing, fetched
+    // in the background so the launch never waits on the network. The
+    // engine says when it is in; the list grows, the choice stays.
+    const catalogue = listen("engine:voices", () => {
+      invoke<Voice[]>("engine_voices")
+        .then((list) => {
+          if (!list.length) return;
+          setVoices(list);
+          const wish = stillWanted.current;
+          if (wish && list.some((voice) => voice.id === wish.id)) {
+            stillWanted.current = null;
+            // Only if nobody chose something else in the meantime.
+            setVoiceId((current) => (current === wish.fallback ? wish.id : current));
+          }
+        })
+        .catch(() => undefined);
+    });
     // The global shortcut hands the captured text to the webview, which owns
     // the voice and rate, and the webview asks the engine to speak it.
     const external = listen<{ text: string }>("reading:external", (event) => {
@@ -623,6 +649,7 @@ export default function App() {
     return () => {
       done.then((unlisten) => unlisten());
       moved.then((unlisten) => unlisten());
+      catalogue.then((unlisten) => unlisten());
       started.then((unlisten) => unlisten());
       external.then((unlisten) => unlisten());
       externalState.then((unlisten) => unlisten());
