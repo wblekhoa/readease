@@ -135,24 +135,42 @@ fi
 
 if [[ -n "$developer_id" ]]; then
   # The notary service wants the bundle as an archive; ditto keeps the seal.
-  # `--wait` blocks until Apple answers, usually a few minutes. A rejection
-  # prints Apple's own log - the file and the reason - and stops here: an
-  # app that failed notarization must not be packaged as if it had passed.
+  # Submitted without `--wait`, then polled once a minute: Apple took over
+  # 30 minutes on the very first submission (15/09) and `--wait`'s timeout
+  # turned a still-pending review into a failed build, while the review
+  # went on to succeed. Only a verdict ends the wait, or the ceiling in
+  # READEASE_NOTARY_MAX_MINUTES (default six hours). A rejection prints
+  # Apple's own log - the file and the reason - and stops here: an app that
+  # failed notarization must not be packaged as if it had passed.
   echo "==> notarizing through profile \"$notary_profile\""
   notary_dir="$(mktemp -d)"
   ditto -c -k --keepParent "$app" "$notary_dir/ReadEase.zip"
-  if ! xcrun notarytool submit "$notary_dir/ReadEase.zip" \
-        --keychain-profile "$notary_profile" --wait --timeout 30m \
-        | tee "$notary_dir/submit.log" | sed 's/^/    /'; then
-    echo "NOTARIZE_FAILED: notarytool did not complete" >&2; rm -rf "$notary_dir"; exit 1
-  fi
-  if ! grep -q "status: Accepted" "$notary_dir/submit.log"; then
-    submission="$(sed -n 's/^ *id: //p' "$notary_dir/submit.log" | head -1)"
-    [[ -n "$submission" ]] && xcrun notarytool log "$submission" --keychain-profile "$notary_profile" | sed 's/^/    /' || true
-    echo "NOTARIZE_FAILED: Apple did not accept the bundle; not packaging" >&2
-    rm -rf "$notary_dir"; exit 1
-  fi
+  submit_log="$notary_dir/submit.log"
+  xcrun notarytool submit "$notary_dir/ReadEase.zip" --keychain-profile "$notary_profile" \
+    2>&1 | tee "$submit_log" | sed 's/^/    /' || true
+  submission="$(sed -n 's/^ *id: //p' "$submit_log" | head -1)"
   rm -rf "$notary_dir"
+  if [[ -z "$submission" ]]; then
+    echo "NOTARIZE_FAILED: the upload did not produce a submission id" >&2; exit 1
+  fi
+  max_minutes="${READEASE_NOTARY_MAX_MINUTES:-360}"
+  status="In Progress"; last=""; waited=0
+  while [[ "$status" == "In Progress" ]]; do
+    if (( waited >= max_minutes )); then
+      echo "NOTARIZE_FAILED: no verdict after $max_minutes minutes (submission $submission still pending)" >&2
+      exit 1
+    fi
+    sleep 60; waited=$((waited + 1))
+    status="$(xcrun notarytool info "$submission" --keychain-profile "$notary_profile" 2>/dev/null \
+      | sed -n 's/^ *status: //p' | head -1)"
+    [[ -n "$status" ]] || status="In Progress"
+    if [[ "$status" != "$last" ]]; then echo "    $(date +%H:%M) $status ($submission)"; last="$status"; fi
+  done
+  if [[ "$status" != "Accepted" ]]; then
+    xcrun notarytool log "$submission" --keychain-profile "$notary_profile" 2>&1 | sed 's/^/    /' || true
+    echo "NOTARIZE_FAILED: Apple answered \"$status\"; not packaging" >&2
+    exit 1
+  fi
   echo "==> stapling the notarization ticket"
   xcrun stapler staple "$app" | sed 's/^/    /'
   # The gate that used to be only a report: a Developer ID build has to be
