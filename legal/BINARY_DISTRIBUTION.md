@@ -7,10 +7,11 @@ who receives one may rely on. An engineering receipt, not legal advice.
 
 `ReadEase.app` is built by `scripts/build-release-app.sh`: a Tauri shell (Rust
 host, WebKit view) with the Python speech engine frozen by PyInstaller as a
-sidecar at `Contents/Resources/engine/`. It is signed ad hoc and is not
-notarized; macOS asks once, on first launch, and the READMEs say how to
-answer. It links no Qt, no PySide and no copyleft library that would reach
-the binary.
+sidecar at `Contents/Resources/engine/`. From 0.1.2 it is signed with the
+owner's Apple Developer ID Application certificate, with the hardened runtime
+and a trusted timestamp on every Mach-O, notarized by Apple and stapled; the
+build script refuses to package a bundle Gatekeeper does not accept. It links
+no Qt, no PySide and no copyleft library that would reach the binary.
 
 ## Licences travel with the app
 
@@ -58,8 +59,12 @@ and `app/src-tauri/Cargo.lock` as the two locks. `scripts/build-release-app.sh`
 is the whole path: sidecar, host, payload, provenance, signing, verification,
 zip.
 
-## Not done, on purpose
+## Signing and notarization
 
-Developer ID signing and notarization. The owner accepted one Control-click →
-Open on first launch as the cost of not buying a certificate. If that changes,
-it is a separate lane with its own gates; nothing above depends on it.
+Done since 0.1.2 (15/09/2026). The Developer ID identity lives only in the
+owner's login keychain and the notary credentials only in a keychain profile
+(`readease-notary`); neither is in the repository. A build on a Mac without
+that identity falls back to an ad-hoc signature and says so - installable,
+but macOS asks once on first launch. The sidecar's two hardened-runtime
+exceptions are listed, with the reason for each, in
+`app/src-tauri/entitlements/engine.plist`; the host app has none.

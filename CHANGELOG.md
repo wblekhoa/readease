@@ -4,6 +4,29 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## 0.1.2
+
+Signed and notarized: the app opens like any other. Installs over 0.1.1.
+
+- Releases are signed with an Apple Developer ID certificate (hardened
+  runtime, trusted timestamp on every binary) and notarized by Apple, and
+  the build refuses to package anything Gatekeeper would not accept. No
+  more right-click → Open; upgrading from 0.1.1 asks for the Accessibility
+  permission once more, then it survives updates.
+- Import by dropping PDF or EPUB files from Finder onto the window: the
+  whole window becomes the target, says how many books are in hand, and
+  turns red when nothing dragged is a book. The open panel takes several
+  files at once. A dropped batch reports what was added, what was already
+  there, and what failed.
+- Books are imported by path: the file no longer travels through the
+  interface (a 46 MB EPUB froze it for about a second), and the engine's
+  200 MiB limit is reachable.
+- The window opens in about a tenth of a second instead of three: the
+  voice list no longer loads the model, the model warms in the background,
+  and paid-voice catalogues are fetched off the request path and cached.
+- Two glyphs from the design system's AI set: the voice-settings button
+  and the read button.
+
 ## 0.1.1
 
 Installs over 0.1.0; the library is carried forward on first launch.

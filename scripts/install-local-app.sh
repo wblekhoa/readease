@@ -2,9 +2,10 @@
 # Đưa bản vừa build vào ~/Applications, và ký nó bằng chứng chỉ CỐ ĐỊNH của máy
 # này để quyền Trợ năng không rụng sau mỗi lần build.
 #
-# Đây là đường CÀI CỤC BỘ, không phải đường phát hành. scripts/build-release-app.sh
-# cố ý vẫn ký ad-hoc: thứ rời khỏi máy này không nên mang một chứng chỉ mà chỉ
-# máy này tin.
+# Đây là đường CÀI CỤC BỘ, không phải đường phát hành. Từ 15/09/2026 bản build
+# đã mang chữ ký Developer ID + vé notarize; script này giữ nguyên chữ ký đó.
+# Chứng chỉ máy "ReadEase Dev" chỉ còn dùng cho bản build ad-hoc (không có
+# Developer ID trong keychain, hoặc READEASE_ADHOC=1).
 #
 # Không có chứng chỉ thì vẫn cài được, chỉ là ad-hoc như cũ (và quyền lại rụng
 # sau mỗi build) — chạy ./scripts/make-dev-cert.sh một lần để hết chuyện đó.
@@ -31,9 +32,14 @@ if [[ -d "$dst" ]]; then
 fi
 ditto "$src" "$dst"
 
+# Bản build đã ký Developer ID (và notarize) thì giữ nguyên chữ ký: designated
+# requirement của nó đã bám chứng chỉ Apple, ổn định qua mọi lần build, và ký
+# đè bằng chứng chỉ máy sẽ xoá mất vé notarize. Chỉ bản ad-hoc mới cần ký lại.
+if codesign -dv "$dst" 2>&1 | grep -q "Authority=Developer ID Application"; then
+  echo "giữ chữ ký Developer ID của bản build (không ký lại)"
 # Ký SAU khi chép, vì ditto giữ nguyên chữ ký nguồn (ad-hoc). `--identifier` ghim
 # định danh bundle để designated requirement không phụ thuộc vào tên file.
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "\"$identity\""; then
+elif security find-identity -v -p codesigning 2>/dev/null | grep -q "\"$identity\""; then
   codesign --force --deep --sign "$identity" --identifier "$bundle_id" "$dst"
   echo "ký bằng \"$identity\""
 else

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Hardened-runtime exceptions for the frozen Python sidecar, and only for
+     it. The host app gets none. A PyInstaller bundle loads its own extension
+     modules and ONNX Runtime through dlopen and uses libffi for ctypes, which
+     the hardened runtime forbids without these two. Measured on the 0.1.2
+     build, 15/09: with them the packaged engine loads the model and reads;
+     without them it dies at import. No JIT, no dyld variables, no Apple
+     events - nothing here needs those. -->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>

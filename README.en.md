@@ -25,10 +25,8 @@ ReadEase is a local-first macOS app that reads text-based PDFs, reflowable EPUBs
 
 Download `ReadEase-<version>-arm64.zip`, unzip it, and **drag `ReadEase.app` into Applications**. No Terminal, no tools to install.
 
-> [!IMPORTANT]
-> **macOS will block the first launch** - this build carries no Apple certificate, so your Mac does not know who made it. Right-click ReadEase.app → **Open** → **Open** again. Once only.
->
-> If you double-clicked and see **Move to Trash**, do not click it: click **Done**, then go to **System Settings → Privacy & Security → Security → Open Anyway**. Details in [INSTALL.en.md](INSTALL.en.md).
+> [!NOTE]
+> Releases are signed with an Apple Developer ID certificate and notarized by Apple, so the app opens like any other. Full guide, including the older 0.1.0/0.1.1 builds that macOS blocks: [INSTALL.en.md](INSTALL.en.md).
 
 ## System requirements
 

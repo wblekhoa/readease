@@ -119,12 +119,19 @@ class PackagePreparationTests(unittest.TestCase):
             self.assertIn(phrase.casefold(), guide.casefold())
         self.assertIn("INSTALL.md", guide)
         self.assertIn("README.en.md", guide)
+        # The build is notarized, so the guide promises an ordinary first
+        # launch and a way to check it - and still tells the person holding
+        # a 0.1.0/0.1.1 zip what macOS will say and what to click.
         for phrase in (
+            "Developer ID",
+            "notarize",
+            "spctl -a -t exec -vv",
             "Open Anyway",
             "Move to Trash",
             "Privacy & Security",
         ):
             self.assertIn(phrase.casefold(), install_guide.casefold())
+        self.assertNotIn("không mua chứng chỉ", install_guide)
         for phrase in (
             "Download ReadEase",
             "Apple Silicon",
@@ -134,10 +141,14 @@ class PackagePreparationTests(unittest.TestCase):
         ):
             self.assertIn(phrase.casefold(), english_guide.casefold())
         for phrase in (
+            "Developer ID",
+            "notarized",
+            "spctl -a -t exec -vv",
             "Open Anyway",
             "Move to Trash",
         ):
             self.assertIn(phrase.casefold(), english_install_guide.casefold())
+        self.assertNotIn("no Apple Developer certificate", english_install_guide)
         for dependency in ("VieNeu", "pypdfium2", "ONNX Runtime", "Tauri", "PyInstaller"):
             self.assertIn(dependency, notices)
 

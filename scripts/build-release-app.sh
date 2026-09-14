@@ -23,8 +23,15 @@
 # signature and its symlinks. A plain zip round-trip can invalidate the
 # signature it just took a script to earn.
 #
-# This does not sign with a Developer ID and does not notarize - the owner
-# decided against both. One Open Anyway is the accepted cost.
+# Signing, two ways. With a "Developer ID Application" identity in the login
+# keychain (the owner's, since 15/09/2026) the bundle is signed inside-out
+# with the hardened runtime and a trusted timestamp, sent to Apple's notary
+# service through the keychain profile READEASE_NOTARY_PROFILE (default
+# `readease-notary`, made once with `xcrun notarytool store-credentials`),
+# stapled, and then REQUIRED to pass Gatekeeper before it is packaged. Without
+# such an identity - a contributor's Mac - it falls back to the ad-hoc signing
+# above, which is installable but not shareable without one Open Anyway.
+# READEASE_ADHOC=1 forces the fallback on the owner's Mac too.
 set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -90,8 +97,35 @@ echo "==> dropping the ONNX Runtime dylib nothing links"
 echo "==> stamping the build id ($build) into CFBundleVersion"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $version+$build" "$app/Contents/Info.plist"
 
-echo "==> re-signing ad hoc"
-codesign --force --deep --sign - "$app"
+developer_id="$(security find-identity -v -p codesigning 2>/dev/null \
+  | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)"
+notary_profile="${READEASE_NOTARY_PROFILE:-readease-notary}"
+if [[ "${READEASE_ADHOC:-0}" == "1" ]]; then developer_id=""; fi
+
+if [[ -n "$developer_id" ]]; then
+  echo "==> signing with \"$developer_id\" (hardened runtime, timestamp)"
+  sign=(codesign --force --options runtime --timestamp --sign "$developer_id")
+  # Inside-out, never --deep: every Mach-O the sidecar carries gets its own
+  # signature first, then the sidecar executable with its entitlements, then
+  # the bundle, which seals the host executable and everything under it.
+  # Found by magic number rather than by suffix - PyInstaller ships
+  # extension modules and dylibs under several names, and one missed file
+  # is a notarization rejection twenty minutes later.
+  engine_dir="$app/Contents/Resources/engine"
+  signed=0
+  while IFS= read -r -d '' file; do
+    case "$(xxd -p -l 4 "$file" 2>/dev/null)" in
+      cffaedfe|cefaedfe|feedface|feedfacf|cafebabe|bebafeca)
+        "${sign[@]}" "$file" 2>/dev/null; signed=$((signed + 1)) ;;
+    esac
+  done < <(find "$engine_dir/_internal" -type f ! -name '*.py' ! -name '*.pyc' -print0)
+  "${sign[@]}" --entitlements app/src-tauri/entitlements/engine.plist "$engine_dir/readease-engine"
+  echo "    $((signed + 1)) Mach-O files in the sidecar"
+  "${sign[@]}" "$app"
+else
+  echo "==> re-signing ad hoc (no Developer ID identity in the keychain)"
+  codesign --force --deep --sign - "$app"
+fi
 
 echo "==> verifying the signature"
 if ! codesign --verify --deep --strict "$app"; then
@@ -99,10 +133,41 @@ if ! codesign --verify --deep --strict "$app"; then
   exit 1
 fi
 
-# `spctl` rejects an app that is merely un-notarized, which is expected and
-# fine. It is reported, not gated: gating on it would demand notarization.
-echo "==> Gatekeeper says (rejection here is normal, Open Anyway clears it):"
-spctl -a -t exec -vv "$app" 2>&1 | sed 's/^/    /' || true
+if [[ -n "$developer_id" ]]; then
+  # The notary service wants the bundle as an archive; ditto keeps the seal.
+  # `--wait` blocks until Apple answers, usually a few minutes. A rejection
+  # prints Apple's own log - the file and the reason - and stops here: an
+  # app that failed notarization must not be packaged as if it had passed.
+  echo "==> notarizing through profile \"$notary_profile\""
+  notary_dir="$(mktemp -d)"
+  ditto -c -k --keepParent "$app" "$notary_dir/ReadEase.zip"
+  if ! xcrun notarytool submit "$notary_dir/ReadEase.zip" \
+        --keychain-profile "$notary_profile" --wait --timeout 30m \
+        | tee "$notary_dir/submit.log" | sed 's/^/    /'; then
+    echo "NOTARIZE_FAILED: notarytool did not complete" >&2; rm -rf "$notary_dir"; exit 1
+  fi
+  if ! grep -q "status: Accepted" "$notary_dir/submit.log"; then
+    submission="$(sed -n 's/^ *id: //p' "$notary_dir/submit.log" | head -1)"
+    [[ -n "$submission" ]] && xcrun notarytool log "$submission" --keychain-profile "$notary_profile" | sed 's/^/    /' || true
+    echo "NOTARIZE_FAILED: Apple did not accept the bundle; not packaging" >&2
+    rm -rf "$notary_dir"; exit 1
+  fi
+  rm -rf "$notary_dir"
+  echo "==> stapling the notarization ticket"
+  xcrun stapler staple "$app" | sed 's/^/    /'
+  # The gate that used to be only a report: a Developer ID build has to be
+  # accepted by Gatekeeper outright, or the whole point was missed.
+  echo "==> Gatekeeper"
+  if ! spctl -a -t exec -vv "$app" 2>&1 | tee /dev/stderr | grep -q "accepted"; then
+    echo "GATEKEEPER_FAILED: a notarized bundle should be accepted; not packaging" >&2
+    exit 1
+  fi
+else
+  # `spctl` rejects an app that is merely un-notarized, which is expected and
+  # fine for the ad-hoc fallback. Reported, not gated.
+  echo "==> Gatekeeper says (rejection here is normal, Open Anyway clears it):"
+  spctl -a -t exec -vv "$app" 2>&1 | sed 's/^/    /' || true
+fi
 
 # Every Mach-O in the bundle must run on the macOS the plist claims. A single
 # dylib built against a newer SDK floor turns "macOS 15+" into a launch

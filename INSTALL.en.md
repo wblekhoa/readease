@@ -23,23 +23,13 @@ Open the [**Releases**](https://github.com/wblekhoa/readease/releases/latest) pa
 
 Drag `ReadEase.app` into **Applications** (or `~/Applications`). That is the whole install. No Terminal, nothing else to set up.
 
-### Step 3 — First launch: get past the macOS warning
+### Step 3 — First launch
 
-This build carries **no Apple Developer certificate** and is not notarized, so the first launch is blocked with *"Apple could not verify ReadEase is free of malware"*. That is Gatekeeper's message for apps from unregistered developers, not a broken app. You do this **once**.
+Double-click `ReadEase.app` and use it like any other app. From 0.1.2 the build is signed with an Apple Developer ID certificate and notarized by Apple, so macOS opens it without a dialog. The first launch can take a few seconds while macOS checks the signature.
 
-**Quick way:** **right-click** (or Control-click) `ReadEase.app` → **Open** → click **Open** again in the dialog.
+> **0.1.0 or 0.1.1, downloaded before 15 September 2026,** carried no certificate, so macOS blocks it with *"Apple could not verify ReadEase is free of malware"*. The simplest fix is the current build from the Releases page. To open the old one anyway: **right-click** `ReadEase.app` → **Open** → **Open**. If you double-clicked and see **Move to Trash**, click **Done**, open **System Settings → Privacy & Security**, scroll to **Security** and click **Open Anyway**. That makes an exception for that one app only.
 
-**If you double-clicked** and the dialog offers **Move to Trash**:
-
-1. Click **Done**. **Do not click Move to Trash.**
-2. Open **System Settings** → **Privacy & Security**.
-3. Scroll to **Security** and find *"ReadEase" was blocked…*
-4. Click **Open Anyway** and confirm with Touch ID or your login password.
-5. Open the app again; when asked once more, click **Open**.
-
-**Open Anyway** is shown for about an hour after the blocked attempt. If it is missing, double-click the app once more and return to **Privacy & Security**. Apple documents the same flow in [Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/mh40616/mac). This makes an exception for this one app; it does not switch Gatekeeper off.
-
-> A dialog saying the app **"is damaged and can't be opened"** is a different thing: the zip was altered after download (a browser or antivirus rewrote it). Delete it and download again from the official Releases page; do not reach for `xattr` or turn security off.
+> A dialog saying the app **"is damaged and can't be opened"** means the zip was altered after download (a browser or antivirus rewrote it). Delete it and download again from the official Releases page; do not reach for `xattr` or turn security off.
 
 ### Step 4 — Prepare the voice
 
@@ -51,7 +41,7 @@ To select text in a web page, PDF, Apple Books… and press a shortcut to hear i
 
 ## Upgrading, removing, where your data lives
 
-- **Upgrade:** download the new zip and drag `ReadEase.app` over the old one. Books, progress, notes and downloaded voices **are kept** — they live outside the app in `~/Library/Application Support/VieNeu Reader/`. The new build is a new download, so macOS asks once more (right-click → Open), and because the app is ad-hoc signed the **Accessibility** permission has to be enabled again for it if you use Read selection.
+- **Upgrade:** download the new zip and drag `ReadEase.app` over the old one. Books, progress, notes and downloaded voices **are kept** — they live outside the app in `~/Library/Application Support/VieNeu Reader/`. Upgrading from 0.1.0/0.1.1 to 0.1.2 asks you to enable **Accessibility** once more (the app's signature changed from ad-hoc to Developer ID); from 0.1.2 on the permission survives updates.
 - **Remove:** drag `ReadEase.app` to the Trash. To remove books and voices too, delete that folder as well.
 - **Cost:** none. The on-device voice is free for good. Only if **you** enter your own OpenAI or ElevenLabs key to use a paid AI voice do you pay that provider, at the price shown in the read button; the app takes nothing.
 
@@ -59,7 +49,7 @@ To select text in a web page, PDF, Apple Books… and press a shortcut to hear i
 
 | You see | It means | Do this |
 | --- | --- | --- |
-| "Apple could not verify…" | Gatekeeper; the app is not registered with Apple | Step 3 |
+| "Apple could not verify…" | An old build (before 0.1.2) without a certificate | Get the current build, or see the note in Step 3 |
 | "…is damaged and can't be opened" | The zip was altered after download | Delete and download again |
 | Will not open on an Intel Mac | This build is Apple Silicon only | Not supported yet |
 | "Requires macOS 15" | Older macOS | Update macOS |
@@ -68,6 +58,6 @@ To select text in a web page, PDF, Apple Books… and press a shortcut to hear i
 
 Still stuck? Open an issue at <https://github.com/wblekhoa/readease/issues> with your macOS version and the exact text macOS showed.
 
-## Why the first-launch warning at all?
+## How is the app checked?
 
-Opening like any other app, with no Open Anyway step, needs an Apple Developer ID signature and Apple notarization. ReadEase is a free personal project and has not done that; in exchange you have the full source to check for yourself that the app sends your books nowhere.
+From 0.1.2 every release is signed with the author's Apple Developer ID certificate and notarized by Apple (Apple scans it for malware and issues a ticket that is stapled to the app). You can check for yourself: in Terminal, run `spctl -a -t exec -vv /Applications/ReadEase.app`; the answer should contain `accepted` and `Notarized Developer ID`. The source stays public so anyone can verify that the app sends your books nowhere.

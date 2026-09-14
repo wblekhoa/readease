@@ -25,10 +25,8 @@
 
 Tải file `ReadEase-<phiên bản>-arm64.zip`, giải nén, rồi **kéo `ReadEase.app` vào thư mục Applications**. Không cần Terminal, không cần cài công cụ gì.
 
-> [!IMPORTANT]
-> **Lần mở đầu tiên macOS sẽ chặn** — bản này không mua chứng chỉ Apple nên máy chưa biết ai làm ra nó. Bấm chuột phải vào ReadEase.app → **Open** → **Open** lần nữa. Chỉ phải làm một lần.
->
-> Nếu bạn bấm đúp và thấy nút **Move to Trash**, đừng bấm: bấm **Done**, rồi vào **System Settings → Privacy & Security → Security → Open Anyway**. Chi tiết ở [INSTALL.md](INSTALL.md).
+> [!NOTE]
+> Bản phát hành được ký bằng chứng chỉ Apple Developer ID và đã qua notarize của Apple, nên mở như mọi app khác. Hướng dẫn đầy đủ (kể cả cho bản cũ 0.1.0/0.1.1 bị macOS chặn) ở [INSTALL.md](INSTALL.md).
 
 ### Máy của bạn cần có gì?
 
@@ -159,8 +157,8 @@ ReadEase — Thư Âm is a local-first macOS app that reads PDFs, EPUBs and past
 
 Download `ReadEase-<version>-arm64.zip`, unzip it and drag `ReadEase.app` into Applications. No Terminal, nothing to install.
 
-> [!IMPORTANT]
-> macOS blocks the first launch because this build carries no Apple certificate. Right-click `ReadEase.app` → **Open** → **Open**. If you double-clicked and see **Move to Trash**, click **Done** instead, then **System Settings → Privacy & Security → Security → Open Anyway**. Full guide: [INSTALL.en.md](INSTALL.en.md).
+> [!NOTE]
+> Releases are signed with an Apple Developer ID certificate and notarized by Apple, so the app opens like any other. Full guide, including the older 0.1.0/0.1.1 builds that macOS blocks: [INSTALL.en.md](INSTALL.en.md).
 
 Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, about 220 MB for the app plus a one-time voice download (~330 MB Standard or ~625 MB Highest), and internet only for those two downloads. No API key, no account, no cost. In the app, click **Set up voice** once.
 
