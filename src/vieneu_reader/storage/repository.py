@@ -16,21 +16,87 @@ from vieneu_reader.domain.prosody import ends_sentence
 from .errors import RepositoryCorruptionError, RepositoryError
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# The two tables that hold a reader's DECISIONS about highlights: "this one
+# is deleted for good" and "this one carries my words, not Apple Books'".
+# Since v2 neither refers to `books`: a decision is keyed by a content-derived
+# book id and has to outlive the book row, because removing a book and
+# importing the same file again gives the same id - and a re-sync must still
+# honour what the reader decided. (A plain REFERENCES without CASCADE would
+# be worse than either: with foreign keys on, `delete_book` would then
+# refuse to delete any book that has a decision.)
+_DECISION_TABLES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "annotations_forgotten": (
+        """
+        CREATE TABLE IF NOT EXISTS annotations_forgotten (
+            book_id TEXT NOT NULL,
+            annotation_id TEXT NOT NULL,
+            forgotten_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (book_id, annotation_id)
+        )
+        """,
+        ("book_id", "annotation_id", "forgotten_at"),
+    ),
+    "annotations_edited": (
+        """
+        CREATE TABLE IF NOT EXISTS annotations_edited (
+            book_id TEXT NOT NULL,
+            annotation_id TEXT NOT NULL,
+            note TEXT,
+            edited_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (book_id, annotation_id)
+        )
+        """,
+        ("book_id", "annotation_id", "note", "edited_at"),
+    ),
+}
+
+
+def _decisions_outlive_the_book(connection: sqlite3.Connection) -> None:
+    """v1 -> v2: rebuild the two decision tables without `REFERENCES
+    books(id) ON DELETE CASCADE`.
+
+    SQLite cannot alter a foreign key away, so each table is rebuilt: new
+    shape beside the old, rows copied by name, old dropped, new renamed.
+    Runs inside the migration's transaction and before `PRAGMA foreign_keys`
+    is switched on, so nothing here trips a constraint. A store that never
+    had one of these tables (a v1 library from before highlights existed)
+    has nothing to rebuild; `_create_schema` creates the v2 shape after this.
+    Re-running on a table that already has the v2 shape is harmless - the
+    tests lean on that.
+    """
+
+    for table, (ddl, columns) in _DECISION_TABLES.items():
+        present = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table,),
+        ).fetchone()
+        if present is None:
+            continue
+        rebuilt = f"{table}_v2"
+        connection.execute(f"DROP TABLE IF EXISTS {rebuilt}")
+        connection.execute(ddl.replace(f"IF NOT EXISTS {table}", f"{rebuilt}"))
+        names = ", ".join(columns)
+        connection.execute(
+            f"INSERT INTO {rebuilt}({names}) SELECT {names} FROM {table}"
+        )
+        connection.execute(f"DROP TABLE {table}")
+        connection.execute(f"ALTER TABLE {rebuilt} RENAME TO {table}")
+
 
 # One step per version: key `n` takes a store at version n-1 to version n,
 # and they run in order.
 #
-# Empty on purpose, and that is not the same as absent. Everything added so
-# far - annotations, annotations_forgotten, annotations_edited,
-# apple_books_links - was ADDITIVE,
-# created by `CREATE TABLE IF NOT EXISTS` in `_create_schema`, which an older
-# build simply ignores; none of it needed a version bump. What was missing is
-# what happens the FIRST time a change is not additive, and the answer used
-# to be: every library already on disk becomes "Unsupported". Now the runner
-# is here and tested, so the bump that finally needs it is a one-line entry
-# rather than a migration written under pressure.
-_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {}
+# Everything before v2 - annotations, the decision tables, apple_books_links,
+# book_languages - was ADDITIVE, created by `CREATE TABLE IF NOT EXISTS` in
+# `_create_schema`, which an older build simply ignores; none of it needed a
+# version bump. v2 is the first change that is not additive, and the reason
+# the runner below was built and tested before it was needed: the entry is
+# one line, not a migration written under pressure.
+_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
+    2: _decisions_outlive_the_book,
+}
 
 
 @contextmanager
@@ -423,27 +489,10 @@ class LibraryRepository:
                 )
                 """
             )
-            self._connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS annotations_forgotten (
-                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-                    annotation_id TEXT NOT NULL,
-                    forgotten_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (book_id, annotation_id)
-                )
-                """
-            )
-            self._connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS annotations_edited (
-                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-                    annotation_id TEXT NOT NULL,
-                    note TEXT,
-                    edited_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (book_id, annotation_id)
-                )
-                """
-            )
+            # The reader's decisions about highlights; see _DECISION_TABLES
+            # for why these, alone, do not refer to `books`.
+            for ddl, _columns in _DECISION_TABLES.values():
+                self._connection.execute(ddl)
             self._connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS apple_books_links (
@@ -456,7 +505,7 @@ class LibraryRepository:
             # what the text looked like. Its own table rather than a column on
             # `books`: additive, so an older build opens this library and
             # simply does not see it - the same road annotations and the Apple
-            # Books links took, and the reason SCHEMA_VERSION is still 1.
+            # Books links took. (v2 came from the decision tables, not here.)
             #
             # A row exists only where somebody DISAGREED with the detector, so
             # the table stays empty for almost every library, and "no row" is

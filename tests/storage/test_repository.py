@@ -35,8 +35,9 @@ class LibraryRepositoryTests(unittest.TestCase):
         self.assertTrue(self.paths.models.is_dir())
         self.assertEqual(self.paths.root.stat().st_mode & 0o077, 0)
 
-    def test_repository_creates_schema_version_one(self):
-        self.assertEqual(self.repository.schema_version(), 1)
+    def test_repository_creates_the_current_schema_version(self):
+        self.assertEqual(self.repository.schema_version(), SCHEMA_VERSION)
+        self.assertEqual(SCHEMA_VERSION, 2)
         self.assertEqual(self.repository.count_books(), 0)
         self.assertEqual(self.paths.database.stat().st_mode & 0o077, 0)
 
@@ -132,9 +133,9 @@ class LibraryRepositoryTests(unittest.TestCase):
 
     def test_the_language_table_did_not_move_the_schema_version(self):
         # Additive, like the annotations tables and the Apple Books links: an
-        # older ReadEase opens this library and simply does not see it.
+        # older ReadEase opens this library and simply does not see it. The
+        # version is 2 because of the decision tables, not because of this.
         self.assertEqual(self.repository.schema_version(), SCHEMA_VERSION)
-        self.assertEqual(SCHEMA_VERSION, 1)
 
     def test_partial_meta_without_version_is_rejected_without_bootstrap(self):
         database = self.paths.root / "partial-meta.sqlite3"
@@ -614,4 +615,112 @@ class UpgradingOverAnOlderInstallTests(unittest.TestCase):
         self.assertNotIn("half", tables)
         with closing(LibraryRepository(self.database)) as repository:
             self.assertIsNotNone(repository.get_book(book_id))
+
+
+_V1_DECISION_TABLES = (
+    """
+    CREATE TABLE annotations_forgotten (
+        book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+        annotation_id TEXT NOT NULL,
+        forgotten_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (book_id, annotation_id)
+    )
+    """,
+    """
+    CREATE TABLE annotations_edited (
+        book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+        annotation_id TEXT NOT NULL,
+        note TEXT,
+        edited_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (book_id, annotation_id)
+    )
+    """,
+)
+
+
+class TheFirstRealMigrationTests(unittest.TestCase):
+    """v1 -> v2: the reader's decisions stop dying with the book row.
+
+    The ladder above is exercised with stand-in steps. This is the one step
+    that ships, run against a store shaped exactly as 0.1.0 wrote it - the
+    two decision tables carry `ON DELETE CASCADE` and there are rows in them.
+    """
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.database = Path(self.temp_dir.name) / "library.sqlite3"
+        with closing(LibraryRepository(self.database)) as repository:
+            self.book = sample_book()
+            repository.add_book(self.book, self.database.parent / "b.epub")
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute("DROP TABLE annotations_forgotten")
+            connection.execute("DROP TABLE annotations_edited")
+            for ddl in _V1_DECISION_TABLES:
+                connection.execute(ddl)
+            connection.execute(
+                "INSERT INTO annotations_forgotten(book_id, annotation_id) "
+                "VALUES (?, 'hl-2')",
+                (self.book.id,),
+            )
+            connection.execute(
+                "INSERT INTO annotations_edited(book_id, annotation_id, note) "
+                "VALUES (?, 'hl-1', 'Lời của tôi')",
+                (self.book.id,),
+            )
+            connection.execute(
+                "UPDATE app_meta SET value = '1' WHERE key = 'schema_version'"
+            )
+            connection.commit()
+
+    def _decisions(self) -> tuple[set[str], dict[str, str]]:
+        with closing(sqlite3.connect(self.database)) as connection:
+            forgotten = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT annotation_id FROM annotations_forgotten"
+                )
+            }
+            edited = dict(
+                connection.execute(
+                    "SELECT annotation_id, note FROM annotations_edited"
+                ).fetchall()
+            )
+        return forgotten, edited
+
+    def _table_sql(self, table: str) -> str:
+        with closing(sqlite3.connect(self.database)) as connection:
+            return connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+                (table,),
+            ).fetchone()[0]
+
+    def test_a_v1_store_arrives_at_v2_with_every_decision_still_there(self):
+        with closing(LibraryRepository(self.database)) as repository:
+            self.assertEqual(repository.schema_version(), 2)
+            self.assertIsNotNone(repository.get_book(self.book.id))
+
+        self.assertEqual(self._decisions(), ({"hl-2"}, {"hl-1": "Lời của tôi"}))
+        for table in ("annotations_forgotten", "annotations_edited"):
+            self.assertNotIn("REFERENCES", self._table_sql(table))
+
+    def test_after_v2_removing_the_book_leaves_its_decisions_in_place(self):
+        with closing(LibraryRepository(self.database)) as repository:
+            self.assertTrue(repository.delete_book(self.book.id))
+            self.assertIsNone(repository.get_book(self.book.id))
+
+        self.assertEqual(self._decisions(), ({"hl-2"}, {"hl-1": "Lời của tôi"}))
+
+    def test_a_v1_store_from_before_highlights_existed_still_upgrades(self):
+        # No decision tables at all: nothing to rebuild, and _create_schema
+        # adds the v2 shape afterwards.
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute("DROP TABLE annotations_forgotten")
+            connection.execute("DROP TABLE annotations_edited")
+            connection.commit()
+
+        with closing(LibraryRepository(self.database)) as repository:
+            self.assertEqual(repository.schema_version(), 2)
+            repository.forget_annotation(self.book.id, "hl-9")
+        self.assertEqual(self._decisions()[0], {"hl-9"})
 

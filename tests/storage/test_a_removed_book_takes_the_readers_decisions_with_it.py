@@ -8,39 +8,25 @@ remembers the reader's own words so the sync cannot overwrite them with the
 ones the highlight arrived with. Both mechanisms are deliberate; their
 docstrings in `repository.py` say why.
 
-Both tables are `REFERENCES books(id) ON DELETE CASCADE`. So removing the
-BOOK deletes the reader's DECISIONS about its highlights - not just the book.
-Measured 10/09 on a temporary data root, importing the same file again (the
-id is content-derived, so it is the same book) and syncing once:
+Until schema v2 both tables were `REFERENCES books(id) ON DELETE CASCADE`,
+so removing the BOOK deleted the reader's DECISIONS about its highlights -
+not just the book. Measured 10/09 on a temporary data root, importing the
+same file again (the id is content-derived, so it is the same book) and
+syncing once:
 
     before  hl-1 -> 'LỜI CỦA TÔI, tôi tự viết'   hl-2 -> gone
     after   hl-1 -> 'ghi chú GỐC từ Apple Books'  hl-2 -> back
 
 The reader asked to remove a book. They did not ask to un-delete a highlight
 they had deleted for good, and they certainly did not ask to have their own
-note replaced by Apple Books' text. Nothing on screen said either would
-happen; `library.remove_confirm` now names the cost, which keeps the app
-honest but does not make the promise true again.
+note replaced by Apple Books' text.
 
-**These tests are RED on purpose and opt-in**, so the suite neither pretends
-the gap is fixed nor goes red on every run for something only the owner can
-authorise. Run them with:
-
-    VIENEU_READER_KNOWN_GAPS=1 .venv/bin/python -m unittest \
-        tests.storage.test_a_removed_book_takes_the_readers_decisions_with_it
-
-The fix is to drop `ON DELETE CASCADE` from those two tables so a decision
-outlives the book row it is about. SQLite cannot ALTER a foreign key away, so
-it is a table rebuild - `SCHEMA_VERSION` 1 -> 2 and the FIRST entry ever put
-in `_MIGRATIONS`, which is empty today. The ladder that would run it is built
-and tested (one transaction, manual BEGIN so DDL rolls back, refuse-newer),
-but has never carried a real library. That is a migration, and migrations are
-the owner's call - hence red-and-parked rather than fixed here.
-
-When it lands, delete the skip and these become ordinary tests.
+Schema v2 (the first entry in `_MIGRATIONS`) rebuilds both tables without the
+foreign key, so a decision outlives the book row it is about. These tests
+prove the promise through the service: remove, import the same file, sync.
+The migration of a real v1 store is proven in `test_repository.py`.
 """
 
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -51,8 +37,6 @@ from vieneu_reader.config import AppPaths
 from vieneu_reader.importers.service import LibraryService
 from vieneu_reader.storage.repository import LibraryRepository, StoredAnnotation
 
-KNOWN_GAPS = os.environ.get("VIENEU_READER_KNOWN_GAPS") == "1"
-
 #: What Apple Books hands over, both times it is asked.
 APPLE_BOOKS_SAYS = (
     ("hl-1", "câu được tô", "ghi chú gốc từ Apple Books"),
@@ -62,7 +46,6 @@ APPLE_BOOKS_SAYS = (
 MY_OWN_WORDS = "Lời của tôi, tôi tự viết."
 
 
-@unittest.skipUnless(KNOWN_GAPS, "known gap, owner decision pending - see docstring")
 class ARemovedBookTakesTheReadersDecisionsWithItTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = TemporaryDirectory()
