@@ -35,7 +35,7 @@ ditto "$src" "$dst"
 # Bản build đã ký Developer ID (và notarize) thì giữ nguyên chữ ký: designated
 # requirement của nó đã bám chứng chỉ Apple, ổn định qua mọi lần build, và ký
 # đè bằng chứng chỉ máy sẽ xoá mất vé notarize. Chỉ bản ad-hoc mới cần ký lại.
-if codesign -dv "$dst" 2>&1 | grep -q "Authority=Developer ID Application"; then
+if codesign -dvv "$dst" 2>&1 | grep -q "Authority=Developer ID Application"; then
   echo "giữ chữ ký Developer ID của bản build (không ký lại)"
 # Ký SAU khi chép, vì ditto giữ nguyên chữ ký nguồn (ad-hoc). `--identifier` ghim
 # định danh bundle để designated requirement không phụ thuộc vào tên file.
