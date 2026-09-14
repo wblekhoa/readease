@@ -172,10 +172,9 @@ class PackagePreparationTests(unittest.TestCase):
         self.assertNotIn("uvicorn.run", joined)
         self.assertNotIn(".listen(", joined)
         # The self-check used to be reachable through a `VIENEU_READER_
-        # TTS_SELF_CHECK` env var read by the Qt bootstrapper. That
-        # bootstrapper is gone; `speech/self_check.py` and its tests are
-        # not, but nothing in the shipping app calls them, so there is no
-        # longer a hook here to pin. See khe hở #11 in the campaign sổ.
+        # TTS_SELF_CHECK` env var read by the Qt bootstrapper. Both the
+        # bootstrapper and the self-check module are gone now, so there is
+        # no longer a hook here to pin.
 
         # A key belongs to the person, never to the build. Any literal shaped
         # like one of the providers' credentials is a key that shipped.

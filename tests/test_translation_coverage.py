@@ -85,10 +85,6 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("identity.py", "ReadEase — Thư Âm"),
         ("provenance.py", "ReadEase — Thư Âm"),
         ("provenance.py", REQUIRED_NOTICE),
-        (
-            "speech/self_check.py",
-            "Xin chào. ReadEase đang kiểm tra giọng đọc tiếng Việt.",
-        ),
         # Same class: the two sentences the voice SAYS between sentences of
         # the book, in the language of the book. They carry their English on
         # the next line of the same dict, and

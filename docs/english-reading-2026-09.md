@@ -102,7 +102,7 @@ Bundle đã mang sẵn `onnxruntime` (44 MB), nên thêm một model ONNX chỉ 
 | OpenAI / ElevenLabs (BYOK) | dịch vụ | 0 | của họ | **Đã chạy hôm nay** |
 
 **Bẫy**: Piper buộc espeak-ng GPL vào bundle. Với bản GitHub thì còn bàn được; với bản lên App Store/Setapp
-(`direction-commercial-2026-09.md`) thì GPL trong một app đóng gói là ngõ cụt. Kokoro sạch giấy phép hơn
+(ghi chú định hướng thương mại giữ ngoài repo) thì GPL trong một app đóng gói là ngõ cụt. Kokoro sạch giấy phép hơn
 **nếu** khâu G2P của nó không kéo espeak-ng theo — đó là câu hỏi phải trả lời trước, không phải sau.
 
 **Việc kế tiếp, theo thứ tự:**

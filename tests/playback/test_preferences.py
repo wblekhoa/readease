@@ -3,7 +3,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from vieneu_reader.integrations.selection_shortcut import ShortcutPreferenceStore
 from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
 from vieneu_reader.playback.preferences import (
     DEFAULT_RATE,
@@ -34,14 +33,11 @@ class VoicePreferenceStoreTests(unittest.TestCase):
         self.assertEqual(reopened.load_rate(), 1.25)
 
     def test_saving_the_voice_leaves_the_other_preferences_alone(self):
-        shortcut = ShortcutPreferenceStore(self.path)
-        shortcut.save(shortcut.load())
         VoiceQualityPreferenceStore(self.path).save("fp32")
 
         self.store.save("Ngọc Linh", 1.5)
 
         stored = json.loads(self.path.read_text(encoding="utf-8"))
-        self.assertIn("selection_shortcut", stored)
         self.assertEqual(stored["voice_quality"], "fp32")
         self.assertEqual(stored["voice"], "Ngọc Linh")
 
