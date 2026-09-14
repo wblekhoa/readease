@@ -58,6 +58,7 @@ const STATES = {
   scanned: "scanned=3",
   damaged: "damaged=1",
   dragging: "drag=3",
+  dragnone: "drag=none",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];

@@ -352,6 +352,7 @@ export function Library({
           icon={<ImportIcon className="h-10 w-10" />}
           headline={dropHeadline(dragging).headline}
           detail={dropHeadline(dragging).detail}
+          tone={dropHeadline(dragging).tone}
         />
       )}
       <div className={empty ? "flex min-h-0 flex-1 flex-col" : "shell-inset-content"}>

@@ -178,6 +178,11 @@
   --color-warn: var(--text-color-warning-stress);
   --color-info-wash: var(--fill-info-wash);
   --color-info-edge: var(--border-color-info-haze);
+  /* The drop overlay when nothing in hand is a book: the same two tiers
+     as the info callout, on the red ramp, so a refusal reads as one at a
+     glance and not only in the words (owner, 14/09). */
+  --color-danger-wash: var(--fill-danger-wash);
+  --color-danger-edge: var(--border-color-danger-haze);
 }
 
 /* Hover and press are a wash LAYERED OVER a control's own fill, never a

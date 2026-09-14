@@ -229,20 +229,42 @@ export function DropZone({
   icon,
   headline,
   detail,
+  tone = "ok",
 }: {
   icon: ReactNode;
   headline: ReactNode;
   detail?: ReactNode;
+  /** `error`: nothing in hand can be dropped here. The frame, the icon and
+   * the headline go to the danger colour, so the refusal is seen before it
+   * is read - the words alone looked like an invitation (owner, 14/09). */
+  tone?: "ok" | "error";
 }) {
+  const refusing = tone === "error";
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 bg-paper/80 p-6" role="status">
-      <div className="flex h-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-edge-strong">
+    <div className="pointer-events-none fixed inset-0 z-50 bg-paper/80 p-6" role={refusing ? "alert" : "status"}>
+      {/* The same dimming either way - the shelf steps back the same amount -
+          and the red rides on top of it, inside the frame, so the two states
+          differ in colour and in nothing else. */}
+      <div
+        className={`flex h-full flex-col items-center justify-center rounded-3xl border-2 border-dashed ${
+          refusing ? "border-danger bg-danger-wash" : "border-edge-strong"
+        }`}
+      >
         {/* The words on their own sheet: the shelf shows through the wash,
             and a headline laid straight over a cover was read against
             whatever picture happened to be under it (measured 14/09). */}
-        <div className="flex max-w-[28rem] flex-col items-center gap-3 rounded-3xl bg-paper px-8 py-6 text-center shadow-lifted">
-          <span className="text-ink-mute">{icon}</span>
-          <p className="m-0 text-lg font-semibold text-ink" style={{ textWrap: "balance" }}>{headline}</p>
+        <div
+          className={`flex max-w-[28rem] flex-col items-center gap-3 rounded-3xl border bg-paper px-8 py-6 text-center shadow-lifted ${
+            refusing ? "border-danger-edge" : "border-edge-field"
+          }`}
+        >
+          <span className={refusing ? "text-danger" : "text-ink-mute"}>{icon}</span>
+          <p
+            className={`m-0 text-lg font-semibold ${refusing ? "text-danger" : "text-ink"}`}
+            style={{ textWrap: "balance" }}
+          >
+            {headline}
+          </p>
           {detail && <p className="m-0 text-sm text-ink-mute">{detail}</p>}
         </div>
       </div>

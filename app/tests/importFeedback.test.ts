@@ -9,6 +9,10 @@ test("kéo qua cửa sổ: nói số sách sẽ thêm, hoặc rằng không có 
   assert.equal(dropHeadline(1).headline, "Thả tệp để nhập sách");
   assert.equal(dropHeadline(3).headline, "Thả để thêm 3 sách vào thư viện");
   assert.equal(dropHeadline(0).headline, "Chỉ nhận PDF hoặc EPUB");
+  // A refusal is a refusal in colour too, not only in words.
+  assert.equal(dropHeadline(0).tone, "error");
+  assert.equal(dropHeadline(1).tone, "ok");
+  assert.equal(dropHeadline(3).tone, "ok");
   setLanguage("en");
   assert.equal(dropHeadline(3).headline, "Drop to add 3 books to the library");
   setLanguage("vi");

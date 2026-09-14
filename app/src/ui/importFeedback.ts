@@ -8,13 +8,24 @@ import { text } from "../i18n.ts";
 
 /** What the overlay says while something is being dragged over the window:
  * the number of books in hand, or that there are none. */
-export function dropHeadline(books: number): { headline: string; detail: string } {
+export function dropHeadline(books: number): {
+  headline: string;
+  detail: string;
+  /** `error` when nothing in hand is a book: the overlay turns to the
+   * danger colour rather than inviting a drop it will refuse. */
+  tone: "ok" | "error";
+} {
   if (books <= 0) {
-    return { headline: text("library.drop_none"), detail: text("library.drop_none_hint") };
+    return {
+      headline: text("library.drop_none"),
+      detail: text("library.drop_none_hint"),
+      tone: "error",
+    };
   }
   return {
     headline: books === 1 ? text("library.drop_hint") : text("library.drop_many", { count: books }),
     detail: text("library.drop_anywhere"),
+    tone: "ok",
   };
 }
 
