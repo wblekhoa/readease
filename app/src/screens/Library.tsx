@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { open } from "@tauri-apps/plugin-dialog";
 import { engineMessage, text } from "../i18n";
+import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { formatSize, hoverText } from "../ui/format";
 import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, EmptyState } from "../ui/patterns";
@@ -181,7 +184,9 @@ export function Library({
   const [importing, setImporting] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [applePanel, setApplePanel] = useState(false);
-  const picker = useRef<HTMLInputElement>(null);
+  /** A file is being dragged over the window - the moment the shelf says
+   * "thả tệp để nhập sách" instead of making the person guess. */
+  const [dragging, setDragging] = useState(false);
 
   const refresh = useCallback(() => {
     invoke<{ result: { books: LibraryBook[] } }>("engine_request", {
@@ -211,33 +216,62 @@ export function Library({
 
   useEffect(refresh, [refresh]);
 
-  const importFile = useCallback(async (file: File) => {
+  /** Import by PATH. The engine copies the file once, into the library,
+   * and never sees more than that. The old way took the bytes through the
+   * webview - read, spelled out as a string, base64, JSON, IPC, decoded,
+   * written to a temp file, then copied again by the engine: seven copies
+   * and about a second of the interface frozen for a 46 MB book (measured
+   * 14/09), and the 200 MiB the engine accepts was out of reach. A path
+   * costs nothing to carry. */
+  const importPaths = useCallback(async (paths: string[]) => {
+    if (!paths.length) return;
     setImporting(true);
     setNotice(null);
+    let added = 0;
+    let existing = 0;
     try {
-      const buffer = new Uint8Array(await file.arrayBuffer());
-      let binary = "";
-      const step = 0x8000;
-      for (let index = 0; index < buffer.length; index += step) {
-        binary += String.fromCharCode(...buffer.subarray(index, index + step));
+      for (const path of paths) {
+        const reply = await invoke<{ result: { was_existing: boolean } }>(
+          "engine_request",
+          { method: "library.import", params: { path } },
+        );
+        if (reply.result.was_existing) existing += 1;
+        else added += 1;
       }
-      const reply = await invoke<{ result: { was_existing: boolean } }>(
-        "import_book_bytes",
-        { name: file.name, dataBase64: btoa(binary) },
-      );
       setNotice({
         tone: "ok",
-        message: reply.result.was_existing
-          ? text("library.duplicate")
-          : text("library.imported"),
+        message:
+          paths.length === 1
+            ? text(existing ? "library.duplicate" : "library.imported")
+            : text("library.imported_many", { added, existing }),
       });
-      refresh();
     } catch (error) {
       setNotice({ tone: "error", message: engineMessage(error) });
     } finally {
       setImporting(false);
+      refresh();
     }
   }, [refresh]);
+
+  // Dropped from Finder: the window hands over paths, the same paths the
+  // picker would. Registered once for the life of the shelf.
+  useEffect(() => {
+    let live = true;
+    const listening = getCurrentWebview().onDragDropEvent((event) => {
+      if (!live) return;
+      const kind = event.payload.type;
+      if (kind === "enter") setDragging(true);
+      else if (kind === "leave") setDragging(false);
+      else if (kind === "drop") {
+        setDragging(false);
+        void importPaths(bookPaths(event.payload.paths));
+      }
+    });
+    return () => {
+      live = false;
+      listening.then((unlisten) => unlisten()).catch(() => undefined);
+    };
+  }, [importPaths]);
 
   const removeBook = useCallback(async (bookId: string) => {
     try {
@@ -254,26 +288,19 @@ export function Library({
     }
   }, [refresh]);
 
-  const openPicker = () => picker.current?.click();
-
-  // The picker input stays mounted whatever the screen shows - the ref is
-  // what opens it.
-  const filePicker = (
-    <input
-      ref={picker}
-      type="file"
-      accept=".pdf,.epub"
-      className="hidden"
-      onChange={(event) => {
-        const file = event.target.files?.[0];
-        if (file) void importFile(file);
-        event.target.value = "";
-      }}
-    />
-  );
+  // The system's own open panel, which answers with paths. Several at
+  // once, because a person adding a shelf's worth of books should not have
+  // to come back for each one.
+  const openPicker = async () => {
+    const picked = await open({
+      multiple: true,
+      filters: [{ name: "PDF, EPUB", extensions: [...BOOK_EXTENSIONS] }],
+    }).catch(() => null);
+    if (picked) void importPaths(bookPaths(picked));
+  };
 
   const importButton = (
-    <Button onClick={openPicker} disabled={importing}>
+    <Button onClick={() => void openPicker()} disabled={importing}>
       {importing ? text("library.importing") : text("toolbar.open")}
     </Button>
   );
@@ -307,7 +334,6 @@ export function Library({
           : "min-h-0 flex-1 overflow-y-auto pr-1"
       }
     >
-      {filePicker}
       {applePanel && (
         <AppleBooksPanel onClose={() => setApplePanel(false)} onLibraryChanged={refresh} />
       )}
@@ -329,6 +355,11 @@ export function Library({
         {notice && (
           <Notice tone={notice.tone} className="mt-2">
             {notice.message}
+          </Notice>
+        )}
+        {dragging && (
+          <Notice tone="info" className="mt-2">
+            {text("library.drop_hint")}
           </Notice>
         )}
         {empty ? (

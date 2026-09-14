@@ -121,36 +121,6 @@ fn read_selection_text(
 }
 
 #[tauri::command(async)]
-fn import_book_bytes(
-    engine: tauri::State<EngineSlot>,
-    name: String,
-    data_base64: String,
-) -> Result<serde_json::Value, String> {
-    use base64::Engine as _;
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(data_base64)
-        .map_err(|error| format!("bad payload: {error}"))?;
-    // The webview cannot see real file paths; it hands us the bytes and the
-    // engine imports from a temp copy. Identity is content-hashed, so the
-    // book id is identical to an import from the original path.
-    let safe: String = name
-        .chars()
-        .map(|c| if c.is_alphanumeric() || c == '.' || c == '-' { c } else { '_' })
-        .collect();
-    let path = std::env::temp_dir().join(format!(
-        "readease-import-{}-{safe}",
-        std::process::id()
-    ));
-    std::fs::write(&path, bytes).map_err(|error| format!("temp write: {error}"))?;
-    let reply = client_of(&engine).request(
-        "library.import",
-        serde_json::json!({"path": path.to_string_lossy()}),
-    );
-    let _ = std::fs::remove_file(&path);
-    reply
-}
-
-#[tauri::command(async)]
 fn engine_request(
     engine: tauri::State<EngineSlot>,
     method: String,
@@ -257,6 +227,7 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
@@ -315,7 +286,6 @@ pub fn run() {
             read_text,
             read_book,
             engine_request,
-            import_book_bytes,
             read_selection_text,
             set_selection_shortcut,
             restart_engine,

@@ -686,6 +686,21 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "library.list":
       return { books: isEmpty("library") ? [] : LIBRARY };
+    case "library.import": {
+      const name = String(params.path ?? "").split("/").pop() || "Sách mới.epub";
+      const title = name.replace(/\.(epub|pdf)$/i, "");
+      if (LIBRARY.some((book) => book.title === title)) return { was_existing: true };
+      LIBRARY.push({
+        id: `imported-${Date.now()}`,
+        title,
+        source_format: /\.pdf$/i.test(name) ? "pdf" : "epub",
+        segment_id: null, progress_ratio: null, progress_chapter: null,
+        chapters: 7, size_bytes: 2_100_000,
+        imported_at: new Date().toISOString(), from_apple_books: false,
+        language: "vi", language_set: false, language_detected: "vi",
+      });
+      return { was_existing: false };
+    }
     case "book.set_language": {
       // The engine answers with what the book is in NOW, so withdrawing a
       // decision comes back as the DETECTED language rather than null. The
@@ -941,20 +956,11 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
   if (command === "set_selection_shortcut") return Promise.resolve(null);
   if (command === "restart_engine") return Promise.resolve(null);
-  if (command === "import_book_bytes") {
-    const name = String(args.name ?? "sách mới.epub");
-    const existing = LIBRARY.find((book) => book.title === name.replace(/\.(epub|pdf)$/i, ""));
-    if (existing) return Promise.resolve({ result: { was_existing: true } });
-    LIBRARY.push({
-      id: `imported-${Date.now()}`,
-      title: name.replace(/\.(epub|pdf)$/i, ""),
-      source_format: /\.pdf$/i.test(name) ? "pdf" : "epub",
-      segment_id: null, progress_ratio: null, progress_chapter: null,
-      chapters: 7, size_bytes: 2_100_000,
-      imported_at: new Date().toISOString(), from_apple_books: false,
-      language: "vi", language_set: false, language_detected: "vi",
-    });
-    return Promise.resolve({ result: { was_existing: false } });
+  /* The system open panel, answered with a canned path: the harness has
+     no Finder, and the point is the shelf after an import, not the panel.
+     `library.import` below turns the path's file name into a book. */
+  if (command === "plugin:dialog|open") {
+    return Promise.resolve(["/Volumes/Sách/Sách mới.epub"]);
   }
   if (command === "prepare_model") {
     /* A download outlives any request timeout, so the app waits on EVENTS:
@@ -1070,6 +1076,13 @@ const unanswered = new Set<string>();
 
 window.__TAURI_INTERNALS__ = {
   invoke,
+  /* `getCurrentWebview()` reads the window and webview labels from here
+     before it can subscribe to Finder drops; without them the shelf could
+     not mount in the harness at all (measured 14/09: a white page). */
+  metadata: {
+    currentWindow: { label: "main" },
+    currentWebview: { label: "main" },
+  },
   transformCallback(callback: Handler, _once = false) {
     const id = nextCallbackId++;
     callbacks.set(id, callback);

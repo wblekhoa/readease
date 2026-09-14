@@ -372,6 +372,12 @@ export const TEXT = {
     "This book is already in the library.",
   ],
   "library.importing": ["Đang nhập sách…", "Importing…"],
+  // Several books at once, from the picker or a drop: one line, both
+  // counts, so a re-dropped folder says what it did and what it skipped.
+  "library.imported_many": [
+    "Đã thêm {added} sách; {existing} đã có sẵn trong thư viện.",
+    "Added {added} books; {existing} already in the library.",
+  ],
   "library.drop_hint": ["Thả tệp để nhập sách", "Drop the file to import it"],
   "library.chapter_count": ["{count} chương", "{count} chapters"],
   "library.imported_on": ["Nhập {date}", "Imported {date}"],
