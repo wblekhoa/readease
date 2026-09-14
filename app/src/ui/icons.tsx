@@ -515,20 +515,21 @@ export function SyncIcon({ className }: { className?: string }) {
   );
 }
 
-/** The voice-settings button's glyph: the owner's own "voice" frame
- * (14/09) - the source's microphone with a sparkle in its body. Composed
- * from the source's parts, like `AiSpeakerIcon`, not drawn: the stand is
- * the source's light layer, the capsule the source's solid one without its
- * grille, a four-point star knocked out of the capsule where the grille
- * was, and a spot at the top right. It replaced the sliders glyph, which
- * is the filters' glyph inside the same panel, so the footer promised
- * "adjust something" where the panel answers "who reads to you". */
+/** The voice-settings button's glyph: the source's `voice2` (AI set) -
+ * a waveform with a sparkle - as drawn there, at the owner's ask (14/09).
+ * It replaced the sliders glyph, which is the filters' glyph inside the
+ * same panel, so the footer promised "adjust something" where the panel
+ * answers "who reads to you". */
 export function VoiceIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
-      <path opacity={MASS} d="M12.002 21.93c-5.04 0-9.15-4.1-9.15-9.15V10.9c0-.39.32-.7.7-.7.38 0 .7.32.7.7v1.88c0 4.27 3.47 7.74 7.74 7.74s7.74-3.47 7.74-7.74V10.9c0-.39.32-.7.7-.7.38 0 .7.32.7.7v1.88c.02 5.05-4.09 9.15-9.13 9.15Z" />
-      <path fillRule="evenodd" d="M11.998 2c-3.36 0-6.1 2.74-6.1 6.1v4.69c0 3.36 2.74 6.1 6.1 6.1 3.36 0 6.1-2.74 6.1-6.1V8.1c0-3.36-2.74-6.1-6.1-6.1ZM14.9 7.7L15.9 9.9L18.1 10.9L15.9 11.9L14.9 14.1L13.9 11.9L11.7 10.9L13.9 9.9Z" />
-      <path d="M19.3 5.25a0.95 0.95 0 1 1 0 1.9a0.95 0.95 0 1 1 0 -1.9Z" />
+      <path d="M17.199 10.179C17.269 10.009 17.499 10.009 17.559 10.179C17.919 11.129 18.669 11.879 19.619 12.239C19.789 12.309 19.789 12.539 19.619 12.599C18.669 12.959 17.919 13.709 17.559 14.659C17.489 14.829 17.259 14.829 17.199 14.659C16.839 13.709 16.089 12.959 15.139 12.599C14.969 12.529 14.969 12.299 15.139 12.239C16.089 11.879 16.839 11.129 17.199 10.179Z" />
+      <path opacity={MASS} d="M20.74 8.229H21.07C21.19 8.439 21.37 8.619 21.58 8.739V9.069C21.37 9.189 21.19 9.369 21.07 9.579H20.74C20.62 9.369 20.44 9.189 20.23 9.069V8.739C20.44 8.619 20.62 8.439 20.74 8.229Z" />
+      <path opacity={MASS} d="M10.38 21.659C9.97 21.659 9.63 21.319 9.63 20.909V3.089C9.63 2.679 9.97 2.339 10.38 2.339C10.79 2.339 11.13 2.679 11.13 3.089V20.899C11.13 21.309 10.79 21.649 10.38 21.649V21.659Z" />
+      <path d="M14.57 9.079C14.16 9.079 13.82 8.739 13.82 8.329V7.279C13.82 6.869 14.16 6.529 14.57 6.529C14.98 6.529 15.32 6.869 15.32 7.279V8.329C15.32 8.739 14.98 9.079 14.57 9.079Z" />
+      <path d="M14.57 17.459C14.16 17.459 13.82 17.119 13.82 16.709V15.659C13.82 15.249 14.16 14.909 14.57 14.909C14.98 14.909 15.32 15.249 15.32 15.659V16.709C15.32 17.119 14.98 17.459 14.57 17.459Z" />
+      <path d="M6.189 17.46C5.779 17.46 5.439 17.12 5.439 16.71V7.29C5.439 6.88 5.779 6.54 6.189 6.54C6.599 6.54 6.939 6.88 6.939 7.29V16.72C6.939 17.13 6.599 17.47 6.189 17.47V17.46Z" />
+      <path opacity={MASS} d="M2 13.799C1.59 13.799 1.25 13.459 1.25 13.049V10.949C1.25 10.539 1.59 10.199 2 10.199C2.41 10.199 2.75 10.539 2.75 10.949V13.049C2.75 13.459 2.41 13.799 2 13.799Z" />
     </svg>
   );
 }
