@@ -515,17 +515,20 @@ export function SyncIcon({ className }: { className?: string }) {
   );
 }
 
-/** The voice itself - the source's microphone, as drawn there - for the
- * button that opens the voice settings. It wore the sliders glyph, which is
- * the filters' glyph inside the same panel, so the footer promised "adjust
- * something" where the panel answers "who reads to you" (owner, 14/09). A
- * first version was drawn by hand and replaced the same day with the
- * source's own, per the rule above: find the right one, do not draw it. */
+/** The voice-settings button's glyph: the owner's own "voice" frame
+ * (14/09) - the source's microphone with a sparkle in its body. Composed
+ * from the source's parts, like `AiSpeakerIcon`, not drawn: the stand is
+ * the source's light layer, the capsule the source's solid one without its
+ * grille, a four-point star knocked out of the capsule where the grille
+ * was, and a spot at the top right. It replaced the sliders glyph, which
+ * is the filters' glyph inside the same panel, so the footer promised
+ * "adjust something" where the panel answers "who reads to you". */
 export function VoiceIcon({ className }: { className?: string }) {
   return (
     <svg {...bulk} className={className}>
       <path opacity={MASS} d="M12.002 21.93c-5.04 0-9.15-4.1-9.15-9.15V10.9c0-.39.32-.7.7-.7.38 0 .7.32.7.7v1.88c0 4.27 3.47 7.74 7.74 7.74s7.74-3.47 7.74-7.74V10.9c0-.39.32-.7.7-.7.38 0 .7.32.7.7v1.88c.02 5.05-4.09 9.15-9.13 9.15Z" />
-      <path d="M11.998 2c-3.36 0-6.1 2.74-6.1 6.1v4.69c0 3.36 2.74 6.1 6.1 6.1 3.36 0 6.1-2.74 6.1-6.1V8.1c0-3.36-2.74-6.1-6.1-6.1Zm2.18 8.59a.61.61 0 0 1-.75.43 5.9 5.9 0 0 0-3.12 0c-.33.09-.66-.1-.75-.43a.61.61 0 0 1 .43-.75c1.23-.34 2.53-.34 3.76 0 .33.09.52.42.43.75Zm.85-2.77a.6.6 0 0 1-.78.36 6.897 6.897 0 0 0-4.74 0 .61.61 0 0 1-.79-.36c-.11-.31.05-.66.37-.78 1.8-.65 3.78-.65 5.57 0 .32.12.48.47.37.78Z" />
+      <path fillRule="evenodd" d="M11.998 2c-3.36 0-6.1 2.74-6.1 6.1v4.69c0 3.36 2.74 6.1 6.1 6.1 3.36 0 6.1-2.74 6.1-6.1V8.1c0-3.36-2.74-6.1-6.1-6.1ZM14.9 7.7L15.9 9.9L18.1 10.9L15.9 11.9L14.9 14.1L13.9 11.9L11.7 10.9L13.9 9.9Z" />
+      <path d="M19.3 5.25a0.95 0.95 0 1 1 0 1.9a0.95 0.95 0 1 1 0 -1.9Z" />
     </svg>
   );
 }
