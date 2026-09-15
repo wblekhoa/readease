@@ -423,6 +423,20 @@ textarea:focus-visible {
   background: color-mix(in srgb, var(--color-brand-600) 24%, transparent);
 }
 
+/* Where the voice is: a light line under the words, not a slab behind them.
+   The band it replaced boxed the whole block in grey, which read as a
+   selection or a disabled state rather than "this is being read" (owner,
+   15/09). Brand hue at a tint, like ::selection above, so it says this app
+   and stays legible on both papers; the ink is left alone. Continuous under
+   descenders on purpose - a marker under the line, not a hyperlink. */
+.voice-here {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 60%, transparent);
+  text-underline-offset: 0.22em;
+  text-decoration-skip-ink: none;
+}
+
 /* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover
    rather than parked there. A 10px rail with a permanent thumb is a lot of
    furniture next to a list of highlights, and it read as if the panel had

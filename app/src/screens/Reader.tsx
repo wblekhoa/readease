@@ -813,15 +813,17 @@ export function Reader({
             // there is nothing for a radius to round except the quotation's
             // own left rule, which came out bent at both ends (owner, 06/09).
             // So: square while the block is bare, rounded the moment it is
-            // filled - reading now, or under the pointer. Rounder than the
-            // `lg` it was (owner, 06/09), and `2xl` rather than `xl` because
-            // the radius scale has two rungs - surface 2xl, content lg - and
-            // `xl` is off it, which `npm run audit:ui` enforces.
-            "-mx-2 cursor-text px-2 py-1 transition-colors " +
+            // filled under the pointer. Rounder than the `lg` it was (owner,
+            // 06/09), and `2xl` rather than `xl` because the radius scale
+            // has two rungs - surface 2xl, content lg - and `xl` is off it,
+            // which `npm run audit:ui` enforces.
+            // The block being READ is not filled at all: the voice's place
+            // is a light line under its words (`.voice-here`), which leaves
+            // the pointer's wash free to mean "read from here" on the
+            // current block as on any other (owner, 15/09).
+            "-mx-2 cursor-text rounded-none px-2 py-1 transition-colors hover:rounded-2xl hover:bg-wash " +
             blockClasses(segment, paged) +
-            (segment.id === marker
-              ? "rounded-2xl bg-band"
-              : "rounded-none hover:rounded-2xl hover:bg-wash")
+            (segment.id === marker ? "voice-here" : "")
           }
         >
           {blockBody(segment)}
