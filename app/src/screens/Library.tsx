@@ -337,11 +337,17 @@ export function Library({
   const empty = books !== null && books.length === 0;
 
   return (
+    // The scroller spans the window and carries the side inset itself, so
+    // the scrollbar sits at the window's edge, outside the shelf's margin,
+    // the way a Mac list scrolls - not inside the padding, flush against
+    // the last column of covers (owner, 15/09). The gutter is reserved
+    // whether or not the shelf scrolls yet, so adding the book that makes
+    // it scroll does not shift every column by the bar's width.
     <section
       className={
         empty
           ? "shell-inset flex min-h-0 flex-1 flex-col"
-          : "min-h-0 flex-1 overflow-y-auto pr-1"
+          : "-mx-6 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable]"
       }
     >
       {applePanel && (

@@ -4,27 +4,44 @@
  * live here, opened on request (owner, 02/09: "tối giản … setting sẽ có một
  * panel để chỉnh chi tiết"). Its inset is the sheets' 24, not its own 16:
  * every floating PANEL sets content in by the same amount (owner, 03/09).
- * Menus of rows - the contents popover, the voice switcher - keep a small
- * 8px frame instead, because there the ROWS carry the inset.
  *
- * The voice can now be changed while something is being read - the reading
+ * The first choice is the LANGUAGE to read in, and everything under it is
+ * that language's: its voices, its speed, its model and keys (owner, 15/09:
+ * "cho user chọn trước là họ muốn đọc ở ngôn ngữ nào rồi mới hiển thị các
+ * nội dung liên quan đến ngôn ngữ đó"). Switching the language switches the
+ * voice to the one last used for it - a tab that only filtered while the
+ * other language's voice kept speaking would be a half-state nobody asked
+ * for. Under the tab, a paid voice and a local one sit in the same select,
+ * grouped by where they come from.
+ *
+ * Above the voices, when the text in front of the reader is in a language
+ * the voice in use was not made for, one callout says so and offers the
+ * switch. It never acts by itself: the voice is the reader's (owner, 15/09:
+ * "cho user tự do chọn voice", with an alert that suggests).
+ *
+ * The voice can be changed while something is being read - the reading
  * restarts at the paragraph it had reached, in the new voice (owner, 03/09).
  * The select offers the voices SWITCHED ON in the voices panel, not the whole
- * catalogue of twenty (owner, 03/09): one list means one list everywhere, and
- * the row right below it is the way to add to it. Speed is still read once at
- * the start, so it stays disabled rather than promising what the engine will
+ * catalogue (owner, 03/09): one list means one list everywhere, and the row
+ * right below it is the way to add to it. Speed is still read once at the
+ * start, so it stays disabled rather than promising what the engine will
  * not do.
  */
-import { useState } from "react";
 import { text } from "../i18n";
-import { Button, IconButton, Notice, Select, Surface } from "./controls";
+import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
 import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
 import { CloseIcon, SpeakerIcon } from "./icons";
-import { AppTabs } from "./AppTabs";
-import { ProviderKeys } from "./ProviderKeys";
 import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
-import { ModelChoices } from "./ModelPanel";
+import { ModelProgress, ModelRows } from "./ModelPanel";
+import { sourcesLine } from "./SourcesHub";
+import {
+  LANGUAGES,
+  offeredFor,
+  type Language as ReadingLanguage,
+  type LanguageHint,
+} from "./readingSources";
+import type { Models } from "./useModels";
 import {
   voiceDescription as describe,
   voiceName as name,
@@ -33,29 +50,39 @@ import {
 
 export type { Voice };
 
+export function languageName(language: ReadingLanguage): string {
+  return text(language === "vi" ? "language.vi" : "language.en");
+}
+
 export function SettingsPanel({
   voices,
+  shortlist,
   voiceId,
   rate,
   rates,
   reading,
   shortlisted,
   voicesError,
-  paidVoices,
-  paidAvailable,
+  readingLanguage,
+  contentLanguage,
+  hint,
+  models,
   keysSet,
   scope,
   budget,
   spent,
-  onSaveKey,
+  onReadingLanguage,
   onScope,
   onBudget,
   onVoice,
   onRate,
   onManageVoices,
+  onOpenHub,
   onClose,
 }: {
+  /** The whole catalogue; what each tab offers is decided here. */
   voices: Voice[];
+  shortlist: readonly string[];
   voiceId: string;
   rate: number;
   rates: readonly number[];
@@ -64,44 +91,41 @@ export function SettingsPanel({
   shortlisted: number;
   /** Why the list is empty, when it is empty for a reason worth saying. */
   voicesError?: string | null;
-  /** Every voice a provider offers, whether or not it is in the shortlist -
-   * the shortlist is about the mid-reading switcher, not about which voices
-   * a person may choose from here. */
-  paidVoices: Voice[];
-  /** The account offers paid voices, whether or not any is on the list. */
-  paidAvailable: boolean;
+  readingLanguage: ReadingLanguage;
+  /** What the text in front of the reader is in, when known - the dot on
+   * the language option, the same device the voices panel uses. */
+  contentLanguage: string | null;
+  hint: LanguageHint | null;
+  models: Models;
   /** Provider id → whether a key is stored. Never the key. */
   keysSet: Record<string, boolean>;
   /* The same two limits the cost panel by the read button carries. They are
      in both places on purpose (owner, 04/09): one is beside the price, the
-     other beside the key, and a person adjusting either is already looking
-     at the thing it governs. */
+     other beside the voice that bills, and a person adjusting either is
+     already looking at the thing it governs. */
   scope: number | null;
   budget: number | null;
   spent: number;
-  onSaveKey: (provider: string, key: string) => Promise<{ ok: boolean; code: string | null }>;
+  onReadingLanguage: (language: ReadingLanguage) => void;
   onScope: (chapters: number | null) => void;
   onBudget: (usd: number | null) => void;
   onVoice: (voiceId: string) => void;
   onRate: (rate: number) => void;
   onManageVoices: () => void;
+  onOpenHub: () => void;
   onClose: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-
-  // Esc closes any layer that sits above the screen - the keyboard contract
-  // in docs/readease-hig.md §4. Not while a build is being fetched: leaving
-  // then would hide a running download behind a chip.
-  /* Two ways to be read to, and they are different enough to be different
-     places: a model on this Mac, or somebody's API on the reader's own key
-     (owner, 04/09). The panel opens on whichever the current voice belongs
-     to, so it never argues with what is already speaking. */
-  const [source, setSource] = useState(isPaidVoice(voiceId) ? "api" : "local");
-  const localVoices = voices.filter((voice) => !isPaidVoice(voice.id));
-
+  const downloading = models.job !== null;
   // Escape and a click on the book both put it away; neither does while a
-  // key is being checked, which is the one moment closing loses work.
-  const panel = useDismiss(onClose, !busy);
+  // download runs, which is the one moment closing hides work in progress.
+  const panel = useDismiss(onClose, !downloading);
+
+  const offered = offeredFor(voices, shortlist, voiceId, readingLanguage);
+  const current = voices.find((voice) => voice.id === voiceId);
+  const chosen = offered.some((voice) => voice.id === voiceId) ? voiceId : "";
+  const local = offered.filter((voice) => !isPaidVoice(voice.id));
+  const paid = offered.filter((voice) => isPaidVoice(voice.id));
+  const paidVoice = isPaidVoice(voiceId);
 
   return (
     /* Capped at the room between the bars, and only the BODY scrolls: with
@@ -123,160 +147,149 @@ export function SettingsPanel({
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("player.settings")}</h3>
-        <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
+        <IconButton onClick={onClose} disabled={downloading} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
-      <div className="mt-3">
-        <AppTabs
-          items={[
-            { value: "local", label: text("voices.source_local") },
-            { value: "api", label: text("voices.source_api") },
-          ]}
-          value={source}
-          onChange={setSource}
-          ariaLabel={text("voices.source")}
-        />
-      </div>
-
-      {source === "local" ? (
-        <>
-          {/* Two named groups instead of a flat run of rows: what you read
-              WITH, then what it costs to have it here. Unlabelled groups
-              separated only by a dotted rule left a reader working out where
-              one concern ended (owner, 04/09: "phân cấp tốt hơn"). */}
-          <GroupedSection title={text("section.reading_local")}>
-            {/* The control carries the voice's NAME only; what the voice is
-                like (gender · region · style) is the row's own line - the
-                full label in the select ran past the row and clipped its
-                title (owner, 02/09). */}
-            <GroupedRow
-              title={text("player.voice")}
-              subtitle={describe(localVoices.find((voice) => voice.id === voiceId)?.label)}
-              trailing={
-                <Select
-                  value={isPaidVoice(voiceId) ? "" : voiceId}
-                  className="max-w-[11rem]"
-                  onChange={(event) => onVoice(event.target.value)}
-                >
-                  {/* A paid voice is speaking, so no local one is chosen.
-                      The empty slot is NAMED rather than blank: a select
-                      showing nothing reads as broken, where "Chọn giọng…"
-                      reads as an invitation. */}
-                  {isPaidVoice(voiceId) && (
-                    <option value="" disabled>{text("voices.pick")}</option>
-                  )}
-                  {localVoices.map((voice) => (
-                    <option key={voice.id} value={voice.id}>{name(voice.label) || voice.id}</option>
-                  ))}
-                </Select>
-              }
-            />
-            {voicesError && (
-              <Notice tone="error" className="py-2">
-                {text("voices.unavailable")} ({voicesError})
-              </Notice>
-            )}
-            <GroupedRow
-              title={text("voices.title")}
-              subtitle={text("voices.marked", { count: shortlisted })}
-              trailing={
-                <Button size="sm" onClick={onManageVoices}>
-                  {/* The same glyph the transport's switcher wears, so the
-                      speaker reads as "voices" wherever it turns up. */}
-                  <SpeakerIcon />
-                  {text("voices.manage")}
-                </Button>
-              }
-            />
-            <GroupedRow
-              title={text("player.speed")}
-              trailing={
-                <Select value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
-                  {rates.map((value) => (
-                    <option key={value} value={value}>{value}×</option>
-                  ))}
-                </Select>
-              }
-            />
-          </GroupedSection>
-          <h4 className="m-0 mb-1.5 mt-6 text-xs font-semibold uppercase tracking-wide text-ink-mute">
-            {text("model.quality")}
-          </h4>
-          <ModelChoices reading={reading} onBusy={setBusy} />
-        </>
-      ) : (
-        <>
-          {/* Two groups, and the split is the useful one: what you set up
-              ONCE, and how it reads every time. Four unlabelled runs of rows
-              separated by dotted rules made a reader work out where each
-              concern ended (owner, 04/09: "phân cấp tốt hơn"). */}
-          <ProviderKeys
-            title={text("section.keys")}
-            keysSet={keysSet}
-            onSaveKey={onSaveKey}
+        <div className="mt-3">
+          <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">{text("settings.language")}</p>
+          <SegmentedControl
+            value={readingLanguage}
+            label={text("settings.language")}
+            options={LANGUAGES.map((code) => {
+              const label = text(code === "vi" ? "voices.language_vi" : "voices.language_en");
+              /* The suggestion is a DOT on the option itself (owner, 07/09,
+                 for the book's language): the text in front of the reader
+                 is in this language and the tab is on the other one. Acting
+                 on it is the same tap the option always was. */
+              const marked = contentLanguage === code && code !== readingLanguage;
+              return {
+                value: code,
+                label: marked ? (
+                  <>
+                    <SuggestionDot />
+                    {label}
+                  </>
+                ) : label,
+                ariaLabel: marked ? text("settings.language_content", { name: label }) : undefined,
+                title: marked ? text("settings.language_content", { name: label }) : undefined,
+              };
+            })}
+            onChange={onReadingLanguage}
           />
-          {/* Said once, directly under the keys it is about - not on the
-              outside of the app, and not on every screen that names a
-              voice. */}
-          <Notice fine className="mt-2 block">{text("key.local_only")}</Notice>
+        </div>
 
-          {paidVoices.length > 0 || paidAvailable ? (
-            <GroupedSection title={text("section.reading_api")}>
+        {/* Not over the empty tab of the same language: the rows under it
+            already say there is no voice and offer the download, and a
+            button that flips to the tab you are on is a button that does
+            nothing. */}
+        {hint && !(hint.kind === "get" && hint.content === readingLanguage) && (
+          <Notice
+            tone="info"
+            className="mt-4 block"
+            action={
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={downloading}
+                onClick={() => onReadingLanguage(hint.content)}
+              >
+                {text(hint.kind === "switch" ? "hint.switch" : "hint.get", { language: languageName(hint.content) })}
+              </Button>
+            }
+          >
+            {text(hint.kind === "switch" ? "hint.mismatch" : "hint.no_voice", { language: languageName(hint.content) })}
+          </Notice>
+        )}
+
+        {offered.length === 0 ? (
+          <>
+            {/* Nothing reads this language yet. The model's own row is the
+                shortest way to change that, and the hub is the other. */}
+            <GroupedSection title={text("player.voice")}>
+              <GroupedRow
+                title={text("settings.no_voice", { language: languageName(readingLanguage) })}
+                subtitle={voicesError ? `${text("voices.unavailable")} (${voicesError})` : text("settings.no_voice_hint")}
+              />
+            </GroupedSection>
+            <ModelRows language={readingLanguage} models={models} reading={reading} />
+            <div className="mt-4 flex justify-end">
+              <Button size="sm" disabled={downloading} onClick={onOpenHub}>{text("hub.title")}…</Button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Two named groups instead of a flat run of rows: what you read
+                WITH, then where it comes from. Unlabelled groups separated
+                only by a dotted rule left a reader working out where one
+                concern ended (owner, 04/09: "phân cấp tốt hơn"). */}
+            <GroupedSection title={text("player.voice")}>
+              {/* The control carries the voice's NAME only; what the voice
+                  is like (gender · region · style) is the row's own line -
+                  the full label in the select ran past the row and clipped
+                  its title (owner, 02/09). A paid voice's line is its
+                  provider's NAME: "openai" in a subtitle is an internal
+                  token wearing a label's clothes. */}
               <GroupedRow
                 title={text("player.voice")}
-                /* The provider's NAME, not its id: "openai" in a subtitle is
-                   an internal token wearing a label's clothes. */
                 subtitle={
-                  PROVIDERS.find((item) => item.id === providerOf(voiceId))?.label
+                  paidVoice
+                    ? PROVIDERS.find((item) => item.id === providerOf(voiceId))?.label
+                    : describe(current?.label)
                 }
                 trailing={
                   <Select
-                    value={isPaidVoice(voiceId) ? voiceId : ""}
+                    value={chosen}
                     className="max-w-[11rem]"
-                    disabled={paidVoices.length === 0}
                     onChange={(event) => onVoice(event.target.value)}
                   >
-                    {!isPaidVoice(voiceId) && (
+                    {/* The voice in use is not one of this language's, so
+                        none is chosen here. The empty slot is NAMED rather
+                        than blank: a select showing nothing reads as broken,
+                        where "Chọn giọng…" reads as an invitation. */}
+                    {!chosen && (
                       <option value="" disabled>{text("voices.pick")}</option>
                     )}
-                    {paidVoices.map((voice) => (
-                      <option key={voice.id} value={voice.id}>{voice.label}</option>
-                    ))}
+                    {local.length > 0 && paid.length > 0 ? (
+                      <>
+                        <optgroup label={text("voices.group_local")}>
+                          {local.map((voice) => (
+                            <option key={voice.id} value={voice.id}>{name(voice.label) || voice.id}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={text("voices.source_api")}>
+                          {paid.map((voice) => (
+                            <option key={voice.id} value={voice.id}>{voice.label}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    ) : (
+                      offered.map((voice) => (
+                        <option key={voice.id} value={voice.id}>
+                          {isPaidVoice(voice.id) ? voice.label : name(voice.label) || voice.id}
+                        </option>
+                      ))
+                    )}
                   </Select>
                 }
               />
-              {/* The same way in as the tab beside it. An empty list here is
-                  not an error - it is a list nobody has chosen from yet, and
-                  the row says so instead of the old "no key yet", which with
-                  a working key was simply untrue. */}
+              {voicesError && (
+                <Notice tone="error" className="py-2">
+                  {text("voices.unavailable")} ({voicesError})
+                </Notice>
+              )}
               <GroupedRow
-                title={paidVoices.length === 0 ? text("voices.none_api") : text("voices.title")}
-                subtitle={
-                  paidVoices.length === 0
-                    ? text("voices.none_api_hint")
-                    : text("voices.marked", { count: paidVoices.length })
-                }
+                title={text("voices.title")}
+                subtitle={text("voices.marked", { count: shortlisted })}
                 trailing={
                   <Button size="sm" onClick={onManageVoices}>
+                    {/* The same glyph the transport's switcher wears, so the
+                        speaker reads as "voices" wherever it turns up. */}
                     <SpeakerIcon />
                     {text("voices.manage")}
                   </Button>
                 }
-              />
-              {/* How far a press reads, where the money stops, and how fast -
-                  the three things that describe one reading, in one group.
-                  The first two are the same controls the panel beside the
-                  read button carries: somebody setting a key up is exactly
-                  somebody deciding how much of the book to spend on. */}
-              <ReadingLimits
-                scope={scope}
-                budget={budget}
-                spent={spent}
-                onScope={onScope}
-                onBudget={onBudget}
-                bare
               />
               <GroupedRow
                 title={text("player.speed")}
@@ -288,13 +301,34 @@ export function SettingsPanel({
                   </Select>
                 }
               />
+              {/* How far a press reads and where the money stops - only
+                  under a voice that bills. The same two controls the panel
+                  beside the read button carries. */}
+              {paidVoice && (
+                <ReadingLimits
+                  scope={scope}
+                  budget={budget}
+                  spent={spent}
+                  onScope={onScope}
+                  onBudget={onBudget}
+                  bare
+                />
+              )}
             </GroupedSection>
-          ) : (
-            <Notice className="mt-4 block">{text("key.none_yet")}</Notice>
-          )}
-        </>
-      )}
-
+            <GroupedSection title={text("settings.sources")}>
+              <GroupedRow
+                title={text(readingLanguage === "vi" ? "voices.language_vi" : "voices.language_en")}
+                subtitle={sourcesLine(readingLanguage, models.status, voices, keysSet)}
+                trailing={
+                  <Button size="sm" disabled={downloading} onClick={onOpenHub}>{text("hub.manage")}</Button>
+                }
+              />
+            </GroupedSection>
+          </>
+        )}
+        {/* A download started anywhere - the hub, the first-run screen - is
+            visible here while this panel is the one open. */}
+        <ModelProgress models={models} className="mt-4" />
       </div>
     </Surface>
   );

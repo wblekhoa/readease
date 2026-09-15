@@ -187,7 +187,17 @@ class LicenseContractTests(unittest.TestCase):
                 len(crates),
             )
             kinds = {component["kind"] for component in manifest["components"]}
-            self.assertEqual(kinds, {"first-party", "runtime", "tool", "model", "python", "crate"})
+            # `vendored`: source carried in this tree under another's licence
+            # - the ported English G2P - which is neither a package the
+            # bundle froze nor a model it downloads.
+            self.assertEqual(
+                kinds, {"first-party", "runtime", "tool", "model", "python", "crate", "vendored"}
+            )
+            models = [c for c in manifest["components"] if c["kind"] == "model"]
+            # Downloaded on request, and the one that ships inside the bundle.
+            self.assertTrue(any(c["bundled"] for c in models))
+            self.assertTrue(any(not c["bundled"] for c in models))
+            self.assertTrue(any("Kokoro" in c["name"] for c in models))
             self.assertGreater(
                 sum(component["kind"] == "python" for component in manifest["components"]), 30
             )

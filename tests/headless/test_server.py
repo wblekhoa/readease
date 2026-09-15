@@ -153,40 +153,80 @@ class ProtocolTests(unittest.TestCase):
                 settings_path=settings,
             )
 
-    def test_the_local_voice_refuses_a_language_it_was_not_trained_for(self) -> None:
-        # VieNeu is published as a Vietnamese model. Reading English with it
-        # produces sound, which is exactly why this has to be refused rather
-        # than left to whoever notices - the failure is audible, not visible.
-        replies = self._read_in("en", "This is an English sentence.")
-
-        self.assertFalse(replies[-1]["ok"])
-        self.assertIn("wrong_language", replies[-1]["error"])
+    def test_the_local_voice_reads_whatever_language_it_is_handed(self) -> None:
+        # VieNeu is published as a Vietnamese model, and reading English
+        # with it sounds like it. Until 15/09 the engine refused that by
+        # name; the owner's decision that day is that no voice is refused
+        # for the language in front of it - the shell suggests the language's
+        # own voice, and the reader chooses. So an English sentence, on a
+        # Vietnamese voice, in either interface language, is READ.
+        for setting in ("vi", "en"):
+            with self.subTest(setting=setting):
+                replies = self._read_in(setting, "This is an English sentence.")
+                self.assertTrue(replies[-1]["ok"])
+                self.assertTrue(
+                    any(reply.get("event") == "chunk" and reply.get("from_voice")
+                        for reply in replies),
+                )
 
     def test_the_local_voice_still_reads_vietnamese(self) -> None:
         replies = self._read_in("vi", "Câu tiếng Việt.")
 
         self.assertTrue(replies[-1]["ok"])
 
-    def test_a_pasted_english_passage_is_refused_whatever_the_setting_says(self) -> None:
-        # The commonest case there is: a Vietnamese interface and an English
-        # paragraph pasted out of a browser. The passage is its own evidence,
-        # so the setting does not get a vote.
-        english = (
-            "Reading is the art of listening with your eyes, and this "
-            "paragraph was pasted out of a browser."
-        )
-        for setting in ("vi", "en"):
-            with self.subTest(setting=setting):
-                replies = self._read_in(setting, english)
-                self.assertFalse(replies[-1]["ok"])
-                self.assertIn("wrong_language", replies[-1]["error"])
-
-    def test_a_scrap_too_short_to_judge_follows_the_setting(self) -> None:
-        # "Ok." is not evidence of a language. Guessing from it would refuse
-        # to read a two-word Vietnamese note, so a scrap falls back to what
-        # the reader chose - the one place the setting still decides.
+    def test_a_scrap_too_short_to_judge_is_read_either_way(self) -> None:
+        # "Ok." is not evidence of a language; it is cut by the setting's
+        # language and read all the same.
         self.assertTrue(self._read_in("vi", "Ok.")[-1]["ok"])
-        self.assertFalse(self._read_in("en", "Ok.")[-1]["ok"])
+        self.assertTrue(self._read_in("en", "Ok.")[-1]["ok"])
+
+    def test_a_local_voice_whose_model_is_not_on_this_mac_is_refused_by_name(self) -> None:
+        # Since 15/09 the Vietnamese model is a download the reader chooses,
+        # like the English one. A voice remembered from before its model was
+        # removed - or never fetched - is refused with the reason the shell
+        # has a sentence for, not with a stack trace out of the SDK.
+        engine = FakeEngine()
+        engine.is_model_ready = False  # type: ignore[attr-defined]
+        replies = run_server(
+            [{"id": 3, "method": "read",
+              "params": {"text": "Câu tiếng Việt.", "voice_id": "adam"}}],
+            engine,
+        )
+
+        self.assertFalse(replies[-1]["ok"])
+        self.assertIn("voice_unavailable: model_missing", replies[-1]["error"])
+        self.assertEqual(engine.requests, [])
+
+    def test_an_absent_model_keeps_its_voices_out_of_the_catalogue(self) -> None:
+        # With no model on disk and no remembered list, `voices()` loads the
+        # SDK - the one call that cannot succeed - so the catalogue does not
+        # ask. What it lists is what can speak; the shell offers the download.
+        engine = FakeEngine()
+        engine.is_model_ready = False  # type: ignore[attr-defined]
+        replies = run_server([{"id": 1, "method": "voices"}], engine)
+
+        self.assertTrue(replies[0]["ok"])
+        self.assertEqual(replies[0]["result"]["voices"], [])
+
+    def test_an_estimate_names_the_language_the_passage_is_in(self) -> None:
+        # The paste screen learns the passage's language from nowhere else,
+        # and the shell's hint - "this is English, the voice in use is a
+        # Vietnamese one" - stands on this answer.
+        replies = run_server(
+            [
+                {"id": 1, "method": "estimate",
+                 "params": {"text": "Reading is the art of listening with your eyes, "
+                                    "and this paragraph came out of a browser.",
+                            "voice_id": "adam"}},
+                {"id": 2, "method": "estimate",
+                 "params": {"text": "Đọc là nghe bằng mắt, và đoạn này chép từ trình duyệt.",
+                            "voice_id": "adam"}},
+            ],
+            FakeEngine(),
+        )
+
+        self.assertEqual(replies[0]["result"]["language"], "en")
+        self.assertEqual(replies[1]["result"]["language"], "vi")
 
     def test_read_streams_voice_frames_with_a_rest_between_sentences(self) -> None:
         engine = FakeEngine(chunks_per_sentence=2)
@@ -314,10 +354,11 @@ class ProtocolTests(unittest.TestCase):
             # past content nobody heard (F2 of the 05/09 audit).
             self.assertIsNone(repository.load_progress(BOOK_ID))
 
-    def test_an_english_book_is_refused_by_the_vietnamese_model(self) -> None:
-        # The rule the whole language seam exists for, at the level it
-        # matters: a reader whose INTERFACE is Vietnamese, opening an English
-        # book. The setting says nothing useful here; the book does.
+    def test_an_english_book_is_read_by_the_vietnamese_model_and_says_so(self) -> None:
+        # The language seam at the level it matters: a reader whose
+        # INTERFACE is Vietnamese, opening an English book. The book decides
+        # its language - cut as English, and named in the estimate for the
+        # shell's hint - and the voice the reader chose reads it (15/09).
         from vieneu_reader.storage.repository import LibraryRepository
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -335,15 +376,25 @@ class ProtocolTests(unittest.TestCase):
             source.write_bytes(b"fixture")
             repository.add_book(book, source)
 
+            engine = FakeEngine()
             replies = run_server(
-                [{"id": 8, "method": "read.book",
-                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
-                FakeEngine(), repository=repository,
+                [
+                    {"id": 7, "method": "estimate",
+                     "params": {"book_id": BOOK_ID, "voice_id": "adam"}},
+                    {"id": 8, "method": "read.book",
+                     "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+                ],
+                engine, repository=repository,
                 settings_path=root / "settings.json",
             )
 
-        self.assertFalse(replies[-1]["ok"])
-        self.assertIn("wrong_language", replies[-1]["error"])
+        self.assertEqual(replies[0]["result"]["language"], "en")
+        self.assertTrue(replies[-1]["ok"])
+        self.assertEqual(
+            [text for text, _ in engine.requests],
+            ["Reading is the art of listening with your eyes.",
+             "This chapter explains why the market changed."],
+        )
 
     def test_a_vietnamese_book_reads_as_it_always_did(self) -> None:
         from vieneu_reader.storage.repository import LibraryRepository
@@ -481,21 +532,25 @@ class ProtocolTests(unittest.TestCase):
         )
         self.assertTrue(replies[1]["ok"])
 
-    def test_a_book_that_really_is_english_still_says_pick_another_voice(self) -> None:
-        """The control. Nothing here may weaken the owner's rule: a book whose
-        own words are English is still refused by the Vietnamese model, and
-        still with the sentence that sends the reader to the voice list."""
+    def test_a_book_that_really_is_english_is_still_read_as_english(self) -> None:
+        """The control. A book whose own words are English stays English -
+        cut as English, listed as English - whatever voice reads it; the
+        reader's word can fill a gap the text leaves, never overrule it."""
 
         repository, root = self._shelf_with(self.ENGLISH_BOOK)
         replies = run_server(
-            [{"id": 8, "method": "read.book",
-              "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+            [
+                {"id": 7, "method": "estimate",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam"}},
+                {"id": 8, "method": "read.book",
+                 "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}},
+            ],
             FakeEngine(), repository=repository,
             settings_path=root / "settings.json",
         )
 
-        self.assertFalse(replies[-1]["ok"])
-        self.assertIn("wrong_language", replies[-1]["error"])
+        self.assertEqual(replies[0]["result"]["language"], "en")
+        self.assertTrue(replies[-1]["ok"])
 
     def test_a_reader_can_say_a_book_is_vietnamese_after_all(self) -> None:
         # The case with no way out before this: a Vietnamese book that lost
@@ -542,8 +597,7 @@ class ProtocolTests(unittest.TestCase):
             replies[1]["result"],
             {"language": "en", "language_set": False, "language_detected": "en"},
         )
-        self.assertFalse(replies[-1]["ok"])
-        self.assertIn("wrong_language", replies[-1]["error"])
+        self.assertTrue(replies[-1]["ok"])
 
     def test_the_shelf_says_which_language_and_who_decided(self) -> None:
         repository, root = self._shelf_with(self.ENGLISH_BOOK)
@@ -1180,7 +1234,12 @@ class ProtocolTests(unittest.TestCase):
 
         events = [r for r in replies if r.get("event") == "model_progress"]
         self.assertEqual([e["progress"] for e in events], [0.5, 1.0])
-        self.assertTrue(replies[-1]["ok"])
+        reply = next(r for r in replies if r.get("id") == 60 and "ok" in r)
+        self.assertTrue(reply["ok"])
+        # The model's voices just became listable: the shell re-lists on
+        # this event, so a Mac that fetched the Vietnamese model second
+        # sees its twenty voices without a relaunch.
+        self.assertEqual(replies[-1], {"event": "voices", "providers": ["local"]})
 
     def test_a_download_can_be_abandoned_from_the_shell(self) -> None:
         """453MB with no way out is not a download, it is a hostage.

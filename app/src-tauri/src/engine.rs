@@ -13,12 +13,12 @@
 //! - backpressure for free, no protocol needed. A stop bumps the epoch so
 //! chunks already in flight are dropped instead of played late.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{channel, sync_channel, Receiver, Sender, SyncSender};
+use std::sync::mpsc::{channel, sync_channel, Receiver, RecvTimeoutError, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -262,11 +262,37 @@ impl Feedback for StdinFeedback {
     }
 }
 
+/// A position the ear has not reached yet: announced once every frame
+/// appended before it has finished playing.
+struct DuePosition {
+    epoch: u64,
+    read_id: u64,
+    /// How many frames had been handed to the device when this position was
+    /// dequeued - the count the device must have finished before the ear is
+    /// here.
+    at: u64,
+    message: Value,
+}
+
+/// How often the drain loop looks at the device while nothing new arrives:
+/// the ceiling on how late a position can be announced.
+const POSITION_POLL: Duration = Duration::from_millis(20);
+
 /// The audio thread's whole life: take frames off the bounded queue, keep
 /// only a little ahead of the ear, announce positions as the ear reaches
 /// them, hand the engine back the room each frame frees, and say "done"
 /// only when the device has gone quiet. Lifted out of `spawn_audio` so a
 /// test can run it against a sink that never drains.
+///
+/// A position is announced when the ear REACHES it, not when it is
+/// dequeued. Measured 15/09: dequeued, it fired while up to three frames
+/// of the previous sentence were still in the device - and a frame is a
+/// whole sentence when that sentence came from the cache - so the
+/// highlight moved a paragraph early, every paragraph. Now each position
+/// remembers how many frames went to the device before it and waits until
+/// that many have finished playing (`appended - queued`); the device is
+/// looked at every `POSITION_POLL` even when no frame arrives, so a
+/// position due while the engine is slow is not held until the next chunk.
 fn drain(
     frames: Receiver<Frame>,
     sink: Arc<dyn AudioSink>,
@@ -276,7 +302,36 @@ fn drain(
     feedback: Arc<dyn Feedback>,
 ) {
     let current = |stamped: u64| stamped == epoch.load(Ordering::SeqCst);
-    for frame in frames {
+    // Frames handed to the device over the thread's whole life; with what
+    // the device still holds, that is how many it has finished.
+    let mut appended: u64 = 0;
+    let mut due: VecDeque<DuePosition> = VecDeque::new();
+    let announce = |due: &mut VecDeque<DuePosition>, appended: u64| {
+        let played = appended.saturating_sub(sink.queued() as u64);
+        while due.front().is_some_and(|next| next.at <= played) {
+            let next = due.pop_front().expect("checked");
+            if !current(next.epoch) {
+                continue; // a stop outran it; the highlight must not move
+            }
+            // The ear is here: the highlight moves, and the engine may now
+            // remember the place. Progress used to be written when the
+            // position was SYNTHESISED, minutes ahead of anything anyone
+            // had heard.
+            if let Some(segment) = next.message.get("segment_id").and_then(Value::as_str) {
+                feedback.reached(next.read_id, segment);
+            }
+            shell.emit("reading:position", next.message);
+        }
+    };
+    loop {
+        let frame = match frames.recv_timeout(POSITION_POLL) {
+            Ok(frame) => frame,
+            Err(RecvTimeoutError::Timeout) => {
+                announce(&mut due, appended);
+                continue;
+            }
+            Err(RecvTimeoutError::Disconnected) => break,
+        };
         match frame {
             Frame::Chunk { epoch: stamped, read_id, samples } => {
                 if !current(stamped) {
@@ -289,43 +344,40 @@ fn drain(
                 // finally makes the queue fill, the engine's writes block,
                 // and synthesis walk in step with playback.
                 while sink.queued() > PLAYER_LOOKAHEAD && current(stamped) {
-                    std::thread::sleep(Duration::from_millis(20));
+                    announce(&mut due, appended);
+                    std::thread::sleep(POSITION_POLL);
                 }
                 if !current(stamped) {
                     continue;
                 }
                 sink.append(samples);
+                appended += 1;
                 // Only the person may un-pause. Appending must not.
                 if !paused.load(Ordering::SeqCst) {
                     sink.play();
                 }
+                announce(&mut due, appended);
             }
             Frame::Position { epoch: stamped, read_id, message } => {
                 if !current(stamped) {
                     continue;
                 }
                 feedback.credit(read_id);
-                // The ear is here (within the lookahead): the highlight
-                // moves, and the engine may now remember the place. Progress
-                // used to be written when the position was SYNTHESISED,
-                // minutes ahead of anything anyone had heard.
-                if let Some(segment) =
-                    message.get("segment_id").and_then(Value::as_str)
-                {
-                    feedback.reached(read_id, segment);
-                }
-                shell.emit("reading:position", message);
+                due.push_back(DuePosition { epoch: stamped, read_id, at: appended, message });
+                announce(&mut due, appended);
             }
             Frame::Done { epoch: stamped, message } => {
                 // Wait for the speakers, not the model. A stop meanwhile
                 // (epoch moved) makes this reading nobody's business: the
                 // stop path has already told the shell what it needs.
                 while sink.queued() > 0 && current(stamped) {
-                    std::thread::sleep(Duration::from_millis(20));
+                    announce(&mut due, appended);
+                    std::thread::sleep(POSITION_POLL);
                 }
                 if !current(stamped) {
                     continue;
                 }
+                announce(&mut due, appended);
                 shell.tray(false);
                 shell.emit("reading:done", message);
             }
@@ -730,6 +782,12 @@ mod tests {
         fn play_out(&self) {
             self.queued.store(0, Ordering::SeqCst);
         }
+        /// The device finishes `frames` of what it holds, no more.
+        fn played(&self, frames: usize) {
+            let _ = self.queued.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |held| {
+                Some(held.saturating_sub(frames))
+            });
+        }
     }
 
     impl AudioSink for FakeSink {
@@ -754,6 +812,9 @@ mod tests {
     impl RecordingShell {
         fn saw(&self, event: &str) -> bool {
             self.events.lock().unwrap().iter().any(|e| e == event)
+        }
+        fn count(&self, event: &str) -> usize {
+            self.events.lock().unwrap().iter().filter(|e| *e == event).count()
         }
     }
 
@@ -844,6 +905,64 @@ mod tests {
         let (lines, feed) = channel::<String>();
         std::thread::spawn(move || pump.run(feed.into_iter()));
         Harness { sink, shell: recorder, feedback: feedback_recorder, epoch, current_read, pending, lines }
+    }
+
+    /// Wait until the shell has seen `event` `times` times, or give up.
+    fn settle(shell: &RecordingShell, event: &str, times: usize) -> bool {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while shell.count(event) < times && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        shell.count(event) >= times
+    }
+
+    /// The highlight moved a paragraph early, every paragraph (owner,
+    /// 15/09). A position used to be announced the moment it was dequeued,
+    /// with up to three frames of the previous sentence still unplayed in
+    /// the device - and a cached sentence is one whole frame.
+    #[test]
+    fn a_position_waits_for_the_audio_before_it_to_finish_playing() {
+        let h = harness(0, false);
+        h.lines.send(position_line("s1")).unwrap();
+        for _ in 0..3 {
+            h.lines.send(chunk_line()).unwrap();
+        }
+        h.lines.send(position_line("s2")).unwrap();
+
+        // s1 had nothing before it and is announced at once; s2 sits behind
+        // three unplayed frames and must not be.
+        assert!(settle(&h.shell, "reading:position", 1));
+        std::thread::sleep(Duration::from_millis(80));
+        assert_eq!(h.shell.count("reading:position"), 1, "s2 báo trước khi tai tới");
+        assert_eq!(h.sink.queued(), 3);
+
+        // Two of the three play out: still not there.
+        h.sink.played(2);
+        std::thread::sleep(Duration::from_millis(80));
+        assert_eq!(h.shell.count("reading:position"), 1, "s2 báo khi còn một khung chưa phát");
+
+        // The last one plays: the ear is at s2 - and nothing new had to
+        // arrive from the engine for the loop to notice.
+        h.sink.played(1);
+        assert!(settle(&h.shell, "reading:position", 2), "s2 không bao giờ được báo");
+        let reached = h.feedback.reached.lock().unwrap();
+        assert_eq!(reached.iter().map(|(_, s)| s.as_str()).collect::<Vec<_>>(), ["s1", "s2"]);
+    }
+
+    /// A stop between the position and its audio: the highlight must not
+    /// move to a sentence nobody will hear.
+    #[test]
+    fn a_stop_drops_the_positions_still_waiting() {
+        let h = harness(0, false);
+        h.lines.send(position_line("s1")).unwrap();
+        h.lines.send(chunk_line()).unwrap();
+        h.lines.send(position_line("s2")).unwrap();
+        assert!(settle(&h.shell, "reading:position", 1));
+
+        h.stop(); // clears the device too: everything counts as played
+        std::thread::sleep(Duration::from_millis(80));
+
+        assert_eq!(h.shell.count("reading:position"), 1, "vị trí của bài đọc đã dừng vẫn được báo");
     }
 
     fn chunk_line() -> String {

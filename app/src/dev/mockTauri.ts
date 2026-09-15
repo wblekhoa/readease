@@ -462,6 +462,17 @@ const VOICES = [
   { id: "Adam", label: "Adam — Nam · Nam · Giọng đọc tự nhiên", languages: ["vi"] },
 ];
 
+/* The English model's voices, in the engine's own label shape, listed only
+ * while the model is downloaded - exactly the rule the engine follows. */
+const ENGLISH_VOICES = [
+  { id: "af_heart", label: "Heart — Nữ · Mỹ", languages: ["en"], gender: "female" },
+  { id: "af_bella", label: "Bella — Nữ · Mỹ", languages: ["en"], gender: "female" },
+  { id: "af_nicole", label: "Nicole — Nữ · Mỹ", languages: ["en"], gender: "female" },
+  { id: "am_michael", label: "Michael — Nam · Mỹ", languages: ["en"], gender: "male" },
+  { id: "am_fenrir", label: "Fenrir — Nam · Mỹ", languages: ["en"], gender: "male" },
+  { id: "am_puck", label: "Puck — Nam · Mỹ", languages: ["en"], gender: "male" },
+];
+
 /* A reading that actually runs.
  *
  * The mock used to answer read_* with {} and emit nothing, so the transport
@@ -593,19 +604,41 @@ function rememberSettings() {
 /* The model the app thinks is installed - mutable, because switching build
  * and removing a spare are the two things the model panel DOES, and a
  * fixture that never changes cannot show either of them happening. */
-const MODEL: { ready: boolean; precision: string | null; installed: Record<string, number> } = {
+const MODEL: {
+  ready: boolean;
+  precision: string | null;
+  installed: Record<string, number>;
+  english: { ready: boolean; installed: number; download_bytes: number };
+} = {
   ready: true,
   precision: "fp32",
   installed: { fp32: 626_000_000 },
+  // The English model, downloaded: its voices are in the list below. `?english=missing`
+  // starts without it, which is what a fresh install looks like.
+  english: { ready: true, installed: 335_000_000, download_bytes: 335_000_000 },
 };
 
-/* `?model=missing` starts with no voice installed, which is the ONLY way to
- * reach the setup screen - the first thing a new person ever sees, and until
- * now the one screen the preview could not show at all, because a fixture
- * that is always ready never routes to it. */
+const ENGLISH_STATE = new URLSearchParams(window.location.search).get("english");
+if (ENGLISH_STATE === "missing") {
+  MODEL.english = { ready: false, installed: 0, download_bytes: 335_000_000 };
+} else if (ENGLISH_STATE === "partial") {
+  // A cancelled download: the model landed whole, the lexicon did not.
+  MODEL.english = { ready: false, installed: 328_000_000, download_bytes: 335_000_000 };
+}
+
+/* `?model=missing` is a fresh install: neither model, no key - the ONLY way
+ * to reach the first-run screen, the first thing a new person ever sees.
+ * `?vietnamese=missing` is a Mac that chose the English model alone: the
+ * library works, the Vietnamese tab offers the download. */
 if (new URLSearchParams(window.location.search).get("model") === "missing") {
   MODEL.ready = false;
   MODEL.precision = null;
+  MODEL.installed = {};
+  MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
+  for (const key of Object.keys(SETTINGS)) if (key.endsWith("_api_key")) delete SETTINGS[key];
+}
+if (new URLSearchParams(window.location.search).get("vietnamese") === "missing") {
+  MODEL.ready = false;
   MODEL.installed = {};
 }
 
@@ -747,12 +780,18 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         data: FIGURE_DATA[String(params.figure_id)] ?? FIGURE_WIDE,
       };
     case "model.status":
-      return { ...MODEL, installed: { ...MODEL.installed } };
+      return { ...MODEL, installed: { ...MODEL.installed }, english: { ...MODEL.english } };
     case "model.set_precision": {
       MODEL.precision = String(params.precision ?? "");
       return {};
     }
     case "model.remove_build": {
+      if (params.engine === "english") {
+        const was = MODEL.english.ready;
+        MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
+        if (was) setTimeout(() => emit("engine:voices", { providers: ["local"] }), 0);
+        return { removed: was };
+      }
       delete MODEL.installed[String(params.precision ?? "")];
       return {};
     }
@@ -861,8 +900,14 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       // actually think about.
       const chars = pasted !== null ? pasted.length : 11_800 * chapters;
       const paid = voice.split(":").length >= 3;
+      // What the text is in: the engine judges a passage by its own words;
+      // here the diacritics decide, which is what the hint stands on. A
+      // book answers with the language the shelf gave it.
+      const language = pasted !== null
+        ? (/[ăâđêôơưàáảãạèéẻẽẹìíỉĩịòóỏõọùúủũụỳýỷỹỵ]/i.test(pasted) ? "vi" : "en")
+        : LIBRARY.find((book) => book.id === params.book_id)?.language ?? "vi";
       if (!paid) {
-        return { paid: false, chars, utterances: chapters * 9, chapters, spent_usd: 0 };
+        return { paid: false, chars, utterances: chapters * 9, chapters, language, spent_usd: 0 };
       }
       const elevenlabs = voice.startsWith("elevenlabs");
       const perThousand = elevenlabs ? 0.1 : 0.02;
@@ -873,6 +918,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         chars,
         utterances: chapters * 9,
         chapters,
+        language,
         usd: Math.round(chars * perThousand) / 1000,
         // OpenAI bills tokens of generated audio, which cannot be counted
         // off the text - the engine sends 0 and the panel drops the line.
@@ -891,7 +937,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "voices":
       return {
-        voices: [...VOICES, ...paidCatalogue()],
+        voices: [...(MODEL.ready ? VOICES : []), ...(MODEL.english.ready ? ENGLISH_VOICES : []), ...paidCatalogue()],
         // No `models` list: the engine stopped sending one when it turned out
         // no screen read it. A mock that offers more than the engine does
         // teaches the harness a shape that does not exist.
@@ -916,7 +962,15 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
  */
 
 
-function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
+async function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
+  /* One turn of the event loop before any answer, the way the real bridge
+     answers: a call crosses to the native side and comes back later, and
+     React renders in between. Answered in a microtask, a whole chain of
+     awaits ran to its end before a single render, and an effect that fires
+     on the first render after a state change could never be seen firing
+     mid-chain here - which is how the start-up voice overwrite (15/09)
+     passed every cell of the render audit. */
+  await new Promise((settle) => setTimeout(settle));
   if (FAIL && (command === FAIL || args.method === FAIL)) {
     // The REFUSAL shape, not the timeout one. Both are real (engine.rs
     // formats `engine timeout on <method>` and `engine refused <method>:
@@ -965,7 +1019,11 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   }
   if (command === "plugin:opener|open_url") return Promise.resolve(null);
   if (command === "engine_voices") {
-    return Promise.resolve([...VOICES, ...paidCatalogue()]);
+    return Promise.resolve([
+      ...(MODEL.ready ? VOICES : []),
+      ...(MODEL.english.ready ? ENGLISH_VOICES : []),
+      ...paidCatalogue(),
+    ]);
   }
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
@@ -983,17 +1041,27 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
      * this with `{}` left the setup screen - the first thing a new person
      * sees - spinning forever in the preview, so nobody ever looked at it. */
     stopMockReading();
+    const english = (args as { model?: string } | undefined)?.model === "english";
     const steps = [0.12, 0.38, 0.61, 0.87, 1];
     steps.forEach((progress, index) => {
       setTimeout(() => emit("engine:model_progress", {
         progress,
-        message: `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
+        message: english
+          ? `Đang tải giọng đọc tiếng Anh… ${Math.round(progress * 100)}%`
+          : `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
       }), 400 + index * 700);
     });
     setTimeout(() => {
-      MODEL.ready = true;
-      if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
+      if (english) {
+        MODEL.english = { ...MODEL.english, ready: true, installed: 335_000_000 };
+      } else {
+        MODEL.ready = true;
+        if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
+      }
       emit("engine:orphan_reply", { ok: true, result: {} });
+      // The engine announces the new voices the way it announces a paid
+      // catalogue arriving, and the shell re-lists on it.
+      emit("engine:voices", { providers: ["local"] });
     }, 400 + steps.length * 700);
     return Promise.resolve(null);
   }

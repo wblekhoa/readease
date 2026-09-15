@@ -55,6 +55,30 @@ MODELS = (
         "license": "Apache-2.0 (publisher declaration)",
         "source": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX",
     },
+    # The English voice (optional; downloaded from Settings, never on first run).
+    {
+        "name": "Kokoro-82M v1.0 ONNX model and voice packs",
+        "version": "1939ad2a8e416c0acfeecc08a694d14ef25f2231",
+        "license": "Apache-2.0 (publisher declaration)",
+        "source": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
+    },
+    {
+        "name": "misaki English lexicon (us_gold.json, us_silver.json)",
+        "version": "fba1236595f2d2bf21d414ba6e57d25256afada3",
+        "license": "Apache-2.0",
+        "source": "https://github.com/hexgrad/misaki",
+    },
+)
+# Ships INSIDE the bundle, unlike the models above: the out-of-lexicon reader
+# of the English G2P, a 3 MB network exported to ONNX at development time
+# (`src/vieneu_reader/speech/english/fallback_assets/`).
+BUNDLED_MODELS = (
+    {
+        "name": "graphemes_to_phonemes_en_us (BART, ONNX export)",
+        "version": "a5631b285d18d59483c32c0c3379cb9fac924f4b",
+        "license": "Apache-2.0 (publisher declaration)",
+        "source": "https://huggingface.co/PeterReid/graphemes_to_phonemes_en_us",
+    },
 )
 # The SPDX word for a licence a package names by hand rather than by id.
 LICENSE_ALIASES = {
@@ -346,6 +370,15 @@ def other_components() -> list[dict[str, object]]:
     ]
     for model in MODELS:
         components.append({**model, "kind": "model", "bundled": False, "receipts": model_receipts})
+    for model in BUNDLED_MODELS:
+        components.append({**model, "kind": "model", "bundled": True, "receipts": model_receipts})
+    # The English G2P is a port of misaki's (Apache-2.0), carried as source in
+    # `speech/english/g2p.py`; the licence text travels with the bundle.
+    components.append({
+        "name": "misaki English G2P (ported)", "version": "fba1236595f2d2bf21d414ba6e57d25256afada3",
+        "kind": "vendored", "license": "Apache-2.0", "source": "https://github.com/hexgrad/misaki",
+        "bundled": True, "receipts": (ROOT / "legal" / "spdx" / "Apache-2.0.txt",),
+    })
     return components
 
 

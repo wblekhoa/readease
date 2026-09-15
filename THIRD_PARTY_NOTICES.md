@@ -34,6 +34,14 @@ Qt and no PySide. It is ad-hoc signed, not notarized.
   bundle).
 - **pypdfium2 5.13** — Apache-2.0 OR BSD-3-Clause, binding **PDFium**
   (BSD-3-Clause). <https://github.com/pypdfium2-team/pypdfium2>
+- **spaCy 3.8** and its **en_core_web_sm 3.8.0** English pipeline — MIT;
+  **thinc**, **srsly**, **preshed**, **cymem**, **murmurhash**, **wasabi**,
+  **catalogue**, **confection** — MIT; **blis** — BSD-3-Clause. The tagger
+  behind the English voice's pronunciation. <https://spacy.io>
+- **misaki** English G2P — Apache-2.0, ported into
+  `src/vieneu_reader/speech/english/g2p.py` (revision
+  `fba1236595f2d2bf21d414ba6e57d25256afada3`) without its torch, num2words
+  and spaCy-loading seams. <https://github.com/hexgrad/misaki>
 - **numpy**, **httpx**, **requests**, **pydantic**, **Pillow**, **PyYAML**,
   **rich** and the rest of the frozen graph — MIT, BSD and Apache-2.0 family;
   the inventory names each one.
@@ -61,8 +69,24 @@ Qt and no PySide. It is ad-hoc signed, not notarized.
   `ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae` — Apache-2.0 (publisher
   declaration). <https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX>
 
-Both are fetched into `~/Library/Application Support/VieNeu Reader/Models`
-by the app on first use. Provenance and pinning: `legal/MODEL_PROVENANCE.md`.
+- **Kokoro-82M v1.0 ONNX** (the optional English voice), pinned at
+  `1939ad2a8e416c0acfeecc08a694d14ef25f2231` — Apache-2.0 (publisher
+  declaration). <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX>
+- **misaki English lexicon** (`us_gold.json`, `us_silver.json`), pinned at
+  `fba1236595f2d2bf21d414ba6e57d25256afada3` — Apache-2.0.
+  <https://github.com/hexgrad/misaki>
+
+The Vietnamese model and codec are fetched into
+`~/Library/Application Support/VieNeu Reader/Models` by the app on first use;
+the English model and lexicon land in the same folder only when the reader
+asks for them under Settings › Reading models. Provenance and pinning:
+`legal/MODEL_PROVENANCE.md`.
+
+One model does ship inside the bundle: **graphemes_to_phonemes_en_us**
+(BART, 3 MB, exported to ONNX), pinned at
+`a5631b285d18d59483c32c0c3379cb9fac924f4b` — Apache-2.0 (publisher
+declaration). <https://huggingface.co/PeterReid/graphemes_to_phonemes_en_us>
+It reads the English words the lexicon does not have.
 
 ### Optional, off by default, never bundled
 

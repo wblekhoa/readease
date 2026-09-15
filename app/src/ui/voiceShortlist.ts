@@ -44,14 +44,17 @@ export function speaksVietnamese(voice: Pick<Voice, "languages">): boolean {
   return vouchedFor(voice, "vi");
 }
 
-/** May this voice be offered for a book in `language`?
+/** Was this voice made for `language`, as far as anybody said?
  *
  * Yes unless the voice NAMES its languages and this one is not among them.
- * The difference matters: the local model publishes `["vi"]` because the
- * engine enforces it, so it drops out of an English book's list; OpenAI
- * publishes nothing about any of its voices and they all read Vietnamese
- * after a fashion, so they stay. Hiding those would be a lie by filter -
- * a list quietly missing rows with nothing on screen to say why.
+ * The difference matters: each local model publishes the one language it
+ * was trained for, so it belongs under that language's tab and is what the
+ * hint points at for text in it; OpenAI publishes nothing about any of its
+ * voices and they all read Vietnamese after a fashion, so they belong under
+ * both. Hiding those would be a lie by filter - a list quietly missing rows
+ * with nothing on screen to say why. Not a permission: since 15/09 any voice
+ * reads any text, and this only decides where a voice is listed and when a
+ * hint is worth showing.
  */
 export function canSpeak(
   voice: Pick<Voice, "languages">,
@@ -78,11 +81,11 @@ export function canSpeak(
  * "cannot" - falls back to the interface, which is the only preference this
  * app has been told.
  *
- * The rule this must never break: the local model publishes `["vi"]`, so it
- * takes the first branch on a Vietnamese interface and the second on an
- * English one. Either way it is handed Vietnamese, which is the owner's
- * standing rule (never read another language with VieNeu) and is pinned by
- * its own test rather than left to follow from the order of these lines.
+ * The Vietnamese model publishes `["vi"]`, so it takes the first branch on a
+ * Vietnamese interface and the second on an English one: either way its
+ * sample is Vietnamese, the language it was made for and the one a listener
+ * can judge it by. A reader may still hand it English (15/09: the choice is
+ * theirs) - a preview is not the place to show the worst of a voice.
  */
 export function sampleLanguage(
   voice: Pick<Voice, "languages">,
@@ -193,6 +196,7 @@ const DESCRIPTION_WORDS: Record<string, TextKey> = {
   "nữ": "voices.gender_female",
   "bắc": "voices.region_north",
   "trung": "voices.region_central",
+  "mỹ": "voices.region_us",
   "phong cách tự nhiên": "voices.style_natural",
   "giọng đọc tự nhiên": "voices.style_natural_voice",
   "phong cách kể chuyện": "voices.style_storytelling",

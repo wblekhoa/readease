@@ -21,16 +21,19 @@ KEY_FOR_PROVIDER: Mapping[str, str] = {
     "elevenlabs": "elevenlabs_api_key",
 }
 
-#: `wrong_language` is not about payment at all: the local model is a
-#: Vietnamese model, and a book being read in another language must not be
-#: handed to it. Refusing by name is the same rule the two money reasons
-#: follow - say why, rather than speak in a voice nobody chose.
-#:
 #: `unknown_model` is the one nobody can act on except by choosing another
 #: voice: the id names a model this build has no price for, so it cannot be
 #: quoted, capped or metered - and the provider might still serve it.
+#:
+#: `model_missing` is a local model's: its voices can be remembered by a
+#: book or by settings from before the download was removed (or, since
+#: 15/09, before it was ever made - either model is the reader's choice to
+#: fetch), and a voice whose model is not on this Mac is refused by name,
+#: with the sentence saying where to get it. There is no `wrong_language`
+#: any more: the owner's decision (15/09) is that a voice is never refused
+#: for the language it is handed - the shell suggests, the reader chooses.
 BlockedReason = Literal[
-    "no_key", "budget", "wrong_language", "unknown_model",
+    "no_key", "budget", "unknown_model", "model_missing",
 ]
 
 

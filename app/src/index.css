@@ -183,6 +183,11 @@
      glance and not only in the words (owner, 14/09). */
   --color-danger-wash: var(--fill-danger-wash);
   --color-danger-edge: var(--border-color-danger-haze);
+  /* The dot beside "Đọc được" in the hub: the DS's success fill at its
+     primary tier, a small mark and not a word, so it needs presence rather
+     than contrast. The other state of that dot is `edge-strong` - a grey
+     that says "nothing here yet" without calling it a fault. */
+  --color-ok: var(--fill-success-primary);
 }
 
 /* Hover and press are a wash LAYERED OVER a control's own fill, never a
@@ -421,6 +426,35 @@ textarea:focus-visible {
    too heavy (owner, 02/09). The alpha keeps it right on both papers. */
 ::selection {
   background: color-mix(in srgb, var(--color-brand-600) 24%, transparent);
+}
+
+/* Where the voice is: a light line under the words, not a slab behind them.
+   The band it replaced boxed the whole block in grey, which read as a
+   selection or a disabled state rather than "this is being read" (owner,
+   15/09). Brand hue at a tint, like ::selection above, so it says this app
+   and stays legible on both papers; the ink is left alone. Continuous under
+   descenders on purpose - a marker under the line, not a hyperlink. */
+.voice-here,
+.read-from-here:hover {
+  text-decoration-line: underline;
+  /* Dotted and paler than the solid 60% it started as (owner, 15/09): a
+     row of dots is quieter under a paragraph than a rule, and 40% keeps
+     it visible on both papers without pulling the eye off the words. */
+  text-decoration-style: dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.22em;
+  text-decoration-skip-ink: none;
+}
+/* Under the pointer, "read from here" is the same dotted line in neutral
+   ink - the boxed wash it replaced put a padded slab around the block
+   (owner, 15/09). The voice's own colour wins where the two meet: the
+   block being read stays brand-tinted while the pointer crosses it. */
+.read-from-here:hover {
+  text-decoration-color: color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+.voice-here,
+.voice-here:hover {
+  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
 }
 
 /* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover

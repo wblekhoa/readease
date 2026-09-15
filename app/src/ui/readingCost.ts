@@ -15,7 +15,7 @@
 /** The engine's answer. `paid: false` is the local model - free, and the
  * button says nothing extra. */
 export type Estimate =
-  | { paid: false; chars: number; utterances: number; chapters: number }
+  | { paid: false; chars: number; utterances: number; chapters: number; language?: string }
   | {
       paid: true;
       provider: string;
@@ -23,6 +23,9 @@ export type Estimate =
       chars: number;
       utterances: number;
       chapters: number;
+      /** What the text was found to be in - the paste screen's only way of
+       * knowing, and what the language hint stands on. */
+      language?: string;
       usd: number;
       units: number;
       /** What the provider bills. `tokens` cannot be counted off the text,

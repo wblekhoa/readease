@@ -164,9 +164,18 @@ fn register_selection_shortcut(
         .map_err(|error| format!("register {accelerator}: {error}"))
 }
 
+/// `model` names which download: nothing for the Vietnamese voice (the
+/// setup screen's, and the build switch's), `"english"` for the English one.
 #[tauri::command(async)]
-fn prepare_model(engine: tauri::State<EngineSlot>) -> Result<(), String> {
-    client_of(&engine).notify("model.prepare", serde_json::json!({}))
+fn prepare_model(
+    engine: tauri::State<EngineSlot>,
+    model: Option<String>,
+) -> Result<(), String> {
+    let params = match model.as_deref() {
+        Some(name) => serde_json::json!({ "engine": name }),
+        None => serde_json::json!({}),
+    };
+    client_of(&engine).notify("model.prepare", params)
 }
 
 #[tauri::command(async)]

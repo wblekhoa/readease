@@ -973,6 +973,50 @@ class EpubImportTests(unittest.TestCase):
             with self.assertRaisesRegex(CorruptBookError, "tiêu đề quá dài"):
                 import_epub(path)
 
+    def test_a_plain_doctype_is_the_start_of_every_epub3_chapter_not_a_threat(self):
+        # 15/09/2026: a real book was refused for the one line its cover
+        # page opened with - `<!DOCTYPE html>`, which every EPUB 3 chapter
+        # may carry. A doctype declares nothing dangerous on its own; the
+        # internal subset does, and that is what the refusal is for.
+        chapter = """<?xml version="1.0" encoding="utf-8"?>
+        <!DOCTYPE html>
+        <html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Bìa</h1><p>Trang bìa có khai báo tài liệu.</p>
+        </body></html>"""
+        path = make_epub(self.root, chapter_overrides={"chapter-1": chapter})
+
+        document = import_epub(path)
+
+        self.assertEqual(document.chapters[0].title, "Bìa")
+
+    def test_the_xhtml_public_doctype_of_every_epub2_chapter_imports_without_fetching(self):
+        # The DTD it names lives on a web server; expat never asks for it,
+        # so an EPUB 2 book opens offline, and a doctype pointing anywhere
+        # is inert.
+        chapter = """<?xml version="1.0" encoding="utf-8"?>
+        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+          "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+        <html xmlns="http://www.w3.org/1999/xhtml"><body>
+        <h1>Một</h1><p>Chương theo chuẩn cũ.</p>
+        </body></html>"""
+        path = make_epub(self.root, chapter_overrides={"chapter-1": chapter})
+
+        document = import_epub(path)
+
+        self.assertEqual(document.chapters[0].title, "Một")
+
+    def test_an_internal_subset_is_refused_even_when_it_declares_no_entity(self):
+        # The rule is "no internal subset", not "no entity we noticed":
+        # the scan refuses at the opening bracket, before reading what is
+        # inside.
+        chapter = """<?xml version="1.0"?>
+        <!DOCTYPE html [<!ATTLIST p lang CDATA "vi">]>
+        <html xmlns="http://www.w3.org/1999/xhtml"><body><p>Nội dung.</p></body></html>"""
+        path = make_epub(self.root, chapter_overrides={"chapter-1": chapter})
+
+        with self.assertRaisesRegex(CorruptBookError, "XML không an toàn"):
+            import_epub(path)
+
     def test_xml_entity_declarations_are_rejected(self):
         malicious = """<?xml version="1.0"?>
         <!DOCTYPE html [<!ENTITY payload "không an toàn">]>

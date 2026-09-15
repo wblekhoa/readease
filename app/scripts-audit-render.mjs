@@ -45,6 +45,9 @@ const SCREENS = {
   reader: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   voices: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
            ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["click", /^Quản lý giọng|^Manage voices/], ["wait", /^Danh sách giọng đọc$|^Voices$/]],
+  // The hub, from the gear on the home screens: the sheet's title is what
+  // the wait looks for, and the gear is found by its accessible name.
+  hub: [["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
 };
 const STATES = {
   default: "",
@@ -59,6 +62,9 @@ const STATES = {
   damaged: "damaged=1",
   dragging: "drag=3",
   dragnone: "drag=none",
+  english_missing: "english=missing",
+  english_partial: "english=partial",
+  vietnamese_missing: "vietnamese=missing",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -70,7 +76,11 @@ async function main() {
     "--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${CDP_PORT}`,
     `--window-size=${W},${H}`, `--user-data-dir=/tmp/readease-render-audit-${process.pid}`, "about:blank",
   ], { stdio: "ignore" });
-  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 15 * 60 * 1000);
+  // A bound on a hung Chrome, not a budget: the full matrix (412 cells)
+  // took 14m34s+ on 15/09 once the mock's bridge answered a tick later, a
+  // minute under the old 15, so the next state added would have turned a
+  // green run red for taking too long.
+  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 25 * 60 * 1000);
   try {
     const wsUrl = await (async () => {
       for (let i = 0; i < 60; i++) {
@@ -137,7 +147,7 @@ async function main() {
             // With no model on the machine the shell shows the setup screen
             // and nothing else - there are no tabs to reach. That screen is
             // the cell; walking to a tab would be walking into a wall.
-            const steps = stateName === "model_missing" ? [["wait", /Chuẩn bị giọng đọc|Set up voice/]] : SCREENS[screen];
+            const steps = stateName === "model_missing" ? [["wait", /Chọn cách đọc để bắt đầu|Choose how to read/]] : SCREENS[screen];
             // An empty shelf has no book to open: the reader and the voice
             // panel do not exist in that state, so neither does the cell.
             if (stateName === "empty" && (screen === "reader" || screen === "voices")) { cells--; continue; }
@@ -168,8 +178,14 @@ async function main() {
               const leaked = [...new Set((text.match(/\\b[a-z_]+\\.[a-z_0-9]+\\b/g) || []))];
               const over = [...document.querySelectorAll("*")].filter((e) => { const s = getComputedStyle(e); return e.scrollWidth > e.clientWidth + 1 && s.overflowX !== "auto" && s.overflowX !== "scroll" && s.overflowX !== "hidden" && e.clientWidth > 0; })
                 .map((e) => e.tagName.toLowerCase() + (e.className && typeof e.className === "string" ? "." + e.className.split(" ").slice(0, 2).join(".") : "")).slice(0, 4);
-              return { leaked, over, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length }; })()`);
+              let voice; try { voice = JSON.parse(localStorage.getItem("readease.mock-settings") || "{}").voice; } catch {}
+              return { leaked, over, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice }; })()`);
             for (const k of probe.leaked) if (KEYS.has(k)) findings.push({ cell, kind: "i18n-leak", detail: k });
+            // No cell picks a voice, so the saved one (the mock's "Thu Hà")
+            // must still be the saved one after the walk. Start-up once
+            // overwrote it with the first voice before reading it (15/09),
+            // in a gap only a bridge that answers a tick later opens.
+            if (probe.voice !== undefined && probe.voice !== "Thu Hà") findings.push({ cell, kind: "voice-lost", detail: `saved voice became ${probe.voice}` });
             if (probe.docWide) findings.push({ cell, kind: "overflow-x", detail: `document scrolls horizontally at ${W}px` + (probe.over.length ? ` (${probe.over.join(", ")})` : "") });
             if (probe.themeAttr !== theme) findings.push({ cell, kind: "theme", detail: `data-theme=${probe.themeAttr}, wanted ${theme}` });
             if (probe.textLen < 20) findings.push({ cell, kind: "blank", detail: `only ${probe.textLen} chars of text` });

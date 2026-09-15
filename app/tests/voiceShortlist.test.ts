@@ -254,10 +254,10 @@ test("giọng không khai gì thì theo giao diện — vắng mặt không ph�
   assert.equal(sampleLanguage({ languages: [] }, "en"), "en");
 });
 
-/** The owner's standing rule, pinned rather than left to follow from the
- * order of the branches: VieNeu is a Vietnamese model and must never be
- * handed another language. It publishes `["vi"]`, so an English interface
- * must NOT talk it into an English sample. */
+/** Pinned rather than left to follow from the order of the branches: the
+ * Vietnamese model publishes `["vi"]`, and a preview shows a voice in the
+ * language it was made for - so an English interface must NOT talk it into
+ * an English sample, whatever a reader may later choose to hand it. */
 test("mô hình trên máy luôn nhận câu tiếng Việt, kể cả khi giao diện là tiếng Anh", () => {
   assert.equal(sampleLanguage({ languages: ["vi"] }, "en"), "vi");
   assert.equal(sampleLanguage({ languages: ["vi"] }, "vi"), "vi");
@@ -338,6 +338,28 @@ test("the description a person reads says the region as a place, in their langua
   assert.equal(voiceDescriptionShown("JM – Husky & Engaging"), undefined);
   assert.equal(voiceDescriptionShown("Rachel — Warm, mid-range"), "Warm, mid-range");
   setLanguage("vi");
+});
+
+test("the English model's voices read through the same word table", () => {
+  // The engine labels them in the Vietnamese catalogue's shape, so the
+  // gender is read off the label like any local voice and the accent word
+  // is said in the interface language.
+  const heart = "Heart — Nữ · Mỹ";
+  const michael = "Michael — Nam · Mỹ";
+  assert.equal(voiceGender({ id: "af_heart", label: heart }), "female");
+  assert.equal(voiceGender({ id: "am_michael", label: michael }), "male");
+  assert.equal(voiceName(heart), "Heart");
+  setLanguage("vi");
+  assert.equal(voiceDescriptionShown(heart), "Nữ · giọng Mỹ");
+  setLanguage("en");
+  assert.equal(voiceDescriptionShown(michael), "Male · American");
+  setLanguage("vi");
+  // Vouched for English and not Vietnamese: made for the one, a hint away
+  // from the other, previewed in English.
+  const voice = { id: "af_heart", label: heart, languages: ["en"] };
+  assert.equal(canSpeak(voice, "en"), true);
+  assert.equal(canSpeak(voice, "vi"), false);
+  assert.equal(sampleLanguage(voice, "vi"), "en");
 });
 
 test("a stored paid voice keeps its place while its provider is still being asked", () => {

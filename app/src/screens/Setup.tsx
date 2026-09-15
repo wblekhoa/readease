@@ -1,118 +1,37 @@
-/** First run: the voice is not on this Mac yet.
+/** First run: nothing on this Mac can read yet.
  *
- * The whole app waits behind this one screen - the same gate the Qt shell
- * had - because every feature is a way of listening. One column, the form
- * fields on a shared axis, the single primary action in brand.
+ * The Qt shell's gate made the Vietnamese model the price of entry; the
+ * owner's decision (15/09) is that nobody is made to download any one
+ * model - the reader chooses what this Mac reads. So this is the hub's own
+ * rows in a frame: either model, or a key, or nothing for now, and the
+ * library is a click away whatever was chosen. It shows on each launch
+ * only while nothing can read, and never again once something can.
  */
-import { useCallback, useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { engineMessage, text } from "../i18n";
-import { Button, Field, ProgressBar, Select } from "../ui/controls";
+import { text } from "../i18n";
+import { Button } from "../ui/controls";
+import { ReadingSources, type SourcesProps } from "../ui/SourcesHub";
 
-export function Setup({
-  precision,
-  onReady,
-}: {
-  precision: string | null;
-  onReady: () => void;
-}) {
-  const [choice, setChoice] = useState(precision ?? "int8");
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
-  const [note, setNote] = useState<string>(text("setup.ready"));
-
-  useEffect(() => {
-    const progressEvents = listen<{ progress: number; message: string }>(
-      "engine:model_progress",
-      (event) => {
-        setProgress(event.payload.progress);
-        setNote(event.payload.message);
-      },
-    );
-    const finished = listen<{ ok: boolean; error?: string; result?: { cancelled?: boolean } }>(
-      "engine:orphan_reply",
-      (event) => {
-        if (event.payload.result?.cancelled) {
-          setBusy(false);
-          setProgress(null);
-          setNote(text("model.cancelled"));
-        } else if (event.payload.ok) {
-          onReady();
-        } else {
-          setBusy(false);
-          setProgress(null);
-          setNote(event.payload.error ?? text("setup.ready"));
-        }
-      },
-    );
-    return () => {
-      progressEvents.then((unlisten) => unlisten());
-      finished.then((unlisten) => unlisten());
-    };
-  }, [onReady]);
-
-  const prepare = useCallback(async () => {
-    setBusy(true);
-    try {
-      if (choice !== precision) {
-        await invoke("engine_request", {
-          method: "model.set_precision",
-          params: { precision: choice },
-        });
-        await invoke("restart_engine");
-      }
-      await invoke("prepare_model");
-    } catch (error) {
-      setBusy(false);
-      setNote(engineMessage(error));
-    }
-  }, [choice, precision]);
-
+export function FirstRun({ onEnter, ...sources }: SourcesProps & { onEnter: () => void }) {
   return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="w-[420px]">
-        <h1 className="m-0 text-center text-lg font-extrabold">
-          {text("setup.title")}
-        </h1>
-        <p className="m-0 mt-1 text-center text-sm text-ink-mute">
-          {text("setup.description")}
-        </p>
-        <Field label={text("setup.quality")} className="mt-6 justify-center gap-3">
-          <Select
-            disabled={busy}
-            value={choice}
-            onChange={(event) => setChoice(event.target.value)}
-          >
-            <option value="int8">{text("model.build_standard")}</option>
-            <option value="fp32">{text("model.build_maximum")}</option>
-          </Select>
-        </Field>
-        {progress !== null && (
-          <div className="mt-5">
-            <ProgressBar value={progress} />
-          </div>
-        )}
-        <p className="m-0 mt-3 text-center text-sm text-ink-mute">{note}</p>
-        <div className="mt-4 flex justify-center gap-2">
+    <div className="flex h-screen items-center justify-center px-6">
+      {/* Centred while it fits, scrolling inside its own column when the
+          window is short - the rows must never be cut off at the top. */}
+      <div className="max-h-full w-[34rem] max-w-full overflow-y-auto py-10">
+        <h1 className="m-0 text-center text-lg font-extrabold">{text("setup.title")}</h1>
+        <p className="m-0 mt-2 text-center text-sm text-ink-mute">{text("setup.description")}</p>
+        <ReadingSources {...sources} />
+        <div className="mt-8 flex justify-center">
+          {/* Always open. A person who wants to look at the shelf first, or
+              who will add a key later, is not held at the door - the read
+              button and the settings panel say what is still missing. */}
           <Button
             variant="primary"
-            disabled={busy}
+            disabled={sources.models.job !== null}
             className="h-[34px] px-6"
-            onClick={() => void prepare()}
+            onClick={onEnter}
           >
-            {text("setup.prepare")}
+            {text("setup.enter")}
           </Button>
-          {/* A download this size must have a way out; the Qt setup screen
-              had one and losing it in the rewrite was a regression. */}
-          {busy && (
-            <Button
-              className="h-[34px] px-4"
-              onClick={() => void invoke("stop_reading")}
-            >
-              {text("model.cancel")}
-            </Button>
-          )}
         </div>
       </div>
     </div>

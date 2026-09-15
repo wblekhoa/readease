@@ -383,13 +383,28 @@ export function Surface({
   );
 }
 
+/** The suggestion mark: a brand dot on the thing being suggested - a
+ * language option, the footer's voice chip - rather than a sentence under
+ * it (owner, 07/09). It has no meaning of its own, so whatever carries it
+ * says the words in `title`/`aria-label`; the dot itself is hidden from the
+ * accessibility tree. */
+export function SuggestionDot() {
+  return <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />;
+}
+
 /** One-line outcome: quiet when fine, danger-toned when not. */
 export function Notice({
   tone = "ok",
   fine = false,
   children,
   className = "",
+  action,
 }: {
+  /** A control that answers the callout - "Read in English" under "this
+   * text is English". Only a callout carries one (a line reports; it does
+   * not ask), so the sentence keeps its paragraph and the control sits on
+   * its own row beneath, inside the same wash. */
+  action?: ReactNode;
   /** `ok` and `error` are LINES: they sit under the control they belong to
    * and report what happened, so they take no ground of their own. `info`
    * is a CALLOUT - it explains something before you act, stands on its own,
@@ -409,9 +424,18 @@ export function Notice({
       : tone === "info"
         ? "rounded-2xl border border-info-edge bg-info-wash px-3.5 py-2.5 text-ink"
         : "text-ink-mute";
+  const size = fine ? "text-xs italic" : "text-sm";
+  if (action && tone === "info") {
+    return (
+      <div className={`${voice} ${className}`}>
+        <p className={`m-0 leading-relaxed ${size}`}>{children}</p>
+        <div className="mt-2 flex flex-wrap gap-2">{action}</div>
+      </div>
+    );
+  }
   return (
     <p
-      className={`m-0 leading-relaxed ${fine ? "text-xs italic" : "text-sm"} ${voice} ${className}`}
+      className={`m-0 leading-relaxed ${size} ${voice} ${className}`}
     >
       {children}
     </p>

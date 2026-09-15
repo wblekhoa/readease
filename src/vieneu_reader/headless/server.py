@@ -71,6 +71,9 @@ from vieneu_reader.domain.prosody import (
     split_sentences,
 )
 from vieneu_reader.domain.segmenter import split_transient_parts
+
+#: The language the second local model reads.
+ENGLISH = "en"
 from vieneu_reader.playback.time_stretch import SAMPLE_RATE, TimeStretcher
 from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.importers.errors import BookImportError
@@ -87,6 +90,10 @@ from vieneu_reader.speech.external.route import (
     KEY_FOR_PROVIDER, model_of, pick_voice_route, provider_of,
 )
 from vieneu_reader.speech.external.spend import SpendMeter
+from vieneu_reader.speech.kokoro import (
+    DOWNLOAD_BYTES as ENGLISH_DOWNLOAD_BYTES,
+    VOICE_IDS as ENGLISH_VOICE_IDS,
+)
 from vieneu_reader.storage.errors import RepositoryCorruptionError
 from vieneu_reader.storage.repository import (
     DamagedBook,
@@ -109,6 +116,23 @@ class ReadingEngine(Protocol):
     def stream(
         self, text: str, voice_id: str, settings: SynthesisSettings
     ) -> Iterator[AudioChunk]: ...
+
+
+class EnglishEngine(ReadingEngine, Protocol):
+    """The English model: a `ReadingEngine` that is downloaded on request."""
+
+    @property
+    def is_model_ready(self) -> bool: ...
+
+    def prepare_model(self, progress_callback: Any) -> None: ...
+
+    def installed_size(self) -> int: ...
+
+    def remove(self) -> bool: ...
+
+    def warm(self) -> bool: ...
+
+    def gender_of(self, voice_id: str) -> str | None: ...
 
 
 #: One model per provider at a time, chosen in settings. The alternative was
@@ -156,6 +180,16 @@ def _catalogue_key(provider: str, model: str, key: str) -> tuple[str, str, str]:
     does. A different key is a different question; the same key asked
     twice is the same answer."""
     return provider, model, sha256(key.encode("utf-8")).hexdigest()
+
+
+def _is_ready(engine: Any) -> bool:
+    """Whether a local model is on this Mac, whatever shape the engine gives
+    the fact: the real one exposes `is_model_ready` as a property, fakes as
+    a method or not at all - and an engine that never says is taken as
+    ready, so a test double without the attribute keeps speaking."""
+
+    attribute = getattr(engine, "is_model_ready", True)
+    return bool(attribute() if callable(attribute) else attribute)
 
 
 def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
@@ -383,8 +417,15 @@ def _note_marks(presentation: Any) -> dict[str, list[tuple[int, int, str]]]:
     return marks
 
 
-class _PreparationCancelled(Exception):
-    """A model download the person asked to abandon."""
+class _PreparationCancelled(BaseException):
+    """A model download the person asked to abandon.
+
+    Not an `Exception`: it is raised from inside an engine's `prepare_model`,
+    which wraps whatever goes wrong in there into its own "check the network"
+    error - and a cancel wrapped that way came back as a failure, with the
+    reader told to check a network that was fine. Outside that family, it
+    passes through the way an interrupt does.
+    """
 
 
 class _Session:
@@ -400,9 +441,15 @@ class _Session:
         settings_path: "Path | None" = None,
         notes_deps: "dict[str, Any] | None" = None,
         audio_cache: "AudioCache | None" = None,
+        english_engine: "EnglishEngine | None" = None,
     ):
         self._writer = writer
         self._engine = engine
+        # The second local model, for books in English - or None in a test
+        # that has no use for it. Its voices are listed only once it is
+        # downloaded, so choosing one can never be followed by a refusal
+        # to speak (the same rule paid voices follow).
+        self._english_engine = english_engine
         self._audio_cache = audio_cache
         # Session-lived, in memory: "what have I run up since I opened the
         # app" is the question, and nothing on disk should accumulate a
@@ -465,8 +512,21 @@ class _Session:
         network. Both off the request thread; neither is required for any
         answer, so a failure here is a slower answer later, not an error."""
         warm = getattr(self._engine, "warm", None)
-        if callable(warm):
-            threading.Thread(target=warm, name="model-warm", daemon=True).start()
+        english = self._english_engine
+        english_warm = getattr(english, "warm", None) if english is not None else None
+
+        def warm_both() -> None:
+            # One thread, in order: the Vietnamese model first because it
+            # is the product, then the English one - which loads only when
+            # it is downloaded (measured 15/09 in the frozen engine: the
+            # first English sentence otherwise waits ~3 s for spaCy and the
+            # session), and is a no-op when it is not.
+            if callable(warm):
+                warm()
+            if callable(english_warm):
+                english_warm()
+
+        threading.Thread(target=warm_both, name="model-warm", daemon=True).start()
         threading.Thread(
             target=self._prefetch_catalogues, name="voices-prefetch", daemon=True
         ).start()
@@ -685,7 +745,7 @@ class _Session:
             elif method == "model.status":
                 self._model_status(request_id)
             elif method == "model.prepare":
-                self._model_prepare(request_id)
+                self._model_prepare(request_id, request.get("params") or {})
             elif method == "model.set_precision":
                 self._model_set_precision(request_id, request.get("params") or {})
             elif method == "model.remove_build":
@@ -731,10 +791,11 @@ class _Session:
         voice_id = str(params.get("voice_id") or "")
         rate = float(params.get("rate") or 1.0)
         settings = SynthesisSettings()
-        # The passage itself is the evidence, exactly as a book's text is.
-        # Reading it off the interface setting instead left the owner's rule
-        # unenforced for the commonest case there is: a Vietnamese interface
-        # and an English paragraph pasted out of a browser.
+        # The passage itself is the evidence, exactly as a book's text is:
+        # the language decides how the text is cut into utterances and
+        # what the shell's hint says, and reading it off the interface
+        # setting got the commonest case wrong - a Vietnamese interface and
+        # an English paragraph pasted out of a browser.
         language = language_of_text(text, self._reading_language())
         utterances = _text_utterances(text, settings, language)
         if not utterances:
@@ -831,8 +892,12 @@ class _Session:
 
         # The local voices are Vietnamese and only Vietnamese - not "did not
         # say" like a provider that never published a list. Naming it here is
-        # what lets the shell show a reader in English which voices can
-        # actually read to them.
+        # what lets the shell say which voices were made for the language in
+        # front of the reader. Listed only while the model is on this Mac:
+        # with no model and no remembered list, `voices()` loads the SDK,
+        # which is the one call that cannot succeed - and it took the whole
+        # listing down with it, the English voices included, for a reader
+        # who chose to download only those.
         catalogue: list[dict[str, Any]] = [
             {
                 "id": voice.id,
@@ -840,8 +905,22 @@ class _Session:
                 "paid": False,
                 "languages": [DEFAULT_SPEECH_LANGUAGE],
             }
-            for voice in self._engine.voices()
+            for voice in (self._engine.voices() if _is_ready(self._engine) else ())
         ]
+        english = self._english_engine
+        if english is not None and english.is_model_ready:
+            # Listed only once it is on this Mac - before that, the settings
+            # panel offers the download, and the voices panel says so.
+            catalogue.extend(
+                {
+                    "id": voice.id,
+                    "label": voice.label,
+                    "paid": False,
+                    "languages": [ENGLISH],
+                    **({"gender": gender} if (gender := english.gender_of(voice.id)) else {}),
+                }
+                for voice in english.voices()
+            )
         unreachable: list[dict[str, Any]] = []
         pending: list[str] = []
         settings = self._settings_document()
@@ -1011,16 +1090,18 @@ class _Session:
         # what gets read.
         if not params.get("book_id"):
             pasted = str(params.get("text") or "")
-            utterances = _text_utterances(
-                pasted,
-                SynthesisSettings(),
-                language_of_text(pasted, self._reading_language()),
-            )
+            # Named in the reply: the passage is judged by its own words
+            # at every read, and this is the one answer the paste screen
+            # gets before the read - what the shell's language hint stands
+            # on.
+            language = language_of_text(pasted, self._reading_language())
+            utterances = _text_utterances(pasted, SynthesisSettings(), language)
             chars = sum(len(utterance.text) for utterance in utterances)
             if price is None:
                 self._reply(request_id, {
                     "paid": False, "chars": chars,
                     "utterances": len(utterances), "chapters": 0,
+                    "language": language,
                     "spent_usd": self._spend.snapshot().usd,
                 })
                 return
@@ -1031,6 +1112,7 @@ class _Session:
                 "chars": chars,
                 "utterances": len(utterances),
                 "chapters": 0,
+                "language": language,
                 "usd": round(price.usd_for(chars), 4),
                 "units": price.units_for(chars),
                 "unit": price.unit,
@@ -1047,9 +1129,8 @@ class _Session:
         if stored is None:
             self._fail(request_id, f"unknown book: {params.get('book_id')}")
             return
-        utterances, chapter_of = self._book_utterances(
-            stored, self._book_language(stored)
-        )
+        language = self._book_language(stored)
+        utterances, chapter_of = self._book_utterances(stored, language)
         wanted = params.get("segment_id")
         if not wanted:
             progress = self._repository.load_progress(stored.book.id)
@@ -1072,6 +1153,7 @@ class _Session:
                 "chars": sum(len(u.text) for u in utterances[start:end]),
                 "utterances": end - start,
                 "chapters": len(set(chapter_of[start:end])),
+                "language": language,
                 "spent_usd": self._spend.snapshot().usd,
             })
             return
@@ -1086,6 +1168,7 @@ class _Session:
             "chars": result.chars,
             "utterances": result.utterances,
             "chapters": result.chapters,
+            "language": language,
             "usd": result.usd,
             "units": result.units,
             "unit": result.unit,
@@ -1339,13 +1422,20 @@ class _Session:
             })
         self._reply(request_id, {"books": books})
 
-    def _model_prepare(self, request_id: Any) -> None:
+    def _model_prepare(self, request_id: Any, params: dict[str, Any]) -> None:
         """Download whatever the active build still needs, streaming progress.
 
         Long and blocking by design: the pipe answers nothing else while a
         download runs, exactly like the Qt setup screen gated the app.
+        `engine: "english"` asks for the English model instead.
         """
-        prepare = getattr(self._engine, "prepare_model", None)
+        if params.get("engine") == "english":
+            if self._english_engine is None:
+                self._fail(request_id, "no English model on this server")
+                return
+            prepare = self._english_engine.prepare_model
+        else:
+            prepare = getattr(self._engine, "prepare_model", None)
         if prepare is None:
             self._fail(request_id, "engine cannot prepare models")
             return
@@ -1370,6 +1460,12 @@ class _Session:
             self._reply(request_id, {"ready": False, "cancelled": True})
             return
         self._reply(request_id, {"ready": True})
+        # A model's voices just became listable - six English ones, or the
+        # Vietnamese twenty on a Mac that chose the English model first. The
+        # shell lists at start-up and on this event, so without it they
+        # would wait for the next launch - the same signal a paid catalogue
+        # arriving sends.
+        self._send({"event": "voices", "providers": ["local"]})
 
     def _model_set_precision(
         self, request_id: Any, params: dict[str, Any]
@@ -1389,6 +1485,15 @@ class _Session:
     def _model_remove_build(
         self, request_id: Any, params: dict[str, Any]
     ) -> None:
+        if params.get("engine") == "english":
+            if self._english_engine is None:
+                self._fail(request_id, "no English model on this server")
+                return
+            removed = bool(self._english_engine.remove())
+            self._reply(request_id, {"removed": removed})
+            if removed:
+                self._send({"event": "voices", "providers": ["local"]})
+            return
         remove = getattr(self._engine, "remove_build", None)
         if remove is None:
             self._fail(request_id, "engine cannot remove builds")
@@ -1786,6 +1891,13 @@ class _Session:
         # result, crashed its own voice-loading chain, and blamed the
         # catalogue it had already loaded (owner, 05/09).
         "voice_shortlist",
+        # The language the reader chose to read in, and the voice last
+        # picked under each language (15/09, with the English voice): the
+        # settings panel opens on that language and switching it brings
+        # that language's voice back. `voice` stays the one in use.
+        "reading_language",
+        "voice_vi",
+        "voice_en",
         "rate",
         "external_voice_budget",
         "openai_model",
@@ -1876,14 +1988,22 @@ class _Session:
 
         # The real engine exposes is_model_ready as a method and precision as
         # a property; fakes may do either. Both shapes are answers.
-        ready = value_of("is_model_ready", True)
+        ready = _is_ready(engine)
         precision = value_of("precision", None)
         builds = value_of("installed_builds", dict)
-        self._reply(request_id, {
+        status: dict[str, Any] = {
             "ready": bool(ready),
             "precision": precision,
             "installed": {str(key): int(value) for key, value in builds.items()},
-        })
+        }
+        english = self._english_engine
+        if english is not None:
+            status["english"] = {
+                "ready": bool(english.is_model_ready),
+                "installed": int(english.installed_size()),
+                "download_bytes": ENGLISH_DOWNLOAD_BYTES,
+            }
+        self._reply(request_id, status)
 
     def _library_import(self, request_id: Any, params: dict[str, Any]) -> None:
         if self._service is None:
@@ -2120,16 +2240,17 @@ class _Session:
         The book outranks the interface: a library holds books in more than
         one language, and the setting says which language the reader wants
         buttons in, not which language the chapter in front of them is in.
-        Getting this from the book is what makes "never read English with the
-        Vietnamese model" true for somebody whose interface is Vietnamese.
+        Getting this from the book is what lets the shell suggest the right
+        voice for the chapter to somebody whose interface is Vietnamese,
+        and what cuts the text into utterances the way that language reads.
 
         A reader's word and the text's are weighed by `language_in_use`: the
         word fills the gap the text leaves - a Vietnamese book that lost its
-        diacritics reads as English and would be refused by the Vietnamese
-        voice, so the reader says so and it is read - and does not overrule
-        what the text proves. Until 12/09 the word won outright, and a book
-        29% Vietnamese by orthography, set to English by a tap, could be read
-        by no voice at all: the local one refused it as English, and there
+        diacritics reads as English, so the reader says so and it is cut
+        and suggested as Vietnamese - and does not overrule what the text
+        proves. Until 12/09 the word won outright, and a book 29% Vietnamese
+        by orthography, set to English by a tap, could be read by no voice at
+        all: in those days the local one refused it as English, and there
         was no other.
 
         One door on purpose: `read.book`, the book half of `estimate` and the
@@ -2225,18 +2346,23 @@ class _Session:
             ),
         )
         if route.kind == "local":
-            # VieNeu is a Vietnamese model, trained and published for
-            # Vietnamese. Handed an English sentence it produces something -
-            # measured 2026-09-07, it does not fail - and that something is
-            # Vietnamese-accented mush. The owner's rule: never read another
-            # language with it. So this is a refusal by name, like a paid
-            # voice with no key, and the person picks a voice that can.
-            if language != DEFAULT_SPEECH_LANGUAGE:
-                # A book whose own words read as Vietnamese cannot arrive
-                # here in another language: `language_in_use` settles that
-                # before any voice is asked. What is left is a book, or a
-                # passage, that really is in another language.
-                return None, None, "wrong_language"
+            # Either local model reads whatever it is handed. Each was
+            # trained for one language and sounds like it in the other -
+            # and until 15/09 the engine refused the mismatch by name. The
+            # owner's decision that day: no blocking, the voice is the
+            # reader's to choose, and the shell SUGGESTS the language's
+            # voice instead ("không cần có cơ chế chặn ... cho user tự do
+            # chọn voice"). So the one refusal left here is a model that is
+            # not on this Mac: a voice can be remembered by a book or by
+            # settings from before its download was removed, and that is
+            # refused by name, with the sentence saying where to get it.
+            english = self._english_engine
+            if english is not None and voice_id in ENGLISH_VOICE_IDS:
+                if not english.is_model_ready:
+                    return None, None, "model_missing"
+                return english, None, None
+            if not _is_ready(self._engine):
+                return None, None, "model_missing"
             return self._engine, None, None
         if route.kind == "blocked":
             return None, price, route.reason
@@ -2523,6 +2649,7 @@ def serve(
     notes_deps: "dict[str, Any] | None" = None,
     audio_cache: "AudioCache | None" = None,
     background: bool = False,
+    english_engine: "EnglishEngine | None" = None,
 ) -> None:
     """Answer requests until the reader closes.
 
@@ -2533,24 +2660,57 @@ def serve(
         reader, writer, engine,
         repository=repository, service=service, settings_path=settings_path,
         notes_deps=notes_deps, audio_cache=audio_cache,
+        english_engine=english_engine,
     )
     if background:
         session.start_background_work()
     session.run()
 
 
+def _self_test() -> int:
+    """The parts of the English voice that only fail in the frozen binary.
+
+    The venv suite imports everything happily; a module the bundle left out
+    fails here and nowhere else. No model is needed: the tagger and the
+    out-of-lexicon reader ship in the bundle, and the two together are the
+    imports a packaged English reading depends on. One JSON line on stdout,
+    exit 0 or 1, so the build script can gate on it.
+    """
+    from vieneu_reader.speech.english.fallback import Fallback
+    from vieneu_reader.speech.english.tagger import tag
+
+    try:
+        tagged = tag("The quick brown fox reads.")
+        phonemes = Fallback().phonemes("Kowalczyk")
+    except Exception as error:  # noqa: BLE001 - the whole point is to report
+        print(json.dumps({"ok": False, "error": f"{type(error).__name__}: {error}"}))
+        return 1
+    ok = bool(tagged) and all(tag_ for _, tag_, _ in tagged) and bool(phonemes)
+    print(json.dumps({"ok": ok, "tags": [tag_ for _, tag_, _ in tagged], "fallback": phonemes}))
+    return 0 if ok else 1
+
+
 def main() -> int:
     from vieneu_reader.config import AppPaths, default_app_root
+    from vieneu_reader.speech.kokoro import KokoroSpeechEngine
     from vieneu_reader.speech.preferences import VoiceQualityPreferenceStore
     from vieneu_reader.speech.vieneu import VieNeuSpeechEngine
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, default=None)
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="exercise the frozen imports the English voice needs and exit",
+    )
     arguments = parser.parse_args()
+    if arguments.self_test:
+        return _self_test()
 
     paths = AppPaths.create(arguments.data_root or default_app_root())
     quality = VoiceQualityPreferenceStore(paths.root / "settings.json")
     engine = VieNeuSpeechEngine(paths.models, precision=quality.load())
+    english_engine = KokoroSpeechEngine(paths.models)
     repository = LibraryRepository(paths.database)
     service = LibraryService(paths, repository)
     # The Qt shell had this and the new one did not, so every re-read paid the
@@ -2567,6 +2727,7 @@ def main() -> int:
         settings_path=paths.root / "settings.json",
         audio_cache=audio_cache,
         background=True,
+        english_engine=english_engine,
     )
     return 0
 

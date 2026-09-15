@@ -133,7 +133,13 @@ if ! codesign --verify --deep --strict "$app"; then
   exit 1
 fi
 
-if [[ -n "$developer_id" ]]; then
+if [[ -n "$developer_id" && "${READEASE_SKIP_NOTARY:-0}" == "1" ]]; then
+  # A local iteration: Developer ID signature (so the Accessibility grant
+  # keeps its anchor) without the half-hour at Apple. Not for anything that
+  # leaves this machine - the artifact is written under a name that says so.
+  echo "==> READEASE_SKIP_NOTARY=1: signed, NOT notarized - local install only"
+  artifact="${artifact%.zip}-unnotarized.zip"
+elif [[ -n "$developer_id" ]]; then
   # The notary service wants the bundle as an archive; ditto keeps the seal.
   # Submitted without `--wait`, then polled once a minute: Apple took over
   # 30 minutes on the very first submission (15/09) and `--wait`'s timeout

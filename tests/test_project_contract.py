@@ -32,6 +32,16 @@ class ProjectContractTests(unittest.TestCase):
                 # the shipped app is a Rust host, a WebKit view and a
                 # PyInstaller sidecar, none of which touch Qt.
                 "pypdfium2>=5.13.0",
+                # The English voice's part-of-speech tagger (15/09/2026):
+                # spaCy, and its small English pipeline, which is a wheel
+                # on the models' release page rather than on PyPI. The
+                # bundle grows by the two of them; the Kokoro model itself
+                # is a download, never a dependency.
+                "spacy>=3.8,<3.9",
+                "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+                # Brought by huggingface_hub already; named because the
+                # English lexicon download calls it directly.
+                "requests>=2.32,<3",
             ],
         )
 
