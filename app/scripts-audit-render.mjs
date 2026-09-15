@@ -76,7 +76,11 @@ async function main() {
     "--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${CDP_PORT}`,
     `--window-size=${W},${H}`, `--user-data-dir=/tmp/readease-render-audit-${process.pid}`, "about:blank",
   ], { stdio: "ignore" });
-  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 15 * 60 * 1000);
+  // A bound on a hung Chrome, not a budget: the full matrix (412 cells)
+  // took 14m34s+ on 15/09 once the mock's bridge answered a tick later, a
+  // minute under the old 15, so the next state added would have turned a
+  // green run red for taking too long.
+  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 25 * 60 * 1000);
   try {
     const wsUrl = await (async () => {
       for (let i = 0; i < 60; i++) {
