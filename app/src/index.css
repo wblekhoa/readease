@@ -240,6 +240,20 @@
  * A viewport query rather than a container query because the cap IS a
  * viewport expression (`layer-capped` above): 100vh minus the two bars.
  */
+/* The material of a Sidebar (HIG 3.15): the page stays visible under a
+ * list that stands beside it. Paper's own colour at 76% - white in light, n10
+ * in dark, so the layer reads as paper that lets the page through - over a
+ * 24px blur with a touch of saturation so the blurred page keeps its colour
+ * instead of going grey. Whole-window material was retired 01/09 for
+ * diluting the ramp; this is the bounded region §7 allows. Applied to a
+ * child layer, not the frame: a filter makes its element the containing
+ * block for anything `fixed` inside. */
+@utility glass {
+  background: color-mix(in srgb, var(--fill-neutral-base) 76%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
 @utility short-hidden {
   @media (max-height: 640px) {
     display: none;
