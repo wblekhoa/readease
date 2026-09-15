@@ -124,6 +124,14 @@ không phải cách G2P hoạt động:
   2,76 s, RTF ≈ 0,23. RSS engine sau warm, cùng root/cùng cài đặt fp32, đo 2 lần mỗi bên:
   chỉ VieNeu **1.136 MB**; VieNeu + Kokoro **~1.660 MB** (+525 MB), sau một lượt đọc tiếng Anh
   1.828 MB (+~690 MB). **Chưa đo trên M1.**
+- Chính sách nạp (chốt 15/09, thay cho "warm cả hai mỗi lần mở"): lúc mở chỉ nạp **mô hình của
+  giọng đã lưu**; mô hình kia nạp ngay khi người đọc **chọn** một giọng của nó (`config.set voice`,
+  mọi đường trong shell đều đi qua), và nạp theo yêu cầu nếu lệnh đọc tới trước. Không có giọng
+  cục bộ nào được lưu (chưa có, hoặc giọng trả phí) → VieNeu nếu có trên máy, không thì Kokoro.
+  Đo bản đóng gói, root có cả hai mô hình: lưu Minh Đức → RSS nghỉ **1.137 MB** (Kokoro chưa nạp);
+  chọn Heart → `config.set` trả lời sau 1 ms, +526 MB sau 20 s, câu Anh đầu tiên ra tiếng sau
+  **1,6 s**. Lưu Heart → RSS nghỉ **641 MB** (VieNeu chưa nạp); chọn Minh Đức → +975 MB, câu Việt
+  đầu tiên sau 0,19 s. Xấu nhất — process vừa lên, chọn Heart rồi đọc ngay: âm đầu sau **2,97 s**.
 - Định tuyến (sau quyết định 15/09 ở §5.5): giọng nào cũng đọc văn bản nào; mã từ chối duy nhất
   còn lại là `model_missing` — giọng của mô hình chưa có trên máy (Kokoro đã xoá, hoặc VieNeu chưa
   từng tải trên máy chỉ tải tiếng Anh). Danh mục giọng bỏ qua mô hình chưa có (không nạp SDK chỉ

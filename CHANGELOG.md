@@ -35,6 +35,12 @@ download is yours. Installs over 0.1.2.
   the model's row says so, with a way to resume and a way to remove it.
 - The frozen engine grows by about 45 MB (spaCy and its small English
   pipeline); the app bundle grows accordingly.
+- Only the model of the voice you use is loaded when the app starts; the
+  other one loads the moment you choose a voice of it. With both models on
+  the Mac, the engine sits at about 1.1 GB for a Vietnamese reader and
+  0.6 GB for an English one, instead of 1.7 GB for both. The first sentence
+  after switching models may wait up to about three seconds, once - less
+  when the play button comes a few seconds after the choice.
 - An EPUB whose chapters open with a document type declaration - the plain
   `<!DOCTYPE html>` of every EPUB 3 chapter, or the XHTML public doctype
   of an EPUB 2 one - imports again. The importer refused every doctype as

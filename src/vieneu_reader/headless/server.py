@@ -500,36 +500,89 @@ class _Session:
         # Two threads may have something to say - the request loop and a
         # background fetch - and a line is only a line if it is written whole.
         self._send_lock = threading.Lock()
+        # Which local models have been asked to load, so choosing a voice
+        # twice does not load its model twice. The threads are kept so a
+        # test can wait for them; the app never needs to.
+        self._warm_lock = threading.Lock()
+        self._warmed: set[Any] = set()
+        self._warm_threads: list[threading.Thread] = []
         pump = threading.Thread(
             target=self._pump, args=(reader,), daemon=True
         )
         pump.start()
 
     def start_background_work(self) -> None:
-        """What can be done before anybody asks: load the model so the first
-        reading does not have to, and ask the paid providers for their
-        catalogues so the first listing does not have to wait on the
-        network. Both off the request thread; neither is required for any
-        answer, so a failure here is a slower answer later, not an error."""
-        warm = getattr(self._engine, "warm", None)
-        english = self._english_engine
-        english_warm = getattr(english, "warm", None) if english is not None else None
+        """What can be done before anybody asks: load the model the reader
+        uses so the first reading does not have to, and ask the paid
+        providers for their catalogues so the first listing does not have
+        to wait on the network. Both off the request thread; neither is
+        required for any answer, so a failure here is a slower answer
+        later, not an error.
 
-        def warm_both() -> None:
-            # One thread, in order: the Vietnamese model first because it
-            # is the product, then the English one - which loads only when
-            # it is downloaded (measured 15/09 in the frozen engine: the
-            # first English sentence otherwise waits ~3 s for spaCy and the
-            # session), and is a no-op when it is not.
-            if callable(warm):
-                warm()
-            if callable(english_warm):
-                english_warm()
-
-        threading.Thread(target=warm_both, name="model-warm", daemon=True).start()
+        One model, not both. Each local model is a few hundred MB resident
+        once loaded (measured 15/09 in the frozen engine: the English one
+        adds ~525 MB), and a reader who stays in one language would pay for
+        the other on every launch. So the model of the saved voice is
+        warmed here; the other one warms the moment a voice of it is
+        chosen (`config.set voice`, which every path in the shell goes
+        through), and loads on demand if a reading gets there first. A
+        saved voice that names no local model - none yet, or a paid one -
+        warms the Vietnamese model when it is on this Mac, else the English
+        one: the model the reader uses, or the one there is.
+        """
+        threading.Thread(
+            target=self._warm_for_start, name="model-warm", daemon=True
+        ).start()
         threading.Thread(
             target=self._prefetch_catalogues, name="voices-prefetch", daemon=True
         ).start()
+
+    def _warm_for_start(self) -> None:
+        voice = str(self._settings_document().get("voice") or "")
+        engine = self._local_engine_of(voice)
+        if engine is None:
+            # No local voice saved: the Vietnamese model if it is here, else
+            # the English one - never both, never a model that is not.
+            engine = self._engine if _is_ready(self._engine) else self._english_engine
+        self._warm(engine)
+
+    def _local_engine_of(self, voice_id: str) -> Any:
+        """The local model a voice belongs to, or None for a paid voice, no
+        voice, or a model that is not on this Mac. The same split as
+        `_voice_engine`: a bare name is local, and local is the English
+        model for its six names and the Vietnamese one for any other -
+        without asking the Vietnamese model for its list, which on a fresh
+        install would load it, on whatever thread asked."""
+        if not voice_id or provider_of(voice_id) is not None:
+            return None
+        english = self._english_engine
+        if english is not None and voice_id in ENGLISH_VOICE_IDS:
+            return english if english.is_model_ready else None
+        return self._engine if _is_ready(self._engine) else None
+
+    def _warm(self, engine: Any) -> None:
+        """Load a model now, on this thread, unless it is not here or is
+        already loading or loaded. Nothing to say either way: a failure is
+        a slower first sentence later, and the reading path reports its own."""
+        warm = getattr(engine, "warm", None)
+        if engine is None or not callable(warm):
+            return
+        with self._warm_lock:
+            if engine in self._warmed:
+                return
+            self._warmed.add(engine)
+        if not warm():
+            with self._warm_lock:
+                self._warmed.discard(engine)
+
+    def _warm_later(self, engine: Any) -> None:
+        """`_warm`, off the request thread - the reply that prompted it must
+        not wait on a model load."""
+        if engine is None:
+            return
+        thread = threading.Thread(target=self._warm, args=(engine,), name="model-warm", daemon=True)
+        self._warm_threads.append(thread)
+        thread.start()
 
     def _pump(self, reader: TextIO) -> None:
         for line in reader:
@@ -1929,6 +1982,11 @@ class _Session:
             return
         update_settings(self._settings_path, {key: params.get("value")})
         self._reply(request_id, {"saved": True})
+        # A voice chosen is a model about to be needed: start loading it
+        # now, behind the reply, so the first sentence in it waits less -
+        # or not at all, if the play button comes a few seconds later.
+        if key == "voice":
+            self._warm_later(self._local_engine_of(str(params.get("value") or "")))
 
     def _config_verify_key(self, request_id: Any, params: dict[str, Any]) -> None:
         """Save a provider credential, then ask the provider whether it works.
