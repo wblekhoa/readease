@@ -8,11 +8,16 @@ against the alternatives on 15/09/2026 - `docs/english-voice-research-
 2026-09-15.md` - and chosen for its voice; fp32 on four threads synthesises
 at a third of real time on an M4 Max.
 
-Three downloads make the model, none in the bundle: the ONNX weights and
-voice packs from a pinned Hugging Face revision, and the two lexicon files
-the G2P reads, from a pinned commit of the library they belong to. Every
-file's hash is checked before the ready marker is written, and readiness is
-that marker plus the files, exactly as the Vietnamese model does it.
+Ten files make the model, none in the bundle: the ONNX weights, the
+tokenizer and six voice packs from a pinned Hugging Face revision, and the
+two lexicon files the G2P reads, from a pinned commit of the library they
+belong to. Each is fetched as a plain HTTPS download - not through the Hub
+client, which the Vietnamese model switches to offline mode process-wide
+once it is prepared, and which would then refuse this download on a
+working network - checked against its pinned hash as it lands, and the
+ready marker is written only after all of them matched and a trial
+sentence produced audio. Readiness is that marker plus the files, exactly
+as the Vietnamese model does it.
 
 Audio leaves here as float32 at 48 kHz, in slices short enough for the
 player's look-ahead, whatever the model produced - its 24 kHz is doubled by
@@ -43,6 +48,7 @@ ENGINE_VERSION = "kokoro-onnx-1"
 MODEL_REPO = "onnx-community/Kokoro-82M-v1.0-ONNX"
 MODEL_REVISION = "1939ad2a8e416c0acfeecc08a694d14ef25f2231"
 MODEL_DIRECTORY = "kokoro-82m-v1.0-onnx"
+MODEL_URL = "https://huggingface.co/{repo}/resolve/{revision}/{name}"
 MODEL_ONNX = "onnx/model.onnx"
 TOKENIZER_FILE = "tokenizer.json"
 
@@ -69,8 +75,11 @@ LEXICON_FILES: dict[str, str] = {
     "us_silver.json": "de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475",
 }
 
-#: Roughly what the download comes to, for the settings row.
+#: Roughly what the download comes to, for the settings row and the bar.
 DOWNLOAD_BYTES = 335_000_000
+#: How often a download reports, in bytes - and so how soon a cancel lands,
+#: since the report is the only place one can.
+REPORT_EVERY = 1 << 20
 
 MODEL_SAMPLE_RATE = 24_000
 TARGET_SAMPLE_RATE = 48_000
@@ -132,14 +141,20 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _download_snapshot(**kwargs: Any) -> str:
-    from huggingface_hub import snapshot_download
-
-    return snapshot_download(**kwargs)
+#: Called with the bytes landed so far, as a download proceeds.
+Progress = Callable[[int], None]
 
 
-def _fetch(url: str, target: Path, expected_sha256: str) -> None:
-    """One file, to a temp name beside the target, checked, then renamed."""
+def _fetch(
+    url: str,
+    target: Path,
+    expected_sha256: str | None,
+    progress: Progress | None = None,
+) -> None:
+    """One file, to a temp name beside the target, checked, then renamed.
+
+    `progress` is called every megabyte; whatever it raises - a cancel -
+    leaves nothing behind, since the temp file goes in the `finally`."""
 
     import requests
 
@@ -151,17 +166,25 @@ def _fetch(url: str, target: Path, expected_sha256: str) -> None:
     try:
         os.fchmod(descriptor, 0o600)
         digest = hashlib.sha256()
+        landed = 0
+        reported = 0
         with os.fdopen(descriptor, "wb") as handle:
             with requests.get(url, stream=True, timeout=60) as response:
                 response.raise_for_status()
                 for block in response.iter_content(1 << 16):
                     handle.write(block)
                     digest.update(block)
+                    landed += len(block)
+                    if progress is not None and landed - reported >= REPORT_EVERY:
+                        reported = landed
+                        progress(landed)
             handle.flush()
             os.fsync(handle.fileno())
-        if digest.hexdigest() != expected_sha256:
+        if expected_sha256 is not None and digest.hexdigest() != expected_sha256:
             raise EnglishModelError(_mismatch_message(target.name))
         temporary.replace(target)
+        if progress is not None:
+            progress(landed)
     finally:
         try:
             temporary.unlink()
@@ -213,14 +236,12 @@ class KokoroSpeechEngine:
         self,
         models_path: Path,
         *,
-        model_downloader: Callable[..., str] | None = None,
-        file_fetcher: Callable[[str, Path, str], None] | None = None,
+        file_fetcher: Callable[..., None] | None = None,
         session_factory: Callable[[Path], Any] | None = None,
         g2p_factory: Callable[[Path, Path], Callable[[str], Any]] | None = None,
     ):
         self._models_path = Path(models_path)
         self._models_path.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self._model_downloader = model_downloader or _download_snapshot
         self._file_fetcher = file_fetcher or _fetch
         self._session_factory = session_factory or self._open_session
         self._g2p_factory = g2p_factory or self._build_g2p
@@ -368,13 +389,6 @@ class KokoroSpeechEngine:
 
     # ---- preparing ------------------------------------------------------
 
-    def _configure_huggingface_environment(self, *, offline: bool = False) -> None:
-        os.environ["HF_HOME"] = str(self._models_path)
-        os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-        os.environ.setdefault("DO_NOT_TRACK", "1")
-        if offline:
-            os.environ["HF_HUB_OFFLINE"] = "1"
-
     def _verify_files(self) -> None:
         for name, expected in MODEL_FILES.items():
             path = self._model_root / name
@@ -401,27 +415,47 @@ class KokoroSpeechEngine:
             if self.is_model_ready:
                 progress_callback(1.0, "Giọng đọc tiếng Anh đã sẵn sàng.")
                 return
-            self._configure_huggingface_environment()
-            progress_callback(0.0, "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…")
+            downloading = "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…"
+            progress_callback(0.0, downloading)
+            # The bar runs over the whole download; 0.9 is where the check
+            # and the trial sentence begin.
+            landed_before = 0
+
+            def report(landed: int) -> None:
+                fraction = min(landed_before + landed, DOWNLOAD_BYTES) / DOWNLOAD_BYTES
+                progress_callback(0.9 * fraction, downloading)
+
             try:
-                self._model_downloader(
-                    repo_id=MODEL_REPO,
-                    revision=MODEL_REVISION,
-                    local_dir=str(self._model_root),
-                    allow_patterns=list(MODEL_FILES),
-                )
-                progress_callback(0.7, "Đang tải từ điển phát âm tiếng Anh…")
-                for name, expected in LEXICON_FILES.items():
-                    self._file_fetcher(
+                files: list[tuple[str, Path, str | None]] = [
+                    (
+                        MODEL_URL.format(repo=MODEL_REPO, revision=MODEL_REVISION, name=name),
+                        self._model_root / name,
+                        expected,
+                    )
+                    for name, expected in MODEL_FILES.items()
+                ]
+                files += [
+                    (
                         LEXICON_URL.format(repo=LEXICON_REPO, revision=LEXICON_REVISION, name=name),
                         self._lexicon_root / name,
                         expected,
                     )
+                    for name, expected in LEXICON_FILES.items()
+                ]
+                for url, target, expected in files:
+                    if target.is_file() and target.stat().st_size > 0 and (
+                        expected is None or _sha256(target) == expected
+                    ):
+                        # Left by an earlier attempt and still whole: kept.
+                        landed_before += target.stat().st_size
+                        report(0)
+                        continue
+                    self._file_fetcher(url, target, expected, report)
+                    landed_before += target.stat().st_size
                 if not self._assets_present():
                     raise OSError("the English voice download is incomplete")
-                progress_callback(0.8, "Đang kiểm tra giọng đọc tiếng Anh…")
+                progress_callback(0.9, "Đang kiểm tra giọng đọc tiếng Anh…")
                 self._verify_files()
-                self._configure_huggingface_environment(offline=True)
                 # The whole path, once: tagger, lexicon, fallback and model.
                 self._session = None
                 self._vocab = None

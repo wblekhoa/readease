@@ -28,6 +28,17 @@ FORBIDDEN_SUFFIXES = {
     ".sqlite3",
     ".wav",
 }
+# The one exception to the ".onnx" rule, named file by file and pinned by
+# hash: the English G2P's out-of-lexicon reader, a 3 MB network exported at
+# development time from an Apache-2.0 model (`legal/MODEL_PROVENANCE.md`).
+# The rule exists to keep model WEIGHTS - the 300 MB kind, downloaded and
+# licensed separately - out of the public tree; these two are package data
+# the engine cannot read English without. A re-export changes the hash and
+# has to come back here, which is the review it deserves.
+PUBLIC_MODEL_ASSETS = {
+    "src/vieneu_reader/speech/english/fallback_assets/encoder.onnx": "b30b54249cb644f435be6dbe1cf23840ec298a22f33df74154cf31d8234741db",
+    "src/vieneu_reader/speech/english/fallback_assets/decoder.onnx": "5fff21a2732d91e4b29ec26ebcb0ee4d719c5389cd241c61d0bdb434b77b3a21",
+}
 FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",
     "QtVirtualKeyboardQml",
@@ -234,7 +245,11 @@ def _audit_source(root: Path, errors: list[str]) -> tuple[int, str]:
     for path in public_files:
         checked += 1
         relative = path.relative_to(root)
-        if path.name == ".env" or path.suffix.casefold() in FORBIDDEN_SUFFIXES:
+        pinned = PUBLIC_MODEL_ASSETS.get(relative.as_posix())
+        if pinned is not None:
+            if sha256(path.read_bytes()).hexdigest() != pinned:
+                errors.append(f"public model asset does not match its pin: {relative}")
+        elif path.name == ".env" or path.suffix.casefold() in FORBIDDEN_SUFFIXES:
             errors.append(f"forbidden public artifact: {relative}")
         if path.stat().st_size > 10 * 1024 * 1024:
             errors.append(f"public blob exceeds 10 MiB: {relative}")

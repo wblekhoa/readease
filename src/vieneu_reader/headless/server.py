@@ -1441,6 +1441,11 @@ class _Session:
             self._reply(request_id, {"ready": False, "cancelled": True})
             return
         self._reply(request_id, {"ready": True})
+        if params.get("engine") == "english":
+            # Six voices just became listable. The shell lists at start-up
+            # and on this event, so without it they would wait for the next
+            # launch - the same signal a paid catalogue arriving sends.
+            self._send({"event": "voices", "providers": ["local"]})
 
     def _model_set_precision(
         self, request_id: Any, params: dict[str, Any]
@@ -1464,7 +1469,10 @@ class _Session:
             if self._english_engine is None:
                 self._fail(request_id, "no English model on this server")
                 return
-            self._reply(request_id, {"removed": bool(self._english_engine.remove())})
+            removed = bool(self._english_engine.remove())
+            self._reply(request_id, {"removed": removed})
+            if removed:
+                self._send({"event": "voices", "providers": ["local"]})
             return
         remove = getattr(self._engine, "remove_build", None)
         if remove is None:

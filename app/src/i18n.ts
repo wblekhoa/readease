@@ -803,7 +803,6 @@ const RUNTIME_EN: Record<string, string> = {
   "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại.": "Could not prepare the Vietnamese voice model. Check your connection and try again.",
   // The English model's download, in the same voice as the Vietnamese one's.
   "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…": "Downloading the English voice (about 330 MB)…",
-  "Đang tải từ điển phát âm tiếng Anh…": "Downloading the English pronunciation lexicon…",
   "Đang kiểm tra giọng đọc tiếng Anh…": "Checking the English voice…",
   "Giọng đọc tiếng Anh đã sẵn sàng.": "The English voice is ready.",
   "Giọng đọc tiếng Anh chưa được tải về máy.": "The English voice has not been downloaded to this Mac.",

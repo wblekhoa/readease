@@ -200,6 +200,10 @@ class EnglishModelManagementTests(unittest.TestCase):
         self.assertEqual(done["result"], {"ready": True})
         self.assertEqual(english.prepared, 1)
         self.assertTrue(english.ready)
+        # The shell re-lists on this: the new voices must not wait for a
+        # relaunch to be offered.
+        after = replies.index(done)
+        self.assertIn({"event": "voices", "providers": ["local"]}, replies[after:])
 
     def test_prepare_without_a_name_still_means_the_vietnamese_model(self) -> None:
         english = FakeEnglish(ready=False)
@@ -218,7 +222,9 @@ class EnglishModelManagementTests(unittest.TestCase):
 
         self.assertEqual(replies[0]["result"], {"removed": True})
         self.assertEqual(english.removed, 1)
-        self.assertEqual([voice["id"] for voice in replies[1]["result"]["voices"]], ["adam"])
+        self.assertIn({"event": "voices", "providers": ["local"]}, replies)
+        listing = next(r for r in replies if r.get("id") == 10)
+        self.assertEqual([voice["id"] for voice in listing["result"]["voices"]], ["adam"])
 
     def test_a_cancel_passes_through_an_engine_that_wraps_its_errors(self) -> None:
         # The real engines wrap whatever fails inside `prepare_model` into

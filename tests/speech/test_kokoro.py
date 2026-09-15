@@ -57,41 +57,50 @@ TOKENIZER = json.dumps({"model": {"vocab": {
 }}}).encode("utf-8")
 
 
+def _payload(name: str) -> bytes:
+    if name == kokoro.TOKENIZER_FILE:
+        return TOKENIZER
+    if name.startswith("voices/"):
+        return np.zeros(510 * 256, dtype=np.float32).tobytes()
+    if name.endswith(".json"):
+        return b"{}"
+    return b"onnx" * 64
+
+
 class Fixture:
-    """A models folder the fakes fill, and the pinned hashes to match it."""
+    """A fetcher that writes stand-ins, and the pins that match them.
+
+    The pins in the engine are of the real files; the fakes write stand-ins,
+    so a test points the tables at what they wrote."""
 
     def __init__(self, root: Path, *, corrupt: str | None = None):
         self.root = root
-        self.model_hashes: dict[str, str | None] = {}
-        self.lexicon_hashes: dict[str, str] = {}
         self.corrupt = corrupt
+        self.fetched: list[str] = []
+        self.model_hashes: dict[str, str | None] = {
+            name: (None if name == kokoro.TOKENIZER_FILE else hashlib.sha256(_payload(name)).hexdigest())
+            for name in kokoro.MODEL_FILES
+        }
+        if corrupt:
+            self.model_hashes[corrupt] = "0" * 64
+        self.lexicon_pins = {
+            name: hashlib.sha256(_payload(name)).hexdigest() for name in kokoro.LEXICON_FILES
+        }
 
-    def download(self, **kwargs):
-        model_root = Path(kwargs["local_dir"])
-        for name in kokoro.MODEL_FILES:
-            if name == kokoro.TOKENIZER_FILE:
-                _write(model_root / name, TOKENIZER)
-                self.model_hashes[name] = None
-                continue
-            payload = (
-                np.zeros(510 * 256, dtype=np.float32).tobytes()
-                if name.startswith("voices/")
-                else b"onnx" * 64
-            )
-            self.model_hashes[name] = _write(model_root / name, payload)
-            if name == self.corrupt:
-                self.model_hashes[name] = "0" * 64
-        return str(model_root)
-
-    def fetch(self, url: str, target: Path, expected: str):
-        assert url.startswith("https://raw.githubusercontent.com/hexgrad/misaki/")
-        assert kokoro.LEXICON_REVISION in url
-        self.lexicon_hashes[target.name] = _write(target, b"{}")
-
-    def lexicon_pins(self) -> dict[str, str]:
-        # The engine checks the fetched file against the pin it was given;
-        # the fake fetcher hashes what it wrote, so the pins are those.
-        return {name: hashlib.sha256(b"{}").hexdigest() for name in kokoro.LEXICON_FILES}
+    def fetch(self, url: str, target: Path, expected, progress=None):
+        assert url.startswith(("https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/",
+                               "https://raw.githubusercontent.com/hexgrad/misaki/"))
+        assert kokoro.MODEL_REVISION in url or kokoro.LEXICON_REVISION in url
+        self.fetched.append(url.rsplit("/", 1)[-1])
+        name = target.name if target.parent.name != "voices" else f"voices/{target.name}"
+        if target.name == "model.onnx":
+            name = kokoro.MODEL_ONNX
+        _write(target, _payload(name))
+        if progress is not None:
+            progress(target.stat().st_size)
+        if expected is not None and hashlib.sha256(target.read_bytes()).hexdigest() != expected:
+            target.unlink()
+            raise kokoro.EnglishModelError(kokoro._mismatch_message(target.name))
 
 
 class EnglishEngineTests(unittest.TestCase):
@@ -106,20 +115,22 @@ class EnglishEngineTests(unittest.TestCase):
     def _engine(self, fixture: Fixture) -> KokoroSpeechEngine:
         return KokoroSpeechEngine(
             self.root,
-            model_downloader=fixture.download,
             file_fetcher=fixture.fetch,
             session_factory=lambda path: self.session,
             g2p_factory=lambda gold, silver: fake_g2p,
         )
 
+    def _pinned(self, fixture: Fixture):
+        return (
+            mock.patch.dict(kokoro.MODEL_FILES, fixture.model_hashes),
+            mock.patch.dict(kokoro.LEXICON_FILES, fixture.lexicon_pins),
+        )
+
     def _prepared(self, fixture: Fixture | None = None) -> KokoroSpeechEngine:
         fixture = fixture or Fixture(self.root)
         engine = self._engine(fixture)
-        # The pins are of the real files; the fakes write stand-ins, so the
-        # table is pointed at what they wrote.
-        fixture.download(local_dir=str(self.root / kokoro.MODEL_DIRECTORY))
-        with mock.patch.dict(kokoro.MODEL_FILES, fixture.model_hashes), \
-                mock.patch.dict(kokoro.LEXICON_FILES, fixture.lexicon_pins()):
+        models, lexicon = self._pinned(fixture)
+        with models, lexicon:
             engine.prepare_model(lambda progress, message: None)
         return engine
 
@@ -130,10 +141,19 @@ class EnglishEngineTests(unittest.TestCase):
         with self.assertRaises(EnglishModelNotReadyError):
             list(engine.stream("Hello there.", "af_heart"))
 
-    def test_prepare_writes_the_marker_after_a_trial_sentence(self) -> None:
-        engine = self._prepared()
+    def test_prepare_fetches_every_file_by_url_and_writes_the_marker_after_a_trial_sentence(self) -> None:
+        fixture = Fixture(self.root)
+        engine = self._engine(fixture)
+        models, lexicon = self._pinned(fixture)
+        with models, lexicon:
+            engine.prepare_model(lambda progress, message: None)
 
         self.assertTrue(engine.is_model_ready)
+        # Ten plain downloads: no Hub client, which the Vietnamese model
+        # puts into offline mode for the whole process once it is ready.
+        self.assertEqual(len(fixture.fetched), len(kokoro.MODEL_FILES) + len(kokoro.LEXICON_FILES))
+        self.assertIn("model.onnx", fixture.fetched)
+        self.assertIn("us_gold.json", fixture.fetched)
         marker = json.loads((self.root / ".kokoro-ready.json").read_text())
         self.assertEqual(marker["model_revision"], engine.model_revision)
         self.assertEqual(marker["lexicon_revision"], kokoro.LEXICON_REVISION)
@@ -143,10 +163,9 @@ class EnglishEngineTests(unittest.TestCase):
     def test_a_file_that_does_not_match_its_pin_leaves_no_marker(self) -> None:
         fixture = Fixture(self.root, corrupt="voices/af_heart.bin")
         engine = self._engine(fixture)
-        fixture.download(local_dir=str(self.root / kokoro.MODEL_DIRECTORY))
+        models, lexicon = self._pinned(fixture)
 
-        with mock.patch.dict(kokoro.MODEL_FILES, fixture.model_hashes), \
-                mock.patch.dict(kokoro.LEXICON_FILES, fixture.lexicon_pins()):
+        with models, lexicon:
             with self.assertRaises(EnglishModelError) as caught:
                 engine.prepare_model(lambda progress, message: None)
 
@@ -157,25 +176,64 @@ class EnglishEngineTests(unittest.TestCase):
     def test_prepare_reports_progress_in_order_and_ends_ready(self) -> None:
         fixture = Fixture(self.root)
         engine = self._engine(fixture)
-        fixture.download(local_dir=str(self.root / kokoro.MODEL_DIRECTORY))
         seen: list[tuple[float, str]] = []
-        with mock.patch.dict(kokoro.MODEL_FILES, fixture.model_hashes), \
-                mock.patch.dict(kokoro.LEXICON_FILES, fixture.lexicon_pins()):
+        models, lexicon = self._pinned(fixture)
+        with models, lexicon:
             engine.prepare_model(lambda progress, message: seen.append((progress, message)))
 
         self.assertEqual([progress for progress, _ in seen], sorted(progress for progress, _ in seen))
         self.assertEqual(seen[0][0], 0.0)
         self.assertEqual(seen[-1], (1.0, "Giọng đọc tiếng Anh đã sẵn sàng."))
         self.assertIn("330 MB", seen[0][1])
+        # Every file reported as it landed, so a cancel can land between them.
+        self.assertGreater(len(seen), len(kokoro.MODEL_FILES) + len(kokoro.LEXICON_FILES))
 
     def test_a_prepared_model_is_not_downloaded_again(self) -> None:
-        engine = self._prepared()
-        downloads: list[dict] = []
-        engine._model_downloader = lambda **kwargs: downloads.append(kwargs)  # type: ignore[assignment]
+        fixture = Fixture(self.root)
+        engine = self._prepared(fixture)
+        fixture.fetched.clear()
 
         engine.prepare_model(lambda progress, message: None)
 
-        self.assertEqual(downloads, [])
+        self.assertEqual(fixture.fetched, [])
+
+    def test_a_whole_file_left_by_an_earlier_attempt_is_kept(self) -> None:
+        fixture = Fixture(self.root)
+        engine = self._engine(fixture)
+        # The earlier attempt got the model and one voice down.
+        for name in (kokoro.MODEL_ONNX, "voices/af_heart.bin"):
+            _write(self.root / kokoro.MODEL_DIRECTORY / name, _payload(name))
+        models, lexicon = self._pinned(fixture)
+        with models, lexicon:
+            engine.prepare_model(lambda progress, message: None)
+
+        self.assertTrue(engine.is_model_ready)
+        self.assertNotIn("model.onnx", fixture.fetched)
+        self.assertNotIn("af_heart.bin", fixture.fetched)
+        self.assertIn("af_bella.bin", fixture.fetched)
+
+    def test_a_cancel_raised_from_progress_leaves_no_marker_and_no_temp_file(self) -> None:
+        class Cancelled(BaseException):
+            pass
+
+        fixture = Fixture(self.root)
+        engine = self._engine(fixture)
+        calls = 0
+
+        def report(progress: float, message: str) -> None:
+            nonlocal calls
+            calls += 1
+            if calls == 3:
+                raise Cancelled()
+
+        models, lexicon = self._pinned(fixture)
+        with models, lexicon:
+            with self.assertRaises(Cancelled):
+                engine.prepare_model(report)
+
+        self.assertFalse(engine.is_model_ready)
+        self.assertFalse((self.root / ".kokoro-ready.json").exists())
+        self.assertEqual(list(self.root.rglob(".download-*")), [])
 
     def test_audio_is_48k_float32_in_short_slices(self) -> None:
         engine = self._prepared()

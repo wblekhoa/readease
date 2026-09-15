@@ -465,6 +465,10 @@ export default function App() {
     if (wanted && wanted !== voiceId) {
       setVoiceId(wanted);
       remember("voice", wanted);
+      // The switch is a choice for this language too, so it holds across
+      // a relaunch.
+      voiceByLanguage.current[bookLanguage] = wanted;
+      remember(`voice_${bookLanguage}`, wanted);
     }
   }, [bookLanguage, voices, voiceId, remember]);
 
@@ -561,6 +565,10 @@ export default function App() {
         const vietnamese = before ? list.find((voice) => voice.id === before) : undefined;
         if (!voiceByLanguage.current.vi && vietnamese && vouchedFor(vietnamese, "vi")) {
           voiceByLanguage.current.vi = vietnamese.id;
+          // Written down, not just held: the first English book rewrites
+          // `voice`, and after a relaunch this seed would otherwise be
+          // taken from the English voice and fail.
+          remember("voice_vi", vietnamese.id);
         }
         // Inside this chain because the starting five have to be filtered
         // against the catalogue this build actually ships.

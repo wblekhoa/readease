@@ -779,6 +779,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       if (params.engine === "english") {
         const was = MODEL.english.ready;
         MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
+        if (was) setTimeout(() => emit("engine:voices", { providers: ["local"] }), 0);
         return { removed: was };
       }
       delete MODEL.installed[String(params.precision ?? "")];
@@ -1029,6 +1030,9 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
         if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
       }
       emit("engine:orphan_reply", { ok: true, result: {} });
+      // The engine announces the six new voices the way it announces a paid
+      // catalogue arriving, and the shell re-lists on it.
+      if (english) emit("engine:voices", { providers: ["local"] });
     }, 400 + steps.length * 700);
     return Promise.resolve(null);
   }
