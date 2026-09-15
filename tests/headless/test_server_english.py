@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from vieneu_reader.domain.models import AudioChunk, Voice
-from vieneu_reader.headless.server import serve
+from vieneu_reader.headless.server import _Session, serve
 from vieneu_reader.speech.kokoro import VOICES
 
 
@@ -24,11 +24,21 @@ class FakeVietnamese:
     engine_version = "fake-vi"
     model_revision = "vi-1"
 
-    def __init__(self) -> None:
+    def __init__(self, ready: bool = True) -> None:
         self.requests: list[tuple[str, str]] = []
+        self.ready = ready
+        self.warmed = 0
+
+    @property
+    def is_model_ready(self) -> bool:
+        return self.ready
 
     def voices(self) -> tuple[Voice, ...]:
         return (Voice(id="adam", label="Adam — Nam · Bắc"),)
+
+    def warm(self) -> bool:
+        self.warmed += 1
+        return self.ready
 
     def stream(self, text, voice_id, settings):
         self.requests.append((text, voice_id))
@@ -47,6 +57,7 @@ class FakeEnglish:
         self.requests: list[tuple[str, str]] = []
         self.prepared = 0
         self.removed = 0
+        self.warmed = 0
 
     @property
     def is_model_ready(self) -> bool:
@@ -80,6 +91,7 @@ class FakeEnglish:
         return was
 
     def warm(self) -> bool:
+        self.warmed += 1
         return self.ready
 
     def stream(self, text, voice_id, settings):
@@ -246,3 +258,93 @@ class EnglishModelManagementTests(unittest.TestCase):
         self.assertTrue(done["result"]["cancelled"])
         self.assertFalse(done["result"]["ready"])
         self.assertFalse(english.ready)
+
+
+class WhichModelWarmsTests(unittest.TestCase):
+    """One model at launch, the reader's; the other when a voice of it is
+    chosen. Each local model is a few hundred MB resident once loaded, and
+    until 15/09 both were loaded on every launch whenever both were on the
+    Mac - ~525 MB for an English model a Vietnamese reader never asked for
+    that day."""
+
+    def _session(self, vietnamese, english, saved_voice: str | None, requests=()):
+        self.directory = TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        settings_path = Path(self.directory.name) / "settings.json"
+        if saved_voice is not None:
+            settings_path.write_text(json.dumps({"voice": saved_voice}), encoding="utf-8")
+        reader = io.StringIO("".join(json.dumps(request) + "\n" for request in requests))
+        writer = io.StringIO()
+        session = _Session(
+            reader, writer, vietnamese, settings_path=settings_path, english_engine=english
+        )
+        return session, writer
+
+    def test_a_saved_english_voice_warms_the_english_model_alone(self) -> None:
+        vietnamese, english = FakeVietnamese(), FakeEnglish(ready=True)
+        session, _ = self._session(vietnamese, english, "af_heart")
+
+        session._warm_for_start()
+
+        self.assertEqual((vietnamese.warmed, english.warmed), (0, 1))
+
+    def test_a_saved_vietnamese_voice_leaves_the_english_model_cold(self) -> None:
+        vietnamese, english = FakeVietnamese(), FakeEnglish(ready=True)
+        session, _ = self._session(vietnamese, english, "adam")
+
+        session._warm_for_start()
+
+        self.assertEqual((vietnamese.warmed, english.warmed), (1, 0))
+
+    def test_no_saved_voice_warms_the_model_there_is(self) -> None:
+        # Nothing saved and both here: the Vietnamese one, the product.
+        vietnamese, english = FakeVietnamese(), FakeEnglish(ready=True)
+        session, _ = self._session(vietnamese, english, None)
+        session._warm_for_start()
+        self.assertEqual((vietnamese.warmed, english.warmed), (1, 0))
+
+        # Nothing saved and only the English model here: that one.
+        vietnamese, english = FakeVietnamese(ready=False), FakeEnglish(ready=True)
+        session, _ = self._session(vietnamese, english, None)
+        session._warm_for_start()
+        self.assertEqual((vietnamese.warmed, english.warmed), (0, 1))
+
+    def test_a_paid_voice_saved_warms_the_vietnamese_model_not_a_provider(self) -> None:
+        vietnamese, english = FakeVietnamese(), FakeEnglish(ready=True)
+        session, _ = self._session(vietnamese, english, "openai:gpt-4o-mini-tts:alloy")
+
+        session._warm_for_start()
+
+        self.assertEqual((vietnamese.warmed, english.warmed), (1, 0))
+
+    def test_choosing_an_english_voice_warms_its_model_behind_the_reply(self) -> None:
+        vietnamese, english = FakeVietnamese(), FakeEnglish(ready=True)
+        session, writer = self._session(
+            vietnamese, english, "adam",
+            requests=[
+                {"id": 1, "method": "config.set", "params": {"key": "voice", "value": "af_heart"}},
+                {"id": 2, "method": "config.set", "params": {"key": "voice", "value": "af_heart"}},
+            ],
+        )
+
+        session.run()
+        for thread in session._warm_threads:
+            thread.join(timeout=5)
+
+        replies = [json.loads(line) for line in writer.getvalue().splitlines()]
+        self.assertTrue(all(reply.get("ok") for reply in replies), replies)
+        # Once, not once per choice; and the Vietnamese model was not asked.
+        self.assertEqual((vietnamese.warmed, english.warmed), (0, 1))
+
+    def test_choosing_a_voice_whose_model_is_absent_warms_nothing(self) -> None:
+        vietnamese, english = FakeVietnamese(), FakeEnglish(ready=False)
+        session, _ = self._session(
+            vietnamese, english, "adam",
+            requests=[{"id": 1, "method": "config.set", "params": {"key": "voice", "value": "af_heart"}}],
+        )
+
+        session.run()
+        for thread in session._warm_threads:
+            thread.join(timeout=5)
+
+        self.assertEqual((vietnamese.warmed, english.warmed), (0, 0))
