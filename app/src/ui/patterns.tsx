@@ -7,8 +7,9 @@
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { hoverText } from "./format";
+import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
-import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "./icons";
+import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "./icons";
 
 /** A row of controls that must share one corner.
  *
@@ -709,3 +710,71 @@ export function MenuButton({
   );
 }
 
+
+/** A list that stands beside the page - the contents, the notes, the search
+ * hits - on a sheet of glass the page shows through (HIG 3.15).
+ *
+ * One layer for all three, where each used to bring its own opaque card
+ * capped at `100vh - chrome - 2rem`: at a 600px window the contents got
+ * fourteen rows. This runs the whole height between the two bars, anchored
+ * on the chrome's INNER edges so the player bar that appears while reading
+ * pushes its foot up live (the observer in App writes those insets). Still a
+ * layer floating over the page, not a column beside it (owner, 02/09) - and
+ * glass rather than paper, so the page does not disappear under it.
+ *
+ * Dismiss is the sidebar's: Escape, a click outside, the close button. The
+ * button that opens one carries `data-popover-trigger`, so pressing it again
+ * closes rather than closing-and-reopening. `children` is the body, and owns
+ * its own scroller (`min-h-0 flex-1 overflow-y-auto`) and row track. */
+export function Sidebar({
+  side = "left",
+  title,
+  onClose,
+  paged = false,
+  width = "w-72",
+  className = "",
+  header,
+  children,
+}: {
+  side?: "left" | "right";
+  title: string;
+  onClose: () => void;
+  /** Inside the paged column, which the bars' full heights already inset,
+   * the same anchors are reached by giving those heights back - so the
+   * layer sits 12px from the controls in both modes, not 12px from the
+   * column in one and from the controls in the other. */
+  paged?: boolean;
+  /** A width class; the content decides (a chapter title is a sentence). */
+  width?: string;
+  className?: string;
+  /** Rows under the title that stay put while the body scrolls - the
+   * search field, an error. */
+  header?: ReactNode;
+  children: ReactNode;
+}) {
+  const panel = useDismiss(onClose);
+  return (
+    <div
+      ref={panel}
+      className={`absolute z-10 flex flex-col overflow-hidden rounded-3xl border border-edge-strong shadow-lifted ${width} ${
+        side === "left" ? "left-0" : "right-0"
+      } ${
+        paged
+          ? "top-[calc(var(--shell-top-inner)+var(--layer-gap)-var(--shell-top-h))] bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap)-var(--shell-bottom-h))]"
+          : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))]"
+      } transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-none ${
+        side === "left" ? "starting:-translate-x-3" : "starting:translate-x-3"
+      } starting:opacity-0 ${className}`}
+    >
+      <div aria-hidden="true" className="glass absolute inset-0 -z-10" />
+      <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
+        <h3 className="m-0 flex-1 text-sm font-bold">{title}</h3>
+        <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
+          <CloseIcon />
+        </IconButton>
+      </div>
+      {header}
+      {children}
+    </div>
+  );
+}
