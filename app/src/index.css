@@ -431,8 +431,12 @@ textarea:focus-visible {
    descenders on purpose - a marker under the line, not a hyperlink. */
 .voice-here {
   text-decoration-line: underline;
+  /* Dotted and paler than the solid 60% it started as (owner, 15/09): a
+     row of dots is quieter under a paragraph than a rule, and 40% keeps
+     it visible on both papers without pulling the eye off the words. */
+  text-decoration-style: dotted;
   text-decoration-thickness: 2px;
-  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 60%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
   text-underline-offset: 0.22em;
   text-decoration-skip-ink: none;
 }
