@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vieneu-reader"
-version = "0.1.2"
+version = "0.1.3"
 description = "Ứng dụng macOS đọc PDF, EPUB và nội dung dán bằng VieNeu-TTS cục bộ."
 readme = "README.md"
 license = "PolyForm-Noncommercial-1.0.0"
@@ -16,11 +16,23 @@ dependencies = [
   # uses it directly, and depending on a transitive package is a trap.
   "numpy>=2,<3",
   "pypdfium2>=5.13.0",
+  # The English voice's front end: spaCy tags parts of speech for the
+  # ported G2P (`speech/english/tagger.py`), and the small English pipeline
+  # is a wheel on the models' own release page rather than on PyPI.
+  "spacy>=3.8,<3.9",
+  "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+  # Already in the bundle by way of huggingface_hub; named because the
+  # English lexicon download uses it directly.
+  "requests>=2.32,<3",
 ]
 
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vieneu_reader"]
+
+[tool.hatch.metadata]
+# The spaCy English pipeline is fetched from its release page by URL.
+allow-direct-references = true
 
 [dependency-groups]
 dev = [

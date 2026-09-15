@@ -15,7 +15,9 @@ import {
   serializeShortlist,
   sampleLanguage,
   toggleShortlist,
+  voiceForLanguage,
   voiceName,
+  vouchedFor,
   type Voice, chipName } from "./ui/voiceShortlist";
 import { useShortcut } from "./ui/useShortcut";
 import {
@@ -373,9 +375,21 @@ export default function App() {
       params: { key, value },
     }).catch(() => undefined);
   }, []);
+  /** The voice last chosen for each language a book can be in, so the next
+   * book in that language opens in it. Read once at start-up, written when
+   * a voice is picked with a book open. */
+  const voiceByLanguage = useRef<Record<string, string>>({});
   const rememberVoice = useCallback((id: string) => {
     setVoiceId(id);
     remember("voice", id);
+    setOpenBook((book) => {
+      const language = book?.language;
+      if (language === "vi" || language === "en") {
+        voiceByLanguage.current[language] = id;
+        remember(`voice_${language}`, id);
+      }
+      return book;
+    });
   }, [remember]);
   const rememberRate = useCallback((value: number) => {
     setRate(value);
@@ -436,6 +450,23 @@ export default function App() {
     // chapter is being read - which is exactly when the list gets edited.
     remember("voice_shortlist", serializeShortlist(ids));
   }, [remember]);
+
+  /* A book opens in a voice that reads its language. The one in use stays
+     unless it names its languages and this is not among them; the rule and
+     its reasons are `voiceForLanguage`. Runs again when the catalogue
+     arrives (at start-up a book can be open before the voices are listed)
+     and when the reader changes the book's language by hand. */
+  const bookLanguage = openBook?.language;
+  useEffect(() => {
+    if (!bookLanguage || !voices.length || !voiceId) return;
+    const wanted = voiceForLanguage(
+      voiceId, voiceByLanguage.current[bookLanguage], bookLanguage, voices,
+    );
+    if (wanted && wanted !== voiceId) {
+      setVoiceId(wanted);
+      remember("voice", wanted);
+    }
+  }, [bookLanguage, voices, voiceId, remember]);
 
   /** A reader's word about which language the open book is in.
    *
@@ -514,6 +545,23 @@ export default function App() {
           "engine_request",
           { method: "config.get", params: { key: "voice" } },
         ).catch(() => null);
+        for (const language of ["vi", "en"]) {
+          const chosen = await invoke<{ result: { value: string | null } }>(
+            "engine_request",
+            { method: "config.get", params: { key: `voice_${language}` } },
+          ).catch(() => null);
+          if (chosen?.result.value) voiceByLanguage.current[language] = chosen.result.value;
+        }
+        // The voice saved before there was a memory per language was
+        // chosen with Vietnamese books, so it is the Vietnamese memory
+        // until a Vietnamese book is read in another - otherwise the first
+        // English book would cost a reader their voice for the next
+        // Vietnamese one.
+        const before = saved?.result.value;
+        const vietnamese = before ? list.find((voice) => voice.id === before) : undefined;
+        if (!voiceByLanguage.current.vi && vietnamese && vouchedFor(vietnamese, "vi")) {
+          voiceByLanguage.current.vi = vietnamese.id;
+        }
         // Inside this chain because the starting five have to be filtered
         // against the catalogue this build actually ships.
         const kept = await invoke<{ result: { value: string | null } }>(

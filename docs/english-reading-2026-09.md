@@ -30,7 +30,7 @@ wrong_language`, và vỏ nói ra thành câu ("Giọng trên máy chỉ đọc 
 | Nhãn hình của sách | Đã nhận sẵn từ tiếng Anh: `Figure 2-4`, `Fig. 7` nằm trong regex từ trước |
 | Giọng VieNeu + sách tiếng Anh | **Bị từ chối**, không đọc |
 | Ngôn ngữ đọc lấy từ đâu | **Chính cuốn sách** khai, đọc từ văn bản của nó; người đọc đặt lại được trong bảng Giọng đọc |
-| Giọng tiếng Anh **cục bộ** (không cần khoá, không cần mạng) | **Chưa có** — xem §3 |
+| Giọng tiếng Anh **cục bộ** (không cần khoá, không cần mạng) | **Có từ 0.1.3 (15/09)** — Kokoro-82M ONNX, tải trong Cài đặt › Mô hình đọc; G2P là bản port của misaki (không torch, không num2words) + spaCy `en_core_web_sm` gắn thẻ từ loại + mạng BART nhỏ (3 MB, ONNX, trong bundle) cho từ ngoài từ điển. Chi tiết đo đạc: `english-voice-research-2026-09-15.md` |
 
 Những gì vốn đã không phụ thuộc ngôn ngữ thì giữ nguyên một đường: bỏ dấu chú thích, hạ chữ HOA, bỏ ký tự
 đầu dòng, chấm câu cho tiêu đề.

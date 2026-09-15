@@ -16,6 +16,7 @@ import {
   toggleShortlist,
   voiceDescription,
   voiceDescriptionShown,
+  voiceForLanguage,
   voiceGender,
   voiceName,
   vouchedFor,
@@ -338,6 +339,54 @@ test("the description a person reads says the region as a place, in their langua
   assert.equal(voiceDescriptionShown("JM – Husky & Engaging"), undefined);
   assert.equal(voiceDescriptionShown("Rachel — Warm, mid-range"), "Warm, mid-range");
   setLanguage("vi");
+});
+
+test("the English model's voices read through the same word table", () => {
+  // The engine labels them in the Vietnamese catalogue's shape, so the
+  // gender is read off the label like any local voice and the accent word
+  // is said in the interface language.
+  const heart = "Heart — Nữ · Mỹ";
+  const michael = "Michael — Nam · Mỹ";
+  assert.equal(voiceGender({ id: "af_heart", label: heart }), "female");
+  assert.equal(voiceGender({ id: "am_michael", label: michael }), "male");
+  assert.equal(voiceName(heart), "Heart");
+  setLanguage("vi");
+  assert.equal(voiceDescriptionShown(heart), "Nữ · giọng Mỹ");
+  setLanguage("en");
+  assert.equal(voiceDescriptionShown(michael), "Male · American");
+  setLanguage("vi");
+  // Vouched for English and not Vietnamese: offered to an English book,
+  // hidden from a Vietnamese one, previewed in English.
+  const voice = { id: "af_heart", label: heart, languages: ["en"] };
+  assert.equal(canSpeak(voice, "en"), true);
+  assert.equal(canSpeak(voice, "vi"), false);
+  assert.equal(sampleLanguage(voice, "vi"), "en");
+});
+
+test("a book opens in a voice that reads its language, remembered per language", () => {
+  const catalogue: Voice[] = [
+    { id: "Adam", label: "Adam — Nam · Nam · Giọng đọc tự nhiên", languages: ["vi"] },
+    { id: "Trúc Ly", label: "Trúc Ly — Nữ · Bắc · Phong cách tự nhiên", languages: ["vi"] },
+    { id: "af_heart", label: "Heart — Nữ · Mỹ", languages: ["en"] },
+    { id: "am_michael", label: "Michael — Nam · Mỹ", languages: ["en"] },
+    { id: "openai:gpt-4o-mini-tts:alloy", label: "Alloy", languages: [] },
+  ];
+  // The voice in use reads the language: nothing moves.
+  assert.equal(voiceForLanguage("Adam", "Trúc Ly", "vi", catalogue), "Adam");
+  // It does not, and one was used for this language before: that one.
+  assert.equal(voiceForLanguage("Adam", "am_michael", "en", catalogue), "am_michael");
+  // None remembered: the first local voice that vouches for the language.
+  assert.equal(voiceForLanguage("Adam", null, "en", catalogue), "af_heart");
+  assert.equal(voiceForLanguage("af_heart", undefined, "vi", catalogue), "Adam");
+  // A remembered voice that is no longer offered, or no longer reads it, is
+  // not honoured.
+  assert.equal(voiceForLanguage("Adam", "bf_emma", "en", catalogue), "af_heart");
+  assert.equal(voiceForLanguage("Adam", "Trúc Ly", "en", catalogue), "af_heart");
+  // A paid voice that names no language is never moved away from - it may
+  // well read the book - and never moved TO: that would cost money.
+  assert.equal(voiceForLanguage("openai:gpt-4o-mini-tts:alloy", null, "en", catalogue), "openai:gpt-4o-mini-tts:alloy");
+  const vietnameseOnly = catalogue.filter((voice) => !voice.id.startsWith("a"));
+  assert.equal(voiceForLanguage("Adam", null, "en", vietnameseOnly), null);
 });
 
 test("a stored paid voice keeps its place while its provider is still being asked", () => {

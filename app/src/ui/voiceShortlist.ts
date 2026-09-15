@@ -193,6 +193,7 @@ const DESCRIPTION_WORDS: Record<string, TextKey> = {
   "nữ": "voices.gender_female",
   "bắc": "voices.region_north",
   "trung": "voices.region_central",
+  "mỹ": "voices.region_us",
   "phong cách tự nhiên": "voices.style_natural",
   "giọng đọc tự nhiên": "voices.style_natural_voice",
   "phong cách kể chuyện": "voices.style_storytelling",
@@ -318,6 +319,39 @@ export function serializeShortlist(ids: readonly string[]): string {
 
 export function toggleShortlist(ids: readonly string[], id: string): string[] {
   return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id];
+}
+
+/** The voice to open a book in `language` with.
+ *
+ * One voice setting served every book while every local voice read
+ * Vietnamese. With a local English voice as well, a reader who moves between
+ * a Vietnamese book and an English one would otherwise be refused on every
+ * other book - the voice they picked for the last one names its language,
+ * and this is not it - and sent to the panel each time to pick again.
+ *
+ * So the voice in use stays unless it NAMES its languages and this is not
+ * among them (a paid voice that says nothing is never moved: `canSpeak`).
+ * Then the voice last used for this language, if it is on offer and can
+ * still speak it; then the first voice on this Mac that vouches for the
+ * language - never a paid one, which would spend money nobody chose to
+ * spend. Null when nothing local can: the voice is left alone and the
+ * reading is refused by name, with the sentence saying where the download
+ * is.
+ */
+export function voiceForLanguage(
+  currentId: string,
+  remembered: string | null | undefined,
+  language: string,
+  catalogue: readonly Voice[],
+): string | null {
+  const current = catalogue.find((voice) => voice.id === currentId);
+  if (current && canSpeak(current, language)) return current.id;
+  const kept = remembered ? catalogue.find((voice) => voice.id === remembered) : undefined;
+  if (kept && canSpeak(kept, language)) return kept.id;
+  const local = catalogue.find(
+    (voice) => !voice.id.includes(":") && vouchedFor(voice, language),
+  );
+  return local ? local.id : null;
 }
 
 /** What the reading UI offers: the marked voices, in the catalogue's own

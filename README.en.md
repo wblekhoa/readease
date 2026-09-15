@@ -55,8 +55,9 @@ Books, progress, notes and downloaded voices live in `~/Library/Application Supp
 - **Session history:** replay up to 10 recent items from books, pasted text or Apple Books. History disappears when the app closes.
 - **Vietnamese and English UI:** choose `🇻🇳 Tiếng Việt` or `🇬🇧 English` from the language selector. The choice is applied immediately and saved for the next launch.
 - **Local-first privacy:** books, progress, model data and audio cache stay on the Mac. There is no API key, telemetry or background server.
+- **English books, voice on the Mac:** add the English model (Kokoro-82M, 330 MB, six American voices) under **Settings › Reading models** — no API key, no network once downloaded. One model per language, fetched or removed as you need; a book opens in the voice you last used for its language.
 
-The English option translates the app interface, status messages and common import errors. VieNeu remains a Vietnamese TTS model; switching the UI language does not install an English speech model.
+The English option translates the app interface, status messages and common import errors. VieNeu remains a Vietnamese TTS model; switching the UI language does not install the English speech model - that is a separate, optional download under Settings › Reading models.
 
 ## Using ReadEase
 

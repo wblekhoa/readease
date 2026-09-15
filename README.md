@@ -57,6 +57,7 @@ Sách, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/Applic
 - **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ sách, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
 - **Riêng tư và local-first:** sách, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
 - **Giao diện song ngữ:** chuyển tức thời giữa `🇻🇳 Tiếng Việt` và `🇬🇧 English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
+- **Sách tiếng Anh, giọng trên máy:** tải thêm mô hình tiếng Anh (Kokoro-82M, 330 MB, sáu giọng Mỹ) trong **Cài đặt › Mô hình đọc** — không cần khoá API, không cần mạng sau khi tải. Mỗi ngôn ngữ một mô hình, tải hay xoá tuỳ nhu cầu; sách mở ra bằng đúng giọng đã dùng cho ngôn ngữ đó.
 
 ## Cách dùng
 

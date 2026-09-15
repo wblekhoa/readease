@@ -19,6 +19,13 @@
 # (vieneu's watermark extra, which this app does not install). A stray copy in
 # a dev venv otherwise rides into the bundle and logs a watermark warning at
 # every start of the engine.
+#
+# The English voice (2026-09-15) brings spaCy, whose own hooks collect its
+# code and data. What they do not cover: the English pipeline package, which
+# spaCy resolves through its distribution metadata before importing it (so
+# both the package and its metadata are collected), spaCy's own metadata
+# (its component registry is read from entry points), and this package's
+# data files - the out-of-lexicon reader's two ONNX graphs.
 set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
@@ -43,6 +50,10 @@ uv run pyinstaller \
   --collect-all sea_g2p \
   --collect-all onnxruntime \
   --collect-all tokenizers \
+  --collect-all en_core_web_sm \
+  --copy-metadata spacy \
+  --copy-metadata en_core_web_sm \
+  --collect-data vieneu_reader \
   --exclude-module PySide6 \
   --exclude-module shiboken6 \
   --exclude-module librosa \
@@ -80,5 +91,13 @@ if ! printf '{"id":1,"method":"ping","params":{}}\n' \
   tail -5 "$smoke_home/stderr" >&2
   exit 1
 fi
+# The English voice's front end - spaCy's tagger and the out-of-lexicon
+# reader - is in the bundle or it is not, and `ping` cannot tell. This can.
+if ! HOME="$smoke_home" "$out/readease-engine" --self-test 2>"$smoke_home/stderr" \
+    | grep -q '"ok": true'; then
+  echo "SIDECAR_SMOKE_FAILED - frozen engine failed the English self-test:" >&2
+  tail -5 "$smoke_home/stderr" >&2
+  exit 1
+fi
 rm -rf "$smoke_home"
-echo "SIDECAR_BUILT $(du -sh "$out" | cut -f1) (smoke: ping ok)"
+echo "SIDECAR_BUILT $(du -sh "$out" | cut -f1) (smoke: ping ok, english self-test ok)"

@@ -59,6 +59,7 @@ const STATES = {
   damaged: "damaged=1",
   dragging: "drag=3",
   dragnone: "drag=none",
+  english_missing: "english=missing",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];

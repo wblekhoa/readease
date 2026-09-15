@@ -31,6 +31,14 @@ model. The backbone and codec are downloaded from the public model repositories
 at the exact revisions listed in `legal/MODEL_PROVENANCE.md`. Once both are
 verified locally, speech initialization fails closed on any remote lookup.
 
+The optional English voice is the same kind of download, made only when you
+press **Download** under Settings › Reading models: the Kokoro model from
+its public repository on huggingface.co, and two pronunciation lexicon files
+from the misaki repository on GitHub (raw.githubusercontent.com), at the
+revisions and hashes listed in `legal/MODEL_PROVENANCE.md`. Nothing about
+your books or your Mac is sent with either request. Reading English with
+that voice afterwards is entirely local.
+
 The other time ReadEase reaches the network is an outside AI voice, described
 next. There is no third.
 

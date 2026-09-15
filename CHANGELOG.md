@@ -4,6 +4,30 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## 0.1.3
+
+English books read by a voice on this Mac. Installs over 0.1.2.
+
+- A second local model, for English: Kokoro-82M (Apache-2.0), six American
+  voices, no API key and no network once downloaded. It is optional - a
+  330 MB download from **Settings › Reading models**, where each language's
+  model can be fetched or removed - and its voices are listed only while it
+  is on the Mac. The Vietnamese model still never reads English, and the
+  English one never reads Vietnamese; each refusal says where the other
+  voice is.
+- Pronunciation comes from the same lexicon the model was trained with
+  (misaki, ported without torch), a part-of-speech tagger for the words
+  that change with their role (*read*, *lead*, *used to*), and a small
+  network for names and terms the lexicon lacks, so nothing is skipped.
+  Numbers, years, ordinals, decimals and prices are read as words.
+- A book opens in a voice that reads its language: the voice last used for
+  Vietnamese and the one last used for English are remembered separately,
+  so moving between books no longer means picking a voice again.
+- Cancelling a model download is reported as a cancellation, not as a
+  network failure.
+- The frozen engine grows by about 45 MB (spaCy and its small English
+  pipeline); the app bundle grows accordingly.
+
 ## 0.1.2
 
 Signed and notarized: the app opens like any other. Installs over 0.1.1.

@@ -202,7 +202,7 @@ export function SettingsPanel({
             />
           </GroupedSection>
           <h4 className="m-0 mb-1.5 mt-6 text-xs font-semibold uppercase tracking-wide text-ink-mute">
-            {text("model.quality")}
+            {text("model.section")}
           </h4>
           <ModelChoices reading={reading} onBusy={setBusy} />
         </>

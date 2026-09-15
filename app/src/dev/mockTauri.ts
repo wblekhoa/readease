@@ -462,6 +462,17 @@ const VOICES = [
   { id: "Adam", label: "Adam — Nam · Nam · Giọng đọc tự nhiên", languages: ["vi"] },
 ];
 
+/* The English model's voices, in the engine's own label shape, listed only
+ * while the model is downloaded - exactly the rule the engine follows. */
+const ENGLISH_VOICES = [
+  { id: "af_heart", label: "Heart — Nữ · Mỹ", languages: ["en"], gender: "female" },
+  { id: "af_bella", label: "Bella — Nữ · Mỹ", languages: ["en"], gender: "female" },
+  { id: "af_nicole", label: "Nicole — Nữ · Mỹ", languages: ["en"], gender: "female" },
+  { id: "am_michael", label: "Michael — Nam · Mỹ", languages: ["en"], gender: "male" },
+  { id: "am_fenrir", label: "Fenrir — Nam · Mỹ", languages: ["en"], gender: "male" },
+  { id: "am_puck", label: "Puck — Nam · Mỹ", languages: ["en"], gender: "male" },
+];
+
 /* A reading that actually runs.
  *
  * The mock used to answer read_* with {} and emit nothing, so the transport
@@ -593,11 +604,23 @@ function rememberSettings() {
 /* The model the app thinks is installed - mutable, because switching build
  * and removing a spare are the two things the model panel DOES, and a
  * fixture that never changes cannot show either of them happening. */
-const MODEL: { ready: boolean; precision: string | null; installed: Record<string, number> } = {
+const MODEL: {
+  ready: boolean;
+  precision: string | null;
+  installed: Record<string, number>;
+  english: { ready: boolean; installed: number; download_bytes: number };
+} = {
   ready: true,
   precision: "fp32",
   installed: { fp32: 626_000_000 },
+  // The English model, downloaded: its voices are in the list below. `?english=missing`
+  // starts without it, which is what a fresh install looks like.
+  english: { ready: true, installed: 335_000_000, download_bytes: 335_000_000 },
 };
+
+if (new URLSearchParams(window.location.search).get("english") === "missing") {
+  MODEL.english = { ready: false, installed: 0, download_bytes: 335_000_000 };
+}
 
 /* `?model=missing` starts with no voice installed, which is the ONLY way to
  * reach the setup screen - the first thing a new person ever sees, and until
@@ -747,12 +770,17 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         data: FIGURE_DATA[String(params.figure_id)] ?? FIGURE_WIDE,
       };
     case "model.status":
-      return { ...MODEL, installed: { ...MODEL.installed } };
+      return { ...MODEL, installed: { ...MODEL.installed }, english: { ...MODEL.english } };
     case "model.set_precision": {
       MODEL.precision = String(params.precision ?? "");
       return {};
     }
     case "model.remove_build": {
+      if (params.engine === "english") {
+        const was = MODEL.english.ready;
+        MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
+        return { removed: was };
+      }
       delete MODEL.installed[String(params.precision ?? "")];
       return {};
     }
@@ -891,7 +919,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "voices":
       return {
-        voices: [...VOICES, ...paidCatalogue()],
+        voices: [...VOICES, ...(MODEL.english.ready ? ENGLISH_VOICES : []), ...paidCatalogue()],
         // No `models` list: the engine stopped sending one when it turned out
         // no screen read it. A mock that offers more than the engine does
         // teaches the harness a shape that does not exist.
@@ -965,7 +993,7 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   }
   if (command === "plugin:opener|open_url") return Promise.resolve(null);
   if (command === "engine_voices") {
-    return Promise.resolve([...VOICES, ...paidCatalogue()]);
+    return Promise.resolve([...VOICES, ...(MODEL.english.ready ? ENGLISH_VOICES : []), ...paidCatalogue()]);
   }
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
@@ -983,16 +1011,23 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
      * this with `{}` left the setup screen - the first thing a new person
      * sees - spinning forever in the preview, so nobody ever looked at it. */
     stopMockReading();
+    const english = (args as { model?: string } | undefined)?.model === "english";
     const steps = [0.12, 0.38, 0.61, 0.87, 1];
     steps.forEach((progress, index) => {
       setTimeout(() => emit("engine:model_progress", {
         progress,
-        message: `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
+        message: english
+          ? `Đang tải giọng đọc tiếng Anh… ${Math.round(progress * 100)}%`
+          : `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
       }), 400 + index * 700);
     });
     setTimeout(() => {
-      MODEL.ready = true;
-      if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
+      if (english) {
+        MODEL.english = { ...MODEL.english, ready: true, installed: 335_000_000 };
+      } else {
+        MODEL.ready = true;
+        if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
+      }
       emit("engine:orphan_reply", { ok: true, result: {} });
     }, 400 + steps.length * 700);
     return Promise.resolve(null);

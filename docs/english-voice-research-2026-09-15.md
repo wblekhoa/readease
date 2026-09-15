@@ -84,13 +84,35 @@ không phải cách G2P hoạt động:
 5. **Cổng**: `verify.sh` xanh; đọc offline một chương tiếng Anh từ bản đóng gói; RTF < 0,6 trên
    M1 (cần đo trên máy yếu hơn M4 Max).
 
-## 5. Chủ phải quyết
+## 5. Chủ đã quyết (15/09)
 
-1. Kokoro hay Supertonic — **nghe 6 mẫu rồi chốt**. Đề xuất Kokoro.
-2. Có kèm giọng tiếng Anh cục bộ trong bản phát hành không (thêm 326 MB tải về theo yêu cầu, không
-   nằm trong app).
-3. fp32 (326 MB, RTF 0,33) hay int8 (92 MB, RTF 0,55) — hoặc cho chọn như VieNeu.
+1. Kokoro hay Supertonic — chủ nghe 6 mẫu, **chốt Kokoro** ("kokoro khá tốt nhé").
+2. Kèm vào bản phát hành: **có**, dưới dạng tải về theo yêu cầu (không nằm trong app), và
+   người dùng **tự chọn mô hình theo ngôn ngữ** trong Cài đặt › Mô hình đọc.
+3. fp32 trước; int8 chưa làm (RTF 0,55 và giọng kém hơn, không đáng 234 MB tiết kiệm).
 4. Sách trộn hai thứ tiếng: vẫn chưa có lời giải; cả cuốn mang một ngôn ngữ.
+
+## 6. Đã cắm (0.1.3) — số đo từ bản đóng gói
+
+- `speech/kokoro.py` — engine thứ hai sau cùng seam `SpeechEngine`; tải từ HF revision
+  `1939ad2a…` (model.onnx + tokenizer + 6 gói giọng Mỹ, mỗi file kiểm SHA-256) và từ điển misaki
+  từ commit `fba1236…` trên raw.githubusercontent.com (SHA-256 ghim trong code). Marker
+  `.kokoro-ready.json` chỉ ghi sau khi mọi file khớp và một câu thử ra tiếng.
+- `speech/english/` — port của `misaki/en.py` (Apache-2.0): **giống byte-một** với bản gốc trên
+  1.787 đoạn / 40.436 từ sách tiếng Anh thật (fake fallback hai bên); không chữ số nào lọt tới
+  model. `numbers.py` thay num2words (LGPL, không ship). `fallback.py` chạy BART
+  `PeterReid/graphemes_to_phonemes_en_us` qua onnxruntime (export lúc dev, 3,1 MB trong bundle):
+  **301/301** từ ngoài từ điển trùng với torch `generate()` tham lam.
+- spaCy 3.8.16 + `en_core_web_sm` 3.8.0 vào bundle: sidecar 223 → **267 MB**. Bản đóng gói tự
+  kiểm `--self-test` (tagger + fallback) trong `build-sidecar.sh`.
+- Bản đóng gói, M4 Max, câu 12,2 s: âm đầu sau **3,7 s** kể từ lúc process lên (gồm VieNeu warm,
+  nạp spaCy và session ONNX — nay được warm nền khi model đã tải), đọc xong sau 5,3 s; RTF phần
+  tổng hợp ≈ 0,3. **Chưa đo trên M1.**
+- Định tuyến: giọng Kokoro + văn bản không phải tiếng Anh → `wrong_language`; giọng Kokoro khi
+  model đã xoá → `model_missing` (mã mới, có câu trong shell); VieNeu + tiếng Anh → như cũ.
+- Shell: mục **Mô hình đọc** có hai nhóm Tiếng Việt / Tiếng Anh (tải / xoá); sách mở ra bằng giọng
+  nhớ theo ngôn ngữ (`voice_vi`, `voice_en`), không bao giờ tự nhảy sang giọng trả phí.
+- Chưa có: giọng Anh-Anh (cần từ điển gb + vocab riêng), int8, câu trộn hai thứ tiếng.
 
 ## Nguồn `[fetched 2026-09-15]`
 

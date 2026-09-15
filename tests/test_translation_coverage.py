@@ -115,6 +115,12 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         # English one, which is what keeps the Vietnamese model away from
         # English text.
         ("domain/language.py", "ăâđêôơưĂÂĐÊÔƠƯ"),
+        # The English voices' labels are written in the shape the Vietnamese
+        # catalogue uses ("Heart — Nữ · Mỹ"), and the shell says each field
+        # in the interface language through the same word table it uses for
+        # the Vietnamese ones (`voiceDescriptionShown`); "Mỹ" is in that
+        # table, and `voiceShortlist.test.ts` pins it.
+        ("speech/kokoro.py", "Mỹ"),
         # The division words a Roman numeral can stand behind. Matcher data
         # for Vietnamese book text, like the two rules above - an English
         # build reading a Vietnamese book still has to know that "Phần II"

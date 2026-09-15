@@ -94,6 +94,12 @@ export function Setup({
           </div>
         )}
         <p className="m-0 mt-3 text-center text-sm text-ink-mute">{note}</p>
+        {/* The gate is the Vietnamese voice: it is the product. The English
+            one is a choice made later, and saying so here is what stops a
+            reader of English books from thinking this is the only voice. */}
+        <p className="m-0 mt-2 text-center text-xs text-ink-mute">
+          {text("setup.english_later")}
+        </p>
         <div className="mt-4 flex justify-center gap-2">
           <Button
             variant="primary"

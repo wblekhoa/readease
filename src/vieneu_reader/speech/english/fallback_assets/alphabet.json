@@ -1,0 +1,7 @@
+{
+ "grapheme_chars": "____AIOWYbdfhijklmnpstuvwz'-.BCDEFGHJKLMNPQRSTUVXZacegoqrxy",
+ "phoneme_chars": "____AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʔʤʧˈˌθᵊᵻ",
+ "decoder_start_token_id": 1,
+ "eos_token_id": 2,
+ "max_length": 64
+}

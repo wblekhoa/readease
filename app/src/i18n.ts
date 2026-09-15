@@ -160,6 +160,7 @@ export const TEXT = {
   "voices.region_north": ["miền Bắc", "Northern"],
   "voices.region_south": ["miền Nam", "Southern"],
   "voices.region_central": ["miền Trung", "Central"],
+  "voices.region_us": ["giọng Mỹ", "American"],
   "voices.style_natural": ["Phong cách tự nhiên", "Natural"],
   "voices.style_natural_voice": ["Giọng đọc tự nhiên", "Natural voice"],
   "voices.style_storytelling": ["Phong cách kể chuyện", "Storytelling"],
@@ -308,9 +309,16 @@ export const TEXT = {
     "Nhà cung cấp đã chặn tài khoản miễn phí này - thường là do dùng VPN hoặc chung mạng với một tài khoản khác. Đổi mạng, nâng lên gói trả phí, hoặc đọc bằng giọng trên máy.",
     "The provider has blocked this free account - usually a VPN, or an address shared with another account. Change network, move to a paid plan, or read with the voice on this Mac.",
   ],
+  /* Either local model can say this: the Vietnamese one handed English, or
+     the English one handed Vietnamese. The sentence names neither and points
+     at the two places the answer is - the voice list, and the download. */
   "voiceerr.wrong_language": [
-    "Giọng trên máy chỉ đọc được tiếng Việt. Chọn một giọng đọc được tiếng Anh trong phần giọng đọc.",
-    "The voice on this Mac reads Vietnamese only. Pick a voice that reads English in the voice settings.",
+    "Giọng này không đọc được ngôn ngữ của đoạn văn. Chọn giọng khác trong phần giọng đọc - giọng tiếng Anh trên máy tải trong Cài đặt › Mô hình đọc.",
+    "This voice does not read the language of this passage. Pick another in the voice settings - the English voice on this Mac is downloaded under Settings › Reading models.",
+  ],
+  "voiceerr.model_missing": [
+    "Giọng tiếng Anh này chưa có trên máy. Tải mô hình tiếng Anh trong Cài đặt › Mô hình đọc, hoặc chọn giọng khác.",
+    "This English voice is not on this Mac yet. Download the English model under Settings › Reading models, or pick another voice.",
   ],
   "voiceerr.budget": [
     "Đã chạm trần chi tiêu bạn đặt. Nâng trần trong phần chi phí, hoặc đọc bằng giọng trên máy.",
@@ -343,8 +351,8 @@ export const TEXT = {
     "{name} - the book's own text reads as this",
   ],
   "voices.none_for_language": [
-    "Chưa có giọng nào đọc được ngôn ngữ của cuốn này. Giọng trên máy chỉ đọc tiếng Việt; thêm khoá API để dùng giọng từ xa.",
-    "No voice here reads this book's language. The voice on this Mac reads Vietnamese only; add an API key for a remote one.",
+    "Chưa có giọng nào đọc được ngôn ngữ của cuốn này. Tải giọng tiếng Anh trong Cài đặt › Mô hình đọc, hoặc thêm khoá API để dùng giọng từ xa.",
+    "No voice here reads this book's language. Download the English voice under Settings › Reading models, or add an API key for a remote one.",
   ],
   "voices.hidden_for_language": [
     "Đã ẩn {count} giọng không đọc được ngôn ngữ của cuốn này.",
@@ -542,7 +550,10 @@ export const TEXT = {
   ],
   "model.quality_standard": ["Tiêu chuẩn", "Standard"],
   "model.quality_maximum": ["Cao nhất", "Highest"],
-  "model.quality": ["Chất lượng giọng đọc", "Voice quality"],
+  /* Two languages, each with a model of its own, so the section is about
+     the models rather than the quality of one of them. The sentences that
+     send somebody here ("Cài đặt › Mô hình đọc") name it the same way. */
+  "model.section": ["Mô hình đọc", "Reading models"],
   "model.build_standard": ["Tiêu chuẩn · 330 MB", "Standard · 330 MB"],
   "model.build_maximum": ["Cao nhất · 625 MB", "Highest · 625 MB"],
   "model.in_use": ["Đang dùng", "In use"],
@@ -557,6 +568,19 @@ export const TEXT = {
   "model.cancelled": ["Đã huỷ tải. Bản đang dùng giữ nguyên.", "Download cancelled. The build in use is unchanged."],
   "model.preparing": ["Đang tải giọng đọc…", "Downloading the voice…"],
   "model.restarting": ["Đang khởi động lại giọng đọc…", "Restarting the voice…"],
+  /* Two models, one per language, each downloaded on request: the settings
+     row is where somebody chooses which languages this Mac reads. */
+  "model.vietnamese_title": ["Tiếng Việt", "Vietnamese"],
+  "model.english_title": ["Tiếng Anh", "English"],
+  "model.english_build": ["Kokoro · 330 MB", "Kokoro · 330 MB"],
+  "model.english_note": [
+    "Sách tiếng Anh đọc bằng giọng tiếng Anh trên máy. Tải một lần, không cần khoá API.",
+    "English books are read by the English voice on this Mac. Downloaded once, no API key needed.",
+  ],
+  "model.english_ready": ["Đã tải · {size}", "Downloaded · {size}"],
+  "model.english_download": ["Tải về", "Download"],
+  "model.english_remove": ["Xoá", "Remove"],
+  "model.english_downloading": ["Đang tải giọng đọc tiếng Anh…", "Downloading the English voice…"],
   "transfer.title": [
     "Xem trước rồi chuyển ghi chú sang bản sách kia",
     "Preview your notes, then move them to the other copy",
@@ -644,6 +668,10 @@ export const TEXT = {
   "setup.quality": ["Chất lượng giọng đọc", "Voice quality"],
   "setup.ready": ["Sẵn sàng tải giọng đọc.", "Ready to download voice data."],
   "setup.prepare": ["Chuẩn bị giọng đọc", "Set up voice"],
+  "setup.english_later": [
+    "Giọng đọc tiếng Anh tải thêm sau, trong Cài đặt › Mô hình đọc.",
+    "The English voice can be added later, under Settings › Reading models.",
+  ],
   "reader.selection": ["Đọc phần đã chọn", "Read selection"],
   "player.warming": ["Đang chuẩn bị giọng đọc…", "Preparing the voice…"],
   "engine.starting": ["Đang chuẩn bị giọng đọc…", "Preparing the voice…"],
@@ -773,6 +801,14 @@ const RUNTIME_EN: Record<string, string> = {
   "Đang tải bộ giải mã âm thanh…": "Downloading the audio decoder…",
   "Đang kiểm tra bộ đọc tiếng Việt…": "Checking the Vietnamese voice engine…",
   "Không thể chuẩn bị mô hình đọc tiếng Việt. Hãy kiểm tra mạng và thử lại.": "Could not prepare the Vietnamese voice model. Check your connection and try again.",
+  // The English model's download, in the same voice as the Vietnamese one's.
+  "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…": "Downloading the English voice (about 330 MB)…",
+  "Đang tải từ điển phát âm tiếng Anh…": "Downloading the English pronunciation lexicon…",
+  "Đang kiểm tra giọng đọc tiếng Anh…": "Checking the English voice…",
+  "Giọng đọc tiếng Anh đã sẵn sàng.": "The English voice is ready.",
+  "Giọng đọc tiếng Anh chưa được tải về máy.": "The English voice has not been downloaded to this Mac.",
+  "Không thể tải giọng đọc tiếng Anh. Hãy kiểm tra mạng và thử lại.": "Could not download the English voice. Check your connection and try again.",
+  "Máy đã hết dung lượng trống nên chưa tải xong giọng đọc tiếng Anh. Hãy giải phóng bớt dung lượng rồi thử lại.": "This Mac ran out of free space before the English voice finished downloading. Free some space and try again.",
   "Không tìm thấy dữ liệu Apple Books trên máy này.": "No Apple Books data was found on this Mac.",
   "Không đọc được dữ liệu Apple Books. Hãy thử lại sau.": "Could not read the Apple Books data. Try again in a moment.",
   "Chưa có bản sao lưu, nên không thể hoàn tác nếu sai.": "No backup was taken, so a mistake could not be undone.",
@@ -872,6 +908,7 @@ const RUNTIME_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [new RegExp("^Thư viện này được tạo bởi bản ReadEase mới hơn \\(dữ liệu v(\\d+), bản này đọc tới v(\\d+)\\)\\. Hãy cài lại bản mới nhất\\.$"), "This library was written by a newer ReadEase (data v$1, this build reads up to v$2). Please install the latest version."],
   [new RegExp("^Không có bước nâng cấp dữ liệu lên v(\\d+)\\.$"), "No upgrade step to data v$1."],
   [new RegExp("^Nâng cấp dữ liệu từ v(\\d+) lên v(\\d+) không xong; thư viện được giữ nguyên như cũ\\.$"), "Upgrading data from v$1 to v$2 did not finish; the library was left exactly as it was."],
+  [new RegExp("^Tệp (.+) tải về không khớp bản đã kiểm định, nên chưa dùng được\\. Hãy thử tải lại\\.$"), "The downloaded file $1 does not match the verified copy, so it cannot be used. Try the download again."],
   [new RegExp("^(.+) - Nam Bộ$"), "$1 - Southern Vietnamese"],
   [new RegExp("^(.+) - Bắc Bộ$"), "$1 - Northern Vietnamese"],
 ];

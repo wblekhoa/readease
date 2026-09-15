@@ -29,8 +29,13 @@ KEY_FOR_PROVIDER: Mapping[str, str] = {
 #: `unknown_model` is the one nobody can act on except by choosing another
 #: voice: the id names a model this build has no price for, so it cannot be
 #: quoted, capped or metered - and the provider might still serve it.
+#:
+#: `model_missing` is the English model's: its voices can be remembered by a
+#: book or by settings from before the download was removed, and a voice
+#: whose model is not on this Mac is refused by name, with the sentence
+#: saying where the download is.
 BlockedReason = Literal[
-    "no_key", "budget", "wrong_language", "unknown_model",
+    "no_key", "budget", "wrong_language", "unknown_model", "model_missing",
 ]
 
 

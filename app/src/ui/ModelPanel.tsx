@@ -1,21 +1,29 @@
-/** The voice-build manager, now a section of the settings panel.
+/** The reading models, a section of the settings panel: one per language,
+ * each downloaded on request - this is where somebody chooses which
+ * languages this Mac reads (owner, 15/09: "user có thể lựa chọn model ngôn
+ * ngữ tuỳ theo nhu cầu").
  *
- * A switch restarts the engine process - the build loads at construction -
- * so this panel is loud about that, downloads what is missing first
- * (streaming the engine's own progress), and only offers to delete the
- * build that is NOT in use (the engine refuses anything else anyway).
+ * The Vietnamese model has two builds; a switch restarts the engine process
+ * (the build loads at construction), so this panel is loud about that,
+ * downloads what is missing first (streaming the engine's own progress),
+ * and only offers to delete the build that is NOT in use (the engine
+ * refuses anything else anyway). The English model is one download, kept
+ * or removed; its voices appear in the voice list only while it is here.
  */
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { engineMessage, text } from "../i18n";
 import { Button, ProgressBar } from "./controls";
+import { formatSize } from "./format";
 import { GroupedRow, GroupedSection } from "./patterns";
 
 type Status = {
   ready: boolean;
   precision: string | null;
   installed: Record<string, number>;
+  /** Absent on an engine without the English model at all. */
+  english?: { ready: boolean; installed: number; download_bytes: number };
 };
 
 const BUILDS = [
@@ -117,12 +125,41 @@ export function ModelChoices({
     }
   }, [refresh]);
 
+  /* The English model needs no restart: the engine loads it the first time
+     an English sentence is read. So this is the download alone, and the
+     same orphan reply says when it is done. */
+  const downloadEnglish = useCallback(async () => {
+    setBusy("english");
+    setNote(text("model.english_downloading"));
+    try {
+      await invoke("prepare_model", { model: "english" });
+    } catch (error) {
+      setNote(engineMessage(error));
+      setBusy(null);
+    }
+  }, []);
+
+  const removeEnglish = useCallback(async () => {
+    setBusy("english");
+    try {
+      await invoke("engine_request", {
+        method: "model.remove_build",
+        params: { engine: "english" },
+      });
+      refresh();
+    } catch (error) {
+      setNote(engineMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }, [refresh]);
+
   return (
     <>
       <p className="m-0 text-xs leading-relaxed text-ink-mute">
         {text("model.switch_restart")}
       </p>
-      <GroupedSection className="mt-3">
+      <GroupedSection title={text("model.vietnamese_title")} className="mt-3">
         {BUILDS.map((build) => {
           const active = status?.precision === build.id;
           const installed = (status?.installed[build.id] ?? 0) > 0;
@@ -164,6 +201,43 @@ export function ModelChoices({
           );
         })}
       </GroupedSection>
+      {status?.english && (
+        <GroupedSection title={text("model.english_title")} className="mt-4">
+          <GroupedRow
+            title={text("model.english_build")}
+            subtitle={
+              status.english.ready
+                ? text("model.english_ready", { size: formatSize(status.english.installed) ?? "" })
+                : text("model.not_downloaded")
+            }
+            trailing={
+              status.english.ready ? (
+                <Button
+                  size="sm"
+                  disabled={busy !== null || reading}
+                  onClick={() => void removeEnglish()}
+                >
+                  {text("model.english_remove")}
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={busy !== null || reading}
+                  onClick={() => void downloadEnglish()}
+                >
+                  {text("model.english_download")}
+                </Button>
+              )
+            }
+          />
+        </GroupedSection>
+      )}
+      {status?.english && (
+        <p className="m-0 mt-2 text-xs leading-relaxed text-ink-mute">
+          {text("model.english_note")}
+        </p>
+      )}
       {progress !== null && (
         <div className="mt-3 flex items-center gap-3">
           <div className="min-w-0 flex-1">
