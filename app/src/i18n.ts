@@ -579,6 +579,8 @@ export const TEXT = {
   ],
   "model.english_ready": ["Đã tải · {size}", "Downloaded · {size}"],
   "model.english_download": ["Tải về", "Download"],
+  "model.english_resume": ["Tải tiếp", "Resume"],
+  "model.english_partial": ["Tải chưa xong · {size} đã về máy", "Download unfinished · {size} on this Mac"],
   "model.english_remove": ["Xoá", "Remove"],
   "model.english_downloading": ["Đang tải giọng đọc tiếng Anh…", "Downloading the English voice…"],
   "transfer.title": [

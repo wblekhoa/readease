@@ -208,27 +208,36 @@ export function ModelChoices({
             subtitle={
               status.english.ready
                 ? text("model.english_ready", { size: formatSize(status.english.installed) ?? "" })
-                : text("model.not_downloaded")
+                : status.english.installed > 0
+                  /* A cancelled download keeps the files that landed whole,
+                     for the resume - up to the 326 MB model. Said as what it
+                     is, with both ways out, rather than "not downloaded"
+                     over a third of a gigabyte the row would not let go of. */
+                  ? text("model.english_partial", { size: formatSize(status.english.installed) ?? "" })
+                  : text("model.not_downloaded")
             }
             trailing={
-              status.english.ready ? (
-                <Button
-                  size="sm"
-                  disabled={busy !== null || reading}
-                  onClick={() => void removeEnglish()}
-                >
-                  {text("model.english_remove")}
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={busy !== null || reading}
-                  onClick={() => void downloadEnglish()}
-                >
-                  {text("model.english_download")}
-                </Button>
-              )
+              <>
+                {!status.english.ready && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={busy !== null || reading}
+                    onClick={() => void downloadEnglish()}
+                  >
+                    {text(status.english.installed > 0 ? "model.english_resume" : "model.english_download")}
+                  </Button>
+                )}
+                {(status.english.ready || status.english.installed > 0) && (
+                  <Button
+                    size="sm"
+                    disabled={busy !== null || reading}
+                    onClick={() => void removeEnglish()}
+                  >
+                    {text("model.english_remove")}
+                  </Button>
+                )}
+              </>
             }
           />
         </GroupedSection>

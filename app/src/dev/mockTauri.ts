@@ -618,8 +618,12 @@ const MODEL: {
   english: { ready: true, installed: 335_000_000, download_bytes: 335_000_000 },
 };
 
-if (new URLSearchParams(window.location.search).get("english") === "missing") {
+const ENGLISH_STATE = new URLSearchParams(window.location.search).get("english");
+if (ENGLISH_STATE === "missing") {
   MODEL.english = { ready: false, installed: 0, download_bytes: 335_000_000 };
+} else if (ENGLISH_STATE === "partial") {
+  // A cancelled download: the model landed whole, the lexicon did not.
+  MODEL.english = { ready: false, installed: 328_000_000, download_bytes: 335_000_000 };
 }
 
 /* `?model=missing` starts with no voice installed, which is the ONLY way to

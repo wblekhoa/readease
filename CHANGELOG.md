@@ -24,7 +24,8 @@ English books read by a voice on this Mac. Installs over 0.1.2.
   Vietnamese and the one last used for English are remembered separately,
   so moving between books no longer means picking a voice again.
 - Cancelling a model download is reported as a cancellation, not as a
-  network failure.
+  network failure; what had landed whole stays for the next attempt, and
+  the model's row says so, with a way to resume and a way to remove it.
 - The frozen engine grows by about 45 MB (spaCy and its small English
   pipeline); the app bundle grows accordingly.
 

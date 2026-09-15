@@ -105,13 +105,18 @@ không phải cách G2P hoạt động:
   **301/301** từ ngoài từ điển trùng với torch `generate()` tham lam.
 - spaCy 3.8.16 + `en_core_web_sm` 3.8.0 vào bundle: sidecar 223 → **267 MB**. Bản đóng gói tự
   kiểm `--self-test` (tagger + fallback) trong `build-sidecar.sh`.
-- Bản đóng gói, M4 Max, câu 12,2 s: âm đầu sau **3,7 s** kể từ lúc process lên (gồm VieNeu warm,
-  nạp spaCy và session ONNX — nay được warm nền khi model đã tải), đọc xong sau 5,3 s; RTF phần
-  tổng hợp ≈ 0,3. **Chưa đo trên M1.**
+- Bản đóng gói, M4 Max, câu 12,2 s: lạnh (đọc ngay khi process lên) âm đầu sau **3,7 s** kể từ
+  lúc process lên (gồm VieNeu warm, nạp spaCy và session ONNX), đọc xong sau 5,3 s; đã warm nền
+  (đọc 8 s sau khi process lên, model đã tải) âm đầu sau **1,56 s** kể từ lệnh đọc, đọc xong sau
+  2,76 s, RTF ≈ 0,23. RSS engine sau warm, cùng root/cùng cài đặt fp32, đo 2 lần mỗi bên:
+  chỉ VieNeu **1.136 MB**; VieNeu + Kokoro **~1.660 MB** (+525 MB), sau một lượt đọc tiếng Anh
+  1.828 MB (+~690 MB). **Chưa đo trên M1.**
 - Định tuyến: giọng Kokoro + văn bản không phải tiếng Anh → `wrong_language`; giọng Kokoro khi
   model đã xoá → `model_missing` (mã mới, có câu trong shell); VieNeu + tiếng Anh → như cũ.
-- Shell: mục **Mô hình đọc** có hai nhóm Tiếng Việt / Tiếng Anh (tải / xoá); sách mở ra bằng giọng
-  nhớ theo ngôn ngữ (`voice_vi`, `voice_en`), không bao giờ tự nhảy sang giọng trả phí.
+- Shell: mục **Mô hình đọc** có hai nhóm Tiếng Việt / Tiếng Anh (tải / xoá); một lượt tải bị huỷ
+  để lại các tệp đã về nguyên vẹn (tới 326 MB) cho lần tải tiếp, và hàng đó nói thẳng "Tải chưa
+  xong · N MB đã về máy" với cả **Tải tiếp** lẫn **Xoá**; sách mở ra bằng giọng nhớ theo ngôn ngữ
+  (`voice_vi`, `voice_en`), không bao giờ tự nhảy sang giọng trả phí.
 - Chưa có: giọng Anh-Anh (cần từ điển gb + vocab riêng), int8, câu trộn hai thứ tiếng.
 
 ## Nguồn `[fetched 2026-09-15]`
