@@ -6,23 +6,30 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## 0.1.3
 
-English books read by a voice on this Mac. Installs over 0.1.2.
+English books read by a voice on this Mac, and the choice of what to
+download is yours. Installs over 0.1.2.
 
 - A second local model, for English: Kokoro-82M (Apache-2.0), six American
-  voices, no API key and no network once downloaded. It is optional - a
-  330 MB download from **Settings › Reading models**, where each language's
-  model can be fetched or removed - and its voices are listed only while it
-  is on the Mac. The Vietnamese model still never reads English, and the
-  English one never reads Vietnamese; each refusal says where the other
-  voice is.
+  voices, no API key and no network once downloaded. One model per
+  language, each optional: the first-run screen and **Voices & models**
+  (the gear on the home screen) show what this Mac can read, with which
+  model or key, and let either model be fetched or removed - nobody is made
+  to download any one of them, and the library opens either way. A model's
+  voices are listed only while it is on the Mac.
+- No voice is refused for the language it is handed any more. The voice
+  settings ask which language you read in first, then show that language's
+  voices and models; switching the language brings back the voice you last
+  used for it. When the text in front of you is in the other language, the
+  panel and the footer chip carry a suggestion - one sentence, one button -
+  and nothing changes until you press it.
 - Pronunciation comes from the same lexicon the model was trained with
   (misaki, ported without torch), a part-of-speech tagger for the words
   that change with their role (*read*, *lead*, *used to*), and a small
   network for names and terms the lexicon lacks, so nothing is skipped.
   Numbers, years, ordinals, decimals and prices are read as words.
-- A book opens in a voice that reads its language: the voice last used for
-  Vietnamese and the one last used for English are remembered separately,
-  so moving between books no longer means picking a voice again.
+- The voice last used for Vietnamese and the one last used for English are
+  remembered separately, so moving between languages does not mean picking
+  a voice again.
 - Cancelling a model download is reported as a cancellation, not as a
   network failure; what had landed whole stays for the next attempt, and
   the model's row says so, with a way to resume and a way to remove it.

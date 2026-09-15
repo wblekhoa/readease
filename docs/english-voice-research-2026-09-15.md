@@ -88,9 +88,22 @@ không phải cách G2P hoạt động:
 
 1. Kokoro hay Supertonic — chủ nghe 6 mẫu, **chốt Kokoro** ("kokoro khá tốt nhé").
 2. Kèm vào bản phát hành: **có**, dưới dạng tải về theo yêu cầu (không nằm trong app), và
-   người dùng **tự chọn mô hình theo ngôn ngữ** trong Cài đặt › Mô hình đọc.
+   người dùng **tự chọn mô hình theo ngôn ngữ**.
 3. fp32 trước; int8 chưa làm (RTF 0,55 và giọng kém hơn, không đáng 234 MB tiết kiệm).
 4. Sách trộn hai thứ tiếng: vẫn chưa có lời giải; cả cuốn mang một ngôn ngữ.
+5. **Cùng ngày, sau bản cắm đầu tiên, chủ chốt ba hướng nữa** (nguyên văn rút gọn):
+   - "không được bắt buộc user phải tải một model duy nhất nào đó … cho user chọn tải theo yêu cầu"
+     → màn đầu tiên không còn ép tải VieNeu: liệt kê cả hai mô hình + khoá API, "Vào thư viện" luôn bấm được.
+   - "không cần có cơ chế chặn hay bắt buộc user phải dùng đúng voice. Hãy cho user tự do chọn voice …
+     có thêm phần alert ở phần setting chọn voice để gợi ý … nội dung đang là ngôn ngữ gì và đề xuất nên
+     dùng model nào" → **bỏ `wrong_language`** ở engine và vỏ (đảo lại luật "không bao giờ đọc tiếng Anh
+     bằng VieNeu" của 07/09); bảng giọng đọc hiện câu gợi ý + một nút; chip ở footer mang chấm gợi ý.
+   - "chọn trước là họ muốn đọc ở ngôn ngữ nào rồi mới hiển thị các nội dung liên quan … ở ngoài trang chủ
+     sẽ có một nút setting để thống kê … đang đọc được ngôn ngữ nào? có các model gì rồi … nhập API"
+     → bảng giọng đọc mở bằng bộ chọn Tiếng Việt / Tiếng Anh (đổi tab = đổi sang giọng đã dùng cho tiếng
+     đó, nhớ `voice_vi`/`voice_en`, lưu `reading_language`); thêm sheet **Giọng đọc & mô hình** từ nút
+     bánh răng trên trang chủ (và từ bảng giọng đọc): mỗi ngôn ngữ một nhóm — dòng "Đọc được / Chưa đọc
+     được · bằng gì", các bản mô hình (tải / dùng / xoá), rồi nhóm khoá API.
 
 ## 6. Đã cắm (0.1.3) — số đo từ bản đóng gói
 
@@ -111,12 +124,16 @@ không phải cách G2P hoạt động:
   2,76 s, RTF ≈ 0,23. RSS engine sau warm, cùng root/cùng cài đặt fp32, đo 2 lần mỗi bên:
   chỉ VieNeu **1.136 MB**; VieNeu + Kokoro **~1.660 MB** (+525 MB), sau một lượt đọc tiếng Anh
   1.828 MB (+~690 MB). **Chưa đo trên M1.**
-- Định tuyến: giọng Kokoro + văn bản không phải tiếng Anh → `wrong_language`; giọng Kokoro khi
-  model đã xoá → `model_missing` (mã mới, có câu trong shell); VieNeu + tiếng Anh → như cũ.
-- Shell: mục **Mô hình đọc** có hai nhóm Tiếng Việt / Tiếng Anh (tải / xoá); một lượt tải bị huỷ
-  để lại các tệp đã về nguyên vẹn (tới 326 MB) cho lần tải tiếp, và hàng đó nói thẳng "Tải chưa
-  xong · N MB đã về máy" với cả **Tải tiếp** lẫn **Xoá**; sách mở ra bằng giọng nhớ theo ngôn ngữ
-  (`voice_vi`, `voice_en`), không bao giờ tự nhảy sang giọng trả phí.
+- Định tuyến (sau quyết định 15/09 ở §5.5): giọng nào cũng đọc văn bản nào; mã từ chối duy nhất
+  còn lại là `model_missing` — giọng của mô hình chưa có trên máy (Kokoro đã xoá, hoặc VieNeu chưa
+  từng tải trên máy chỉ tải tiếng Anh). Danh mục giọng bỏ qua mô hình chưa có (không nạp SDK chỉ
+  để kể tên giọng); `estimate` trả thêm `language` để màn dán có gì mà gợi ý.
+- Shell: sheet **Giọng đọc & mô hình** (màn đầu + bánh răng trang chủ) và bảng giọng đọc theo
+  ngôn ngữ (xem §5.5); một lượt tải bị huỷ để lại các tệp đã về nguyên vẹn (tới 326 MB) cho lần
+  tải tiếp, hàng đó nói thẳng "Tải chưa xong · N MB đã về máy" với cả **Tải tiếp** lẫn **Xoá**;
+  giọng nhớ theo ngôn ngữ (`voice_vi`, `voice_en`); giọng chỉ tự đổi đúng một trường hợp — mô hình
+  vừa tải xong cho chính tab đang mở mà giọng đang dùng không hợp tiếng đó — và không bao giờ tự
+  nhảy sang giọng trả phí.
 - Chưa có: giọng Anh-Anh (cần từ điển gb + vocab riêng), int8, câu trộn hai thứ tiếng.
 
 ## Nguồn `[fetched 2026-09-15]`

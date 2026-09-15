@@ -32,7 +32,7 @@ at the exact revisions listed in `legal/MODEL_PROVENANCE.md`. Once both are
 verified locally, speech initialization fails closed on any remote lookup.
 
 The optional English voice is the same kind of download, made only when you
-press **Download** under Settings › Reading models: the Kokoro model from
+press **Download** under Voices & models: the Kokoro model from
 its public repository on huggingface.co, and two pronunciation lexicon files
 from the misaki repository on GitHub (raw.githubusercontent.com), at the
 revisions and hashes listed in `legal/MODEL_PROVENANCE.md`. Nothing about

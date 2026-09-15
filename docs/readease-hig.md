@@ -29,7 +29,9 @@ diệt mơ hồ "token này áp vào đâu") · **Behavior** (trạng thái + b�
 | Nút nhỏ nằm giữa dòng chữ | `InlineIconButton` (co theo cỡ chữ, tự chặn click của đoạn) | Icon ghi chú trong đoạn |
 | Danh sách bất kỳ | `GroupedSection` + `GroupedRow` (kẻ chấm, không thẻ) | Cài đặt · Chất lượng · Transfer · danh sách giọng |
 | Xin quyền hệ thống | PermissionCard | Quét đọc |
-| Chặn cho tới khi sẵn sàng | Setup gate | First-run model |
+| Mời chọn cách đọc khi máy chưa đọc được gì (KHÔNG chặn — "Vào thư viện" luôn bấm được, chủ 15/09) | First-run = thân sheet Giọng đọc & mô hình trong một cột giữa màn | Màn đầu tiên |
+| Thống kê máy đọc được gì, bằng gì, và thêm bớt (mô hình / khoá API) | Sheet `Surface radius="sheet"` giữa màn, mỗi ngôn ngữ một `GroupedSection`: hàng đầu = trạng thái (chấm + "Đọc được/Chưa đọc được · bằng gì"), rồi hàng mô hình, rồi nhóm khoá API | Nút bánh răng trang chủ · nút "Quản lý…" trong bảng giọng đọc |
+| Chọn ngôn ngữ đọc trước rồi mới tới giọng; gợi ý khi nội dung là tiếng khác | `SegmentedControl` Tiếng Việt/Tiếng Anh + `SuggestionDot` trên tuỳ chọn của ngôn ngữ nội dung + `Notice tone="info" action=` một nút (gợi ý, không tự đổi) | Bảng Cài đặt giọng đọc |
 
 ## 2. Bảng trạng thái chuẩn (vay M3: state layer — một lớp phủ, không đổi bản thể)
 
@@ -194,11 +196,43 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   · ✗ **nút chính ăn state của màn KHÁC** — trên Quét đọc/Chuyển ghi chú, nút "Đọc nội dung"
   từng bật/tắt theo ô dán ở tab khác và bấm vào là đọc đúng nội dung vô hình đó (01/09).
 
-### 3.6 ConfirmInline · 3.7 PermissionCard · 3.8 Setup gate
+### 3.6 ConfirmInline · 3.7 PermissionCard · 3.8 Màn đầu tiên (từng là Setup gate)
 ConfirmInline: thay chỗ trailing, hành động huỷ = **danger** + "Giữ lại" trung tính; không modal
 cho việc một hàng. PermissionCard: Surface + note + hành động chính brand + đường "Cài đặt hệ
-thống"; nói rõ phải thoát-mở-lại (luật TCC). Setup gate: một cột giữa màn, field chung trục,
-một hành động brand; chặn TOÀN app cho tới khi model sẵn sàng.
+thống"; nói rõ phải thoát-mở-lại (luật TCC).
+
+Màn đầu tiên (đổi 15/09): hiện khi máy **chưa đọc được gì** (không mô hình nào, không khoá API) —
+và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới khi tải xong VieNeu. Chủ bỏ gate
+("không được bắt buộc user phải tải một model duy nhất nào đó"): thân màn = đúng thân sheet Giọng
+đọc & mô hình (§3.13) trong một cột giữa màn, cuộn trong cột khi cửa sổ thấp; một hành động brand
+"Vào thư viện" **luôn bấm được** (chỉ khoá trong lúc đang tải). Không có cờ "đã qua màn này": đọc
+được rồi thì tự hết hiện.
+
+### 3.13 Giọng đọc & mô hình · bảng giọng đọc theo ngôn ngữ (15/09)
+- **Usage**: chủ muốn "một nơi thống kê để user quản lý và tải model hoặc nhập API", và bảng giọng đọc
+  "cho user chọn trước là họ muốn đọc ở ngôn ngữ nào rồi mới hiển thị các nội dung liên quan".
+- **Anatomy (sheet)**: `Surface edge="strong" radius="sheet"` giữa màn (khung của sheet Apple Books,
+  rộng 36rem, cao tối đa 84%, thân cuộn); header = tiêu đề 16 bold + caption 12 mute + đóng; mỗi ngôn
+  ngữ một `GroupedSection` — hàng đầu là **trạng thái** (chấm `ok`/`edge-strong` + "Đọc được / Chưa đọc
+  được" · subtitle "Mô hình X trên máy · N giọng · API · M giọng" hoặc "Tải mô hình về máy, hoặc nhập
+  khoá API bên dưới"), rồi hàng mô hình (`ModelRows`: tiếng Việt hai bản Tải về / Dùng bản này / Tải và
+  dùng / Xoá; tiếng Anh một hàng Tải về / Tải tiếp / Xoá), rồi nhóm **Giọng API** (`ProviderKeys`, subtitle
+  "Đã có khoá · N giọng"); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
+  `useModels` (trạng thái + lượt tải + hành động), để màn đầu, sheet và bảng giọng đọc không cãi nhau.
+- **Anatomy (bảng giọng đọc)**: `SegmentedControl` "Đọc bằng tiếng" Tiếng Việt / Tiếng Anh ở đầu;
+  `SuggestionDot` trên tuỳ chọn của ngôn ngữ **nội dung** khi khác tab; `Notice tone="info" action=` một câu
+  + một nút ("Đọc bằng tiếng Anh" / "Thêm giọng tiếng Việt"); nhóm Giọng (select gộp `optgroup` Trên máy /
+  API · Quản lý giọng · Tốc độ · giới hạn chi khi giọng trả phí); nhóm Mô hình & API = một hàng tóm tắt +
+  "Quản lý…" mở sheet. Tab không có giọng nào: hàng "Chưa có giọng … trên máy này" + hàng mô hình của
+  tiếng đó (tải ngay tại chỗ) + nút mở sheet.
+- **Behavior**: đổi tab = đổi sang giọng đã dùng cho tiếng đó (`voice_vi`/`voice_en`), không có thì giọng
+  cục bộ đầu tiên hợp tiếng, không có nữa thì tab đổi một mình. Chọn một giọng làm-cho-một-tiếng ở bất kỳ
+  đâu (kể cả menu đổi nhanh khi đang đọc) kéo tab về tiếng đó. **Gợi ý không bao giờ tự làm**: giọng chỉ
+  tự đổi đúng một ca — mô hình vừa tải xong cho chính tab đang mở mà giọng đang dùng không hợp — và không
+  bao giờ tự nhảy sang giọng trả phí. Esc/click-ngoài đóng, trừ lúc đang tải. Chip footer mang
+  `SuggestionDot` + câu gợi ý trong `title` khi có gợi ý.
+- **Content**: câu gợi ý nói NỘI DUNG là tiếng gì và giọng được làm cho tiếng kia — không nói "sai",
+  không nói "không đọc được" (từ 15/09 giọng nào cũng đọc được).
 
 ### 3.9 Reader - màn đọc sách
 Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật gốc: mọi pixel chrome phải trả

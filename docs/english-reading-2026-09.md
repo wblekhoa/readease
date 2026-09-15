@@ -13,12 +13,14 @@ Web fact ghi `[fetched 07/09/2026]`; kiến thức nền chưa kiểm ghi `[from
 ## 0. Luật của chủ, viết thành code
 
 VieNeu **có** đọc được văn bản tiếng Anh — đo trên máy này 07/09: "The quick brown fox…" ra 2,88 s audio,
-không lỗi. Đó chính là lý do phải chặn: hỏng ở đây là hỏng **nghe được**, không phải hỏng thấy được, nên nếu
-không chặn thì nó sẽ lặng lẽ đọc dở suốt cuốn sách.
+không lỗi. Hỏng ở đây là hỏng **nghe được**, không phải hỏng thấy được.
 
-Nên engine **từ chối bằng tên**, đúng khuôn có sẵn cho giọng trả phí thiếu khoá: `voice_unavailable:
-wrong_language`, và vỏ nói ra thành câu ("Giọng trên máy chỉ đọc được tiếng Việt…"). Danh mục giọng khai
-`languages: ["vi"]` cho giọng cục bộ, để người đọc thấy TRƯỚC khi bấm, không phải sau.
+Từ 07/09 tới 15/09 engine **từ chối bằng tên** (`voice_unavailable: wrong_language`). **Ngày 15/09 chủ đổi
+quyết định**: "không cần có cơ chế chặn hay bắt buộc user phải dùng đúng voice … cho user tự do chọn voice",
+và thay vào đó là **gợi ý** trong bảng giọng đọc (nội dung đang là tiếng gì, nên dùng mô hình nào). Nên
+mã `wrong_language` đã bỏ ở cả engine lẫn vỏ; giọng nào cũng đọc được văn bản nào. Danh mục giọng vẫn khai
+`languages` cho giọng cục bộ — giờ để xếp giọng vào đúng tab ngôn ngữ và để biết khi nào gợi ý, không phải
+để cấm.
 
 ## 1. Trạng thái sau bản 07/09
 
@@ -28,9 +30,9 @@ wrong_language`, và vỏ nói ra thành câu ("Giọng trên máy chỉ đọc 
 | Lời engine tự nói xen vào (cue hình, cue chú thích) | **Theo ngôn ngữ đọc** — "See figure 3." / "Also, …" thay vì "Xem hình 3." / "Nói thêm, …" |
 | Số, số La Mã, địa chỉ web | **Theo ngôn ngữ đọc** — "Part two" thay vì "Part hai"; "the address svpg dot com" thay vì "địa chỉ svpg chấm com"; "#1" → "number one" (tiếng Anh nói số, không nói thứ tự) |
 | Nhãn hình của sách | Đã nhận sẵn từ tiếng Anh: `Figure 2-4`, `Fig. 7` nằm trong regex từ trước |
-| Giọng VieNeu + sách tiếng Anh | **Bị từ chối**, không đọc |
+| Giọng VieNeu + sách tiếng Anh | **Đọc** (từ 15/09; trước đó bị từ chối) — vỏ gợi ý giọng tiếng Anh, chọn gì tuỳ người đọc |
 | Ngôn ngữ đọc lấy từ đâu | **Chính cuốn sách** khai, đọc từ văn bản của nó; người đọc đặt lại được trong bảng Giọng đọc |
-| Giọng tiếng Anh **cục bộ** (không cần khoá, không cần mạng) | **Có từ 0.1.3 (15/09)** — Kokoro-82M ONNX, tải trong Cài đặt › Mô hình đọc; G2P là bản port của misaki (không torch, không num2words) + spaCy `en_core_web_sm` gắn thẻ từ loại + mạng BART nhỏ (3 MB, ONNX, trong bundle) cho từ ngoài từ điển. Chi tiết đo đạc: `english-voice-research-2026-09-15.md` |
+| Giọng tiếng Anh **cục bộ** (không cần khoá, không cần mạng) | **Có từ 0.1.3 (15/09)** — Kokoro-82M ONNX, tải trong Giọng đọc & mô hình (màn đầu hoặc nút bánh răng trang chủ); G2P là bản port của misaki (không torch, không num2words) + spaCy `en_core_web_sm` gắn thẻ từ loại + mạng BART nhỏ (3 MB, ONNX, trong bundle) cho từ ngoài từ điển. Chi tiết đo đạc: `english-voice-research-2026-09-15.md` |
 
 Những gì vốn đã không phụ thuộc ngôn ngữ thì giữ nguyên một đường: bỏ dấu chú thích, hạ chữ HOA, bỏ ký tự
 đầu dòng, chấm câu cho tiêu đề.
