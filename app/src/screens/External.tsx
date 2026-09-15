@@ -138,9 +138,9 @@ function ScanEntry({
                    a tooltip promising something the click will not do is
                    the same lie the old replay tooltip told. */
                 title={part.segment_id ? text("external.read_from_here") : undefined}
-                className={`rounded-2xl px-2 py-1.5 text-left text-sm leading-relaxed whitespace-pre-line transition-colors ${
+                className={`px-2 py-1.5 text-left text-sm leading-relaxed whitespace-pre-line ${
                   part.segment_id === current ? "voice-here" : ""
-                } ${part.segment_id ? "hover:bg-wash" : "cursor-default"}`}
+                } ${part.segment_id ? "read-from-here" : "cursor-default"}`}
               >
                 {part.text}
               </button>

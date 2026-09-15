@@ -809,19 +809,15 @@ export function Reader({
           }}
           onDoubleClick={cancelPendingRead}
           className={
-            // The corner belongs to the FILL, not to the block. With no fill
-            // there is nothing for a radius to round except the quotation's
-            // own left rule, which came out bent at both ends (owner, 06/09).
-            // So: square while the block is bare, rounded the moment it is
-            // filled under the pointer. Rounder than the `lg` it was (owner,
-            // 06/09), and `2xl` rather than `xl` because the radius scale
-            // has two rungs - surface 2xl, content lg - and `xl` is off it,
-            // which `npm run audit:ui` enforces.
-            // The block being READ is not filled at all: the voice's place
-            // is a light line under its words (`.voice-here`), which leaves
-            // the pointer's wash free to mean "read from here" on the
-            // current block as on any other (owner, 15/09).
-            "-mx-2 cursor-text rounded-none px-2 py-1 transition-colors hover:rounded-2xl hover:bg-wash " +
+            // No fill, ever: the block being READ carries a light dotted
+            // line under its words (`.voice-here`), and the block under the
+            // pointer the same line in neutral ink (`.read-from-here`) to
+            // say "read from here". The padded, rounded wash both used to
+            // wear boxed the paragraph like a selection (owner, 15/09). The
+            // padding stays, invisible, because the split rule below counts
+            // on it: a cut paragraph's negative margin swallows exactly
+            // these two paddings to sit one line-height under its head.
+            "-mx-2 cursor-text px-2 py-1 read-from-here " +
             blockClasses(segment, paged) +
             (segment.id === marker ? "voice-here" : "")
           }

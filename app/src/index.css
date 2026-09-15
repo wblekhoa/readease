@@ -429,16 +429,27 @@ textarea:focus-visible {
    15/09). Brand hue at a tint, like ::selection above, so it says this app
    and stays legible on both papers; the ink is left alone. Continuous under
    descenders on purpose - a marker under the line, not a hyperlink. */
-.voice-here {
+.voice-here,
+.read-from-here:hover {
   text-decoration-line: underline;
   /* Dotted and paler than the solid 60% it started as (owner, 15/09): a
      row of dots is quieter under a paragraph than a rule, and 40% keeps
      it visible on both papers without pulling the eye off the words. */
   text-decoration-style: dotted;
   text-decoration-thickness: 2px;
-  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
   text-underline-offset: 0.22em;
   text-decoration-skip-ink: none;
+}
+/* Under the pointer, "read from here" is the same dotted line in neutral
+   ink - the boxed wash it replaced put a padded slab around the block
+   (owner, 15/09). The voice's own colour wins where the two meet: the
+   block being read stays brand-tinted while the pointer crosses it. */
+.read-from-here:hover {
+  text-decoration-color: color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+.voice-here,
+.voice-here:hover {
+  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
 }
 
 /* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover
