@@ -189,6 +189,7 @@ export const TEXT = {
   "voices.source_api": ["API", "API"],
   "voices.source": ["Giọng đọc bằng", "Read with"],
   "key.set": ["Đã có khoá", "Key saved"],
+  "key.set_voices": ["Đã có khoá · {count} giọng", "Key saved · {count} voices"],
   "key.unset": ["Chưa có khoá", "No key yet"],
   "key.add": ["Thêm khoá", "Add key"],
   "key.change": ["Đổi khoá", "Change key"],
@@ -346,14 +347,7 @@ export const TEXT = {
     "{name}: nội dung cuốn sách đọc ra thứ tiếng này",
     "{name} - the book's own text reads as this",
   ],
-  "voices.none_for_language": [
-    "Chưa có giọng nào đọc được ngôn ngữ của cuốn này. Tải giọng tiếng Anh trong Cài đặt › Mô hình đọc, hoặc thêm khoá API để dùng giọng từ xa.",
-    "No voice here reads this book's language. Download the English voice under Settings › Reading models, or add an API key for a remote one.",
-  ],
-  "voices.hidden_for_language": [
-    "Đã ẩn {count} giọng không đọc được ngôn ngữ của cuốn này.",
-    "{count} voices that do not read this book's language are hidden.",
-  ],
+  "voices.filter_language": ["Giọng cho", "Made for"],
   "voices.switch": ["Đổi giọng", "Change voice"],
   "voices.switched": ["Đang đọc tiếp bằng giọng {name}.", "Reading on with {name}."],
   "player.settings_open": ["Cài đặt giọng đọc", "Voice settings"],
@@ -574,7 +568,8 @@ export const TEXT = {
     "English books are read by the English voice on this Mac. Downloaded once, no API key needed.",
   ],
   "model.english_ready": ["Đã tải · {size}", "Downloaded · {size}"],
-  "model.english_download": ["Tải về", "Download"],
+  "model.download": ["Tải về", "Download"],
+  "model.download_use": ["Tải và dùng", "Download and use"],
   "model.english_resume": ["Tải tiếp", "Resume"],
   "model.english_partial": ["Tải chưa xong · {size} đã về máy", "Download unfinished · {size} on this Mac"],
   "model.english_remove": ["Xoá", "Remove"],
@@ -661,15 +656,64 @@ export const TEXT = {
     "Cuốn sách này không còn trong thư viện Apple Books. Mở lại mục này để làm mới.",
     "That book is no longer in the Apple Books library. Reopen this tab to refresh.",
   ],
-  "setup.title": ["Chuẩn bị giọng đọc tiếng Việt", "Set up Vietnamese voice"],
-  "setup.description": ["Tải một lần, sau đó đọc hoàn toàn offline.", "Download once, then read fully offline."],
-  "setup.quality": ["Chất lượng giọng đọc", "Voice quality"],
-  "setup.ready": ["Sẵn sàng tải giọng đọc.", "Ready to download voice data."],
-  "setup.prepare": ["Chuẩn bị giọng đọc", "Set up voice"],
-  "setup.english_later": [
-    "Giọng đọc tiếng Anh tải thêm sau, trong Cài đặt › Mô hình đọc.",
-    "The English voice can be added later, under Settings › Reading models.",
+  /* First run: nothing on this Mac can read yet. The same rows as the hub,
+     in a frame, and a way into the library whatever was chosen - nobody is
+     made to download any one model (owner, 15/09). */
+  "setup.title": ["Chọn cách đọc để bắt đầu", "Choose how to read, to begin"],
+  "setup.description": [
+    "Tải mô hình về máy một lần để đọc offline, hoặc dùng giọng API bằng khoá của bạn. Đổi bất cứ lúc nào trong Giọng đọc & mô hình.",
+    "Download a model once to read offline, or use API voices on your own key. Change it any time under Voices & models.",
   ],
+  "setup.enter": ["Vào thư viện", "Go to the library"],
+  /* The hub on the home screen: what this Mac reads, by language, and how
+     to add to it (owner, 15/09: "một nơi thống kê để user quản lý và tải
+     model hoặc nhập API"). */
+  "hub.title": ["Giọng đọc & mô hình", "Voices & models"],
+  "hub.caption": [
+    "Máy này đọc được gì, bằng giọng nào. Tải mô hình hoặc nhập khoá API ở đây.",
+    "What this Mac reads, and with which voices. Download a model or add an API key here.",
+  ],
+  "hub.readable": ["Đọc được", "Can read"],
+  "hub.unreadable": ["Chưa đọc được", "Cannot read yet"],
+  "hub.local_vi": ["Mô hình VieNeu trên máy · {count} giọng", "VieNeu model on this Mac · {count} voices"],
+  "hub.local_en": ["Mô hình Kokoro trên máy · {count} giọng", "Kokoro model on this Mac · {count} voices"],
+  "hub.api_voices": ["API · {count} giọng", "API · {count} voices"],
+  "hub.how_to_read": ["Tải mô hình về máy, hoặc nhập khoá API bên dưới.", "Download a model, or add an API key below."],
+  "hub.section_api": ["Giọng API", "API voices"],
+  "hub.api_note": [
+    "Giọng API đọc được cả hai thứ tiếng, tính phí theo khoá của bạn.",
+    "API voices read both languages, billed to your own key.",
+  ],
+  "hub.manage": ["Quản lý…", "Manage…"],
+  /* The settings panel asks the language first, then shows that language's
+     voices and models (owner, 15/09). */
+  "settings.language": ["Đọc bằng tiếng", "Read in"],
+  "settings.language_content": [
+    "{name}: nội dung đang mở là thứ tiếng này",
+    "{name} - the text in front of you reads as this",
+  ],
+  "settings.no_voice": ["Chưa có giọng {language} trên máy này.", "No {language} voice on this Mac yet."],
+  "settings.no_voice_hint": [
+    "Tải mô hình về máy, hoặc nhập khoá API trong Giọng đọc & mô hình.",
+    "Download the model, or add an API key under Voices & models.",
+  ],
+  "settings.sources": ["Mô hình & API", "Models & API"],
+  /* The nudge: the text is in a language the voice in use was not made
+     for. A suggestion with one button - never acted on by itself (owner,
+     15/09: "gợi ý cho user là phần nội dung đang là ngôn ngữ gì và đề xuất
+     nên dùng model nào"). */
+  "hint.mismatch": [
+    "Nội dung này là {language}, còn giọng đang chọn được làm cho thứ tiếng kia.",
+    "This text is {language}; the voice in use was made for the other language.",
+  ],
+  "hint.no_voice": [
+    "Nội dung này là {language}, nhưng chưa có giọng nào cho thứ tiếng đó.",
+    "This text is {language}, but there is no voice for it yet.",
+  ],
+  "hint.switch": ["Đọc bằng {language}", "Read in {language}"],
+  "hint.get": ["Thêm giọng {language}", "Add a {language} voice"],
+  "language.vi": ["tiếng Việt", "Vietnamese"],
+  "language.en": ["tiếng Anh", "English"],
   "reader.selection": ["Đọc phần đã chọn", "Read selection"],
   "player.warming": ["Đang chuẩn bị giọng đọc…", "Preparing the voice…"],
   "engine.starting": ["Đang chuẩn bị giọng đọc…", "Preparing the voice…"],

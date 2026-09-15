@@ -1460,11 +1460,12 @@ class _Session:
             self._reply(request_id, {"ready": False, "cancelled": True})
             return
         self._reply(request_id, {"ready": True})
-        if params.get("engine") == "english":
-            # Six voices just became listable. The shell lists at start-up
-            # and on this event, so without it they would wait for the next
-            # launch - the same signal a paid catalogue arriving sends.
-            self._send({"event": "voices", "providers": ["local"]})
+        # A model's voices just became listable - six English ones, or the
+        # Vietnamese twenty on a Mac that chose the English model first. The
+        # shell lists at start-up and on this event, so without it they
+        # would wait for the next launch - the same signal a paid catalogue
+        # arriving sends.
+        self._send({"event": "voices", "providers": ["local"]})
 
     def _model_set_precision(
         self, request_id: Any, params: dict[str, Any]

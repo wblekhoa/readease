@@ -6,19 +6,31 @@ import { AppTabs } from "./ui/AppTabs";
 import { readingFault, faultKey } from "./ui/voiceFault";
 import { GradientBlur, MenuButton, Toolbar } from "./ui/patterns";
 import { External, type ExternalEntry } from "./screens/External";
-import { Button, IconButton, Notice, SectionTitle, Select, Surface, Textarea } from "./ui/controls";
-import { SettingsPanel } from "./ui/SettingsPanel";
+import { Button, IconButton, Notice, SectionTitle, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
+import { languageName, SettingsPanel } from "./ui/SettingsPanel";
 import { VoicesPanel } from "./ui/VoicesPanel";
 import {
+  canSpeak,
   initialShortlist,
   offeredVoices,
   serializeShortlist,
   sampleLanguage,
   toggleShortlist,
-  voiceForLanguage,
   voiceName,
-  vouchedFor,
   type Voice, chipName } from "./ui/voiceShortlist";
+import {
+  firstRunNeeded,
+  initialReadingLanguage,
+  isLanguage,
+  languageHint,
+  languageOfVoice,
+  offeredFor,
+  voiceForTab,
+  type Language as ReadingLanguage,
+  type ModelStatus,
+} from "./ui/readingSources";
+import { useModels } from "./ui/useModels";
+import { SourcesHub } from "./ui/SourcesHub";
 import { useShortcut } from "./ui/useShortcut";
 import {
   ArrowLeftIcon,
@@ -66,7 +78,7 @@ import { keyVerdict, type KeyReply } from "./ui/keyVerdict";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
-import { Setup } from "./screens/Setup";
+import { FirstRun } from "./screens/Setup";
 import { Transfer } from "./screens/Transfer";
 import { currentLanguage, engineMessage, setLanguage, text, type Language } from "./i18n";
 
@@ -227,8 +239,17 @@ export default function App() {
    * would land in all of them at once. */
   const [readingAt, setReadingAt] = useState<number | null>(null);
   const [externalStatus, setExternalStatus] = useState<string | null>(null);
-  const [modelPrecision, setModelPrecision] = useState<string | null>(null);
+  /* The two models on this Mac and any download in flight - one owner, so
+     the first-run screen, the hub and the settings panel never disagree
+     about what is installed or what is being fetched. */
+  const models = useModels();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** The hub: what this Mac reads, by language, and how to add to it. */
+  const [hubOpen, setHubOpen] = useState(false);
+  /** The language the reader chose to read in (owner, 15/09: choose the
+   * language first, then see its voices). Kept in step with the voice: a
+   * voice made for one language moves this to it. */
+  const [readingLanguage, setReadingLanguage] = useState<ReadingLanguage>("vi");
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [selection, setSelection] = useState("");
   const readSelection = useCallback(() => {
@@ -375,22 +396,32 @@ export default function App() {
       params: { key, value },
     }).catch(() => undefined);
   }, []);
-  /** The voice last chosen for each language a book can be in, so the next
-   * book in that language opens in it. Read once at start-up, written when
-   * a voice is picked with a book open. */
+  /** The voice last chosen under each language, so switching back to a
+   * language brings its voice back. Read once at start-up, written when a
+   * voice is picked. */
   const voiceByLanguage = useRef<Record<string, string>>({});
+  /* A mirror of `readingLanguage` for callbacks that must not be rebuilt
+     on every change of it: the shortcut's reading closure, the voice
+     memory. */
+  const readingLanguageRef = useRef<ReadingLanguage>("vi");
+  const chooseReadingLanguage = useCallback((language: ReadingLanguage) => {
+    readingLanguageRef.current = language;
+    setReadingLanguage(language);
+    remember("reading_language", language);
+  }, [remember]);
   const rememberVoice = useCallback((id: string) => {
     setVoiceId(id);
     remember("voice", id);
-    setOpenBook((book) => {
-      const language = book?.language;
-      if (language === "vi" || language === "en") {
-        voiceByLanguage.current[language] = id;
-        remember(`voice_${language}`, id);
-      }
-      return book;
-    });
-  }, [remember]);
+    // A voice made for one language moves the reading language to it - the
+    // mid-reading switcher lists every marked voice, and picking Heart there
+    // is choosing English. A voice that names none (OpenAI) is filed under
+    // the language whose tab it was picked from.
+    const language = languageOfVoice(voices.find((voice) => voice.id === id))
+      ?? readingLanguageRef.current;
+    voiceByLanguage.current[language] = id;
+    remember(`voice_${language}`, id);
+    if (language !== readingLanguageRef.current) chooseReadingLanguage(language);
+  }, [remember, voices, chooseReadingLanguage]);
   const rememberRate = useCallback((value: number) => {
     setRate(value);
     remember("rate", value);
@@ -451,26 +482,12 @@ export default function App() {
     remember("voice_shortlist", serializeShortlist(ids));
   }, [remember]);
 
-  /* A book opens in a voice that reads its language. The one in use stays
-     unless it names its languages and this is not among them; the rule and
-     its reasons are `voiceForLanguage`. Runs again when the catalogue
-     arrives (at start-up a book can be open before the voices are listed)
-     and when the reader changes the book's language by hand. */
-  const bookLanguage = openBook?.language;
-  useEffect(() => {
-    if (!bookLanguage || !voices.length || !voiceId) return;
-    const wanted = voiceForLanguage(
-      voiceId, voiceByLanguage.current[bookLanguage], bookLanguage, voices,
-    );
-    if (wanted && wanted !== voiceId) {
-      setVoiceId(wanted);
-      remember("voice", wanted);
-      // The switch is a choice for this language too, so it holds across
-      // a relaunch.
-      voiceByLanguage.current[bookLanguage] = wanted;
-      remember(`voice_${bookLanguage}`, wanted);
-    }
-  }, [bookLanguage, voices, voiceId, remember]);
+  /* Nothing here moves the voice when a book opens. It did, for a day: a
+     book opened in a voice made for its language, and the effect re-ran on
+     every voice change and put the old one back - the loudest way of
+     forcing "the right voice" the app ever had. The owner's decision
+     (15/09): the voice is the reader's, and the app SUGGESTS - see `hint`
+     below, the settings panel and the chip. */
 
   /** A reader's word about which language the open book is in.
    *
@@ -526,13 +543,26 @@ export default function App() {
     // is blank. It used to queue behind the voice listing, which loaded
     // the model - 1.5-2 s of nothing on screen at every launch (measured
     // 14/09), more with a paid provider to ask over the network.
-    invoke<{ result: { precision: string | null; ready: boolean } }>(
-      "engine_request",
-      { method: "model.status", params: {} },
-    )
-      .then((reply) => {
-        setModelPrecision(reply.result.precision);
-        setGate(reply.result.ready ? "ready" : "setup");
+    //
+    // The first-run screen shows only while NOTHING on this Mac can read:
+    // no model of either language and no provider key. A key counts before
+    // its voices are listed - they arrive by event, and an API-only reader
+    // must not see the setup screen flash on every launch.
+    const keys = Promise.all(PROVIDERS.map((provider) =>
+      invoke<{ result: { set?: boolean } }>("engine_request", {
+        method: "config.get", params: { key: provider.settingsKey },
+      })
+        .then((reply) => [provider.id, reply.result.set === true] as const)
+        .catch(() => [provider.id, false] as const)));
+    Promise.all([
+      invoke<{ result: ModelStatus }>("engine_request", { method: "model.status", params: {} }),
+      keys,
+    ])
+      .then(([reply, found]) => {
+        models.setStatus(reply.result);
+        const keysSet = Object.fromEntries(found);
+        setKeysSet((current) => ({ ...current, ...keysSet }));
+        setGate(firstRunNeeded(reply.result, keysSet) ? "setup" : "ready");
       })
       // A dead engine still deserves a visible app: errors surface on use,
       // a blank window surfaces nothing.
@@ -544,11 +574,24 @@ export default function App() {
       .then(async (list) => {
         setVoices(list);
         setVoicesError(null);
-        if (!list.length) return;
+        // The language tab opens where it was left; failing that, on the
+        // saved voice's language; failing that, on the interface's. Read
+        // before the voices are looked at: a Mac with no voice yet still
+        // opens its panel on the language the reader last chose.
+        const storedLanguage = await invoke<{ result: { value: string | null } }>(
+          "engine_request",
+          { method: "config.get", params: { key: "reading_language" } },
+        ).catch(() => null);
         const saved = await invoke<{ result: { value: string | null } }>(
           "engine_request",
           { method: "config.get", params: { key: "voice" } },
         ).catch(() => null);
+        const before = saved?.result.value;
+        const known = before ? list.find((voice) => voice.id === before) : undefined;
+        const opening = initialReadingLanguage(storedLanguage?.result.value, known, currentLanguage());
+        readingLanguageRef.current = opening;
+        setReadingLanguage(opening);
+        if (!list.length) return;
         for (const language of ["vi", "en"]) {
           const chosen = await invoke<{ result: { value: string | null } }>(
             "engine_request",
@@ -556,19 +599,13 @@ export default function App() {
           ).catch(() => null);
           if (chosen?.result.value) voiceByLanguage.current[language] = chosen.result.value;
         }
-        // The voice saved before there was a memory per language was
-        // chosen with Vietnamese books, so it is the Vietnamese memory
-        // until a Vietnamese book is read in another - otherwise the first
-        // English book would cost a reader their voice for the next
-        // Vietnamese one.
-        const before = saved?.result.value;
-        const vietnamese = before ? list.find((voice) => voice.id === before) : undefined;
-        if (!voiceByLanguage.current.vi && vietnamese && vouchedFor(vietnamese, "vi")) {
-          voiceByLanguage.current.vi = vietnamese.id;
-          // Written down, not just held: the first English book rewrites
-          // `voice`, and after a relaunch this seed would otherwise be
-          // taken from the English voice and fail.
-          remember("voice_vi", vietnamese.id);
+        // The voice saved before there was a memory per language is filed
+        // under the language it was made for, so switching languages and
+        // back finds it again.
+        const madeFor = languageOfVoice(known);
+        if (madeFor && !voiceByLanguage.current[madeFor] && known) {
+          voiceByLanguage.current[madeFor] = known.id;
+          remember(`voice_${madeFor}`, known.id);
         }
         // Inside this chain because the starting five have to be filtered
         // against the catalogue this build actually ships.
@@ -586,7 +623,20 @@ export default function App() {
         // kept until the catalogue event says whether it can be honoured.
         const present = Boolean(wanted && list.some((voice) => voice.id === wanted));
         if (wanted && !present) stillWanted.current = { id: wanted, fallback: list[0].id };
-        setVoiceId(present ? (wanted as string) : list[0].id);
+        // Failing the saved voice: the first that fits the language the
+        // tab opens on, so an English-only Mac does not start on nothing
+        // while its six voices sit further down the list.
+        const fallback = list.find((voice) => voice.id === voiceForTab(null, offeredFor(list, [], "", opening))) ?? list[0];
+        const starting = present ? (wanted as string) : fallback.id;
+        setVoiceId(starting);
+        // The tab follows the voice in use: a Mac with the English model
+        // alone starts on Heart, and its panel must open on English, not on
+        // an empty Vietnamese tab beside a speaking English voice.
+        const spoken = languageOfVoice(list.find((voice) => voice.id === starting));
+        if (spoken && spoken !== opening) {
+          readingLanguageRef.current = spoken;
+          setReadingLanguage(spoken);
+        }
       })
       .catch((error) => {
         console.error(error);
@@ -652,8 +702,10 @@ export default function App() {
     const catalogue = listen("engine:voices", () => {
       invoke<Voice[]>("engine_voices")
         .then((list) => {
-          if (!list.length) return;
+          // An empty list is a real answer now - the last model removed,
+          // no key - not a listing to wait out.
           setVoices(list);
+          if (!list.length) return;
           // Re-read the stored shortlist against the whole catalogue, so a
           // paid voice whose model moved is re-homed the way it would have
           // been had its provider answered in time - unless the person has
@@ -726,7 +778,6 @@ export default function App() {
       externalState.then((unlisten) => unlisten());
       spent.then((unlisten) => unlisten());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startReading = useCallback(async () => {
@@ -795,6 +846,35 @@ export default function App() {
       onPlayer({ type: "failed", error: String(error) });
     });
   }, [player.reading, rate, rememberVoice, scope]);
+
+  /** The reader picks a language: the tab moves, and the voice last used
+   * under it comes back - failing that the first that fits, local before
+   * paid. Nothing fits: the tab moves alone and shows how to get a voice. */
+  const switchReadingLanguage = useCallback((language: ReadingLanguage) => {
+    chooseReadingLanguage(language);
+    const wanted = voiceForTab(
+      voiceByLanguage.current[language],
+      offeredFor(voices, shortlist, voiceId, language),
+    );
+    if (wanted && wanted !== voiceId) switchVoice(wanted);
+  }, [chooseReadingLanguage, voices, shortlist, voiceId, switchVoice]);
+
+  /* The one time the voice moves without a tap: a model was just fetched
+     for the language the tab is on, and no voice in use fits that language.
+     The reader chose the language and pressed its download - starting its
+     first voice is the end of that action, not a choice made for them. A
+     paid voice is never chosen this way (`voiceForTab` runs on the local
+     ones only here): that would spend money nobody chose to spend. */
+  useEffect(() => {
+    if (!voices.length) return;
+    const current = voices.find((voice) => voice.id === voiceId);
+    if (current && canSpeak(current, readingLanguage)) return;
+    const local = offeredFor(voices, shortlist, voiceId, readingLanguage)
+      .filter((voice) => !isPaidVoice(voice.id));
+    const wanted = voiceForTab(voiceByLanguage.current[readingLanguage], local);
+    if (wanted && wanted !== voiceId) switchVoice(wanted);
+    // Only when the catalogue changes: a tab switch has its own rule.
+  }, [voices]);
 
   /** Speak one sentence in a voice, so a choice can be heard before it is made.
    *
@@ -892,12 +972,10 @@ export default function App() {
   const tabs = useMemo(() => ([
     { value: "library", label: text("nav.library"), icon: <BookIcon /> },
     { value: "paste", label: text("nav.paste"), icon: <ClipboardIcon /> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   ]), [language]);
   const tools = useMemo(() => ([
     { value: "external", label: text("nav.external"), icon: <CursorTextIcon /> },
     { value: "transfer", label: text("nav.transfer"), icon: <TransferIcon /> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   ]), [language]);
 
   const overLimit = content.length > PASTE_LIMIT;
@@ -912,6 +990,21 @@ export default function App() {
   // carries that and nothing else (HIG §3.5). "reader" is a book open inside
   // the library tab; the library LIST has nothing to start yet.
   const screen = tab === "library" && openBook ? "reader" : tab;
+  /* What the text in front of the reader is in: the book's language, or the
+     one the estimate found the pasted passage to be in. A captured
+     selection has none - it is read the moment it lands. */
+  const contentLanguage = screen === "reader"
+    ? openBook?.language ?? null
+    : screen === "paste" && content.trim()
+      ? estimate?.language ?? null
+      : null;
+  /* The nudge, and never more than a nudge (owner, 15/09): the voice in use
+     was not made for the language in front of the reader. */
+  const hint = languageHint(
+    contentLanguage,
+    voices.find((voice) => voice.id === voiceId),
+    isLanguage(contentLanguage) ? offeredFor(voices, shortlist, voiceId, contentLanguage) : [],
+  );
   const canStart = screen === "reader" || screen === "paste";
   const startDisabled =
     screen === "paste"
@@ -928,21 +1021,27 @@ export default function App() {
   if (gate === "checking") return null;
   if (gate === "setup") {
     return (
-      <Setup
-        precision={modelPrecision}
-        onReady={() => {
+      <FirstRun
+        models={models}
+        voices={voices}
+        keysSet={keysSet}
+        onSaveKey={saveKey}
+        reading={false}
+        onEnter={() => {
           setGate("ready");
+          // Whatever was fetched: the catalogue and the voice in use follow
+          // it. A model's voices arrive by event too, but a person who
+          // pressed nothing still gets a fresh listing on the way in.
           invoke<Voice[]>("engine_voices")
             .then((list) => {
               setVoices(list);
-              if (list.length) setVoiceId(list[0].id);
+              if (list.length && !list.some((voice) => voice.id === voiceId)) {
+                const first = voiceForTab(null, offeredFor(list, [], "", readingLanguageRef.current)) ?? list[0].id;
+                rememberVoice(first);
+              }
             })
             .catch(console.error);
-          invoke<{ result: { precision: string | null } }>("engine_request", {
-            method: "model.status", params: {},
-          })
-            .then((reply) => setModelPrecision(reply.result.precision))
-            .catch(() => undefined);
+          models.refresh();
         }}
       />
     );
@@ -1116,6 +1215,22 @@ export default function App() {
               ))}
               <span aria-hidden="true" className="mx-1 h-5 w-px bg-edge" />
             </>
+          )}
+          {/* The hub: what this Mac reads and how to add to it, from the
+              home screens (owner, 15/09: "ở ngoài trang chủ sẽ có một nút
+              setting"). A book's toolbar carries only what serves the book;
+              the settings panel reaches the hub from there. The gear is the
+              glyph the reader's own settings wear - never both on screen. */}
+          {!(screen === "reader" && openBook) && (
+            <IconButton
+              onClick={() => { setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true); }}
+              aria-label={text("hub.title")}
+              title={text("hub.title")}
+              className={hubOpen ? "text-ink" : ""}
+              data-popover-trigger
+            >
+              <ReadingSettingsIcon />
+            </IconButton>
           )}
           <IconButton
             onClick={toggleTheme}
@@ -1571,7 +1686,11 @@ export default function App() {
                   setSettingsOpen((value) => !value);
                 }}
                 aria-label={text("player.settings_open")}
-                title={text("player.settings_open")}
+                title={
+                  hint
+                    ? text(hint.kind === "switch" ? "hint.mismatch" : "hint.no_voice", { language: languageName(hint.content) })
+                    : text("player.settings_open")
+                }
                 /* It toggles, so the outside-click that closes the panel has
                    to leave this button alone - see `useDismiss`. */
                 data-popover-trigger
@@ -1582,6 +1701,12 @@ export default function App() {
                 className={`min-w-0 ${settingsOpen ? "text-ink" : ""}`}
               >
                 <VoiceIcon />
+                {/* The nudge, at chip size: the text in front of the reader
+                    is in a language this voice was not made for. The words
+                    are in the title above and in the panel it opens. */}
+                {hint && (
+                  <SuggestionDot />
+                )}
                 {/* A reminder, not a description: the name that tells this
                     voice apart from the others on offer, and the speed only
                     when it is not the plain 1×. Without a voice the old chip
@@ -1638,37 +1763,34 @@ export default function App() {
       )}
       {settingsOpen && speechSettings && (
         <SettingsPanel
-          /* Only the voices switched on (plus the one in use): the shortlist
-             is the person's list of voices, and it governs both the place a
-             voice is chosen and the menu that switches between them. */
-          voices={offeredVoices(voices, shortlist, voiceId)}
+          /* The whole catalogue and the shortlist: the panel narrows to the
+             language's voices itself - the marked ones plus the one in use,
+             the same list the mid-reading switcher shows (owner, 03/09: one
+             list means one list everywhere; the way to add to it is Quản
+             lý giọng). */
+          voices={voices}
+          shortlist={shortlist}
           voiceId={voiceId}
           rate={rate}
           rates={RATES}
           reading={reading !== "idle"}
           shortlisted={shortlist.length}
           voicesError={voicesError}
-          /* The shortlist governs here too. This used to hand the panel
-             every paid voice the account owns - forty-five of them for an
-             ElevenLabs account with cloned voices - so the API tab dumped
-             the account into a native select while the tab beside it showed
-             a curated five. One list means one list everywhere (owner,
-             03/09); the way to add to it is Quản lý giọng, in both tabs. */
-          paidVoices={offeredVoices(voices, shortlist, voiceId).filter((voice) => isPaidVoice(voice.id))}
-          /* Whether the account HAS any, which is a different question from
-             whether any is on the list - it decides which sentence the empty
-             API tab says. */
-          paidAvailable={voices.some((voice) => isPaidVoice(voice.id))}
+          readingLanguage={readingLanguage}
+          contentLanguage={contentLanguage}
+          hint={hint}
+          models={models}
           keysSet={keysSet}
           scope={scope}
           budget={budget}
           spent={spent}
-          onSaveKey={saveKey}
+          onReadingLanguage={switchReadingLanguage}
           onScope={changeScope}
           onBudget={changeBudget}
           onVoice={switchVoice}
           onRate={rememberRate}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
+          onOpenHub={() => { setSettingsOpen(false); setHubOpen(true); }}
           /* Just close. This used to re-list the catalogue on the way out,
              in case a key had been added while the panel was open - but
              `saveKey` already re-lists the moment a key is accepted, and
@@ -1677,6 +1799,16 @@ export default function App() {
              would be a request to their servers every time somebody
              dismissed it. */
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {hubOpen && (
+        <SourcesHub
+          models={models}
+          voices={voices}
+          keysSet={keysSet}
+          onSaveKey={saveKey}
+          reading={reading !== "idle"}
+          onClose={() => setHubOpen(false)}
         />
       )}
       {voicesOpen && (

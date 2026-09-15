@@ -626,13 +626,19 @@ if (ENGLISH_STATE === "missing") {
   MODEL.english = { ready: false, installed: 328_000_000, download_bytes: 335_000_000 };
 }
 
-/* `?model=missing` starts with no voice installed, which is the ONLY way to
- * reach the setup screen - the first thing a new person ever sees, and until
- * now the one screen the preview could not show at all, because a fixture
- * that is always ready never routes to it. */
+/* `?model=missing` is a fresh install: neither model, no key - the ONLY way
+ * to reach the first-run screen, the first thing a new person ever sees.
+ * `?vietnamese=missing` is a Mac that chose the English model alone: the
+ * library works, the Vietnamese tab offers the download. */
 if (new URLSearchParams(window.location.search).get("model") === "missing") {
   MODEL.ready = false;
   MODEL.precision = null;
+  MODEL.installed = {};
+  MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
+  for (const key of Object.keys(SETTINGS)) if (key.endsWith("_api_key")) delete SETTINGS[key];
+}
+if (new URLSearchParams(window.location.search).get("vietnamese") === "missing") {
+  MODEL.ready = false;
   MODEL.installed = {};
 }
 
@@ -894,8 +900,14 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       // actually think about.
       const chars = pasted !== null ? pasted.length : 11_800 * chapters;
       const paid = voice.split(":").length >= 3;
+      // What the text is in: the engine judges a passage by its own words;
+      // here the diacritics decide, which is what the hint stands on. A
+      // book answers with the language the shelf gave it.
+      const language = pasted !== null
+        ? (/[ăâđêôơưàáảãạèéẻẽẹìíỉĩịòóỏõọùúủũụỳýỷỹỵ]/i.test(pasted) ? "vi" : "en")
+        : LIBRARY.find((book) => book.id === params.book_id)?.language ?? "vi";
       if (!paid) {
-        return { paid: false, chars, utterances: chapters * 9, chapters, spent_usd: 0 };
+        return { paid: false, chars, utterances: chapters * 9, chapters, language, spent_usd: 0 };
       }
       const elevenlabs = voice.startsWith("elevenlabs");
       const perThousand = elevenlabs ? 0.1 : 0.02;
@@ -906,6 +918,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         chars,
         utterances: chapters * 9,
         chapters,
+        language,
         usd: Math.round(chars * perThousand) / 1000,
         // OpenAI bills tokens of generated audio, which cannot be counted
         // off the text - the engine sends 0 and the panel drops the line.
@@ -924,7 +937,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "voices":
       return {
-        voices: [...VOICES, ...(MODEL.english.ready ? ENGLISH_VOICES : []), ...paidCatalogue()],
+        voices: [...(MODEL.ready ? VOICES : []), ...(MODEL.english.ready ? ENGLISH_VOICES : []), ...paidCatalogue()],
         // No `models` list: the engine stopped sending one when it turned out
         // no screen read it. A mock that offers more than the engine does
         // teaches the harness a shape that does not exist.
@@ -998,7 +1011,11 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
   }
   if (command === "plugin:opener|open_url") return Promise.resolve(null);
   if (command === "engine_voices") {
-    return Promise.resolve([...VOICES, ...(MODEL.english.ready ? ENGLISH_VOICES : []), ...paidCatalogue()]);
+    return Promise.resolve([
+      ...(MODEL.ready ? VOICES : []),
+      ...(MODEL.english.ready ? ENGLISH_VOICES : []),
+      ...paidCatalogue(),
+    ]);
   }
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
@@ -1034,9 +1051,9 @@ function invoke(command: string, args: Record<string, unknown> = {}): Promise<un
         if (MODEL.precision) MODEL.installed[MODEL.precision] = 626_000_000;
       }
       emit("engine:orphan_reply", { ok: true, result: {} });
-      // The engine announces the six new voices the way it announces a paid
+      // The engine announces the new voices the way it announces a paid
       // catalogue arriving, and the shell re-lists on it.
-      if (english) emit("engine:voices", { providers: ["local"] });
+      emit("engine:voices", { providers: ["local"] });
     }, 400 + steps.length * 700);
     return Promise.resolve(null);
   }

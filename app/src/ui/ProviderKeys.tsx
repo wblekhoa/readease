@@ -20,11 +20,15 @@ import { PROVIDERS } from "./readingCost";
 export function ProviderKeys({
   title,
   keysSet,
+  voicesOf = {},
   onSaveKey,
 }: {
   title?: string;
   /** Provider id → whether a key is stored. Never the key itself. */
   keysSet: Record<string, boolean>;
+  /** Provider id → how many of its voices are listed, so a row with a key
+   * can say what the key bought - the hub's statistic, per provider. */
+  voicesOf?: Record<string, number>;
   /** Saves, then reports whether the provider actually answered. */
   /** Whether the provider accepted it, and - when it did not - which
    * refusal it was, so the row can say something the reader can act on
@@ -109,7 +113,13 @@ export function ProviderKeys({
           <GroupedRow
             key={provider.id}
             title={provider.label}
-            subtitle={keysSet[provider.id] ? text("key.set") : text("key.unset")}
+            subtitle={
+              keysSet[provider.id]
+                ? (voicesOf[provider.id] ?? 0) > 0
+                  ? text("key.set_voices", { count: voicesOf[provider.id] })
+                  : text("key.set")
+                : text("key.unset")
+            }
             trailing={
               <Button size="sm" onClick={() => start(provider.id)}>
                 {keysSet[provider.id] ? text("key.change") : text("key.add")}

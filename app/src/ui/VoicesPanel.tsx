@@ -14,7 +14,7 @@
 import { useState } from "react";
 import { text } from "../i18n";
 import {
-  Button, IconButton, Notice, SearchField, SegmentedControl, Surface, Switch,
+  Button, IconButton, Notice, SearchField, SegmentedControl, SuggestionDot, Surface, Switch,
 } from "./controls";
 import { Cluster, GroupedSection, useDismiss } from "./patterns";
 import {
@@ -111,14 +111,17 @@ export function VoicesPanel({
   const short = useShortWindow();
   const [filtering, setFiltering] = useState(false);
   const sourceOf = (id: string) => providerOf(id) ?? "local";
-  // A book's language decides which voices may be offered AT ALL, so it
-  // narrows the list before anything the reader filters. Scrolling past
-  // twenty Vietnamese voices the engine will refuse, to reach the one that
-  // can read this English chapter, is a list working against its reader.
-  const speakableVoices = bookLanguage
-    ? voices.filter((voice) => canSpeak(voice, bookLanguage))
-    : voices;
-  const hiddenByLanguage = voices.length - speakableVoices.length;
+  // Which language a voice was made for is a FILTER like the others, off
+  // by default: every voice reads every text since 15/09 (owner: "cho user
+  // tự do chọn voice"), so the list hides nothing on its own. It used to
+  // narrow to the book's language before anything the reader chose, back
+  // when the engine refused the rest.
+  const [languageFilter, setLanguageFilter] = useState<"all" | "vi" | "en">("all");
+  const languageOptions = (["vi", "en"] as const).filter((code) =>
+    voices.some((voice) => vouchedFor(voice, code)));
+  const speakableVoices = languageFilter === "all"
+    ? voices
+    : voices.filter((voice) => canSpeak(voice, languageFilter));
   const providerOrder = ["local", ...PROVIDERS.map((provider) => provider.id)];
   const providerOptions = providerOrder.filter((key) =>
     speakableVoices.some((voice) => sourceOf(voice.id) === key));
@@ -127,7 +130,7 @@ export function VoicesPanel({
     : "all";
   const hasKnownGender = speakableVoices.some((voice) =>
     voiceGender(voice, sourceOf(voice.id) === "local") !== null);
-  const hasFilters = providerOptions.length > 1 || hasKnownGender;
+  const hasFilters = providerOptions.length > 1 || hasKnownGender || languageOptions.length > 1;
   const filtersShown = hasFilters && (!short || filtering);
 
   /* Grouped by where a voice comes FROM, because that is the question being
@@ -247,10 +250,9 @@ export function VoicesPanel({
       )}
 
       {/* The language of the BOOK, above the voices, because it decides
-          which of them may speak at all: the model on this Mac is a
-          Vietnamese one and the engine refuses to read anything else with
-          it. A reader who lands here after being refused mid-chapter is
-          exactly the person who needs this row, and it is the same row that
+          how the text is cut into sentences and which voice the settings
+          panel suggests for it. It no longer decides which voices may speak
+          (15/09: any voice reads any text) - but it is still the row that
           undoes a wrong guess on a Vietnamese book whose diacritics were
           lost in a scan.
 
@@ -285,10 +287,7 @@ export function VoicesPanel({
                 value: code,
                 label: suggested ? (
                   <>
-                    <span
-                      aria-hidden="true"
-                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"
-                    />
+                    <SuggestionDot />
                     {name}
                   </>
                 ) : (
@@ -343,6 +342,29 @@ export function VoicesPanel({
                     </Button>
                   );
                 })}
+              {/* Made-for-language chips, in the flag glyphs the rows wear:
+                  "all" carries none, being the absence of a filter, and
+                  keeps its full name for a screen reader. */}
+              {languageOptions.length > 1 &&
+                (["all", ...languageOptions] as const).map((key) => {
+                  const active = languageFilter === key;
+                  const label = key === "all"
+                    ? text("voices.filter_all")
+                    : text(key === "vi" ? "voices.language_vi" : "voices.language_en");
+                  return (
+                    <Button
+                      key={`language-${key}`}
+                      size="sm"
+                      variant={active ? "primary" : "secondary"}
+                      aria-pressed={active}
+                      aria-label={key === "all" ? `${text("voices.filter_language")}: ${label}` : undefined}
+                      onClick={() => setLanguageFilter(key)}
+                    >
+                      {key === "all" ? null : <span aria-hidden="true">{key === "vi" ? "🇻🇳" : "🇬🇧"}</span>}
+                      {label}
+                    </Button>
+                  );
+                })}
               {hasKnownGender &&
                 ([
                   ["all", text("voices.gender_all"), null],
@@ -370,25 +392,14 @@ export function VoicesPanel({
       <div className="min-h-0 flex-1 overflow-y-auto px-6">
         {found === 0 && (
           <Notice className="mb-4 block">
-            {/* Order matters: the LANGUAGE is why a Vietnamese-only
-                catalogue is empty for an English book, and saying "no voice
-                matches your filters" there would send somebody to clear
-                filters that were never the problem. */}
-            {hiddenByLanguage > 0 && !query.trim()
-              ? text("voices.none_for_language")
-              : query.trim()
-                ? text("voices.no_match", { query })
-                : text("voices.no_filter_match")}
+            {query.trim()
+              ? text("voices.no_match", { query })
+              : text("voices.no_filter_match")}
           </Notice>
         )}
         {/* Full width of the box, and short enough to need one line where the
             box allows (owner, 11/09). An inset to match the rows' text column
             was tried first; it cost a line per hint and read as worse. */}
-        {found > 0 && hiddenByLanguage > 0 && (
-          <p className="mb-1 mt-4 text-xs text-ink-mute">
-            {text("voices.hidden_for_language", { count: hiddenByLanguage })}
-          </p>
-        )}
         {unplacedByGender > 0 && (
           <p className="mb-1 mt-4 text-xs text-ink-mute">
             {text("voices.gender_unknown", { count: unplacedByGender })}

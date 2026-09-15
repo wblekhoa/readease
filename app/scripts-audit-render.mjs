@@ -45,6 +45,9 @@ const SCREENS = {
   reader: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   voices: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
            ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["click", /^Quản lý giọng|^Manage voices/], ["wait", /^Danh sách giọng đọc$|^Voices$/]],
+  // The hub, from the gear on the home screens: the sheet's title is what
+  // the wait looks for, and the gear is found by its accessible name.
+  hub: [["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
 };
 const STATES = {
   default: "",
@@ -61,6 +64,7 @@ const STATES = {
   dragnone: "drag=none",
   english_missing: "english=missing",
   english_partial: "english=partial",
+  vietnamese_missing: "vietnamese=missing",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -139,7 +143,7 @@ async function main() {
             // With no model on the machine the shell shows the setup screen
             // and nothing else - there are no tabs to reach. That screen is
             // the cell; walking to a tab would be walking into a wall.
-            const steps = stateName === "model_missing" ? [["wait", /Chuẩn bị giọng đọc|Set up voice/]] : SCREENS[screen];
+            const steps = stateName === "model_missing" ? [["wait", /Chọn cách đọc để bắt đầu|Choose how to read/]] : SCREENS[screen];
             // An empty shelf has no book to open: the reader and the voice
             // panel do not exist in that state, so neither does the cell.
             if (stateName === "empty" && (screen === "reader" || screen === "voices")) { cells--; continue; }

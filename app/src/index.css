@@ -183,6 +183,11 @@
      glance and not only in the words (owner, 14/09). */
   --color-danger-wash: var(--fill-danger-wash);
   --color-danger-edge: var(--border-color-danger-haze);
+  /* The dot beside "Đọc được" in the hub: the DS's success fill at its
+     primary tier, a small mark and not a word, so it needs presence rather
+     than contrast. The other state of that dot is `edge-strong` - a grey
+     that says "nothing here yet" without calling it a fault. */
+  --color-ok: var(--fill-success-primary);
 }
 
 /* Hover and press are a wash LAYERED OVER a control's own fill, never a

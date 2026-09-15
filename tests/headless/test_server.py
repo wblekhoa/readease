@@ -1234,7 +1234,12 @@ class ProtocolTests(unittest.TestCase):
 
         events = [r for r in replies if r.get("event") == "model_progress"]
         self.assertEqual([e["progress"] for e in events], [0.5, 1.0])
-        self.assertTrue(replies[-1]["ok"])
+        reply = next(r for r in replies if r.get("id") == 60 and "ok" in r)
+        self.assertTrue(reply["ok"])
+        # The model's voices just became listable: the shell re-lists on
+        # this event, so a Mac that fetched the Vietnamese model second
+        # sees its twenty voices without a relaunch.
+        self.assertEqual(replies[-1], {"event": "voices", "providers": ["local"]})
 
     def test_a_download_can_be_abandoned_from_the_shell(self) -> None:
         """453MB with no way out is not a download, it is a hostage.
