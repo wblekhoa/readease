@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 import posixpath
 from urllib.parse import unquote, urlsplit
 from xml.etree import ElementTree
+from xml.parsers import expat
 from zipfile import BadZipFile, ZipFile, ZipInfo
 import zlib
 
@@ -189,19 +190,50 @@ class _BoundedTreeBuilder(ElementTree.TreeBuilder):
             raise CorruptBookError(f"{self._label} có XML quá phức tạp.")
         return super().start(tag, attrs)
 
-    def doctype(
-        self,
-        name: str,
-        public_id: str | None,
-        system_id: str | None,
-    ) -> None:
-        del name, public_id, system_id
-        raise CorruptBookError(
-            f"{self._label} chứa khai báo XML không an toàn."
-        )
+
+class _PrologRead(Exception):
+    """The root element was reached: everything a DOCTYPE could declare is behind us."""
+
+
+def _refuse_internal_subset(payload: bytes, label: str) -> None:
+    """Refuse a DOCTYPE that carries an internal subset - the only place a
+    chapter can declare entities, and so the only place an expansion attack
+    can start. A bare ``<!DOCTYPE html>`` (every EPUB 3 chapter) or the XHTML
+    1.1 public doctype (every EPUB 2 chapter) declares nothing, and the DTD
+    it names is never fetched: expat follows no external reference unless
+    asked to. The tree builder cannot make this distinction - its doctype
+    hook is handed the name and the identifiers, never the subset - so the
+    prolog is read once more here, and only the prolog: the scan stops at
+    the root tag. Refusing every DOCTYPE, as this did until 15/09/2026,
+    refused real books for the one line their cover page opens with.
+    """
+    parser = expat.ParserCreate()
+
+    def doctype(name: str, system_id: str | None, public_id: str | None, has_internal_subset: bool) -> None:
+        del name, system_id, public_id
+        if has_internal_subset:
+            raise CorruptBookError(f"{label} chứa khai báo XML không an toàn.")
+
+    def root_reached(name: str, attributes: dict[str, str]) -> None:
+        del name, attributes
+        raise _PrologRead
+
+    parser.StartDoctypeDeclHandler = doctype
+    parser.StartElementHandler = root_reached
+    try:
+        for offset in range(0, len(payload), 64 * 1024):
+            parser.Parse(payload[offset : offset + 64 * 1024], False)
+        parser.Parse(b"", True)
+    except _PrologRead:
+        return
+    except (expat.ExpatError, LookupError, ValueError):
+        # Malformed, or in an encoding nobody has: the real parse's finding
+        # to report, in its words, not this scan's.
+        return
 
 
 def _parse_xml(payload: bytes, label: str) -> ElementTree.Element:
+    _refuse_internal_subset(payload, label)
     parser = ElementTree.XMLParser(target=_BoundedTreeBuilder(label))
     try:
         for offset in range(0, len(payload), 64 * 1024):
