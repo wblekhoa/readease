@@ -48,6 +48,15 @@ const SCREENS = {
   // The hub, from the gear on the home screens: the sheet's title is what
   // the wait looks for, and the gear is found by its accessible name.
   hub: [["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
+  // The three sidebars over the page (HIG 3.15). The contents is awaited by
+  // its title; the notes and the search share their title with the button
+  // that opens them, so their close button is the sign they are up.
+  contents: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
+             ["click", /^Hiện mục lục$|^Show contents$/], ["wait", /^Mục lục$|^Contents$/]],
+  notes: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
+          ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^Đóng$|^Close$/]],
+  search: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
+           ["click", /^Tìm trong sách$|^Search in book$/], ["wait", /^Đóng$|^Close$/]],
 };
 const STATES = {
   default: "",
@@ -150,7 +159,7 @@ async function main() {
             const steps = stateName === "model_missing" ? [["wait", /Chọn cách đọc để bắt đầu|Choose how to read/]] : SCREENS[screen];
             // An empty shelf has no book to open: the reader and the voice
             // panel do not exist in that state, so neither does the cell.
-            if (stateName === "empty" && (screen === "reader" || screen === "voices")) { cells--; continue; }
+            if (stateName === "empty" && ["reader", "voices", "contents", "notes", "search"].includes(screen)) { cells--; continue; }
             events.length = 0;
             await send("Page.navigate", { url: `http://localhost:${PORT}/?${query}` });
             await sleep(900);

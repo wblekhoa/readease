@@ -1094,8 +1094,14 @@ export default function App() {
               >
                 <ArrowLeftIcon />
               </IconButton>
+              {/* The switches for the two left sidebars (HIG 3.15) are
+                  popover triggers: the sidebar closes on any click outside
+                  itself, and without the mark a press on its own button
+                  would close it and then open it again. */}
               <IconButton
-                onClick={() => {
+                data-popover-trigger
+                onClick={(event) => {
+                  event.currentTarget.blur();
                   setNotes({ open: false, focus: null });
                   setShowToc((value) => !value);
                 }}
@@ -1109,7 +1115,9 @@ export default function App() {
                   an empty panel is a button that lies about the book. */}
               {(pageInfo?.annotations ?? 0) > 0 && (
                 <IconButton
-                  onClick={() => {
+                  data-popover-trigger
+                  onClick={(event) => {
+                    event.currentTarget.blur();
                     setShowToc(false);
                     setNotes((value) => ({ open: !value.open, focus: null }));
                   }}

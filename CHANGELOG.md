@@ -4,6 +4,15 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The contents, the notes and the search in a book are sidebars now: one
+  layer each, the whole height between the two bars, on glass the page shows
+  through - where each was a card capped to a fraction of the window (at a
+  600 px window the contents showed fourteen rows). Contents and notes on
+  the left, search on the right; Escape, a click outside or the close button
+  leaves; the button that opened one closes it again.
+
 ## 0.1.4
 
 Two fixes: the voice no longer goes silent until a relaunch, and long voice
