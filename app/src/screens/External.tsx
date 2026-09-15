@@ -358,17 +358,23 @@ export function External({
             <PlayIcon />
           </IconButton>
         </div>
-        <div className="min-h-0 max-w-[80ch] flex-1 overflow-y-auto">
-          <ScanEntry
-            entry={soloEntry}
-            solo
-            open
-            current={currentPart(soloEntry.at, readingAt, position)}
-            onToggle={() => undefined}
-            onReplay={() => onReplay(soloEntry)}
-            onReadPart={(segmentId) => onReadPart(soloEntry, segmentId)}
-            onFocus={() => undefined}
-          />
+        {/* The scroller spans the window and carries the side inset, so the
+            bar sits at the window's edge and not against the passage's
+            own buttons; the measure cap moves to the column inside. Same
+            rule as the shelf (owner, 15/09). */}
+        <div className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable]">
+          <div className="max-w-[80ch]">
+            <ScanEntry
+              entry={soloEntry}
+              solo
+              open
+              current={currentPart(soloEntry.at, readingAt, position)}
+              onToggle={() => undefined}
+              onReplay={() => onReplay(soloEntry)}
+              onReadPart={(segmentId) => onReadPart(soloEntry, segmentId)}
+              onFocus={() => undefined}
+            />
+          </div>
         </div>
       </section>
     );
@@ -407,7 +413,8 @@ export function External({
           `dot-divided` is the DS rule this app already tells every other
           list apart with (GroupedSection): the rows carry their own padding
           and the rule sits between them, so the list keeps no gap. */}
-      <div className="dot-divided mt-1 flex min-h-0 max-w-[80ch] flex-1 flex-col overflow-y-auto">
+      <div className="-mx-6 mt-1 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable]">
+       <div className="dot-divided flex max-w-[80ch] flex-col">
         {history.map((entry) => (
           <ScanEntry
             key={entry.at}
@@ -425,6 +432,7 @@ export function External({
             onFocus={() => setAlone(entry.at)}
           />
         ))}
+       </div>
       </div>
     </section>
   );
