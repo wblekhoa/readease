@@ -132,6 +132,23 @@ class G2PTests(unittest.TestCase):
 
         self.assertEqual(phonemes, "bˈʌTəɹ")
 
+    def test_vietnamese_handed_to_the_english_reader_is_spoken_not_refused(self) -> None:
+        # The owner's decision (15/09): a voice reads whatever it is handed,
+        # and the shell suggests rather than the engine refusing. So the
+        # English pipeline must SURVIVE a Vietnamese sentence - every word
+        # outside its lexicon, most letters outside the fallback's alphabet -
+        # and answer in the model's own alphabet, not raise from inside a
+        # reading. What it sounds like is the reader's choice to make.
+        from vieneu_reader.speech.english.fallback import Fallback
+        from vieneu_reader.speech.english.g2p import US_VOCAB
+
+        phonemes, _ = self.g2p(Fallback())("Xin chào các bạn, hẹn gặp lại ở Đà Nẵng năm 2026.")
+
+        self.assertNotRegex(phonemes, r"\d")
+        self.assertTrue(all(char in US_VOCAB or char in " ,." for char in phonemes), phonemes)
+        # Something is left to say: the numbers alone guarantee that.
+        self.assertIn("twˈɛnti", phonemes)
+
     def test_empty_text_is_empty_phonemes(self) -> None:
         self.assertEqual(self.g2p()("")[0], "")
         self.assertEqual(self.g2p()("   ")[0], "")

@@ -135,20 +135,23 @@ class EnglishVoicesOnTheWireTests(unittest.TestCase):
         self.assertEqual(len(english.requests), 1)
         self.assertEqual(english.requests[0][1], "af_heart")
 
-    def test_an_english_voice_refuses_vietnamese_by_name(self) -> None:
+    def test_an_english_voice_reads_vietnamese_when_asked_to(self) -> None:
+        # Each voice reads what it is handed - the owner's decision (15/09)
+        # after the refusal by name: the language's own voice is a
+        # suggestion the shell makes, not a rule the engine enforces. The
+        # English model, given Vietnamese, is the one that speaks.
         reply, vietnamese, english = self._read(VIETNAMESE, "af_heart", FakeEnglish())
 
-        self.assertFalse(reply["ok"])
-        self.assertIn("voice_unavailable: wrong_language", reply["error"])
-        self.assertEqual(english.requests, [])
+        self.assertTrue(reply["ok"], reply)
         self.assertEqual(vietnamese.requests, [])
+        self.assertEqual(len(english.requests), 1)
 
-    def test_the_vietnamese_voice_still_refuses_english(self) -> None:
+    def test_the_vietnamese_voice_reads_english_when_asked_to(self) -> None:
         reply, vietnamese, english = self._read(ENGLISH, "adam", FakeEnglish())
 
-        self.assertFalse(reply["ok"])
-        self.assertIn("wrong_language", reply["error"])
+        self.assertTrue(reply["ok"], reply)
         self.assertEqual(english.requests, [])
+        self.assertEqual(len(vietnamese.requests), 1)
 
     def test_an_english_voice_whose_model_is_gone_is_refused_as_missing(self) -> None:
         # A book, or settings, can remember the voice from before the

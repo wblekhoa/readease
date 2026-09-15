@@ -309,16 +309,12 @@ export const TEXT = {
     "Nhà cung cấp đã chặn tài khoản miễn phí này - thường là do dùng VPN hoặc chung mạng với một tài khoản khác. Đổi mạng, nâng lên gói trả phí, hoặc đọc bằng giọng trên máy.",
     "The provider has blocked this free account - usually a VPN, or an address shared with another account. Change network, move to a paid plan, or read with the voice on this Mac.",
   ],
-  /* Either local model can say this: the Vietnamese one handed English, or
-     the English one handed Vietnamese. The sentence names neither and points
-     at the two places the answer is - the voice list, and the download. */
-  "voiceerr.wrong_language": [
-    "Giọng này không đọc được ngôn ngữ của đoạn văn. Chọn giọng khác trong phần giọng đọc - giọng tiếng Anh trên máy tải trong Cài đặt › Mô hình đọc.",
-    "This voice does not read the language of this passage. Pick another in the voice settings - the English voice on this Mac is downloaded under Settings › Reading models.",
-  ],
+  /* Either local model can say this: a voice remembered from before its
+     model was removed, or before it was ever fetched. The sentence names
+     the one place both downloads live. */
   "voiceerr.model_missing": [
-    "Giọng tiếng Anh này chưa có trên máy. Tải mô hình tiếng Anh trong Cài đặt › Mô hình đọc, hoặc chọn giọng khác.",
-    "This English voice is not on this Mac yet. Download the English model under Settings › Reading models, or pick another voice.",
+    "Mô hình của giọng này chưa có trên máy. Tải trong Giọng đọc & mô hình, hoặc chọn giọng khác.",
+    "This voice's model is not on this Mac yet. Download it under Voices & models, or pick another voice.",
   ],
   "voiceerr.budget": [
     "Đã chạm trần chi tiêu bạn đặt. Nâng trần trong phần chi phí, hoặc đọc bằng giọng trên máy.",

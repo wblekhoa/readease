@@ -182,6 +182,16 @@ def _catalogue_key(provider: str, model: str, key: str) -> tuple[str, str, str]:
     return provider, model, sha256(key.encode("utf-8")).hexdigest()
 
 
+def _is_ready(engine: Any) -> bool:
+    """Whether a local model is on this Mac, whatever shape the engine gives
+    the fact: the real one exposes `is_model_ready` as a property, fakes as
+    a method or not at all - and an engine that never says is taken as
+    ready, so a test double without the attribute keeps speaking."""
+
+    attribute = getattr(engine, "is_model_ready", True)
+    return bool(attribute() if callable(attribute) else attribute)
+
+
 def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
     """Build the provider a voice names, on the key this Mac holds.
 
@@ -781,10 +791,11 @@ class _Session:
         voice_id = str(params.get("voice_id") or "")
         rate = float(params.get("rate") or 1.0)
         settings = SynthesisSettings()
-        # The passage itself is the evidence, exactly as a book's text is.
-        # Reading it off the interface setting instead left the owner's rule
-        # unenforced for the commonest case there is: a Vietnamese interface
-        # and an English paragraph pasted out of a browser.
+        # The passage itself is the evidence, exactly as a book's text is:
+        # the language decides how the text is cut into utterances and
+        # what the shell's hint says, and reading it off the interface
+        # setting got the commonest case wrong - a Vietnamese interface and
+        # an English paragraph pasted out of a browser.
         language = language_of_text(text, self._reading_language())
         utterances = _text_utterances(text, settings, language)
         if not utterances:
@@ -881,8 +892,12 @@ class _Session:
 
         # The local voices are Vietnamese and only Vietnamese - not "did not
         # say" like a provider that never published a list. Naming it here is
-        # what lets the shell show a reader in English which voices can
-        # actually read to them.
+        # what lets the shell say which voices were made for the language in
+        # front of the reader. Listed only while the model is on this Mac:
+        # with no model and no remembered list, `voices()` loads the SDK,
+        # which is the one call that cannot succeed - and it took the whole
+        # listing down with it, the English voices included, for a reader
+        # who chose to download only those.
         catalogue: list[dict[str, Any]] = [
             {
                 "id": voice.id,
@@ -890,7 +905,7 @@ class _Session:
                 "paid": False,
                 "languages": [DEFAULT_SPEECH_LANGUAGE],
             }
-            for voice in self._engine.voices()
+            for voice in (self._engine.voices() if _is_ready(self._engine) else ())
         ]
         english = self._english_engine
         if english is not None and english.is_model_ready:
@@ -1075,16 +1090,18 @@ class _Session:
         # what gets read.
         if not params.get("book_id"):
             pasted = str(params.get("text") or "")
-            utterances = _text_utterances(
-                pasted,
-                SynthesisSettings(),
-                language_of_text(pasted, self._reading_language()),
-            )
+            # Named in the reply: the passage is judged by its own words
+            # at every read, and this is the one answer the paste screen
+            # gets before the read - what the shell's language hint stands
+            # on.
+            language = language_of_text(pasted, self._reading_language())
+            utterances = _text_utterances(pasted, SynthesisSettings(), language)
             chars = sum(len(utterance.text) for utterance in utterances)
             if price is None:
                 self._reply(request_id, {
                     "paid": False, "chars": chars,
                     "utterances": len(utterances), "chapters": 0,
+                    "language": language,
                     "spent_usd": self._spend.snapshot().usd,
                 })
                 return
@@ -1095,6 +1112,7 @@ class _Session:
                 "chars": chars,
                 "utterances": len(utterances),
                 "chapters": 0,
+                "language": language,
                 "usd": round(price.usd_for(chars), 4),
                 "units": price.units_for(chars),
                 "unit": price.unit,
@@ -1111,9 +1129,8 @@ class _Session:
         if stored is None:
             self._fail(request_id, f"unknown book: {params.get('book_id')}")
             return
-        utterances, chapter_of = self._book_utterances(
-            stored, self._book_language(stored)
-        )
+        language = self._book_language(stored)
+        utterances, chapter_of = self._book_utterances(stored, language)
         wanted = params.get("segment_id")
         if not wanted:
             progress = self._repository.load_progress(stored.book.id)
@@ -1136,6 +1153,7 @@ class _Session:
                 "chars": sum(len(u.text) for u in utterances[start:end]),
                 "utterances": end - start,
                 "chapters": len(set(chapter_of[start:end])),
+                "language": language,
                 "spent_usd": self._spend.snapshot().usd,
             })
             return
@@ -1150,6 +1168,7 @@ class _Session:
             "chars": result.chars,
             "utterances": result.utterances,
             "chapters": result.chapters,
+            "language": language,
             "usd": result.usd,
             "units": result.units,
             "unit": result.unit,
@@ -1871,10 +1890,11 @@ class _Session:
         # result, crashed its own voice-loading chain, and blamed the
         # catalogue it had already loaded (owner, 05/09).
         "voice_shortlist",
-        # The voice last used for each language the app reads in, so a book
-        # opens in one that can read it rather than in whatever the last
-        # book was read with (15/09, with the English voice). `voice` stays
-        # the one in use.
+        # The language the reader chose to read in, and the voice last
+        # picked under each language (15/09, with the English voice): the
+        # settings panel opens on that language and switching it brings
+        # that language's voice back. `voice` stays the one in use.
+        "reading_language",
         "voice_vi",
         "voice_en",
         "rate",
@@ -1967,7 +1987,7 @@ class _Session:
 
         # The real engine exposes is_model_ready as a method and precision as
         # a property; fakes may do either. Both shapes are answers.
-        ready = value_of("is_model_ready", True)
+        ready = _is_ready(engine)
         precision = value_of("precision", None)
         builds = value_of("installed_builds", dict)
         status: dict[str, Any] = {
@@ -2219,16 +2239,17 @@ class _Session:
         The book outranks the interface: a library holds books in more than
         one language, and the setting says which language the reader wants
         buttons in, not which language the chapter in front of them is in.
-        Getting this from the book is what makes "never read English with the
-        Vietnamese model" true for somebody whose interface is Vietnamese.
+        Getting this from the book is what lets the shell suggest the right
+        voice for the chapter to somebody whose interface is Vietnamese,
+        and what cuts the text into utterances the way that language reads.
 
         A reader's word and the text's are weighed by `language_in_use`: the
         word fills the gap the text leaves - a Vietnamese book that lost its
-        diacritics reads as English and would be refused by the Vietnamese
-        voice, so the reader says so and it is read - and does not overrule
-        what the text proves. Until 12/09 the word won outright, and a book
-        29% Vietnamese by orthography, set to English by a tap, could be read
-        by no voice at all: the local one refused it as English, and there
+        diacritics reads as English, so the reader says so and it is cut
+        and suggested as Vietnamese - and does not overrule what the text
+        proves. Until 12/09 the word won outright, and a book 29% Vietnamese
+        by orthography, set to English by a tap, could be read by no voice at
+        all: in those days the local one refused it as English, and there
         was no other.
 
         One door on purpose: `read.book`, the book half of `estimate` and the
@@ -2324,30 +2345,23 @@ class _Session:
             ),
         )
         if route.kind == "local":
+            # Either local model reads whatever it is handed. Each was
+            # trained for one language and sounds like it in the other -
+            # and until 15/09 the engine refused the mismatch by name. The
+            # owner's decision that day: no blocking, the voice is the
+            # reader's to choose, and the shell SUGGESTS the language's
+            # voice instead ("không cần có cơ chế chặn ... cho user tự do
+            # chọn voice"). So the one refusal left here is a model that is
+            # not on this Mac: a voice can be remembered by a book or by
+            # settings from before its download was removed, and that is
+            # refused by name, with the sentence saying where to get it.
             english = self._english_engine
             if english is not None and voice_id in ENGLISH_VOICE_IDS:
-                # The English model is English the way the Vietnamese one
-                # is Vietnamese: it has no lexicon for anything else.
-                if language != ENGLISH:
-                    return None, None, "wrong_language"
-                # Its voice can be remembered - by a book, by settings -
-                # from before the model was removed. Refused by name, and
-                # the sentence says where the download is.
                 if not english.is_model_ready:
                     return None, None, "model_missing"
                 return english, None, None
-            # VieNeu is a Vietnamese model, trained and published for
-            # Vietnamese. Handed an English sentence it produces something -
-            # measured 2026-09-07, it does not fail - and that something is
-            # Vietnamese-accented mush. The owner's rule: never read another
-            # language with it. So this is a refusal by name, like a paid
-            # voice with no key, and the person picks a voice that can.
-            if language != DEFAULT_SPEECH_LANGUAGE:
-                # A book whose own words read as Vietnamese cannot arrive
-                # here in another language: `language_in_use` settles that
-                # before any voice is asked. What is left is a book, or a
-                # passage, that really is in another language.
-                return None, None, "wrong_language"
+            if not _is_ready(self._engine):
+                return None, None, "model_missing"
             return self._engine, None, None
         if route.kind == "blocked":
             return None, price, route.reason
