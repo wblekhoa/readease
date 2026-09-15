@@ -400,6 +400,13 @@ export default function App() {
    * language brings its voice back. Read once at start-up, written when a
    * voice is picked. */
   const voiceByLanguage = useRef<Record<string, string>>({});
+  /* Whether start-up has finished reading the saved voice. Until it has,
+     the catalogue arrives with no voice chosen yet, and the one automatic
+     voice change below would take that for "nothing fits" and write the
+     first voice over the saved one before the saved one was even read -
+     every launch, on every Mac (seen 15/09: the owner's choice replaced by
+     the first Vietnamese voice). */
+  const startupSettled = useRef(false);
   /* A mirror of `readingLanguage` for callbacks that must not be rebuilt
      on every change of it: the shortcut's reading closure, the voice
      memory. */
@@ -591,7 +598,10 @@ export default function App() {
         const opening = initialReadingLanguage(storedLanguage?.result.value, known, currentLanguage());
         readingLanguageRef.current = opening;
         setReadingLanguage(opening);
-        if (!list.length) return;
+        if (!list.length) {
+          startupSettled.current = true;
+          return;
+        }
         for (const language of ["vi", "en"]) {
           const chosen = await invoke<{ result: { value: string | null } }>(
             "engine_request",
@@ -637,10 +647,14 @@ export default function App() {
           readingLanguageRef.current = spoken;
           setReadingLanguage(spoken);
         }
+        startupSettled.current = true;
       })
       .catch((error) => {
         console.error(error);
         setVoicesError(engineMessage(error));
+        // Settled all the same: a Mac whose first listing failed must
+        // still get its first voice when a download brings one.
+        startupSettled.current = true;
       });
     invoke<{ result: { value: string | null } }>("engine_request", {
       method: "config.get",
@@ -866,7 +880,11 @@ export default function App() {
      paid voice is never chosen this way (`voiceForTab` runs on the local
      ones only here): that would spend money nobody chose to spend. */
   useEffect(() => {
-    if (!voices.length) return;
+    // Not while start-up is still reading the saved voice: an empty
+    // `voiceId` here is "not read yet", not "nothing fits". (Not `!voiceId`
+    // either - a Mac that entered with nothing and downloads from the
+    // panel has an empty one legitimately, and must get its first voice.)
+    if (!startupSettled.current || !voices.length) return;
     const current = voices.find((voice) => voice.id === voiceId);
     if (current && canSpeak(current, readingLanguage)) return;
     const local = offeredFor(voices, shortlist, voiceId, readingLanguage)

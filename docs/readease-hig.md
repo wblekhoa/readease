@@ -219,7 +219,7 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
   dùng / Xoá; tiếng Anh một hàng Tải về / Tải tiếp / Xoá), rồi nhóm **Giọng API** (`ProviderKeys`, subtitle
   "Đã có khoá · N giọng"); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
   `useModels` (trạng thái + lượt tải + hành động), để màn đầu, sheet và bảng giọng đọc không cãi nhau.
-- **Anatomy (bảng giọng đọc)**: `SegmentedControl` "Đọc bằng tiếng" Tiếng Việt / Tiếng Anh ở đầu;
+- **Anatomy (bảng giọng đọc)**: `SegmentedControl` "Ngôn ngữ đọc" Tiếng Việt / Tiếng Anh ở đầu;
   `SuggestionDot` trên tuỳ chọn của ngôn ngữ **nội dung** khi khác tab; `Notice tone="info" action=` một câu
   + một nút ("Đọc bằng tiếng Anh" / "Thêm giọng tiếng Việt"); nhóm Giọng (select gộp `optgroup` Trên máy /
   API · Quản lý giọng · Tốc độ · giới hạn chi khi giọng trả phí); nhóm Mô hình & API = một hàng tóm tắt +

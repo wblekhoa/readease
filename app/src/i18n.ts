@@ -687,7 +687,7 @@ export const TEXT = {
   "hub.manage": ["Quản lý…", "Manage…"],
   /* The settings panel asks the language first, then shows that language's
      voices and models (owner, 15/09). */
-  "settings.language": ["Đọc bằng tiếng", "Read in"],
+  "settings.language": ["Ngôn ngữ đọc", "Reading language"],
   "settings.language_content": [
     "{name}: nội dung đang mở là thứ tiếng này",
     "{name} - the text in front of you reads as this",

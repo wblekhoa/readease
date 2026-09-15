@@ -962,7 +962,15 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
  */
 
 
-function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
+async function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
+  /* One turn of the event loop before any answer, the way the real bridge
+     answers: a call crosses to the native side and comes back later, and
+     React renders in between. Answered in a microtask, a whole chain of
+     awaits ran to its end before a single render, and an effect that fires
+     on the first render after a state change could never be seen firing
+     mid-chain here - which is how the start-up voice overwrite (15/09)
+     passed every cell of the render audit. */
+  await new Promise((settle) => setTimeout(settle));
   if (FAIL && (command === FAIL || args.method === FAIL)) {
     // The REFUSAL shape, not the timeout one. Both are real (engine.rs
     // formats `engine timeout on <method>` and `engine refused <method>:
