@@ -40,23 +40,23 @@ const KEYS = new Set([...I18N.matchAll(/^  "([a-z_]+\.[a-z_0-9]+)"/gm)].map((m) 
 //
 // Navigation lives in the side column (HIG 3.16), which folds itself at
 // this window's 960px - so every path starts by unfolding it, the way a
-// person would: "click?" is a click that is allowed to find nothing (the
-// column is already open in the `sidebar` state, and the switch it looks
-// for is then not in the toolbar).
-const UNFOLD = ["click?", /^Mở cột bên|^Show the side column/];
-// "Mở cột bên" is a button too: the book is the one that is not the column.
-const OPEN_BOOK = [UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)(?!cột bên)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
+// person would: through the mode switch by the title, whose menu carries
+// "Cột bên" while the column is folded. "click?" is a click that is allowed
+// to find nothing (in the `sidebar` state the column is already open and
+// the menu has no such row; the menu itself then closes on the next click).
+const UNFOLD = [["click?", /^Đổi chế độ$|^Switch mode$/], ["click?", /^Cột bên|^Side column/]];
+const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
 const SCREENS = {
-  shelf:  [UNFOLD, ["click", /^Thư viện$|^Library$/]],
-  paste:  [UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
-  scan:   [UNFOLD, ["click", /^Quét đọc$|^Read a selection$/]],
-  notes:  [UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/]],
+  shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
+  paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
+  scan:   [...UNFOLD, ["click", /^Quét đọc$|^Read a selection$/]],
+  notes:  [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/]],
   reader: OPEN_BOOK,
   voices: [...OPEN_BOOK,
            ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["click", /^Quản lý giọng|^Manage voices/], ["wait", /^Danh sách giọng đọc$|^Voices$/]],
   // The hub, from the gear in the column's foot (or the toolbar while the
   // column is folded): the sheet's title is what the wait looks for.
-  hub: [UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
+  hub: [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
   // A book's three lists, as tabs of the side column (HIG 3.16): each
   // toolbar switch opens the column on its tab, and the tab's own label is
   // the sign it is up.

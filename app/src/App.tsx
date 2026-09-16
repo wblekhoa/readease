@@ -56,7 +56,7 @@ import {
   CursorTextIcon,
   TransferIcon,
   SpeakerIcon,
-  SidebarIcon,
+  ArrowSwapIcon,
 } from "./ui/icons";
 import { IDLE, playback } from "./ui/playback";
 import {
@@ -1265,23 +1265,36 @@ export default function App() {
               "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
               search buttons each unfold the column on their own list. */}
           {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[52px] shrink-0" />}
-          {!sideOpen && !(screen === "reader" && openBook) && (
-            <IconButton
-              onClick={() => dispatchSide({ type: "toggle" })}
-              aria-label={text("sidebar.open")}
-              title={text("sidebar.open")}
-            >
-              <SidebarIcon />
-            </IconButton>
-          )}
-          {/* The screen's name, where a book's title stands when a book is
-              open (owner, 16/09: "title của trang tính năng... bên trái sẽ
-              là nút sidebar"). One headline per screen: the pages no longer
-              repeat it under the toolbar. */}
+          {/* A home screen's title, where a book's stands, with the mode
+              switch before it (owner, 16/09: "trên title thì nút ở đây là
+              nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of
+              the four screens - and, while the column is folded, the way to
+              unfold it, so the column stays one click away without a
+              button of its own. Each feature brings its own buttons here;
+              a book brings ▤, the notes and the search instead. */}
           {!(screen === "reader" && openBook) && (
-            <h2 className="m-0 min-w-0 truncate px-1 text-base font-bold">
-              {[...tabs, ...tools].find((item) => item.value === tab)?.label}
-            </h2>
+            <>
+              <MenuButton
+                icon={<ArrowSwapIcon />}
+                label={text("sidebar.switch")}
+                align="left"
+                items={[
+                  ...[...tabs, ...tools].map((item) => ({
+                    label: item.label,
+                    hint: item.value === tab ? text("sidebar.current") : undefined,
+                    onSelect: () => setTab(item.value),
+                  })),
+                  ...(sideOpen ? [] : [{
+                    label: text("sidebar.label"),
+                    hint: "⌃⌘S",
+                    onSelect: () => dispatchSide({ type: "toggle" }),
+                  }]),
+                ]}
+              />
+              <h2 className="m-0 min-w-0 truncate px-1 text-base font-bold">
+                {[...tabs, ...tools].find((item) => item.value === tab)?.label}
+              </h2>
+            </>
           )}
           {/* A book pushes its own chrome into the one row the window has;
              back returns to the shelf. Two stacked rows of chrome above a

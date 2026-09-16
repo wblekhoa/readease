@@ -673,7 +673,9 @@ export function MenuButton({
   return (
     <span ref={holder} className="relative inline-flex">
       <IconButton
-        onClick={() => setOpen((value) => !value)}
+        /* The tooltip follows focus, and a click leaves the button focused
+           - so the tip sat over the menu's first row (16/09). Let it go. */
+        onClick={(event) => { event.currentTarget.blur(); setOpen((value) => !value); }}
         disabled={disabled}
         aria-label={label}
         title={label}

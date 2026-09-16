@@ -135,9 +135,14 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   Từ 16/09 nút sống ở **chân cột bên** (§3.16) cùng bánh răng và ngôn ngữ; toolbar chỉ mang chúng khi cột thu.
 - **Chọn ngôn ngữ UI** (chủ, 02/09: chỉ ở trang chủ; 16/09: ở chân cột bên, mọi màn): toolbar của một cuốn
   sách chỉ mang thứ phục vụ cuốn sách (quay lại · mục lục · ⓘ · cỡ chữ · chế độ).
-- **Tiêu đề màn tính năng đứng ở toolbar (chủ, 16/09: "title của trang tính năng… bên trái sẽ là nút sidebar")**: ở
-  trang chủ, cụm dẫn = [chỗ đèn 52 px + nút mở cột khi cột thu] + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
-  "Dán nội dung", "Quét đọc", "Chuyển ghi chú") — cùng chỗ và cùng cỡ với tên sách khi đang đọc. **Một tiêu đề cho một
+- **Tiêu đề màn tính năng đứng ở toolbar, nút đổi chế độ đứng trước nó (chủ, 16/09: "title của trang tính năng… bên
+  trái sẽ là nút sidebar" → rồi "trên title thì nút ở đây là nút đổi chế độ. icon sẽ ở dạng arrow swap. tuỳ vào tính
+  năng và sẽ có nút khác nhau")**: ở trang chủ, cụm dẫn = [chỗ đèn 52 px khi cột thu — chỉ trong cửa sổ Tauri, trình
+  duyệt không có đèn nên không chừa (`ui/host.ts`)] + **nút đổi chế độ** (`MenuButton`, icon `ArrowSwapIcon` = mũi
+  tên swap dựng đứng, khác glyph ngang của Chuyển ghi chú; menu = bốn màn, màn đang mở ghi "Đang mở"; khi cột thu có
+  thêm hàng "Cột bên ⌃⌘S" để mở cột — không còn nút mở cột riêng) + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
+  "Dán nội dung", "Quét đọc", "Chuyển ghi chú") — cùng chỗ và cùng cỡ với tên sách khi đang đọc. **Mỗi tính năng mang
+  nút riêng ở chỗ này**: sách mang ← ▤ ghi chú ⓘ; trang chủ mang nút đổi chế độ. **Một tiêu đề cho một
   màn**: trang không lặp lại tên dưới toolbar (Thư viện bỏ "Thư viện sách", Dán bỏ "Dán nội dung để đọc", Quét bỏ
   "Quét đọc"; sheet Chuyển ghi chú giữ câu tiêu đề riêng của nó vì đó là một câu khác). Hành động của trang (Từ Apple
   Books · Mở PDF hoặc EPUB) đứng ở cụm phải của toolbar qua một slot/portal — như AA · tìm của sách — trang giữ state
