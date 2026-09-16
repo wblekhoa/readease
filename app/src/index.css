@@ -573,15 +573,21 @@ mark {
    up to a solid tier would have, because these ramps are not one colour at
    two strengths - success haze is rgb(60,202,73) and success primary is
    rgb(0,137,54), a different green. The reading page is deliberately left
-   alone: there a mark really is ink over text that has to stay readable. */
-.mark-sample mark {
+   alone: there a mark really is ink over text that has to stay readable.
+
+   DARK ONLY, since 16/09. The list stands on the white column now, and there
+   the doubled alpha read heavier than the same highlight on the page beside
+   it (owner: "đậm quá so với highlight trong nội dung"); on the white paper
+   the single alpha is what the page shows, so the list shows the same. The
+   04/09 complaint was about the dark paper, and the doubling stays there. */
+[data-theme="dark"] .mark-sample mark {
   background-image: linear-gradient(var(--color-highlight), var(--color-highlight));
 }
-.mark-sample mark[data-style="1"] { background-image: linear-gradient(var(--color-highlight-green), var(--color-highlight-green)); }
-.mark-sample mark[data-style="2"] { background-image: linear-gradient(var(--color-highlight-blue), var(--color-highlight-blue)); }
-.mark-sample mark[data-style="3"] { background-image: linear-gradient(var(--color-highlight-yellow), var(--color-highlight-yellow)); }
-.mark-sample mark[data-style="4"] { background-image: linear-gradient(var(--color-highlight-pink), var(--color-highlight-pink)); }
-.mark-sample mark[data-style="5"] { background-image: linear-gradient(var(--color-highlight-purple), var(--color-highlight-purple)); }
+[data-theme="dark"] .mark-sample mark[data-style="1"] { background-image: linear-gradient(var(--color-highlight-green), var(--color-highlight-green)); }
+[data-theme="dark"] .mark-sample mark[data-style="2"] { background-image: linear-gradient(var(--color-highlight-blue), var(--color-highlight-blue)); }
+[data-theme="dark"] .mark-sample mark[data-style="3"] { background-image: linear-gradient(var(--color-highlight-yellow), var(--color-highlight-yellow)); }
+[data-theme="dark"] .mark-sample mark[data-style="4"] { background-image: linear-gradient(var(--color-highlight-pink), var(--color-highlight-pink)); }
+[data-theme="dark"] .mark-sample mark[data-style="5"] { background-image: linear-gradient(var(--color-highlight-purple), var(--color-highlight-purple)); }
 
 /* The reading form's sliders, in the manner of the Books settings sheet
    (owner, 06/09): a thin rounded track, the part behind the knob filled, and

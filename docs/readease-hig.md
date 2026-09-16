@@ -741,6 +741,9 @@ màu: **1 lục · 2 lam · 3 vàng · 4 hồng · 5 tím**; 0 hoặc không có
 - **Đều dùng bậc `haze`** (~30% alpha): highlight là mực phủ LÊN chữ, phải để chữ đọc được. Đo tương phản
   chữ trên nền tô: **6,5–8,6 ở nền sáng · 7,7–7,8 ở nền tối** — đều trên AA. (Lần đo đầu ra 1,4–8,6 lệch
   nhau vô lý vì ghép nền của các mark nằm sau lớp mờ của panel; đo lại theo đúng nền của từng mark.)
+- **Mẫu highlight trong danh sách ghi chú = đúng độ của trang, riêng nền tối tô hai lớp** (04/09 chủ: trên giấy tối
+  mẫu "hơi nhạt, khó nhìn" → `.mark-sample` tô alpha hai lần; 16/09, danh sách đứng trên cột trắng, chủ: "đậm quá so
+  với highlight trong nội dung" → lớp thứ hai chỉ còn ở `[data-theme="dark"]`, nền sáng một lớp như trang).
 - **Cột màu là TUỲ CHỌN, không bắt buộc**: schema của Books đi theo phiên bản đã ghi nó, nên reader hỏi
   `PRAGMA table_info` rồi mới thêm cột vào `SELECT`. Thiếu cột thì mất *màu*, không mất *ghi chú* — một
   `SELECT` cột không tồn tại làm hỏng cả lượt đọc. Có test cho cả hai hình dạng schema.
