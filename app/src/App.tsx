@@ -57,6 +57,7 @@ import {
   TransferIcon,
   SpeakerIcon,
   ArrowSwapIcon,
+  SidebarIcon,
 } from "./ui/icons";
 import { IDLE, playback } from "./ui/playback";
 import {
@@ -1299,11 +1300,13 @@ export default function App() {
                 align="left"
                 items={[
                   ...[...tabs, ...tools].map((item) => ({
+                    icon: item.icon,
                     label: item.label,
                     hint: item.value === tab ? text("sidebar.current") : undefined,
                     onSelect: () => setTab(item.value),
                   })),
                   ...(sideOpen ? [] : [{
+                    icon: <SidebarIcon />,
                     label: text("sidebar.label"),
                     hint: "⌃⌘S",
                     onSelect: () => dispatchSide({ type: "toggle" }),

@@ -647,7 +647,15 @@ export function MenuButton({
 }: {
   icon: ReactNode;
   label: string;
-  items: readonly { label: string; hint?: string; onSelect: () => void }[];
+  items: readonly {
+    /** A glyph before the label, for a menu of places rather than of
+     * options - the mode switch shows each feature's own (owner, 16/09:
+     * "thêm icon cho các tính năng"). 16px, `ink-mute`. */
+    icon?: ReactNode;
+    label: string;
+    hint?: string;
+    onSelect: () => void;
+  }[];
   disabled?: boolean;
   align?: "left" | "right";
 }) {
@@ -703,8 +711,11 @@ export function MenuButton({
                  * for a rounder item, 02/09). Hardcoded rather than
                  * `--ctl-radius`, because this layer can float above a `pill`
                  * cluster and would inherit its shape. */
-                className="flex items-baseline gap-2 rounded-xl px-3 py-2 text-left text-sm text-ink hover-wash"
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-ink hover-wash"
               >
+                {item.icon && (
+                  <span className="shrink-0 text-ink-mute [&_svg]:h-4 [&_svg]:w-4">{item.icon}</span>
+                )}
                 <span className="flex-1">{item.label}</span>
                 {(item.hint || index === 0) && (
                   <span className="text-xs text-ink-faint">{item.hint ?? ""}</span>
