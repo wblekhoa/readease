@@ -6,10 +6,10 @@ const item = (title: string, status: "linked" | "importable" | "encrypted" | "to
   ({ title, status, highlights });
 
 test("accents do not matter when searching", () => {
-  assert.equal(fold("Thiên Nga Đen"), "thien nga den");
-  assert.ok(matchesQuery(item("Thiên Nga Đen", "importable"), "thien nga"));
-  assert.ok(matchesQuery(item("Đừng bắt tôi phải suy nghĩ!", "linked"), "dung bat"));
-  assert.ok(!matchesQuery(item("Thiên Nga Đen", "importable"), "trắng"));
+  assert.equal(fold("Ghi chép đọc hằng tuần"), "ghi chep doc hang tuan");
+  assert.ok(matchesQuery(item("Ghi chép đọc hằng tuần", "importable"), "ghi chep"));
+  assert.ok(matchesQuery(item("Cẩm nang usability cho đội sản phẩm", "linked"), "cam nang"));
+  assert.ok(!matchesQuery(item("Ghi chép đọc hằng tuần", "importable"), "trắng"));
 });
 
 test("status words narrow the shelf without a separate control", () => {

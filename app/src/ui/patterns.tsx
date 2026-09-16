@@ -488,7 +488,7 @@ export function MiniCover({
  *
  * A `<select>` collapses a book to a line of text and throws away the fact
  * that decides the choice: which copy you have actually been reading. Three
- * entries called "Universal Principles of UX" are indistinguishable in a
+ * entries with the same title are indistinguishable in a
  * menu and obvious as cards, once each carries how far it got.
  *
  * The picker itself is still a native `<select>`, laid transparent over the
