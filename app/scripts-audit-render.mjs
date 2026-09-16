@@ -63,8 +63,11 @@ const SCREENS = {
   // A book opens on its contents when the column is up, so the switch may
   // already read "Ẩn mục lục": pressing it then would fold the column.
   contents: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["wait", /^Mục lục$|^Contents$/]],
-  book_notes: [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^Ghi chú( · \d+)?$|^Notes( · \d+)?$/]],
-  search: [...OPEN_BOOK, ["click", /^Tìm trong sách$|^Search in book$/], ["wait", /^Tìm$|^Search$/]],
+  // The notes tab is named by its count ("3 highlight") and the search tab
+  // like the toolbar's search button, so each is proven by what only the
+  // open tab has: the checked radio for notes, the search box for search.
+  book_notes: [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/]],
+  search: [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]],
 };
 const STATES = {
   default: "",
@@ -100,7 +103,7 @@ async function main() {
   // took 14m34s+ on 15/09 once the mock's bridge answered a tick later, a
   // minute under the old 15, so the next state added would have turned a
   // green run red for taking too long.
-  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 35 * 60 * 1000); // 620 cells at ~2.3 s each (16/09)
+  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 60 * 60 * 1000); // 620 cells took 31 min run screen by screen (16/09); 35 was cut twice
   try {
     const wsUrl = await (async () => {
       for (let i = 0; i < 60; i++) {
@@ -129,20 +132,30 @@ async function main() {
     // time.
     const findAndClick = async (re, patience = 4000) => {
       await waitFor(re, patience);
+      // The first VISIBLE match, as a hand would find it: the folded column
+      // keeps its tabs in the DOM at zero width behind \`inert\`, and a tab
+      // named like the toolbar button ("Tìm trong tài liệu") used to be
+      // found first and clicked at the fold (16/09, search unreachable).
       const box = await evalJs(`(() => {
         const re = ${re.toString()};
         const el = [...document.querySelectorAll("button,[role=button],[role=radio],[role=tab],a,summary")]
-          .find((e) => re.test((e.getAttribute("aria-label") || e.textContent || "").trim()));
+          .find((e) => re.test((e.getAttribute("aria-label") || e.textContent || "").trim())
+            && !e.closest("[inert]") && e.getBoundingClientRect().width > 0);
         if (!el) return null; el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
       if (!box) return false;
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
       await sleep(350); return true;
     };
-    async function waitFor(re, ms = 6000) {
+    // A name is an aria-label, a placeholder (an input's name) or the text;
+    // a radio counts only while CHECKED, so waiting on a tab's name proves
+    // the tab is the one showing, not merely that the row of tabs exists.
+    async function waitFor(re, ms = 6000, within = "button,[role=button],[role=radio],a,h1,h2,h3,input,textarea") {
       const until = Date.now() + ms;
       while (Date.now() < until) {
-        if (await evalJs(`!![...document.querySelectorAll("button,[role=button],a,h1,h2,h3")].find((e) => ${re.toString()}.test((e.getAttribute("aria-label") || e.textContent || "").trim()))`)) return true;
+        if (await evalJs(`!![...document.querySelectorAll(${JSON.stringify(within)})]
+          .find((e) => ${re.toString()}.test((e.getAttribute("aria-label") || e.getAttribute("placeholder") || e.textContent || "").trim())
+            && (e.getAttribute("role") !== "radio" || e.getAttribute("aria-checked") === "true"))`)) return true;
         await sleep(150);
       }
       return false;
@@ -177,10 +190,13 @@ async function main() {
             await evalJs(`localStorage.removeItem("readease.theme")`);
             if (lang === "en") await setLanguage("en");
             let reached = true;
-            for (const [kind, re] of steps) {
+            // A wait may name WHERE to look (a third element, a selector):
+            // the search tab, its box and the toolbar's search button all
+            // carry one name, and only the checked tab proves the panel.
+            for (const [kind, re, within] of steps) {
               const ok = kind === "click" ? await findAndClick(re)
                 : kind === "click?" ? (await findAndClick(re, 600), true)
-                : await waitFor(re);
+                : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
             if (!reached) continue;
