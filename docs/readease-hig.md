@@ -227,6 +227,11 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
   dùng / Xoá; tiếng Anh một hàng Tải về / Tải tiếp / Xoá), rồi nhóm **Giọng API** (`ProviderKeys`, subtitle
   "Đã có khoá · N giọng"); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
   `useModels` (trạng thái + lượt tải + hành động), để màn đầu, sheet và bảng giọng đọc không cãi nhau.
+  **Huỷ tải là lời riêng của lượt tải** (`model.cancel`, 16/09), không phải Dừng của giọng đọc: trước đó
+  cả hai là một lệnh `stop`, nên bấm Đọc trong lúc đang tải rồi Dừng (hoặc bấm Đọc lần nữa) là huỷ luôn
+  lượt tải mà không ai định huỷ — và bài đọc đã xếp hàng sau lượt tải vẫn chạy cho một vỏ đã bỏ nó, không
+  ai cấp credit, engine đứng chờ chỗ mãi, mọi bài sau xếp sau nó: "giọng không generate được, phải mở lại
+  app" (chủ, 16/09). Luật engine: một `stop` phủ MỌI bài đọc đã xin trước nó, đang phát hay còn xếp hàng.
 - **Anatomy (bảng giọng đọc)**: `SegmentedControl` "Ngôn ngữ đọc" Tiếng Việt / Tiếng Anh ở đầu;
   `SuggestionDot` trên tuỳ chọn của ngôn ngữ **nội dung** khi khác tab; `Notice tone="info" action=` một câu
   + một nút ("Đọc bằng tiếng Anh" / "Thêm giọng tiếng Việt"); nhóm Giọng (select gộp `optgroup` Trên máy /

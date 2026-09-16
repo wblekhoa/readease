@@ -519,6 +519,17 @@ function chargeStep(): void {
   });
 }
 
+/* The fake download's timers, so `model.cancel` can end it the way the
+   engine does: an orphan reply that says cancelled, nothing installed. A
+   stop no longer touches a download (16/09) - the mock keeps them apart. */
+let downloadTimers: ReturnType<typeof setTimeout>[] = [];
+function cancelMockDownload(): boolean {
+  if (!downloadTimers.length) return false;
+  for (const timer of downloadTimers) clearTimeout(timer);
+  downloadTimers = [];
+  setTimeout(() => emit("engine:orphan_reply", { ok: true, result: { ready: false, cancelled: true } }), 0);
+  return true;
+}
 function stopMockReading() {
   for (const timer of readingTimers) clearTimeout(timer);
   readingTimers = [];
@@ -785,6 +796,8 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       MODEL.precision = String(params.precision ?? "");
       return {};
     }
+    case "model.cancel":
+      return { cancelled: cancelMockDownload() };
     case "model.remove_build": {
       if (params.engine === "english") {
         const was = MODEL.english.ready;
@@ -1044,14 +1057,15 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     const english = (args as { model?: string } | undefined)?.model === "english";
     const steps = [0.12, 0.38, 0.61, 0.87, 1];
     steps.forEach((progress, index) => {
-      setTimeout(() => emit("engine:model_progress", {
+      downloadTimers.push(setTimeout(() => emit("engine:model_progress", {
         progress,
         message: english
           ? `Đang tải giọng đọc tiếng Anh… ${Math.round(progress * 100)}%`
           : `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
-      }), 400 + index * 700);
+      }), 400 + index * 700));
     });
-    setTimeout(() => {
+    downloadTimers.push(setTimeout(() => {
+      downloadTimers = [];
       if (english) {
         MODEL.english = { ...MODEL.english, ready: true, installed: 335_000_000 };
       } else {
@@ -1062,7 +1076,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
       // The engine announces the new voices the way it announces a paid
       // catalogue arriving, and the shell re-lists on it.
       emit("engine:voices", { providers: ["local"] });
-    }, 400 + steps.length * 700);
+    }, 400 + steps.length * 700));
     return Promise.resolve(null);
   }
   if (command === "read_book") {

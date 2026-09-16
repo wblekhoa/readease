@@ -114,10 +114,12 @@ export function useModels(): Models {
     }
   }, []);
 
-  // The one stop the engine has: it cancels a preparation the way it
-  // cancels a reading, and the orphan reply says "cancelled".
+  // The download's own word (16/09). It used to be the reading's stop,
+  // which also served a Dừng pressed while a download ran - and cancelled
+  // the download nobody meant to cancel. The engine answers from inside
+  // the download, and the orphan reply then says "cancelled".
   const cancel = useCallback(() => {
-    void invoke("stop_reading").catch(() => undefined);
+    void invoke("engine_request", { method: "model.cancel", params: {} }).catch(() => undefined);
   }, []);
 
   const removeVietnamese = useCallback(async (precision: string) => {
