@@ -250,6 +250,21 @@ export function BookClosedIcon({ className }: { className?: string }) {
   );
 }
 
+/** The side column's switch (HIG 3.16): the set's card at the mass layer
+ * with a solid rail down its left and two short rows inside it - the shape
+ * every sidebar toggle shares. Drawn here in the set's own grammar (the
+ * closed book's outline, the same 40% layer) because the source's glyph
+ * could not be copied in this session; replace it with the copied one when
+ * it can. */
+export function SidebarIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M16.19 2H7.82C4.18 2 2.01 4.17 2.01 7.81v8.37c0 3.64 2.17 5.81 5.81 5.81h8.37c3.64 0 5.81-2.17 5.81-5.81V7.81C22 4.17 19.83 2 16.19 2Z" />
+      <path d="M9.25 2.05v19.9c-.4-.02-.79-.05-1.15-.11V2.16c.36-.06.75-.09 1.15-.11ZM7.25 7.25c0 .41-.34.75-.75.75h-1c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h1c.41 0 .75.34.75.75Zm0 3c0 .41-.34.75-.75.75h-1c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h1c.41 0 .75.34.75.75Z" />
+    </svg>
+  );
+}
+
 /** Pages: the set's open book, as drawn - two leaves of equal height either
  * side of the gutter, lines on the left leaf. Replaces a redrawn variant
  * whose left leaf sat lower and shorter (owner, 06/09: "icon trang đang bị

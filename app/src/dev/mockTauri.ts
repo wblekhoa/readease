@@ -340,6 +340,17 @@ const EMPTY = new Set(
 );
 const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
 
+/* The side column's remembered choice - `?sidebar=open` or `closed`. At the
+   audit's 960px floor the column folds itself, so without this no cell
+   would ever show it open; the app reads the choice from localStorage the
+   way it reads the reader's own settings, so that is where it is planted. */
+const SIDEBAR = new URLSearchParams(window.location.search).get("sidebar");
+if (SIDEBAR === "open" || SIDEBAR === "closed") {
+  try { localStorage.setItem("readease.sidebar", SIDEBAR); } catch { /* private window */ }
+} else {
+  try { localStorage.removeItem("readease.sidebar"); } catch { /* private window */ }
+}
+
 /* One book whose stored data the engine can no longer decode - `?damaged=1`.
    Not in the default shelf: the hero screenshot is the ordinary shelf, and
    this state exists so the card can be looked at, not so it is always

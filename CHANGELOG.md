@@ -6,6 +6,17 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- A side column, the way Codex has one: a real column of the layout on the
+  left, from the window's own buttons down, with the content beside it -
+  not a layer over the page. It carries the navigation (Library, Paste,
+  Read a selection, Move notes) and the books being read; inside a book it
+  turns into the book's contents, notes and search, which were floating
+  sidebars in 0.1.5 and are tabs of the column now. Fold and unfold it with
+  the switch at its top or ⌃⌘S; it remembers your choice, folds itself
+  when the window is narrower than 1100 px until you say otherwise, and
+  opens on the right tab when you ask for a list (▤, the notes button, ⌘F).
+  The appearance switch, the language and Voices & models live at its
+  foot, and move to the toolbar while it is folded.
 - The app opens on the Library. An empty shelf still offers the paste
   screen with one button.
 

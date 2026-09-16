@@ -16,23 +16,20 @@
 import { useEffect, useRef, useState } from "react";
 import { text } from "../i18n";
 import { Button, Notice } from "./controls";
-import { EmptyState, GroupedSection, Sidebar } from "./patterns";
+import { EmptyState, GroupedSection } from "./patterns";
 import { HighlightIcon, NoteIcon, TrashIcon } from "./icons";
 import { groupAnnotations, type Annotation } from "./annotationsList";
 
 export function NotesPanel({
   chapters,
   annotations,
-  paged,
   focusId,
   error,
   onNavigate,
   onDelete,
-  onClose,
 }: {
   chapters: { id: string; title: string; segments: { id: string }[] }[];
   annotations: Annotation[];
-  paged: boolean;
   /** The note whose icon was pressed: brought into view and marked. */
   focusId: string | null;
   /** Why a note that was asked to go is still here. */
@@ -41,7 +38,6 @@ export function NotesPanel({
   /** Remove one for good - a tombstone in the engine keeps the next Apple
    * Books sync from handing it back. */
   onDelete: (annotationId: string) => void;
-  onClose: () => void;
 }) {
   const groups = groupAnnotations(chapters, annotations);
   const focused = useRef<HTMLButtonElement>(null);
@@ -53,24 +49,18 @@ export function NotesPanel({
     focused.current?.scrollIntoView({ block: "center" });
   }, [focusId]);
 
-  /* A Sidebar since 15/09 (HIG 3.15), beside the contents on the same
-     glass: the title stays put and only the list moves, so the scrollbar
-     belongs to the list; Escape and a click outside are the sidebar's own
-     (this panel used to answer Escape by itself and nothing else). */
+  /* The Ghi chú tab of the side column (HIG 3.16): the column owns the
+     frame and the tab strip, this is the body - an error stays put above,
+     only the list scrolls, so the scrollbar belongs to the list. Nothing
+     closes it: a column is left by choosing another tab or folding it. */
   return (
-    <Sidebar
-      title={text("notes.title")}
-      onClose={onClose}
-      paged={paged}
-      width="w-[23rem]"
-      className="mark-sample"
-      header={error && (
-        <Notice tone="error" className="shrink-0 px-6 pb-2">
+    <div className="mark-sample flex min-h-0 flex-1 flex-col">
+      {error && (
+        <Notice tone="error" className="mx-3 mb-2 shrink-0">
           {text("notes.remove_failed")} ({error})
         </Notice>
       )}
-    >
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
       {groups.length === 0 ? (
         <EmptyState
           icon={<HighlightIcon className="h-8 w-8" />}
@@ -155,6 +145,6 @@ export function NotesPanel({
         ))
       )}
       </div>
-    </Sidebar>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { hoverText } from "./format";
 import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
-import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from "./icons";
+import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SidebarIcon } from "./icons";
 
 /** A row of controls that must share one corner.
  *
@@ -711,69 +711,98 @@ export function MenuButton({
 }
 
 
-/** A list that stands beside the page - the contents, the notes, the search
- * hits - on a sheet of glass the page shows through (HIG 3.15).
+/** The side column: a real column of the layout, beside the content, not
+ * a layer over it (HIG 3.16; owner, 16/09: "một sidebar riêng nằm một bên
+ * của layout luôn chứ không phải là popover... giống như cách codex làm").
  *
- * One layer for all three, where each used to bring its own opaque card
- * capped at `100vh - chrome - 2rem`: at a 600px window the contents got
- * fourteen rows. This runs the whole height between the two bars, anchored
- * on the chrome's INNER edges so the player bar that appears while reading
- * pushes its foot up live (the observer in App writes those insets). Still a
- * layer floating over the page, not a column beside it (owner, 02/09) - and
- * glass rather than paper, so the page does not disappear under it.
+ * Three tiers: a 52px head that is the window's drag region and holds the
+ * macOS window buttons (the title bar is an overlay, so the lights sit
+ * inside the column - `trafficLightPosition` in tauri.conf.json) with the
+ * collapse switch at its right; a body the caller fills (navigation at
+ * home, a book's lists inside one); a foot for what the app carries
+ * everywhere. Closed is `width: 0` with the inner column kept at its full
+ * width, so the text does not rewrap while the column slides; no
+ * `@starting-style` - in a hidden WKWebView the timeline stands still and
+ * an element stays at its starting style (measured 16/09).
  *
- * Dismiss is the sidebar's: Escape, a click outside, the close button. The
- * button that opens one carries `data-popover-trigger`, so pressing it again
- * closes rather than closing-and-reopening. `children` is the body, and owns
- * its own scroller (`min-h-0 flex-1 overflow-y-auto`) and row track. */
-export function Sidebar({
-  side = "left",
-  title,
-  onClose,
-  paged = false,
-  width = "w-72",
-  className = "",
-  header,
+ * Whether it is open is not decided here: `ui/sidebarState.ts` holds the
+ * rules (a hand beats the width, context changes the content), and the
+ * caller passes the answer. */
+export function SideColumn({
+  open,
+  onToggle,
+  toggleLabel,
   children,
+  foot,
 }: {
-  side?: "left" | "right";
-  title: string;
-  onClose: () => void;
-  /** Inside the paged column, which the bars' full heights already inset,
-   * the same anchors are reached by giving those heights back - so the
-   * layer sits 12px from the controls in both modes, not 12px from the
-   * column in one and from the controls in the other. */
-  paged?: boolean;
-  /** A width class; the content decides (a chapter title is a sentence). */
-  width?: string;
-  className?: string;
-  /** Rows under the title that stay put while the body scrolls - the
-   * search field, an error. */
-  header?: ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  /** The switch's accessible name, for the state it would move to. */
+  toggleLabel: string;
   children: ReactNode;
+  foot?: ReactNode;
 }) {
-  const panel = useDismiss(onClose);
   return (
-    <div
-      ref={panel}
-      className={`absolute z-10 flex flex-col overflow-hidden rounded-3xl border border-edge-strong shadow-lifted ${width} ${
-        side === "left" ? "left-0" : "right-0"
-      } ${
-        paged
-          ? "top-[calc(var(--shell-top-inner)+var(--layer-gap)-var(--shell-top-h))] bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap)-var(--shell-bottom-h))]"
-          : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))]"
-      } transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-none ${
-        side === "left" ? "starting:-translate-x-3" : "starting:translate-x-3"
-      } starting:opacity-0 ${className}`}
+    <aside
+      aria-label={text("sidebar.label")}
+      aria-hidden={!open}
+      className={`relative shrink-0 overflow-hidden bg-column transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+        open ? "w-60 border-r border-edge" : "w-0"
+      }`}
     >
-      <div aria-hidden="true" className="glass absolute inset-0 -z-10" />
-      <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
-        <h3 className="m-0 flex-1 text-sm font-bold">{title}</h3>
-        <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
-          <CloseIcon />
-        </IconButton>
+      <div className="flex h-full w-60 flex-col">
+        {/* The lights live in the first 76px of this strip (x 20-72); the
+            switch takes the far end, where Codex puts it. */}
+        <div data-tauri-drag-region className="flex h-[52px] shrink-0 items-center justify-end pl-[76px] pr-2.5">
+          <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel} tabIndex={open ? 0 : -1}>
+            <SidebarIcon />
+          </IconButton>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {foot && (
+          <div className="flex shrink-0 items-center gap-1 border-t border-edge px-3 py-2">{foot}</div>
+        )}
       </div>
-      {header}
+    </aside>
+  );
+}
+
+/** One entry of the column's navigation: a glyph and a name, painted `wash`
+ * + `ink` when it is the screen on show (the state layer of HIG §2). */
+export function RailItem({
+  icon,
+  label,
+  active = false,
+  onPress,
+  trailing,
+}: {
+  icon?: ReactNode;
+  label: ReactNode;
+  active?: boolean;
+  onPress: () => void;
+  trailing?: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onPress}
+      aria-current={active ? "page" : undefined}
+      className={`flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-2.5 py-1.5 text-left text-sm transition-colors ${
+        active ? "bg-wash text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"
+      }`}
+    >
+      {icon && <span className="shrink-0">{icon}</span>}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {trailing}
+    </button>
+  );
+}
+
+/** A named group of rail items - "Đang đọc" - with the heading Codex gives
+ * its Pinned and Recents: small, quiet, above the rows. */
+export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="pt-4">
+      <p className="m-0 px-2.5 pb-1 text-xs font-semibold text-ink-mute">{title}</p>
       {children}
     </div>
   );

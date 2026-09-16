@@ -12,6 +12,13 @@ export const TEXT = {
   "nav.paste": ["Dán nội dung", "Paste text"],
   "nav.external": ["Quét đọc", "Read a selection"],
   "nav.transfer": ["Chuyển ghi chú", "Move notes"],
+  "sidebar.label": ["Cột bên", "Side column"],
+  "sidebar.open": ["Mở cột bên (⌃⌘S)", "Show the side column (⌃⌘S)"],
+  "sidebar.close": ["Thu cột bên (⌃⌘S)", "Hide the side column (⌃⌘S)"],
+  "sidebar.reading": ["Đang đọc", "Reading now"],
+  "sidebar.lists": ["Danh sách của sách", "The book's lists"],
+  "sidebar.notes_tab": ["Ghi chú", "Notes"],
+  "sidebar.search_tab": ["Tìm", "Search"],
   "paste.title": ["Dán nội dung để đọc", "Paste text to read"],
   "paste.description": [
     "Chỉ dùng cho phiên này - không lưu vào thư viện.",

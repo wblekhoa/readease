@@ -44,6 +44,13 @@
      has no room to lighten further without meeting the desk. */
   --app-rail: var(--neutral-n10);
   --app-panel: var(--neutral-n10);
+  /* The side column (HIG 3.16): one step off the desk in BOTH themes - n05
+     is a whisper of grey beside the white page, and in dark the first rung
+     of the ladder (desk n00, column n05, paper n10). Chosen so the rows'
+     own states still read on it: `band` (the "you are here" of a chapter)
+     is n10/n20, one step above the column; `wash` is an alpha and reads on
+     anything. On `band` itself the active row vanished (measured 16/09). */
+  --app-column: var(--neutral-n05);
   /* A field/card stroke is a FALLBACK, not decoration: it exists only where
      the fill cannot separate the surface by itself. On the white desk, paper
      IS the desk colour, so the line is all a text box has. In dark the ladder
@@ -104,6 +111,7 @@
   /* A grouped panel: one step off the desk, so settings rows read as an inset
      group instead of an outlined white box lost on a white page. */
   --color-panel: var(--app-panel);
+  --color-column: var(--app-column);
   /* The DS's own layered lift, which flips with the theme: a wide soft pass
      plus a tight contact pass. Tailwind's shadow-sm is a single hard offset -
      next to this it reads as a printed line under the element. */
@@ -240,20 +248,6 @@
  * A viewport query rather than a container query because the cap IS a
  * viewport expression (`layer-capped` above): 100vh minus the two bars.
  */
-/* The material of a Sidebar (HIG 3.15): the page stays visible under a
- * list that stands beside it. Paper's own colour at 76% - white in light, n10
- * in dark, so the layer reads as paper that lets the page through - over a
- * 24px blur with a touch of saturation so the blurred page keeps its colour
- * instead of going grey. Whole-window material was retired 01/09 for
- * diluting the ramp; this is the bounded region §7 allows. Applied to a
- * child layer, not the frame: a filter makes its element the containing
- * block for anything `fixed` inside. */
-@utility glass {
-  background: color-mix(in srgb, var(--fill-neutral-base) 76%, transparent);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  backdrop-filter: blur(24px) saturate(140%);
-}
-
 @utility short-hidden {
   @media (max-height: 640px) {
     display: none;

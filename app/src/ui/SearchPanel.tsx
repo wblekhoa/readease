@@ -1,28 +1,23 @@
 /** Search in the open book, beside the page (owner, 06/09: "học hỏi theo
  * Apple Books").
  *
- * Built like the contents panel, its sibling over the same page: a heading
- * that stays put, a way out, and only the results scrolling. Typing searches
- * as you go; a result is a line of the book with the words marked, under the
- * chapter it is in; choosing one shows that place. The panel stays open so
- * the next result is one click away - the way Books does it - and closes on
- * Escape, the ✕, or a click on the page.
+ * One tab of the side column, beside the contents and the notes: the field
+ * stays put and only the results scroll. Typing searches as you go; a result
+ * is a line of the book with the words marked, under the chapter it is in;
+ * choosing one shows that place and the column stays, so the next result is
+ * one click away - the way Books does it.
  */
 import { useMemo, useState } from "react";
 import { text } from "../i18n";
 import { Input } from "./controls";
-import { ListRow, Sidebar } from "./patterns";
+import { ListRow } from "./patterns";
 import { MAX_HITS, MIN_QUERY, foldQuery, searchBook, type SearchChapter, type SearchHit } from "./textSearch";
 
 export function SearchPanel({
   chapters,
-  paged,
-  onClose,
   onJump,
 }: {
   chapters: readonly SearchChapter[];
-  paged: boolean;
-  onClose: () => void;
   onJump: (hit: SearchHit) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -37,20 +32,12 @@ export function SearchPanel({
     onJump(hit);
   };
 
-  /* The Sidebar on the page's OTHER side (HIG 3.15): the contents and the
-     notes stand on the left, the search on the right, so a hit can be looked
-     at with the contents still in reach. A list of rows reaches the 24px
-     inset through the row's own inset, so its track is narrower by exactly
-     that much. The field stays put under the title; only the hits scroll. */
+  /* The Tìm tab of the side column (HIG 3.16): the field stays put at the
+     top, only the hits scroll. The column stays open after a hit, so the
+     next one is one click away - the way Books does it. */
   return (
-    <Sidebar
-      side="right"
-      title={text("reader.search")}
-      onClose={onClose}
-      paged={paged}
-      width="w-[22rem]"
-      header={
-      <div className="shrink-0 px-6 pb-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-3 pb-3">
         <Input
           autoFocus
           type="search"
@@ -73,9 +60,7 @@ export function SearchPanel({
                 : text("reader.search_count", { n: hits.length })}
         </p>
       </div>
-      }
-    >
-      <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
         {hits.map((hit, index) => (
           <ListRow
             key={`${hit.segmentId}:${index}`}
@@ -93,6 +78,6 @@ export function SearchPanel({
           />
         ))}
       </div>
-    </Sidebar>
+    </div>
   );
 }
