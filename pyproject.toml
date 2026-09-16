@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vieneu-reader"
-version = "0.1.4"
+version = "0.1.5"
 description = "Ứng dụng macOS đọc PDF, EPUB và nội dung dán bằng VieNeu-TTS cục bộ."
 readme = "README.md"
 license = "PolyForm-Noncommercial-1.0.0"

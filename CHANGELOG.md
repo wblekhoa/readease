@@ -4,7 +4,10 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.5
+
+The contents, notes and search in a book stand beside the page on glass.
+Installs over 0.1.4.
 
 - The contents, the notes and the search in a book are sidebars now: one
   layer each, the whole height between the two bars, on glass the page shows
