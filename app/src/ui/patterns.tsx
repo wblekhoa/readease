@@ -56,7 +56,12 @@ export function Cluster({
 }
 
 /** The window's top row, Mac-rhythm: navigation leads, actions trail,
- * one fixed-height line so nothing wobbles between screens. */
+ * one fixed-height line so nothing wobbles between screens.
+ *
+ * Since the title bar became an overlay (16/09) this row is also what a
+ * person drags the window by: Tauri starts a drag on a mousedown whose
+ * TARGET carries `data-tauri-drag-region`, so the row and its empty middle
+ * both carry it - a control inside stays a control. */
 export function Toolbar({
   leading,
   trailing,
@@ -65,9 +70,9 @@ export function Toolbar({
   trailing?: ReactNode;
 }) {
   return (
-    <header className="flex h-9 items-center gap-3">
+    <header data-tauri-drag-region className="flex h-9 items-center gap-3">
       {leading}
-      <div className="flex-1" />
+      <div data-tauri-drag-region className="h-full flex-1" />
       {trailing && <Cluster radius="pill">{trailing}</Cluster>}
     </header>
   );
