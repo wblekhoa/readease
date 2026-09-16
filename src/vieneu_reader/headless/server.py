@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import argparse
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import sys
 import threading
@@ -67,6 +67,8 @@ from vieneu_reader.domain.language import (
 )
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
+    HEADING_GAIN,
+    HEADING_RATE,
     SENTENCE_PAUSE_MS,
     pause_after_ms,
     selection_pause_ms,
@@ -76,8 +78,12 @@ from vieneu_reader.domain.prosody import (
     speech_language,
     speakable_text,
     split_sentences,
+    DEFAULT_NOTE_READING,
+    NOTE_READINGS,
+    spoken_note,
 )
 from vieneu_reader.domain.segmenter import split_transient_parts
+from vieneu_reader.speech.chimes import chime_choice, load_chime
 
 #: The language the second local model reads.
 ENGLISH = "en"
@@ -221,10 +227,19 @@ def _external_provider(provider: str, voice_id: str, settings: dict) -> Any:
     return None
 
 
+def note_reading_of(document: dict[str, Any]) -> str:
+    """How much of a footnote the reader hears: full / short / off. A value
+    the setting cannot mean falls back to the default, not to silence."""
+
+    value = str(document.get("note_reading") or "").strip().lower()
+    return value if value in NOTE_READINGS else DEFAULT_NOTE_READING
+
+
 def _text_utterances(
     text: str,
     settings: SynthesisSettings,
     language: str = DEFAULT_SPEECH_LANGUAGE,
+    note_reading: str = DEFAULT_NOTE_READING,
 ) -> list[_Utterance]:
     """Pasted or captured text, shaped exactly as the reading will send it.
 
@@ -242,7 +257,10 @@ def _text_utterances(
     parts = split_transient_parts(text, settings.max_chars)
     if not parts:
         return []
-    spoken = tuple(speakable_text(part.text, language=language) for part in parts)
+    spoken = tuple(
+        speakable_text(part.text, language=language, citations=note_reading != "full")
+        for part in parts
+    )
     return [
         _Utterance(
             text=spoken[index],
@@ -321,6 +339,13 @@ class _Utterance:
     # shell through `book.open`; a plain read had no such door until
     # `text.parts` (09/09), and this field is what that door returns.
     source: str = ""
+    # What kind of block the words came from - a heading is read set apart
+    # (slower, louder, HEADING_RATE/HEADING_GAIN); everything else reads as
+    # a paragraph. Cues and notes are paragraphs.
+    kind: str = "paragraph"
+    # True on the first utterance of a chapter that is not the reading's
+    # first: the chime, if one is chosen, sounds before it.
+    chapter_start: bool = False
     # Set on the spoken cue for a picture ("Xem hình 3."): rides the position
     # event so the shell can bring the picture into view exactly when the ear
     # hears the cue, not when the model synthesised it.
@@ -349,6 +374,13 @@ NOTE_CUE = {
     "en": "Also, {text}",
 }
 NOTE_CUE_PAUSE_MS = 450
+
+# Around the chime that opens a chapter (owner, 16/09): the previous
+# chapter's last words settle, the chime, then a breath before the title.
+# Together with a 0.9-2.0 s chime this replaces the 1.2 s of plain silence
+# a chapter boundary used to get; with the chime off, the silence stays.
+CHIME_LEAD_MS = 300
+CHIME_TAIL_MS = 500
 
 
 @dataclass(frozen=True)
@@ -916,7 +948,7 @@ class _Session:
         # setting got the commonest case wrong - a Vietnamese interface and
         # an English paragraph pasted out of a browser.
         language = language_of_text(text, self._reading_language())
-        utterances = _text_utterances(text, settings, language)
+        utterances = _text_utterances(text, settings, language, note_reading_of(self._settings_document()))
         if not utterances:
             self._fail(request_id, "text is empty")
             return
@@ -950,7 +982,7 @@ class _Session:
         """
 
         text = str(params.get("text") or "")
-        utterances = _text_utterances(text, SynthesisSettings())
+        utterances = _text_utterances(text, SynthesisSettings(), note_reading=note_reading_of(self._settings_document()))
         self._reply(request_id, {
             "parts": [
                 {"segment_id": utterance.segment_id, "text": utterance.source}
@@ -1214,7 +1246,7 @@ class _Session:
             # gets before the read - what the shell's language hint stands
             # on.
             language = language_of_text(pasted, self._reading_language())
-            utterances = _text_utterances(pasted, SynthesisSettings(), language)
+            utterances = _text_utterances(pasted, SynthesisSettings(), language, note_reading_of(self._settings_document()))
             chars = sum(len(utterance.text) for utterance in utterances)
             if price is None:
                 self._reply(request_id, {
@@ -1314,6 +1346,7 @@ class _Session:
         """
 
         language = speech_language(language)
+        note_reading = note_reading_of(self._settings_document())
         segments: list[Segment] = [
             segment
             for chapter in stored.book.chapters
@@ -1369,6 +1402,8 @@ class _Session:
         }
 
         def add(utterance: _Utterance, chapter: int) -> None:
+            if chapter_of and chapter_of[-1] != chapter:
+                utterance = replace(utterance, chapter_start=True)
             utterances.append(utterance)
             chapter_of.append(chapter)
 
@@ -1405,15 +1440,30 @@ class _Session:
             pieces = speak_with_notes(
                 segment.text, notes.get(segment.id, [])
             ) or ((segment.text, False),)
-            for order, (piece, is_note) in enumerate(pieces):
-                last = order == len(pieces) - 1
-                spoken = (
-                    NOTE_CUE[language].format(
-                        text=speakable_text(piece, language=language)
-                    )
-                    if is_note
-                    else speakable_text(piece, segment.kind, language)
-                )
+            # Under `short` and `off` some notes say nothing; the last piece
+            # that DOES speak carries the segment's pause, so a dropped note
+            # at the end does not leave a hole.
+            spoken_pieces: list[tuple[str, bool]] = []
+            for piece, is_note in pieces:
+                if is_note:
+                    body = spoken_note(piece, note_reading)
+                    if body is None:
+                        continue
+                    spoken_pieces.append((
+                        NOTE_CUE[language].format(
+                            text=speakable_text(body, language=language, citations=note_reading != "full")
+                        ),
+                        True,
+                    ))
+                else:
+                    spoken_pieces.append((
+                        speakable_text(piece, segment.kind, language, citations=note_reading != "full"),
+                        False,
+                    ))
+            if not spoken_pieces:
+                spoken_pieces.append((speakable_text(segment.text, segment.kind, language), False))
+            for order, (spoken, is_note) in enumerate(spoken_pieces):
+                last = order == len(spoken_pieces) - 1
                 add(_Utterance(
                     text=spoken,
                     pause_after_ms=(
@@ -1423,6 +1473,7 @@ class _Session:
                     ),
                     segment_id=segment.id,
                     figure_id=captioned.get(segment.id) if order == 0 else None,
+                    kind="paragraph" if is_note else segment.kind,
                 ), chapter)
             for cue in here:
                 if cue.placement == "after" and cue.caption_segment_id is None:
@@ -2027,6 +2078,11 @@ class _Session:
         "external_voice_budget",
         "openai_model",
         "elevenlabs_model",
+        # How a reading sounds between the words (16/09): the chime that
+        # opens a chapter (off / marimba / harp / piano) and how much of a
+        # footnote is read (full / short / off).
+        "chapter_chime",
+        "note_reading",
     }) | _SECRET_CONFIG_KEYS
 
     def _config_get(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -2616,7 +2672,20 @@ class _Session:
         # Rate rides the same stretcher as the Qt app, so a 1.5× reading
         # sounds identical over the pipe. Rests are pure zeros: scaling
         # their length arithmetically is exact, so they skip the stretcher.
-        stretcher = TimeStretcher(rate) if rate != 1.0 else None
+        # The stretcher is made per utterance: a heading reads at its own,
+        # slower rate (HEADING_RATE), and a stretcher is drained at the end
+        # of every utterance anyway, so nothing carries across.
+        stretcher: TimeStretcher | None = None
+        # The chime that opens a chapter, if the reader keeps one - only a
+        # book has chapters, and the choice is read once per reading.
+        chime = None
+        if book_id is not None:
+            chosen = chime_choice(document.get("chapter_chime"))
+            if chosen is not None:
+                try:
+                    chime = load_chime(chosen)
+                except (OSError, ValueError):
+                    chime = None
         seq = 0
         voiced = 0
         stopped = False
@@ -2690,9 +2759,23 @@ class _Session:
                 sentences = split_sentences(utterance.text)
                 if not sentences and utterance.text.strip():
                     sentences = (utterance.text,)
+                # A heading is set apart: slower and a touch louder (the
+                # models take neither a pitch nor a tone). Gain is applied
+                # to the model's own samples, after the cache, and clipped -
+                # a voice already near full scale must not fold over.
+                heading = utterance.kind == "heading"
+                local_rate = rate * HEADING_RATE if heading else rate
+                gain = HEADING_GAIN if heading else 1.0
+                stretcher = TimeStretcher(local_rate) if local_rate != 1.0 else None
+
+                def louder(samples: np.ndarray) -> np.ndarray:
+                    if gain == 1.0:
+                        return samples
+                    return np.clip(samples * gain, -1.0, 1.0)
+
                 for index, sentence in enumerate(sentences):
                     if index:
-                        emit(_silence(int(SENTENCE_PAUSE_MS / rate)),
+                        emit(_silence(int(SENTENCE_PAUSE_MS / local_rate)),
                              from_voice=False)
                     # Anything the engine actually produced this time, kept so
                     # it can be remembered - but only once the sentence is
@@ -2712,9 +2795,9 @@ class _Session:
                         if self._stop_requested():
                             stopped = True
                             break
-                        samples = np.frombuffer(chunk.pcm, dtype=np.float32)
+                        samples = louder(np.frombuffer(chunk.pcm, dtype=np.float32))
                         if stretcher is None:
-                            emit(chunk.pcm, from_voice=True)
+                            emit(samples.astype(np.float32).tobytes(), from_voice=True)
                         else:
                             ready = stretcher.feed(samples)
                             if ready.size:
@@ -2746,7 +2829,22 @@ class _Session:
                 if stopped:
                     break
                 is_last = position + 1 == len(utterances)
-                if utterance.pause_after_ms and not is_last:
+                if is_last:
+                    continue
+                if chime is not None and utterances[position + 1].chapter_start:
+                    # Between chapters: a breath, the chime, a breath - in
+                    # place of the flat silence. The chime is not stretched
+                    # (it is not speech) and not credited to a voice.
+                    emit(_silence(int(CHIME_LEAD_MS / rate)), from_voice=False)
+                    for start in range(0, chime.size, SAMPLE_RATE // 2):
+                        if self._stop_requested():
+                            stopped = True
+                            break
+                        emit(chime[start:start + SAMPLE_RATE // 2].tobytes(), from_voice=False)
+                    if stopped:
+                        break
+                    emit(_silence(int(CHIME_TAIL_MS / rate)), from_voice=False)
+                elif utterance.pause_after_ms:
                     emit(_silence(int(utterance.pause_after_ms / rate)),
                          from_voice=False)
         except ExternalVoiceError as error:

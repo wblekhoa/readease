@@ -135,6 +135,20 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/prosody.py", "địa chỉ"),
         ("domain/prosody.py", "địa chỉ "),
         ("domain/prosody.py", " chấm "),
+        # The footnote-shape matchers (16/09): the openers and publisher
+        # words that make a note a bibliographic reference rather than words
+        # ("Sđd., tr. 45", "NXB Trẻ, 2015"). Matcher data for book text,
+        # never shown; an English build reading a Vietnamese document still
+        # has to know "Sđd." is a reference and not a remark.
+        (
+            "domain/prosody.py",
+            r"^\s*(?:sđd|s\.đ\.d|nt\b|ntr\b|ibid|id\.|op\.\s*cit|loc\.\s*cit|xem thêm|see also|cf\.|xem\b)",
+        ),
+        (
+            "domain/prosody.py",
+            r"\b(?:nxb|nhà xuất bản|press|publishing|publishers|university|éditions|editions|verlag|"
+            r"books|journal|tạp chí|vol\.|no\.|số\s+\d|tập\s+\d)\b",
+        ),
         # The figure-label matcher: the words a Vietnamese (or English) book
         # opens a caption with - "Hình 1.1.", "Figure 3". Matcher data for
         # book text, never shown; an English build reading a Vietnamese book

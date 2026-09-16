@@ -92,9 +92,9 @@ class PauseAfterTests(unittest.TestCase):
     def test_block_boundaries_follow_the_kind_table(self):
         for current_kind, next_kind, expected in (
             ("paragraph", "paragraph", 450),
-            ("paragraph", "heading", 800),
-            ("heading", "paragraph", 700),
-            ("heading", "heading", 800),
+            ("paragraph", "heading", 1000),
+            ("heading", "paragraph", 850),
+            ("heading", "heading", 1000),
             ("list_item", "list_item", 300),
             ("list_item", "paragraph", 450),
             ("paragraph", "list_item", 450),
@@ -665,3 +665,70 @@ class ReadingAnotherLanguageTests(unittest.TestCase):
             speakable_text("THE ART OF WAR", "heading", "en"), "The art of war."
         )
         self.assertEqual(speakable_text("Tang.\u00b3", language="en"), "Tang.")
+
+
+class ReferenceReadingTests(unittest.TestCase):
+    """Owner, 16/09: "tối ưu nội dung khi đọc các ref để tránh dài dòng"."""
+
+    def test_a_bibliographic_note_is_recognised_by_its_shape(self) -> None:
+        from vieneu_reader.domain.prosody import note_is_citation
+
+        for body in (
+            "Sđd., tr. 45.",
+            "Ibid., p. 88.",
+            "Nassim Nicholas Taleb, Fooled by Randomness (New York: Random House, 2001), tr. 12.",
+            "Xem Daniel Kahneman, Tư duy nhanh và chậm, NXB Thế Giới, 2015.",
+            "https://www.example.org/paper.pdf",
+            "Tạp chí Khoa học, số 12, 2019, tr. 3–9.",
+        ):
+            with self.subTest(body=body):
+                self.assertTrue(note_is_citation(body))
+        for body in (
+            "Thuật ngữ này do chính tác giả đặt.",
+            "Tác giả muốn nói đến sự kiện năm 2008, khi các ngân hàng lớn phá sản hàng loạt.",
+            "Một cách nói khác của người miền Nam.",
+        ):
+            with self.subTest(body=body):
+                self.assertFalse(note_is_citation(body))
+
+    def test_a_commentary_note_is_cut_to_two_sentences_or_forty_words(self) -> None:
+        from vieneu_reader.domain.prosody import shorten_note
+
+        self.assertEqual(
+            shorten_note("Câu một. Câu hai. Câu ba. Câu bốn."),
+            "Câu một. Câu hai.",
+        )
+        long = " ".join(f"chữ{n}" for n in range(60)) + "."
+        cut = shorten_note(long)
+        self.assertEqual(len(cut.rstrip("…").split()), 40)
+        self.assertTrue(cut.endswith("…"))
+        self.assertEqual(shorten_note("Chỉ một câu ngắn."), "Chỉ một câu ngắn.")
+
+    def test_the_three_readings_of_a_note(self) -> None:
+        from vieneu_reader.domain.prosody import spoken_note
+
+        citation = "Sđd., tr. 45."
+        commentary = "Lời bàn một. Lời bàn hai. Lời bàn ba."
+        self.assertIsNone(spoken_note(citation, "short"))
+        self.assertEqual(spoken_note(commentary, "short"), "Lời bàn một. Lời bàn hai.")
+        self.assertEqual(spoken_note(citation, "full"), citation)
+        self.assertEqual(spoken_note(commentary, "full"), commentary)
+        self.assertIsNone(spoken_note(citation, "off"))
+        self.assertIsNone(spoken_note(commentary, "off"))
+
+    def test_in_text_citations_leave_the_sentence_whole(self) -> None:
+        from vieneu_reader.domain.prosody import drop_citations, speakable_text
+
+        self.assertEqual(
+            drop_citations("Không đoán được (Taleb, 2007) và đã được chứng minh [12], [3–5] nhiều lần (xem chương 3)."),
+            "Không đoán được và đã được chứng minh nhiều lần (xem chương 3).",
+        )
+        self.assertEqual(
+            drop_citations("Theo (Nguyễn & Trần, 2019, tr. 12), điều này đúng."),
+            "Theo, điều này đúng.",
+        )
+        # A parenthesis that is words, not a citation, stays; so does a year in prose.
+        self.assertEqual(drop_citations("Ông ấy (một người bạn cũ) đến năm 2007."), "Ông ấy (một người bạn cũ) đến năm 2007.")
+        # Off by default in `speakable_text`; on when asked.
+        self.assertIn("(Taleb, 2007)", speakable_text("Thế (Taleb, 2007) đấy."))
+        self.assertNotIn("Taleb", speakable_text("Thế (Taleb, 2007) đấy.", citations=True))

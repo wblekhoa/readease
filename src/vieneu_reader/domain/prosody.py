@@ -59,8 +59,17 @@ _ABBREVIATIONS = frozenset(
     }
 )
 
+# A heading is READ differently, not only paused around (owner, 16/09:
+# "đổi giọng điệu hoặc đọc to hơn một xíu các tiêu đề"). Neither local
+# model takes a pitch or a tone, so the heading is set apart with what the
+# pipe does control: a touch slower, a touch louder, and more air on both
+# sides. Both are applied after the sentence cache, so the cached voice is
+# the same audio either way.
+HEADING_RATE = 0.92
+HEADING_GAIN = 1.26  # +2 dB
+
 _AFTER_KIND_MS = {
-    "heading": 700,
+    "heading": 850,
     "paragraph": BLOCK_PAUSE_MS,
     "list_item": 300,
     "quote": 550,
@@ -68,7 +77,7 @@ _AFTER_KIND_MS = {
     "preformatted": BLOCK_PAUSE_MS,
 }
 _BEFORE_KIND_MS = {
-    "heading": 800,
+    "heading": 1000,
     "paragraph": 0,
     "list_item": 300,
     "quote": 550,
@@ -555,6 +564,118 @@ def drop_note_marks(text: str) -> str:
 #: number: "(tương lai) 2 ." has to close as "(tương lai)." and not "…) .".
 _CLINGING = ".,;:!?…)]}»”’"
 
+# ── References, read for the ear (owner, 16/09: "tối ưu nội dung khi đọc
+# các ref để tránh dài dòng") ─────────────────────────────────────────────
+#
+# A footnote is one of two things. A BIBLIOGRAPHIC one names where a claim
+# came from - author, title, publisher, year, page, an address - and read
+# aloud it is a list nobody can use with their ears. A COMMENTARY one says
+# something more, and that is worth hearing, though a long one hijacks the
+# paragraph it hangs from. So a note is classified by its shape, and the
+# reader chooses between hearing every note whole (`full`), the commentary
+# ones cut short (`short`, the default), or none (`off`). The page shows
+# every note either way.
+NOTE_READINGS = ("full", "short", "off")
+DEFAULT_NOTE_READING = "short"
+SHORT_NOTE_SENTENCES = 2
+SHORT_NOTE_WORDS = 40
+
+_CITATION_OPENERS = re.compile(
+    r"^\s*(?:sđd|s\.đ\.d|nt\b|ntr\b|ibid|id\.|op\.\s*cit|loc\.\s*cit|xem thêm|see also|cf\.|xem\b)",
+    re.IGNORECASE,
+)
+_YEAR = re.compile(r"\b(?:1[5-9]\d\d|20\d\d)[a-z]?\b")
+_PAGE = re.compile(r"(?:^|[\s,(])(?:tr\.|trang\s+\d|p\.|pp\.|§)\s*\d", re.IGNORECASE)
+_PUBLISHER = re.compile(
+    r"\b(?:nxb|nhà xuất bản|press|publishing|publishers|university|éditions|editions|verlag|"
+    r"books|journal|tạp chí|vol\.|no\.|số\s+\d|tập\s+\d)\b",
+    re.IGNORECASE,
+)
+_ADDRESS = re.compile(r"https?://|www\.|\bdoi[:\s]|\bisbn\b", re.IGNORECASE)
+
+
+def note_is_citation(body: str) -> bool:
+    """Whether a footnote is a bibliographic reference rather than words."""
+
+    text = body.strip()
+    if not text:
+        return False
+    if _CITATION_OPENERS.match(text):
+        return True
+    if _ADDRESS.search(text) and len(text.split()) <= 30:
+        return True
+    has_year = bool(_YEAR.search(text))
+    if has_year and (_PAGE.search(text) or _PUBLISHER.search(text)):
+        return True
+    words = text.split()
+    if len(words) <= 25:
+        # A short note that is mostly names, numbers and punctuation is a
+        # reference; prose has small words in it.
+        shaped = sum(
+            1 for word in words
+            if word[:1].isupper() or word[:1].isdigit() or not word[:1].isalnum()
+        )
+        if shaped / len(words) >= 0.6 and (has_year or _PAGE.search(text)):
+            return True
+    return False
+
+
+def shorten_note(body: str) -> str:
+    """The first sentences of a commentary note, within a word budget."""
+
+    sentences = split_sentences(body.strip()) or (body.strip(),)
+    kept: list[str] = []
+    words = 0
+    for sentence in sentences[:SHORT_NOTE_SENTENCES]:
+        count = len(sentence.split())
+        if kept and words + count > SHORT_NOTE_WORDS:
+            break
+        if not kept and count > SHORT_NOTE_WORDS:
+            # One long sentence: cut at the budget, on a word, with an
+            # ellipsis the voice renders as a trailing-off pause.
+            kept.append(" ".join(sentence.split()[:SHORT_NOTE_WORDS]).rstrip(",;:") + "…")
+            words = SHORT_NOTE_WORDS
+            break
+        kept.append(sentence)
+        words += count
+    return " ".join(kept)
+
+
+def spoken_note(body: str, reading: str) -> str | None:
+    """What the voice says for a footnote under a reading mode, or None
+    for nothing at all."""
+
+    if reading == "off":
+        return None
+    if reading == "full":
+        return body.strip() or None
+    if note_is_citation(body):
+        return None
+    return shorten_note(body) or None
+
+
+# In-text citations are for the eye too: "(Taleb, 2007)", "(Nguyễn & Trần,
+# 2019, tr. 12)", "[12]", "[3–5]". Spoken they are a stumble in the middle
+# of the sentence that cites. A parenthesis with a year in it and no verb's
+# worth of words is a citation; a longer aside is left alone.
+_BRACKET_CITATION = re.compile(r"\s?\[\d+(?:\s*[,;–-]\s*\d+)*\](?:,?\s?\[\d+(?:\s*[,;–-]\s*\d+)*\])*")
+_PAREN_CITATION = re.compile(r"\s?\(([^()]{1,80})\)")
+
+
+def drop_citations(text: str) -> str:
+    """Take in-text citations out of what the voice says."""
+
+    def parenthesis(match: re.Match[str]) -> str:
+        inside = match.group(1)
+        if _YEAR.search(inside) and len(inside.split()) <= 8:
+            return ""
+        return match.group(0)
+
+    spoken = _BRACKET_CITATION.sub("", text)
+    spoken = _PAREN_CITATION.sub(parenthesis, spoken)
+    # A comma or a stop that stood after the citation now follows a space.
+    return re.sub(r"\s+([.,;:!?…])", r"\1", spoken)
+
 
 def _text_without_labels(
     text: str, marks: Sequence[tuple[int, int]]
@@ -671,6 +792,8 @@ def speakable_text(
     text: str,
     kind: str = "paragraph",
     language: str = DEFAULT_SPEECH_LANGUAGE,
+    *,
+    citations: bool = False,
 ) -> str:
     """Shape one segment's text for the voice without touching the display.
 
@@ -691,6 +814,10 @@ def speakable_text(
     # Roman numerals BEFORE unshout: "II" is all-caps and vowel-less, and a
     # de-shouted "ii" is no longer a numeral anything can recognise.
     spoken = drop_note_marks(text)
+    if citations:
+        # `citations` says the in-text ones may go too - the reader's
+        # `note_reading` is anything but "full" (16/09).
+        spoken = drop_citations(spoken)
     spoken = speak_roman_numerals(speak_enumerators(spoken), language)
     spoken = spell_ordinal_marks(unshout(speak_links(spoken, language)), language)
     stripped = spoken.lstrip()

@@ -1110,7 +1110,7 @@ class StructurePauseTests(unittest.TestCase):
         self.assertEqual(
             pauses,
             [
-                700,                # heading -> paragraph
+                850,                # heading -> paragraph (16/09: a heading gets a longer breath)
                 SENTENCE_PAUSE_MS,  # split at a finished sentence
                 450,                # paragraph block -> list
                 300,                # one list item to the next

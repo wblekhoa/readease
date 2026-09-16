@@ -28,16 +28,23 @@ FORBIDDEN_SUFFIXES = {
     ".sqlite3",
     ".wav",
 }
-# The one exception to the ".onnx" rule, named file by file and pinned by
-# hash: the English G2P's out-of-lexicon reader, a 3 MB network exported at
-# development time from an Apache-2.0 model (`legal/MODEL_PROVENANCE.md`).
-# The rule exists to keep model WEIGHTS - the 300 MB kind, downloaded and
-# licensed separately - out of the public tree; these two are package data
-# the engine cannot read English without. A re-export changes the hash and
-# has to come back here, which is the review it deserves.
+# The exceptions to the ".onnx" and ".wav" rules, named file by file and
+# pinned by hash. The ".onnx" rule exists to keep model WEIGHTS - the 300 MB
+# kind, downloaded and licensed separately - out of the public tree; the two
+# networks here are the English G2P's out-of-lexicon reader, 3 MB exported
+# at development time from an Apache-2.0 model (`legal/MODEL_PROVENANCE.md`),
+# package data the engine cannot read English without. The ".wav" rule keeps
+# recordings and rendered speech out; the three files here are the chapter
+# chimes (owner's pick, 16/09), each under a second or two of generated
+# sound, provenance in `THIRD_PARTY_NOTICES.md`. A re-export or re-render
+# changes the hash and has to come back here, which is the review it
+# deserves.
 PUBLIC_MODEL_ASSETS = {
     "src/vieneu_reader/speech/english/fallback_assets/encoder.onnx": "b30b54249cb644f435be6dbe1cf23840ec298a22f33df74154cf31d8234741db",
     "src/vieneu_reader/speech/english/fallback_assets/decoder.onnx": "5fff21a2732d91e4b29ec26ebcb0ee4d719c5389cd241c61d0bdb434b77b3a21",
+    "src/vieneu_reader/speech/chimes/marimba.wav": "68e78813a7487b44f9851738b836cc4c3551582aaf09da31b713d68b0bbff137",
+    "src/vieneu_reader/speech/chimes/harp.wav": "c47dcf36966ac8a6a0a6cda37e1e24655c47bcb13456221711c9618a7e83db45",
+    "src/vieneu_reader/speech/chimes/piano.wav": "a1dfb65859aef7f9fbaae912450b26c79d6c7ff6b1ef3ed00a6bfed953ccc702",
 }
 FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",
