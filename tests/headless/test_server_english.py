@@ -249,7 +249,7 @@ class EnglishModelManagementTests(unittest.TestCase):
         english = FakeEnglish(ready=False, wraps_errors=True)
         replies = run_server(
             [{"id": 70, "method": "model.prepare", "params": {"engine": "english"}},
-             {"id": 71, "method": "stop"}],
+             {"id": 71, "method": "model.cancel"}],
             FakeVietnamese(), english,
         )
 

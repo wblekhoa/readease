@@ -34,6 +34,13 @@ Listening progress is written on the shell's word, not the engine's: the
 engine emits `position` when it SYNTHESISES an utterance, and the shell
 sends `{"method": "progress.reached", "params": {"id": 3, "segment_id": s}}`
 when the ear gets there. Only then is the book's progress saved.
+
+A `stop` covers every reading asked for before it: the one streaming, and
+any `read`/`read.book` still queued behind a reading or a model download
+(each of those answers `{"frames": 0, "voiced_frames": 0, "stopped": true}`
+without a frame). It does not touch a download; that has its own
+`{"id": 5, "method": "model.cancel"}`, answered from inside the download the
+way a stop is answered from inside a reading.
 """
 
 from __future__ import annotations
@@ -473,6 +480,10 @@ class _Session:
         self._credit_read: Any = None
         # A stop seen while waiting for room: honoured at the next check.
         self._stop_pending = False
+        # A `model.cancel` seen while a download runs: honoured at its next
+        # progress report, the only moment it hands control back.
+        self._cancel_pending = False
+        self._downloading = False
         # Whether the reading in progress is allowed to leave audio on disk.
         # Set per reading by `_speak`; false until one starts.
         self._cache_reading = False
@@ -675,6 +686,13 @@ class _Session:
         if method == "stop":
             self._reply(request.get("id"), {"stopped": True})
             self._stop_pending = True
+            self._drop_queued("read", "read.book")
+        elif method == "model.cancel":
+            # True when there is a download to cancel - running, or still
+            # queued behind the reading this poll belongs to.
+            queued = self._drop_queued("model.prepare")
+            self._reply(request.get("id"), {"cancelled": self._downloading or queued})
+            self._cancel_pending = True
         elif method == "audio.credit":
             self._take_credit(request.get("params") or {})
         elif method == "progress.reached":
@@ -687,6 +705,51 @@ class _Session:
                 self._fail(request_id, f"{method} failed: {error}")
         else:
             self._deferred.append(request)
+
+    def _drop_queued(self, *methods: str) -> bool:
+        """Answer, as stopped, the deferred requests of these methods; True
+        if there were any.
+
+        A stop covers everything asked for BEFORE it, not only what happens
+        to be running. A reading queued behind a download (Đọc pressed
+        while a model downloads, then Dừng) or behind another reading (two
+        quick presses: stop+read, stop+read, of which one stop was spent on
+        the reading in flight) used to start AFTER the stop, for a shell
+        that had already dropped its id - so nobody credited its frames,
+        and once past the window it waited for room forever, with every
+        later reading queued behind it. To the person: no voice until the
+        app was relaunched (owner, 16/09; reproduced on the 0.1.3 engine).
+        The shell's `stop` sets the reading's id to nothing before it is
+        sent, so a reading it never hears of is one it never wanted.
+        """
+        kept: list[dict] = []
+        for request in self._deferred:
+            if request.get("method") not in methods:
+                kept.append(request)
+            elif request.get("method") == "model.prepare":
+                self._reply(request.get("id"), {"ready": False, "cancelled": True})
+            else:
+                self._reply(request.get("id"), {
+                    "frames": 0, "voiced_frames": 0, "stopped": True,
+                })
+        dropped = len(kept) < len(self._deferred)
+        self._deferred = kept
+        return dropped
+
+    def _cancel_requested(self) -> bool:
+        """Poll for a cancel while a download runs; answer the quick, defer
+        the rest - `_stop_requested` for the download's own signal. A stop
+        seen here has done its work in `_absorb` (the readings queued behind
+        the download are answered) and does not end the download: Dừng is
+        for the voice, Huỷ tải for the download, and they used to be one
+        word."""
+        while not self._requests.empty():
+            self._absorb(self._requests.get())
+        self._stop_pending = False
+        if self._cancel_pending:
+            self._cancel_pending = False
+            return True
+        return False
 
     def _await_credit(self) -> bool:
         """Wait until the shell has room for one more frame.
@@ -822,6 +885,9 @@ class _Session:
             elif method == "stop":
                 # Nothing is playing; saying so beats silence.
                 self._reply(request_id, {"stopped": False})
+            elif method == "model.cancel":
+                # Nothing is downloading; same answer for the same reason.
+                self._reply(request_id, {"cancelled": False})
             elif method == "audio.credit":
                 # Room handed back after the reading it was for has ended.
                 # Nothing to top up, and no reply: it carries no id.
@@ -1498,7 +1564,7 @@ class _Session:
             # the Qt setup screen used, for the same reason: it is the only
             # moment a long download hands control back. 453MB with no way out
             # is not a download, it is a hostage situation.
-            if self._stop_requested():
+            if self._cancel_requested():
                 raise _PreparationCancelled()
             self._send({
                 "id": request_id,
@@ -1507,11 +1573,17 @@ class _Session:
                 "message": str(message),
             })
 
+        # A cancel from before this download began was answered by dropping
+        # the queued request; one that reaches here is for this download.
+        self._cancel_pending = False
+        self._downloading = True
         try:
             prepare(report)
         except _PreparationCancelled:
             self._reply(request_id, {"ready": False, "cancelled": True})
             return
+        finally:
+            self._downloading = False
         self._reply(request_id, {"ready": True})
         # A model's voices just became listable - six English ones, or the
         # Vietnamese twenty on a Mac that chose the English model first. The

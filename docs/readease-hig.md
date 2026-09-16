@@ -142,7 +142,15 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   footer, giữa): Giọng · Tốc độ (GroupedRow + Select) · Chất lượng (`ModelChoices`, ruột của ModelPanel
   cũ). Đang đọc: select bị vô hiệu (giọng/tốc độ chỉ đọc lúc bắt đầu). Esc đóng, trừ khi đang tải
   model. Hàng "Giọng": select chỉ mang TÊN giọng (≤ 11rem), mô tả "Nữ · Bắc · Kể chuyện"
-  là dòng phụ của hàng — nhãn đầy đủ trong select từng tràn hàng, cắt mất chữ "Giọng" (chủ, 02/09). Khi đang đọc, TRANSPORT cũng đứng giữa (như mọi trình phát), trạng thái/lỗi lùi sang phải.
+  là dòng phụ của hàng — nhãn đầy đủ trong select từng tràn hàng, cắt mất chữ "Giọng" (chủ, 02/09). **Tên dài hơn
+  ô thì ô tự cắt và đánh dấu ba chấm** (16/09): WKWebView vẽ nhãn đang chọn của `<select>` hết bề rộng của nó rồi
+  mới che, và phần thừa ấy vẫn đếm vào chiều rộng cuộn của panel — đo trên panel 26rem với một giọng ElevenLabs tên
+  56 ký tự: 651 px trong khung 414 ⇒ thanh cuộn ngang lòi ra, ăn 13 px chiều cao, đẩy nội dung vừa khít thành tràn
+  dọc ⇒ thêm thanh cuộn dọc; rê chuột vào là cả hai hiện (chủ, 16/09: "đúng ra sẽ không có scroll ở popover này").
+  Chromium che ngay trong ô nên audit render không thấy. Luật: `select` mang `overflow: hidden` + `text-overflow:
+  ellipsis` (một chỗ, `index.css`, cho mọi select), và thân panel cài đặt `overflow-x-hidden` — panel nổi không bao
+  giờ cuộn ngang, chỉ cuộn dọc khi cửa sổ thấp hơn nó. Khi đang đọc, TRANSPORT cũng đứng giữa (như mọi trình phát),
+  trạng thái/lỗi lùi sang phải.
   **CTA và chip cùng loại nên đi chung** (chủ, 02/09): khi rảnh cả hai đứng GIỮA cạnh nhau; CTA nói rõ
   điểm bắt đầu — "Đọc tiếp · Chương 3" (có vị trí đã lưu/đã dừng, chương lấy từ `PageInfo.resumeChapterTitle`)
   hoặc "Đọc từ đầu"; màn dán giữ "Đọc nội dung". Bên trái footer một hint nhỏ "Nhấn vào đoạn văn để đọc từ
@@ -219,6 +227,11 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
   dùng / Xoá; tiếng Anh một hàng Tải về / Tải tiếp / Xoá), rồi nhóm **Giọng API** (`ProviderKeys`, subtitle
   "Đã có khoá · N giọng"); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
   `useModels` (trạng thái + lượt tải + hành động), để màn đầu, sheet và bảng giọng đọc không cãi nhau.
+  **Huỷ tải là lời riêng của lượt tải** (`model.cancel`, 16/09), không phải Dừng của giọng đọc: trước đó
+  cả hai là một lệnh `stop`, nên bấm Đọc trong lúc đang tải rồi Dừng (hoặc bấm Đọc lần nữa) là huỷ luôn
+  lượt tải mà không ai định huỷ — và bài đọc đã xếp hàng sau lượt tải vẫn chạy cho một vỏ đã bỏ nó, không
+  ai cấp credit, engine đứng chờ chỗ mãi, mọi bài sau xếp sau nó: "giọng không generate được, phải mở lại
+  app" (chủ, 16/09). Luật engine: một `stop` phủ MỌI bài đọc đã xin trước nó, đang phát hay còn xếp hàng.
 - **Anatomy (bảng giọng đọc)**: `SegmentedControl` "Ngôn ngữ đọc" Tiếng Việt / Tiếng Anh ở đầu;
   `SuggestionDot` trên tuỳ chọn của ngôn ngữ **nội dung** khi khác tab; `Notice tone="info" action=` một câu
   + một nút ("Đọc bằng tiếng Anh" / "Thêm giọng tiếng Việt"); nhóm Giọng (select gộp `optgroup` Trên máy /
