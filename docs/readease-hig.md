@@ -147,6 +147,9 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   "Quét đọc"; sheet Chuyển ghi chú giữ câu tiêu đề riêng của nó vì đó là một câu khác). Hành động của trang (Từ Apple
   Books · Mở PDF hoặc EPUB) đứng ở cụm phải của toolbar qua một slot/portal — như AA · tìm của sách — trang giữ state
   của nút, toolbar giữ chỗ.
+- **Chrome ở chân cột / toolbar là ghost** (chủ 16/09: nút ngôn ngữ "theo style transparent"): `Select ghost` — không
+  viền, không nền cho tới khi hover (`wash`), chữ `ink-mute` → `ink`, đứng cùng hàng với `IconButton` nên cùng độ nhẹ;
+  select trong bảng cài đặt vẫn có viền + nền giấy (ở đó nó là một ô của form, không phải chrome).
 - **Tab và công cụ rời toolbar (16/09)**: bốn mục (Thư viện · Dán · Quét · Chuyển ghi chú) là `RailItem` trong cột bên (§3.16), `AppTabs.tsx` gỡ; dải
   trên của cột nội dung còn lại là vùng kéo cửa sổ 52 px, mang nút mở cột + (khi cột thu) bánh răng/theme/ngôn
   ngữ, và chrome của sách khi đang đọc.
@@ -890,6 +893,10 @@ ngại đó.
   một WKWebView bị ẩn, timeline đứng và phần tử kẹt ở trạng thái đầu, đo 16/09), thân giữ bề rộng 240 để chữ
   không gãy trong lúc thu; khi thu, đèn nằm trên góc trái của cột nội dung → dải trên chừa **76 px**, nút mở
   đứng ngay cạnh đèn (Codex làm đúng thế).
+  **Kéo mép phải để đổi bề rộng** (chủ 16/09: "sidebar có thể nắm kéo để resize"): tay nắm là dải 6 px đè lên hairline
+  (`role=separator`, con trỏ `col-resize`, pointer capture nên kéo ra ngoài dải vẫn ăn), bề rộng **200–400**, mặc định
+  240, nhớ trong `localStorage["readease.sidebar-width"]` lúc thả tay (không ghi từng pixel); bấm đúp về 240; trong lúc
+  kéo tắt transition (cột chạy đuổi theo con trỏ thì lag). Thu/mở vẫn là 0 ↔ bề rộng đã chọn.
 - **Behavior** (luật kiểm được, reducer thuần `ui/sidebarState.ts`): (1) **tay thắng tự động** — bấm nút hoặc
   ⌃⌘S là lựa chọn, nhớ trong `localStorage["readease.sidebar"]`; (2) chưa từng chọn → **tự động theo bề rộng**:
   cửa sổ < 1100 px thu, ≥ 1100 mở, đổi live khi kéo cửa sổ (kể cả cửa sổ mặc định 1060 → thu, để trang được

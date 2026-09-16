@@ -17,6 +17,7 @@ export const TEXT = {
   "sidebar.close": ["Thu cột bên (⌃⌘S)", "Hide the side column (⌃⌘S)"],
   "sidebar.reading": ["Đang đọc", "Reading now"],
   "sidebar.switch": ["Đổi chế độ", "Switch mode"],
+  "sidebar.resize": ["Kéo để đổi bề rộng cột bên · bấm đúp về mặc định", "Drag to resize the side column · double-click to reset"],
   "sidebar.current": ["Đang mở", "Current"],
   "sidebar.lists": ["Danh sách của sách", "The book's lists"],
   "sidebar.notes_tab": ["Ghi chú", "Notes"],

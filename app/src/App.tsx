@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
 import { GradientBlur, MenuButton, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
-import { NARROW, STORAGE_KEY as SIDEBAR_KEY, initialSidebar, sidebar, sidebarOpen, type SidebarTab } from "./ui/sidebarState";
+import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
 import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { External, type ExternalEntry } from "./screens/External";
@@ -285,6 +285,21 @@ export default function App() {
     return initialSidebar(remembered, window.innerWidth < NARROW);
   });
   const sideOpen = sidebarOpen(side);
+  /* The column's width, the person's to drag; remembered when the hand
+     lets go, not per move. */
+  const [sideWidth, setSideWidth] = useState(() => {
+    try { return storedWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY)); } catch { return storedWidth(null); }
+  });
+  const resizeSide = useCallback((width: number | null) => {
+    if (width === null) {
+      setSideWidth((current) => {
+        try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(current)); } catch { /* private window */ }
+        return current;
+      });
+      return;
+    }
+    setSideWidth(clampWidth(width));
+  }, []);
   /** The list on show in a book, or null: folded, or not in a book. */
   const sideTab: SidebarTab | null = sideOpen && side.book ? side.tab : null;
   /* Which note the notes tab should land on, when it was opened from the
@@ -1168,6 +1183,7 @@ export default function App() {
       {themeSwitch}
       <Select
         pill
+        ghost
         aria-label={text("aria.language")}
         value={language}
         onChange={(event) => applyLanguage(event.target.value as Language)}
@@ -1185,8 +1201,11 @@ export default function App() {
           covered (owner, 16/09). */}
       <SideColumn
         open={sideOpen}
+        width={sideWidth}
+        onResize={resizeSide}
         onToggle={() => dispatchSide({ type: "toggle" })}
         toggleLabel={text(sideOpen ? "sidebar.close" : "sidebar.open")}
+        resizeLabel={text("sidebar.resize")}
         foot={chrome}
       >
         {inBook ? (

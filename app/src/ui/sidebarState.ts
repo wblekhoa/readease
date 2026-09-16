@@ -38,6 +38,26 @@ export const NARROW = 1100;
 
 export const STORAGE_KEY = "readease.sidebar";
 
+/** The column's width, when the person drags its edge (owner, 16/09:
+ * "sidebar có thể nắm kéo để resize"): 240 by default, never narrower
+ * than a chapter title can live in, never wider than a third of the
+ * narrowest window. Remembered on its own. */
+export const WIDTH_KEY = "readease.sidebar-width";
+export const DEFAULT_WIDTH = 240;
+export const MIN_WIDTH = 200;
+export const MAX_WIDTH = 400;
+
+export function clampWidth(width: number): number {
+  if (!Number.isFinite(width)) return DEFAULT_WIDTH;
+  return Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width)));
+}
+
+/** The remembered width, or the default for anything unusable. */
+export function storedWidth(remembered: string | null): number {
+  const width = Number(remembered);
+  return remembered === null || !Number.isFinite(width) ? DEFAULT_WIDTH : clampWidth(width);
+}
+
 export type SidebarEvent =
   /** The toggle button or ⌃⌘S. */
   | { type: "toggle" }

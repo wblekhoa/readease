@@ -240,11 +240,20 @@ export function InlineIconButton({
 export function Select({
   className = "",
   pill = false,
+  ghost = false,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & { pill?: boolean }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  pill?: boolean;
+  /** No stroke and no fill until hovered - the select as chrome, beside
+   * the icon buttons it stands with (owner, 16/09: the language in the
+   * column's foot "theo style transparent"). */
+  ghost?: boolean;
+}) {
   return (
     <select
-      className={`${pill ? "h-8 rounded-full px-3" : "h-[30px] rounded-[var(--ctl-radius)] px-2"} border border-edge-strong bg-paper text-sm text-ink hover:bg-wash disabled:text-ink-faint ${className}`}
+      className={`${pill ? "h-8 rounded-full px-3" : "h-[30px] rounded-[var(--ctl-radius)] px-2"} border ${
+        ghost ? "border-transparent bg-transparent text-ink-mute hover:text-ink" : "border-edge-strong bg-paper text-ink"
+      } text-sm hover:bg-wash disabled:text-ink-faint ${className}`}
       {...rest}
     />
   );

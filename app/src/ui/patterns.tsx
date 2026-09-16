@@ -5,7 +5,7 @@
  * once. Building a screen means picking a pattern and pouring content in.
  * The written half lives in docs/readease-hig.md.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { hoverText } from "./format";
 import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
@@ -738,18 +738,53 @@ export function MenuButton({
  * caller passes the answer. */
 export function SideColumn({
   open,
+  width,
+  onResize,
   onToggle,
   toggleLabel,
+  resizeLabel,
   children,
   foot,
 }: {
   open: boolean;
+  /** How wide it stands when open, in px - the person's to drag. */
+  width: number;
+  /** The edge being dragged: a width per move, then `null` when the hand
+   * lets go (the moment to remember it). */
+  onResize: (width: number | null) => void;
   onToggle: () => void;
   /** The switch's accessible name, for the state it would move to. */
   toggleLabel: string;
+  resizeLabel: string;
   children: ReactNode;
   foot?: ReactNode;
 }) {
+  /* The edge as a handle (owner, 16/09: "sidebar có thể nắm kéo để
+     resize"): a strip over the hairline, pointer-captured so the drag
+     survives leaving it, the width reported per move and the transition
+     held off while a hand is on it - a column that eases after the cursor
+     is a column that lags. Double-click puts the default back. */
+  const [dragging, setDragging] = useState(false);
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget;
+    const start = event.clientX;
+    const from = width;
+    handle.setPointerCapture(event.pointerId);
+    setDragging(true);
+    const move = (moved: PointerEvent) => onResize(from + moved.clientX - start);
+    const stop = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
+      setDragging(false);
+      onResize(null);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+  };
   return (
     <aside
       aria-label={text("sidebar.label")}
@@ -757,11 +792,23 @@ export function SideColumn({
       // reader too, not only for the eye: `inert` takes its controls out of
       // the tab order (WebKit has had it since 16.4).
       inert={!open || undefined}
-      className={`relative shrink-0 overflow-hidden bg-column transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-        open ? "w-60 border-r border-edge" : "w-0"
-      }`}
+      style={{ width: open ? width : 0 }}
+      className={`relative shrink-0 overflow-hidden bg-column ${
+        dragging ? "" : "transition-[width] duration-200 ease-out motion-reduce:transition-none"
+      } ${open ? "border-r border-edge" : ""}`}
     >
-      <div className="flex h-full w-60 flex-col">
+      {open && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={resizeLabel}
+          title={resizeLabel}
+          onPointerDown={onPointerDown}
+          onDoubleClick={() => { onResize(Number.NaN); onResize(null); }}
+          className="absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
+        />
+      )}
+      <div className="flex h-full flex-col" style={{ width }}>
         {/* The lights live in the first 76px of this strip (x 20-72) - in
             the window; a browser has none, and leaves no hole for them. The
             switch takes the far end, where Codex puts it. */}

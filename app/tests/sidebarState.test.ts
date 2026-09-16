@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  initialSidebar, sidebar, sidebarOpen, type SidebarEvent, type SidebarState,
+  DEFAULT_WIDTH, MAX_WIDTH, MIN_WIDTH, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth,
+  type SidebarEvent, type SidebarState,
 } from "../src/ui/sidebarState.ts";
 
 function run(events: SidebarEvent[], from: SidebarState = initialSidebar(null, false)) {
@@ -87,4 +88,15 @@ test("outside a book, asking for a list only opens the column (nothing to toggle
   const shown = sidebar(home, { type: "show", tab: "contents" });
   assert.equal(sidebarOpen(shown), true);
   assert.equal(sidebarOpen(sidebar(shown, { type: "show", tab: "contents" })), true);
+});
+
+test("a dragged width stays between the bounds, and a remembered one is read back or ignored", () => {
+  assert.equal(clampWidth(MIN_WIDTH - 50), MIN_WIDTH);
+  assert.equal(clampWidth(MAX_WIDTH + 50), MAX_WIDTH);
+  assert.equal(clampWidth(311.6), 312);
+  assert.equal(clampWidth(Number.NaN), DEFAULT_WIDTH);
+  assert.equal(storedWidth(null), DEFAULT_WIDTH);
+  assert.equal(storedWidth("garbage"), DEFAULT_WIDTH);
+  assert.equal(storedWidth("300"), 300);
+  assert.equal(storedWidth("9999"), MAX_WIDTH);
 });
