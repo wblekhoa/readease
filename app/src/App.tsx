@@ -128,7 +128,9 @@ function anchor(element: HTMLElement) {
 
 export default function App() {
   const [theme, toggleTheme, appearance, chooseAppearance] = useAppearance();
-  const [tab, setTab] = useState("paste");
+  // The library first (owner, 16/09): the first tab of the rail is the
+  // first screen. An empty shelf offers the paste screen itself.
+  const [tab, setTab] = useState("library");
   const [voices, setVoices] = useState<Voice[]>([]);
   /** Why there are no voices to offer. An empty catalogue is a claim - "this
    * Mac has no voices" - and a failed request is not that claim. */

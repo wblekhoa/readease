@@ -438,7 +438,7 @@ select[data-overlay] {
 }
 
 /* Text entry matches :focus-visible on a plain click too, so this ring is on
-   screen the whole time someone is writing - the paste box is the first
+   screen the whole time someone is writing - the paste box is a home
    screen. Drawn ON the field's own edge instead of floating a line outside
    it: one crisp blue boundary, the way a focused macOS text field reads,
    not a border plus a gap plus a ring. */
