@@ -135,6 +135,13 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   Từ 16/09 nút sống ở **chân cột bên** (§3.16) cùng bánh răng và ngôn ngữ; toolbar chỉ mang chúng khi cột thu.
 - **Chọn ngôn ngữ UI** (chủ, 02/09: chỉ ở trang chủ; 16/09: ở chân cột bên, mọi màn): toolbar của một cuốn
   sách chỉ mang thứ phục vụ cuốn sách (quay lại · mục lục · ⓘ · cỡ chữ · chế độ).
+- **Tiêu đề màn tính năng đứng ở toolbar (chủ, 16/09: "title của trang tính năng… bên trái sẽ là nút sidebar")**: ở
+  trang chủ, cụm dẫn = [chỗ đèn 52 px + nút mở cột khi cột thu] + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
+  "Dán nội dung", "Quét đọc", "Chuyển ghi chú") — cùng chỗ và cùng cỡ với tên sách khi đang đọc. **Một tiêu đề cho một
+  màn**: trang không lặp lại tên dưới toolbar (Thư viện bỏ "Thư viện sách", Dán bỏ "Dán nội dung để đọc", Quét bỏ
+  "Quét đọc"; sheet Chuyển ghi chú giữ câu tiêu đề riêng của nó vì đó là một câu khác). Hành động của trang (Từ Apple
+  Books · Mở PDF hoặc EPUB) đứng ở cụm phải của toolbar qua một slot/portal — như AA · tìm của sách — trang giữ state
+  của nút, toolbar giữ chỗ.
 - **Tab và công cụ rời toolbar (16/09)**: bốn mục (Thư viện · Dán · Quét · Chuyển ghi chú) là `RailItem` trong cột bên (§3.16), `AppTabs.tsx` gỡ; dải
   trên của cột nội dung còn lại là vùng kéo cửa sổ 52 px, mang nút mở cột + (khi cột thu) bánh răng/theme/ngôn
   ngữ, và chrome của sách khi đang đọc.

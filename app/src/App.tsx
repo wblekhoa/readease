@@ -7,7 +7,7 @@ import { GradientBlur, MenuButton, RailGroup, RailItem, SideColumn, Toolbar } fr
 import { NARROW, STORAGE_KEY as SIDEBAR_KEY, initialSidebar, sidebar, sidebarOpen, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
 import { External, type ExternalEntry } from "./screens/External";
-import { Button, IconButton, Notice, SectionTitle, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
+import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
 import { languageName, SettingsPanel } from "./ui/SettingsPanel";
 import { VoicesPanel } from "./ui/VoicesPanel";
 import {
@@ -293,6 +293,9 @@ export default function App() {
      into (a portal). A callback ref, so the reader re-renders when the
      column comes and goes. */
   const [sideSlot, setSideSlot] = useState<HTMLElement | null>(null);
+  /* And where a home screen's actions stand: the toolbar's trailing
+     cluster, the way a book's stand beside its title. */
+  const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
   /* The books being read, for the column's "Đang đọc" - asked for at start
      and whenever a book is left, since leaving is when progress moves. */
   const [shelf, setShelf] = useState<LibraryBook[]>([]);
@@ -1270,6 +1273,15 @@ export default function App() {
               <SidebarIcon />
             </IconButton>
           )}
+          {/* The screen's name, where a book's title stands when a book is
+              open (owner, 16/09: "title của trang tính năng... bên trái sẽ
+              là nút sidebar"). One headline per screen: the pages no longer
+              repeat it under the toolbar. */}
+          {!(screen === "reader" && openBook) && (
+            <h2 className="m-0 min-w-0 truncate px-1 text-base font-bold">
+              {[...tabs, ...tools].find((item) => item.value === tab)?.label}
+            </h2>
+          )}
           {/* A book pushes its own chrome into the one row the window has;
              back returns to the shelf. Two stacked rows of chrome above a
              page of text is what this buys back. */}
@@ -1401,6 +1413,12 @@ export default function App() {
                 </IconButton>
               </>
             )}
+          {/* A home screen's own actions (the shelf's import and Apple Books
+              buttons) land here through a portal, beside the screen's title
+              the way a book's actions stand beside its. */}
+          {tab === "library" && !openBook && (
+            <span ref={setActionsSlot} className="contents" />
+          )}
           {/* What the column's foot carries - the hub, the appearance, the
               language - is here only while the column is folded: one place
               at a time (HIG 3.16). A book's toolbar takes the appearance
@@ -1441,7 +1459,11 @@ export default function App() {
               onSelection={setSelection}
             />
           ) : (
-            <Library onOpen={(book) => { setPosition(null); setOpenBook(book); }} onPaste={() => setTab("paste")} />
+            <Library
+              onOpen={(book) => { setPosition(null); setOpenBook(book); }}
+              onPaste={() => setTab("paste")}
+              actionsSlot={actionsSlot}
+            />
           )
         ) : tab === "external" ? (
           <External
@@ -1487,8 +1509,7 @@ export default function App() {
           <Transfer />
         ) : tab === "paste" ? (
           <section className="shell-inset flex min-h-0 flex-1 flex-col">
-            <SectionTitle>{text("paste.title")}</SectionTitle>
-            <p className="m-0 mt-0.5 text-sm text-ink-mute">
+            <p className="m-0 text-sm text-ink-mute">
               {text("paste.description")}
             </p>
             <Textarea

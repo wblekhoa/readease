@@ -19,7 +19,6 @@ export const TEXT = {
   "sidebar.lists": ["Danh sách của sách", "The book's lists"],
   "sidebar.notes_tab": ["Ghi chú", "Notes"],
   "sidebar.search_tab": ["Tìm", "Search"],
-  "paste.title": ["Dán nội dung để đọc", "Paste text to read"],
   "paste.description": [
     "Chỉ dùng cho phiên này - không lưu vào thư viện.",
     "For this session only - nothing is added to your library.",
@@ -35,7 +34,6 @@ export const TEXT = {
   "player.pause": ["Tạm dừng", "Pause"],
   "player.resume": ["Tiếp tục", "Resume"],
   "player.stop": ["Dừng", "Stop"],
-  "library.title": ["Thư viện sách", "Book library"],
   "reader.back": ["Quay lại thư viện", "Back to library"],
   "reader.open_failed": [
     "Không mở được sách này. Sách vẫn còn trong thư viện - lần này ứng dụng chưa đọc được nội dung.",
@@ -478,7 +476,6 @@ export const TEXT = {
   "apple.error.too_large": ["Sách này quá lớn để nhập.", "This book is too large to import."],
   "apple.error.book_missing": ["Không thấy tệp của sách này.", "This book's file could not be found."],
   "apple.error.not_in_library": ["Nhập sách trước rồi mới đồng bộ ghi chú.", "Import the book first, then sync its highlights."],
-  "external.title": ["Quét đọc", "Read a selection"],
   "external.steps": [
     "1. Mở ứng dụng có phần chữ bạn muốn nghe.\n2. Bôi đen đúng phần đó.\n3. Nhấn phím tắt; ReadEase sẽ đọc mà không đưa cửa sổ này lên trước.",
     "1. Open whatever app has the text you want to hear.\n2. Select exactly that text.\n3. Press the shortcut; ReadEase reads it without bringing this window forward.",

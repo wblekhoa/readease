@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { engineMessage, text } from "../i18n";
 import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { formatSize, hoverText } from "../ui/format";
-import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
+import { Button, IconButton, Notice } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, DropZone, EmptyState } from "../ui/patterns";
 import { dropHeadline, importNotice, type ImportTally } from "../ui/importFeedback";
 import { orderShelf } from "../ui/libraryOrder";
@@ -173,9 +174,14 @@ type NoticeState = { tone: "ok" | "error"; message: string } | null;
 export function Library({
   onOpen,
   onPaste,
+  actionsSlot,
 }: {
   onOpen: (book: LibraryBook) => void;
   onPaste: () => void;
+  /** Where the shelf's actions stand: the toolbar's trailing cluster, the
+   * way a book's actions stand beside its title (16/09). The shelf owns
+   * the buttons and their state; the toolbar owns the place. */
+  actionsSlot: HTMLElement | null;
 }) {
   const [books, setBooks] = useState<LibraryBook[] | null>(null);
   /** Why the shelf could not be listed - kept apart from `books`, because
@@ -362,15 +368,15 @@ export function Library({
         />
       )}
       <div className={empty ? "flex min-h-0 flex-1 flex-col" : "shell-inset-content"}>
-        <div className="flex items-center gap-3">
-          <SectionTitle className="flex-1">{text("library.title")}</SectionTitle>
-          {books !== null && books.length > 0 && (
-            <>
-              {appleButton}
-              {importButton}
-            </>
-          )}
-        </div>
+        {/* The shelf's name and actions are the toolbar's now (16/09): the
+            name as the screen's title, the actions through this portal. */}
+        {actionsSlot && books !== null && books.length > 0 && createPortal(
+          <>
+            {appleButton}
+            {importButton}
+          </>,
+          actionsSlot,
+        )}
         {loadError && (
           <Notice tone="error" className="mt-2">
             {text("library.load_failed")} ({loadError})
