@@ -293,6 +293,30 @@
   }
 }
 
+/* A control that lives over a row's TAIL and shows only under the cursor:
+   the row keeps no column for it, so the text runs the full width, and
+   when the row is hovered the control comes up on a short gradient blur -
+   the tail of the text softens under it so the glyph has ground of its own
+   (owner, 16/09: "bỏ đi phần space chứa nút xoá... khi hover thì cho nút
+   xoá overlay kèm background gradient-blur"). One blur layer under a
+   gradient mask: at this size the shell's eight-layer ramp would be spent
+   on 24 pixels. Also reachable by keyboard: `focus-visible` shows it. */
+@utility tail-reveal {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  padding: 0.625rem 0.5rem 0 2.25rem;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--color-column) 90%, transparent) 60%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 55%);
+  mask-image: linear-gradient(to right, transparent, black 55%);
+}
+
 @utility hover-wash {
   &:hover {
     background-image: linear-gradient(var(--color-wash), var(--color-wash));

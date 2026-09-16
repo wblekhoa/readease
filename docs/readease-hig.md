@@ -756,7 +756,11 @@ ghi annotation về sau đều phải tuân. Giao thức `annotations.delete {bo
 để phân biệt "vừa xoá" với "vốn không có"; nằm trong nhóm trả lời ngay giữa lúc đang đọc, vì người ta dọn
 ghi chú trong khi nghe. Nút thùng rác **im lặng cho tới khi rê chuột vào hàng** (vẫn tới được bằng bàn
 phím) và **hỏi lại ngay trong hàng** — cùng mẫu với xoá sách khỏi thư viện, câu hỏi nói thẳng hậu quả:
-"Xoá hẳn, đồng bộ lại cũng không quay về?".
+"Xoá hẳn, đồng bộ lại cũng không quay về?". Từ 16/09 nút **không giữ chỗ trong hàng** nữa (chủ: "bỏ đi
+phần space chứa nút xoá… khi hover thì cho nút xoá overlay kèm background gradient-blur"): chữ chạy hết
+bề rộng, nút nằm `absolute` ở đuôi hàng trên một lớp `tail-reveal` (`index.css`): gradient trong suốt →
+màu cột 90 % từ 60 %, `backdrop-filter: blur(6px)` che bằng mask gradient để đuôi chữ mờ dần dưới nút —
+một lớp blur, không phải ramp 8 lớp của thanh chrome (24 px không cần). `focus-visible` vẫn hiện.
 
 **Và nếu engine từ chối thì ghi chú QUAY LẠI trang, kèm lý do** (04/09). Trước đó hàng biến mất khỏi màn
 hình ngay rồi lời gọi engine đi kèm `.catch(console.error)`: engine hỏng là ghi chú **trông như đã xoá mà

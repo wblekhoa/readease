@@ -94,7 +94,7 @@ export function NotesPanel({
                 type="button"
                 ref={item.id === focusId ? focused : undefined}
                 onClick={() => onNavigate(item.segment_id)}
-                className={`group -mx-2 flex gap-2.5 rounded-[var(--ctl-radius)] px-2 py-3 text-left hover-wash ${
+                className={`group relative -mx-2 flex gap-2.5 overflow-hidden rounded-[var(--ctl-radius)] px-2 py-3 text-left hover-wash ${
                   item.id === focusId ? "bg-wash" : ""
                 }`}
               >
@@ -121,13 +121,15 @@ export function NotesPanel({
                 </span>
                 {/* Quiet until the row is under the cursor, but always
                     reachable by keyboard - a destructive action should not
-                    be the first thing the eye lands on. */}
+                    be the first thing the eye lands on. Over the row's
+                    tail, not beside it (owner, 16/09): the text keeps the
+                    whole width, and the glyph comes up on a gradient blur. */}
                 <span
                   role="button"
                   tabIndex={0}
                   aria-label={text("notes.remove")}
                   title={text("notes.remove")}
-                  className="mt-0.5 shrink-0 rounded p-0.5 text-ink-faint opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+                  className="tail-reveal text-ink-faint hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
                   onClick={(event) => { event.stopPropagation(); setConfirming(item.id); }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;
