@@ -654,27 +654,44 @@ def spoken_note(body: str, reading: str) -> str | None:
     return shorten_note(body) or None
 
 
-# In-text citations are for the eye too: "(Taleb, 2007)", "(Nguyễn & Trần,
+# In-text citations are for the eye too: "(Trần, 2019)", "(Nguyễn & Trần,
 # 2019, tr. 12)", "[12]", "[3–5]". Spoken they are a stumble in the middle
 # of the sentence that cites. A parenthesis with a year in it and no verb's
 # worth of words is a citation; a longer aside is left alone.
 _BRACKET_CITATION = re.compile(r"\s?\[\d+(?:\s*[,;–-]\s*\d+)*\](?:,?\s?\[\d+(?:\s*[,;–-]\s*\d+)*\])*")
-_PAREN_CITATION = re.compile(r"\s?\(([^()]{1,80})\)")
+# The word before a citation, captured so a citation that is the OBJECT of
+# the sentence keeps its author: "Theo (Nguyễn, 2019), …" is "Theo Nguyễn",
+# not "Theo," - the citation was the only thing the word had to govern.
+_PAREN_CITATION = re.compile(
+    r"(?P<governor>\b(?:theo|như|xem|according to|see|cf\.)\s+)?\s?\((?P<inside>[^()]{1,80})\)",
+    re.IGNORECASE,
+)
+_CITATION_AUTHOR = re.compile(r"^\s*(?P<author>[^,\d]{1,60}?)\s*,?\s*(?:1[5-9]\d\d|20\d\d)[a-z]?\b")
 
 
 def drop_citations(text: str) -> str:
     """Take in-text citations out of what the voice says."""
 
     def parenthesis(match: re.Match[str]) -> str:
-        inside = match.group(1)
-        if _YEAR.search(inside) and len(inside.split()) <= 8:
-            return ""
-        return match.group(0)
+        inside = match.group("inside")
+        if not (_YEAR.search(inside) and len(inside.split()) <= 8):
+            return match.group(0)
+        governor = match.group("governor")
+        if governor:
+            author = _CITATION_AUTHOR.match(inside)
+            if author:
+                return governor + author.group("author").replace("&", "và" if _looks_vietnamese(governor) else "and")
+            return governor.rstrip()
+        return ""
 
     spoken = _BRACKET_CITATION.sub("", text)
     spoken = _PAREN_CITATION.sub(parenthesis, spoken)
     # A comma or a stop that stood after the citation now follows a space.
     return re.sub(r"\s+([.,;:!?…])", r"\1", spoken)
+
+
+def _looks_vietnamese(word: str) -> bool:
+    return word.strip().lower() in {"theo", "như", "xem"}
 
 
 def _text_without_labels(

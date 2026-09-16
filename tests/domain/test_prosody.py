@@ -676,8 +676,8 @@ class ReferenceReadingTests(unittest.TestCase):
         for body in (
             "Sđd., tr. 45.",
             "Ibid., p. 88.",
-            "Nassim Nicholas Taleb, Fooled by Randomness (New York: Random House, 2001), tr. 12.",
-            "Xem Daniel Kahneman, Tư duy nhanh và chậm, NXB Thế Giới, 2015.",
+            "Trần Văn An, Nhịp của thị trường (Hà Nội: NXB Sông Hồng, 2019), tr. 12.",
+            "Xem Lê Thị Bình, Nghĩ chậm mà chắc, NXB Sông Hồng, 2015.",
             "https://www.example.org/paper.pdf",
             "Tạp chí Khoa học, số 12, 2019, tr. 3–9.",
         ):
@@ -720,15 +720,19 @@ class ReferenceReadingTests(unittest.TestCase):
         from vieneu_reader.domain.prosody import drop_citations, speakable_text
 
         self.assertEqual(
-            drop_citations("Không đoán được (Taleb, 2007) và đã được chứng minh [12], [3–5] nhiều lần (xem chương 3)."),
+            drop_citations("Không đoán được (Trần, 2019) và đã được chứng minh [12], [3–5] nhiều lần (xem chương 3)."),
             "Không đoán được và đã được chứng minh nhiều lần (xem chương 3).",
         )
+        # A citation that is the OBJECT of a word keeps its author: "Theo,"
+        # with nothing after it is a sentence with a hole in it.
         self.assertEqual(
             drop_citations("Theo (Nguyễn & Trần, 2019, tr. 12), điều này đúng."),
-            "Theo, điều này đúng.",
+            "Theo Nguyễn và Trần, điều này đúng.",
         )
+        self.assertEqual(drop_citations("According to (Smith, 2010), it holds."), "According to Smith, it holds.")
+        self.assertEqual(drop_citations("Theo Lê (2019), điều này đúng."), "Theo Lê, điều này đúng.")
         # A parenthesis that is words, not a citation, stays; so does a year in prose.
         self.assertEqual(drop_citations("Ông ấy (một người bạn cũ) đến năm 2007."), "Ông ấy (một người bạn cũ) đến năm 2007.")
         # Off by default in `speakable_text`; on when asked.
-        self.assertIn("(Taleb, 2007)", speakable_text("Thế (Taleb, 2007) đấy."))
-        self.assertNotIn("Taleb", speakable_text("Thế (Taleb, 2007) đấy.", citations=True))
+        self.assertIn("(Trần, 2019)", speakable_text("Thế (Trần, 2019) đấy."))
+        self.assertNotIn("Trần", speakable_text("Thế (Trần, 2019) đấy.", citations=True))

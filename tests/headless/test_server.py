@@ -1985,7 +1985,7 @@ class ProtocolTests(unittest.TestCase):
 
         repository = LibraryRepository(root / "reader.sqlite3")
         book = build_book([
-            ("Một", [("Thị trường không đoán được (Taleb, 2007) đâu 1.", "paragraph"),
+            ("Một", [("Thị trường không đoán được (Trần, 2019) đâu 1.", "paragraph"),
                       ("Câu này có lời bàn 2.", "paragraph")]),
             ("Chú thích", [("Chú thích", "heading"),
                            ("1. Sđd., tr. 45.", "paragraph"),
@@ -2054,7 +2054,7 @@ class ProtocolTests(unittest.TestCase):
         from pathlib import Path
 
         for mode, expected in (
-            ("full", "Thị trường không đoán được (Taleb, 2007) đâu. Nói thêm, Sđd., tr. 45. "
+            ("full", "Thị trường không đoán được (Trần, 2019) đâu. Nói thêm, Sđd., tr. 45. "
                      "Câu này có lời bàn. Nói thêm, Lời bàn thứ nhất. Lời bàn thứ hai. Lời bàn thứ ba."),
             ("off", "Thị trường không đoán được đâu. Câu này có lời bàn."),
         ):

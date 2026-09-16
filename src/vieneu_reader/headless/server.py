@@ -2684,7 +2684,11 @@ class _Session:
             if chosen is not None:
                 try:
                     chime = load_chime(chosen)
-                except (OSError, ValueError):
+                except (OSError, ValueError) as error:
+                    # A missing sound must not stop a reading - but it must
+                    # be said somewhere, or a bundle that lost its chimes
+                    # ships as "the chime just does not play".
+                    print(f"chapter chime {chosen} could not be loaded: {error}", file=sys.stderr)
                     chime = None
         seq = 0
         voiced = 0
@@ -2896,25 +2900,35 @@ def serve(
 
 
 def _self_test() -> int:
-    """The parts of the English voice that only fail in the frozen binary.
+    """The parts of a reading that only fail in the frozen binary.
 
-    The venv suite imports everything happily; a module the bundle left out
-    fails here and nowhere else. No model is needed: the tagger and the
-    out-of-lexicon reader ship in the bundle, and the two together are the
-    imports a packaged English reading depends on. One JSON line on stdout,
-    exit 0 or 1, so the build script can gate on it.
+    The venv suite imports everything happily; a module or a data file the
+    bundle left out fails here and nowhere else. No model is needed: the
+    English tagger and out-of-lexicon reader ship in the bundle, and the
+    two together are the imports a packaged English reading depends on; the
+    three chapter chimes are package data, and a chime that did not ride
+    along is silence nobody is told about (`_speak` swallows the load
+    error, since a missing sound must not stop a reading). One JSON line on
+    stdout, exit 0 or 1, so the build script can gate on it.
     """
+    from vieneu_reader.speech.chimes import CHIME_NAMES, load_chime
     from vieneu_reader.speech.english.fallback import Fallback
     from vieneu_reader.speech.english.tagger import tag
 
     try:
         tagged = tag("The quick brown fox reads.")
         phonemes = Fallback().phonemes("Kowalczyk")
+        chimes = {name: len(load_chime(name)) for name in CHIME_NAMES}
     except Exception as error:  # noqa: BLE001 - the whole point is to report
         print(json.dumps({"ok": False, "error": f"{type(error).__name__}: {error}"}))
         return 1
-    ok = bool(tagged) and all(tag_ for _, tag_, _ in tagged) and bool(phonemes)
-    print(json.dumps({"ok": ok, "tags": [tag_ for _, tag_, _ in tagged], "fallback": phonemes}))
+    ok = (
+        bool(tagged) and all(tag_ for _, tag_, _ in tagged) and bool(phonemes)
+        and all(length > 0 for length in chimes.values())
+    )
+    print(json.dumps({
+        "ok": ok, "tags": [tag_ for _, tag_, _ in tagged], "fallback": phonemes, "chimes": chimes,
+    }))
     return 0 if ok else 1
 
 

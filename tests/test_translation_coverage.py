@@ -149,6 +149,16 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
             r"\b(?:nxb|nhà xuất bản|press|publishing|publishers|university|éditions|editions|verlag|"
             r"books|journal|tạp chí|vol\.|no\.|số\s+\d|tập\s+\d)\b",
         ),
+        # The words that GOVERN a citation ("Theo (Nguyễn, 2019)"), so the
+        # author is kept where dropping the whole parenthesis would leave
+        # "Theo," with a hole after it; and the "và" that replaces the "&"
+        # between two authors, said in the language of the governing word.
+        # Matcher data and a spoken word, never shown.
+        (
+            "domain/prosody.py",
+            r"(?P<governor>\b(?:theo|như|xem|according to|see|cf\.)\s+)?\s?\((?P<inside>[^()]{1,80})\)",
+        ),
+        ("domain/prosody.py", "và"),
         # The figure-label matcher: the words a Vietnamese (or English) book
         # opens a caption with - "Hình 1.1.", "Figure 3". Matcher data for
         # book text, never shown; an English build reading a Vietnamese book

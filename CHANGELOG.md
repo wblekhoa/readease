@@ -34,9 +34,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   The chime is a sound the app carries, never fetched and never billed to
   an API voice.
 - Footnotes are read short by default: a bibliographic note ("Sđd., tr.
-  45", "Taleb, Fooled by Randomness, 2001") is not read at all, a remark
-  keeps its first two sentences, and an in-text citation - "(Taleb,
-  2007)", "[12]" - is skipped. Voice settings › Footnotes switches to
+  45", "Trần, Nhịp của thị trường, 2019") is not read at all, a remark
+  keeps its first two sentences, and an in-text citation - "(Trần,
+  2019)", "[12]" - is skipped. Voice settings › Footnotes switches to
   reading them whole, or to none. The cost estimate under a paid voice
   counts what is actually read.
 

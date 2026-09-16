@@ -663,7 +663,7 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   `note_reading` ∈ {full, short, off}, mặc định **short**: thân chú thích là *thư mục* (Sđd/Ibid/op. cit.,
   "tr."/"p."/"pp.", năm bốn số + NXB/Press, URL/DOI/ISBN, số tạp chí) → **không đọc**; thân là *bình luận* →
   đọc **2 câu đầu hoặc 40 chữ** rồi "…"; `full` đọc nguyên văn; `off` bỏ mọi chú thích. Trích dẫn trong
-  ngoặc "(Taleb, 2007)", "(Nguyễn & Trần, 2019, tr. 12)", "[12]", "[3–5]" **không đọc** ở mọi chế độ trừ
+  ngoặc "(Trần, 2019)", "(Nguyễn & Trần, 2019, tr. 12)", "[12]", "[3–5]" **không đọc** ở mọi chế độ trừ
   `full`; ngoặc là chữ ("(một người bạn cũ)") và năm trong câu giữ nguyên. Chữ trên trang không đổi; ước
   tính chi phí giọng API đi qua cùng hàm nên tính đúng chữ được đọc.
 - **Ký hiệu liệt kê "(a) … (b) …" nói thành chữ cái kèm nghỉ** — chủ chọn bằng tai 02/09 giữa 4 bản render cùng một câu (giữ nguyên · xoá · "một là/hai là" · chữ cái + nghỉ): "khớp với a, nhiệm vụ hiện tại, hoặc b, sở thích cá nhân". Nghỉ đặt TRƯỚC liên từ dẫn vào ký hiệu (hoặc/hay/và/rồi/cũng như). Tham chiếu "mục (b)" → "mục b", không nghỉ. Chỉ chữ thường đơn có khoảng trắng phía trước; "book(s)", "(ii)", "(1)" không đụng (thư viện: 31 ký hiệu, 0 chữ số/hoa/tham chiếu). Test chốt = chính câu chủ duyệt, so khớp từng ký tự với bản render đã nghe.

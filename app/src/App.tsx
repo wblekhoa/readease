@@ -408,7 +408,12 @@ export default function App() {
     return () => {
       live = false;
     };
-  }, [openBook, position, voiceId, scope, content]);
+    // `noteReading` is in the list because the engine prices what it would
+    // actually say: switching footnotes from short to full adds their words
+    // to the bill. The setting is written before this runs (`remember` is
+    // synchronous with the choice, the effect follows the render), and the
+    // engine answers requests in the order they arrive.
+  }, [openBook, position, voiceId, scope, content, noteReading]);
 
   const changeScope = useCallback((chapters: number | null) => {
     setScope(chapters);
