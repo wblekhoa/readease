@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The voice settings panel no longer grows scrollbars when the chosen
+  voice has a long name. The name is clipped inside its control, with an
+  ellipsis; the panel scrolls down when the window is shorter than it, and
+  never sideways.
+
 ## 0.1.3
 
 English books read by a voice on this Mac, and the choice of what to

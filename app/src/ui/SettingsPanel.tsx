@@ -151,7 +151,9 @@ export function SettingsPanel({
           <CloseIcon />
         </IconButton>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
+      {/* Sideways never: a floating panel scrolls down when the window is
+          shorter than it, and nothing else (HIG 3.5, 16/09). */}
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 pb-5">
         <div className="mt-3">
           <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">{text("settings.language")}</p>
           <SegmentedControl
