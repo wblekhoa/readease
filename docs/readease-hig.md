@@ -862,7 +862,10 @@ ngại đó.
   bị ĐẨY, không có gì đè lên gì. Không dùng cho bảng thiết lập (vẫn popover neo nút, §3.9d); màn đầu tiên
   (Setup) không có cột.
 - **Anatomy** (`patterns.tsx::SideColumn`): gốc app = `flex` hàng `[aside][content]`; *aside* rộng **240**, nền
-  `band`, viền phải hairline `edge`, ba tầng — *đầu* 52 px là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
+  **màu nền trang** (`--app-column` = `--app-ground`: trắng ở sáng — chủ 16/09 "background sidebar là màu
+  trắng" — n00 ở tối; bản n05 xám chỉ sống một giờ), viền phải hairline `edge` là thứ duy nhất ngăn cột với
+  trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
+  đo 16/09); ba tầng — *đầu* 52 px là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
   đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` {20, 20}) và
   nút thu/mở ở mép phải; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
   `ink`, luật state layer §2) rồi nhóm **Đang đọc** (tối đa 5 sách có tiến độ, thứ tự `orderShelf`, bìa nhỏ +
@@ -884,7 +887,10 @@ ngại đó.
   `data-popover-trigger` nữa); (5) chọn chương / ghi chú / kết quả tìm → nhảy, cột GIỮ NGUYÊN (một cột không
   biến mất khi được dùng); (6) không Escape, không bấm-ngoài; (7) toolbar mang bánh răng / theme / ngôn ngữ
   CHỈ khi cột thu — cột mang gì thì toolbar bỏ nấy; tab và công cụ rời hẳn toolbar; Reader giữ back · ▤ ·
-  ghi chú · tên · ⓘ · AA · tìm.
+  ghi chú · tên · ⓘ · AA · tìm; (8) **tối ưu theo layout** (chủ 16/09: "UI đọc sách thì sẽ không cần icon
+  sidebar"): nút mở cột chỉ có ở toolbar TRANG CHỦ khi cột thu — trong sách, ▤ / ghi chú / tìm đã là ba nút
+  mở cột đúng danh sách, thêm một nút mở chung là thừa; và toolbar sách khi cột thu chỉ nhận lại nút
+  sáng/tối (luật 06/09: cạnh AA), không nhận bánh răng lẫn ngôn ngữ — chúng cách một lần mở cột.
 - **Content**: nhãn điều hướng = nhãn tab cũ (`nav.*`); nhóm "Đang đọc" (`sidebar.reading`); tab sách "Mục lục"
   · "Ghi chú" · "Tìm"; nút thu/mở `aria-label` "Thu cột bên" / "Mở cột bên", tooltip kèm ⌃⌘S.
 - **Don't**: cột trên màn Setup · cột che thanh player (player nằm trong cột nội dung) · hai nơi cùng mang

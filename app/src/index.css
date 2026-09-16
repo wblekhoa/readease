@@ -44,13 +44,15 @@
      has no room to lighten further without meeting the desk. */
   --app-rail: var(--neutral-n10);
   --app-panel: var(--neutral-n10);
-  /* The side column (HIG 3.16): one step off the desk in BOTH themes - n05
-     is a whisper of grey beside the white page, and in dark the first rung
-     of the ladder (desk n00, column n05, paper n10). Chosen so the rows'
-     own states still read on it: `band` (the "you are here" of a chapter)
-     is n10/n20, one step above the column; `wash` is an alpha and reads on
-     anything. On `band` itself the active row vanished (measured 16/09). */
-  --app-column: var(--neutral-n05);
+  /* The side column (HIG 3.16): the desk's own colour - white in light
+     (owner, 16/09: "background sidebar là màu trắng"), near-black in dark -
+     with the hairline between it and the page doing the separating, the
+     way the white desk and its paper already separate by lines alone. The
+     rows' own states read on it: `band` (a chapter's "you are here") is
+     n10/n20, a step above; `wash` is an alpha and reads on anything. On
+     `band` itself the active row vanished (measured 16/09), and the n05
+     grey the column had for an hour was what the owner asked to lose. */
+  --app-column: var(--app-ground);
   /* A field/card stroke is a FALLBACK, not decoration: it exists only where
      the fill cannot separate the surface by itself. On the white desk, paper
      IS the desk colour, so the line is all a text box has. In dark the ladder

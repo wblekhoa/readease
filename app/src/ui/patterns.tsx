@@ -750,7 +750,10 @@ export function SideColumn({
   return (
     <aside
       aria-label={text("sidebar.label")}
-      aria-hidden={!open}
+      // Folded, the column is off the page for the keyboard and the screen
+      // reader too, not only for the eye: `inert` takes its controls out of
+      // the tab order (WebKit has had it since 16.4).
+      inert={!open || undefined}
       className={`relative shrink-0 overflow-hidden bg-column transition-[width] duration-200 ease-out motion-reduce:transition-none ${
         open ? "w-60 border-r border-edge" : "w-0"
       }`}
@@ -759,7 +762,7 @@ export function SideColumn({
         {/* The lights live in the first 76px of this strip (x 20-72); the
             switch takes the far end, where Codex puts it. */}
         <div data-tauri-drag-region className="flex h-[52px] shrink-0 items-center justify-end pl-[76px] pr-2.5">
-          <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel} tabIndex={open ? 0 : -1}>
+          <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
             <SidebarIcon />
           </IconButton>
         </div>

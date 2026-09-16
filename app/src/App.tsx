@@ -1141,6 +1141,15 @@ export default function App() {
 
   /* The column's foot: what the app carries everywhere - the hub, the
      appearance, the language (owner, 02/09, moved here 16/09). */
+  const themeSwitch = (
+    <IconButton
+      onClick={toggleTheme}
+      aria-label={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
+      title={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
+    >
+      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+    </IconButton>
+  );
   const chrome = (
     <>
       <IconButton
@@ -1152,13 +1161,7 @@ export default function App() {
       >
         <ReadingSettingsIcon />
       </IconButton>
-      <IconButton
-        onClick={toggleTheme}
-        aria-label={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
-        title={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
-      >
-        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-      </IconButton>
+      {themeSwitch}
       <Select
         pill
         aria-label={text("aria.language")}
@@ -1252,19 +1255,20 @@ export default function App() {
         leading={
           <div className="flex min-w-0 items-center gap-1">
           {/* Folded, the column's head is gone and the Mac's window buttons
-              sit over this corner instead: room for them, then the switch
-              that brings the column back - Codex's own arrangement. */}
-          {!sideOpen && (
-            <>
-              <span aria-hidden="true" className="w-[52px] shrink-0" />
-              <IconButton
-                onClick={() => dispatchSide({ type: "toggle" })}
-                aria-label={text("sidebar.open")}
-                title={text("sidebar.open")}
-              >
-                <SidebarIcon />
-              </IconButton>
-            </>
+              sit over this corner instead: room for them, then - on the home
+              screens - the switch that brings the column back, Codex's own
+              arrangement. A book's toolbar has no such switch (owner, 16/09:
+              "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
+              search buttons each unfold the column on their own list. */}
+          {!sideOpen && <span aria-hidden="true" className="w-[52px] shrink-0" />}
+          {!sideOpen && !(screen === "reader" && openBook) && (
+            <IconButton
+              onClick={() => dispatchSide({ type: "toggle" })}
+              aria-label={text("sidebar.open")}
+              title={text("sidebar.open")}
+            >
+              <SidebarIcon />
+            </IconButton>
           )}
           {/* A book pushes its own chrome into the one row the window has;
              back returns to the shelf. Two stacked rows of chrome above a
@@ -1399,15 +1403,10 @@ export default function App() {
             )}
           {/* What the column's foot carries - the hub, the appearance, the
               language - is here only while the column is folded: one place
-              at a time (HIG 3.16). */}
-          {!sideOpen && (
-            <>
-              {screen === "reader" && openBook && (
-                <span aria-hidden="true" className="mx-1 h-5 w-px bg-edge" />
-              )}
-              {chrome}
-            </>
-          )}
+              at a time (HIG 3.16). A book's toolbar takes the appearance
+              switch alone (owner, 06/09: beside AA; 16/09: "tối ưu UI tuỳ
+              layout") - the hub and the language are one unfold away. */}
+          {!sideOpen && (screen === "reader" && openBook ? themeSwitch : chrome)}
           </>
         }
       />
