@@ -6,6 +6,7 @@ import { readingFault, faultKey } from "./ui/voiceFault";
 import { GradientBlur, MenuButton, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
 import { NARROW, STORAGE_KEY as SIDEBAR_KEY, initialSidebar, sidebar, sidebarOpen, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
+import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
 import { languageName, SettingsPanel } from "./ui/SettingsPanel";
@@ -1263,7 +1264,7 @@ export default function App() {
               arrangement. A book's toolbar has no such switch (owner, 16/09:
               "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
               search buttons each unfold the column on their own list. */}
-          {!sideOpen && <span aria-hidden="true" className="w-[52px] shrink-0" />}
+          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[52px] shrink-0" />}
           {!sideOpen && !(screen === "reader" && openBook) && (
             <IconButton
               onClick={() => dispatchSide({ type: "toggle" })}

@@ -1182,6 +1182,8 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
 
 const unanswered = new Set<string>();
 
+// The page is in a browser, not the window: no window buttons to make room for (ui/host.ts).
+window.__READEASE_MOCK__ = true;
 window.__TAURI_INTERNALS__ = {
   invoke,
   /* `getCurrentWebview()` reads the window and webview labels from here

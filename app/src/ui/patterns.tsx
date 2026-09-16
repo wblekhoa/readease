@@ -10,6 +10,7 @@ import { hoverText } from "./format";
 import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
 import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SidebarIcon } from "./icons";
+import { WINDOW_BUTTONS_IN_PAGE } from "./host";
 
 /** A row of controls that must share one corner.
  *
@@ -759,9 +760,13 @@ export function SideColumn({
       }`}
     >
       <div className="flex h-full w-60 flex-col">
-        {/* The lights live in the first 76px of this strip (x 20-72); the
+        {/* The lights live in the first 76px of this strip (x 20-72) - in
+            the window; a browser has none, and leaves no hole for them. The
             switch takes the far end, where Codex puts it. */}
-        <div data-tauri-drag-region className="flex h-[52px] shrink-0 items-center justify-end pl-[76px] pr-2.5">
+        <div
+          data-tauri-drag-region
+          className={`flex h-[52px] shrink-0 items-center justify-end pr-2.5 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[76px]" : "pl-3"}`}
+        >
           <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
             <SidebarIcon />
           </IconButton>
