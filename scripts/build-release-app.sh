@@ -182,7 +182,13 @@ elif [[ -n "$developer_id" ]]; then
   # The gate that used to be only a report: a Developer ID build has to be
   # accepted by Gatekeeper outright, or the whole point was missed.
   echo "==> Gatekeeper"
-  if ! spctl -a -t exec -vv "$app" 2>&1 | tee /dev/stderr | grep -q "accepted"; then
+  # Read the verdict into a variable, then judge it. Piped through
+  # `tee | grep -q`, the grep closed the pipe on its first match, tee lost
+  # the race and died on the write, and pipefail turned an "accepted" into
+  # GATEKEEPER_FAILED (0.1.5, 16/09/2026 - one build in three).
+  verdict="$(spctl -a -t exec -vv "$app" 2>&1 || true)"
+  printf '%s\n' "$verdict" | sed 's/^/    /'
+  if ! grep -q "accepted" <<<"$verdict"; then
     echo "GATEKEEPER_FAILED: a notarized bundle should be accepted; not packaging" >&2
     exit 1
   fi
