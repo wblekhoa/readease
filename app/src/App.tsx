@@ -1211,20 +1211,36 @@ export default function App() {
       >
         {inBook ? (
           <>
+            {/* Compact (owner, 16/09): the list on show carries its name, the
+                other two fold to their glyph - the same glyphs their
+                toolbar switches wear. */}
             <SegmentedControl
+              compact
               className="mx-3 mb-3 shrink-0"
               label={text("sidebar.lists")}
               value={side.tab}
               onChange={(next) => dispatchSide({ type: "show", tab: next })}
               options={[
-                { value: "contents" as SidebarTab, label: text("reader.toc_title") },
+                {
+                  value: "contents" as SidebarTab,
+                  icon: <BookClosedIcon />,
+                  label: text("reader.toc_title"),
+                  ariaLabel: text("reader.toc_title"),
+                },
                 {
                   value: "notes" as SidebarTab,
+                  icon: <NoteIcon />,
                   label: (pageInfo?.annotations ?? 0) > 0
                     ? `${text("sidebar.notes_tab")} · ${pageInfo?.annotations}`
                     : text("sidebar.notes_tab"),
+                  ariaLabel: text("notes.count", { count: pageInfo?.annotations ?? 0 }),
                 },
-                { value: "search" as SidebarTab, label: text("sidebar.search_tab") },
+                {
+                  value: "search" as SidebarTab,
+                  icon: <SearchIcon />,
+                  label: text("sidebar.search_tab"),
+                  ariaLabel: text("reader.search"),
+                },
               ]}
             />
             {/* The reader fills this through a portal; the slot is handed

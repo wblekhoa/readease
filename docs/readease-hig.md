@@ -884,8 +884,10 @@ ngại đó.
   đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` {20, 20}) và
   nút thu/mở ở mép phải; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
   `ink`, luật state layer §2) rồi nhóm **Đang đọc** (tối đa 5 sách có tiến độ, thứ tự `orderShelf`, bìa nhỏ +
-  tên + chương; engine chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ); trong sách: `SegmentedControl`
-  Mục lục | Ghi chú (đếm) | Tìm rồi danh sách của tab đó — Reader vẫn là CHỦ ba danh sách và render chúng
+  tên + chương; engine chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ); trong sách: `SegmentedControl compact`
+  — mỗi tab mang glyph của nút toolbar tương ứng (▤ · ghi chú · kính lúp), **tab đang mở mới có nhãn** ("Ghi chú · 6"),
+  hai tab kia chỉ còn icon (chủ 16/09: "khi active thì mới có label, còn bình thường sẽ là dạng icon only" — rãnh 216
+  px không đủ cho ba nhãn, "Tìm" từng bị cắt) rồi danh sách của tab đó — Reader vẫn là CHỦ ba danh sách và render chúng
   vào slot của cột bằng portal (state chương, scroll-spy, xoá ghi chú không rời Reader); *chân* — bánh răng
   Giọng đọc & mô hình · sáng/tối · ngôn ngữ, cùng một hàng. *content* = cột nội dung `relative flex-1 min-w-0`,
   header/main/footer vẫn là overlay bên trong nó, inset đo như cũ; dải trên 52 px cũng là vùng kéo. Cột thu
