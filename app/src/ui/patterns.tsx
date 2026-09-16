@@ -825,7 +825,7 @@ export function SideColumn({
             switch takes the far end, where Codex puts it. */}
         <div
           data-tauri-drag-region
-          className={`flex h-[52px] shrink-0 items-center justify-end pr-2.5 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[76px]" : "pl-3"}`}
+          className={`flex h-[52px] shrink-0 items-center justify-end pr-3 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[76px]" : "pl-4"}`}
         >
           <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
             <SidebarIcon />
@@ -833,7 +833,7 @@ export function SideColumn({
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         {foot && (
-          <div className="flex shrink-0 items-center gap-1 border-t border-edge px-3 py-2">{foot}</div>
+          <div className="flex shrink-0 items-center gap-2 border-t border-edge px-4 py-3">{foot}</div>
         )}
       </div>
     </aside>
@@ -859,7 +859,7 @@ export function RailItem({
     <button
       onClick={onPress}
       aria-current={active ? "page" : undefined}
-      className={`flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-2.5 py-1.5 text-left text-sm transition-colors ${
+      className={`flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-3 py-2 text-left text-sm transition-colors ${
         active ? "bg-wash text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"
       }`}
     >
@@ -874,8 +874,8 @@ export function RailItem({
  * its Pinned and Recents: small, quiet, above the rows. */
 export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="pt-4">
-      <p className="m-0 px-2.5 pb-1 text-xs font-semibold text-ink-mute">{title}</p>
+    <div className="pt-6">
+      <p className="m-0 px-3 pb-2 text-xs font-semibold text-ink-mute">{title}</p>
       {children}
     </div>
   );

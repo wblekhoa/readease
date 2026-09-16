@@ -56,11 +56,11 @@ export function NotesPanel({
   return (
     <div className="mark-sample flex min-h-0 flex-1 flex-col">
       {error && (
-        <Notice tone="error" className="mx-3 mb-2 shrink-0">
+        <Notice tone="error" className="mx-4 mb-3 shrink-0">
           {text("notes.remove_failed")} ({error})
         </Notice>
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
       {groups.length === 0 ? (
         <EmptyState
           icon={<HighlightIcon className="h-8 w-8" />}

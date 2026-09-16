@@ -841,7 +841,7 @@ export function Reader({
    * narrow no longer eats the page's width). A chapter jumps; the column
    * stays, because a column is not a thing that disappears when used. */
   const contents = showToc && (
-    <nav aria-label={text("reader.toc_title")} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+    <nav aria-label={text("reader.toc_title")} className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         {opened.book.chapters.map((chapter, index) => (
           <ListRow
             key={chapter.id}

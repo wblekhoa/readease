@@ -1216,7 +1216,7 @@ export default function App() {
                 toolbar switches wear. */}
             <SegmentedControl
               compact
-              className="mx-3 mb-3 shrink-0"
+              className="mx-4 mb-4 shrink-0"
               label={text("sidebar.lists")}
               value={side.tab}
               onChange={(next) => dispatchSide({ type: "show", tab: next })}
@@ -1248,8 +1248,8 @@ export default function App() {
             <div ref={setSideSlot} className="flex min-h-0 flex-1 flex-col" />
           </>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-            <nav aria-label={text("aria.workspace")} className="flex flex-col gap-0.5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <nav aria-label={text("aria.workspace")} className="flex flex-col gap-1">
               {[...tabs, ...tools].map((item) => (
                 <RailItem
                   key={item.value}

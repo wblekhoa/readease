@@ -37,7 +37,7 @@ export function SearchPanel({
      next one is one click away - the way Books does it. */
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-3 pb-3">
+      <div className="shrink-0 px-4 pb-4">
         <Input
           autoFocus
           type="search"
@@ -60,7 +60,7 @@ export function SearchPanel({
                 : text("reader.search_count", { n: hits.length })}
         </p>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         {hits.map((hit, index) => (
           <ListRow
             key={`${hit.segmentId}:${index}`}
