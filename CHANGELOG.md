@@ -4,7 +4,10 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.4
+
+Two fixes: the voice no longer goes silent until a relaunch, and long voice
+names stay inside the settings panel. Installs over 0.1.3.
 
 - The voice no longer goes silent until a relaunch after a model download
   or two quick presses. A reading asked for while a model was downloading
