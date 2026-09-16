@@ -26,6 +26,19 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   foot, and move to the toolbar while it is folded.
 - The app opens on the Library. An empty shelf still offers the paste
   screen with one button.
+- A heading sounds like one: read 8 % slower and 2 dB louder than the
+  paragraphs around it, with a longer breath before (1.0 s) and after
+  (0.85 s). The text on the page does not change.
+- A short chime opens each chapter after the first - marimba by default,
+  harp or piano instead, or off - under Voice settings › Chapter chime.
+  The chime is a sound the app carries, never fetched and never billed to
+  an API voice.
+- Footnotes are read short by default: a bibliographic note ("Sđd., tr.
+  45", "Taleb, Fooled by Randomness, 2001") is not read at all, a remark
+  keeps its first two sentences, and an in-text citation - "(Taleb,
+  2007)", "[12]" - is skipped. Voice settings › Footnotes switches to
+  reading them whole, or to none. The cost estimate under a paid voice
+  counts what is actually read.
 
 ## 0.1.5
 

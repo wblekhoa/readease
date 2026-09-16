@@ -9,7 +9,10 @@ import { orderShelf } from "./ui/libraryOrder";
 import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
-import { languageName, SettingsPanel } from "./ui/SettingsPanel";
+import {
+  CHIMES, DEFAULT_CHIME, DEFAULT_NOTE_READING, NOTE_READINGS, languageName, SettingsPanel,
+  type Chime, type NoteReading,
+} from "./ui/SettingsPanel";
 import { VoicesPanel } from "./ui/VoicesPanel";
 import {
   canSpeak,
@@ -149,6 +152,10 @@ export default function App() {
    * MODEL can only be brought up to date against the full catalogue. */
   const storedShortlist = useRef<{ value: string | null; touched: boolean }>({ value: null, touched: false });
   const [rate, setRate] = useState(1.0);
+  /** The sound between chapters and how much of a footnote is read - the
+   * engine's own settings, mirrored here for the panel (owner, 16/09). */
+  const [chime, setChime] = useState<Chime>(DEFAULT_CHIME);
+  const [noteReading, setNoteReading] = useState<NoteReading>(DEFAULT_NOTE_READING);
   /** The voices worth offering mid-reading, in the person's own words:
    * twenty is a catalogue, this is the handful they switch between. */
   const [shortlist, setShortlist] = useState<string[]>([]);
@@ -470,6 +477,14 @@ export default function App() {
     setRate(value);
     remember("rate", value);
   }, [remember]);
+  const rememberChime = useCallback((value: Chime) => {
+    setChime(value);
+    remember("chapter_chime", value);
+  }, [remember]);
+  const rememberNoteReading = useCallback((value: NoteReading) => {
+    setNoteReading(value);
+    remember("note_reading", value);
+  }, [remember]);
   const refreshKeys = useCallback(() => {
     for (const provider of PROVIDERS) {
       void invoke<{ result: { set?: boolean } }>("engine_request", {
@@ -709,6 +724,26 @@ export default function App() {
       .then((reply) => {
         const saved = Number(reply.result.value);
         if (RATES.includes(saved)) setRate(saved);
+      })
+      .catch(() => undefined);
+    // The engine treats an unwritten setting as the default, never as
+    // "off"; the panel shows the same: an unknown value leaves the default.
+    invoke<{ result: { value: string | null } }>("engine_request", {
+      method: "config.get",
+      params: { key: "chapter_chime" },
+    })
+      .then((reply) => {
+        const saved = reply.result.value;
+        if (CHIMES.includes(saved as Chime)) setChime(saved as Chime);
+      })
+      .catch(() => undefined);
+    invoke<{ result: { value: string | null } }>("engine_request", {
+      method: "config.get",
+      params: { key: "note_reading" },
+    })
+      .then((reply) => {
+        const saved = reply.result.value;
+        if (NOTE_READINGS.includes(saved as NoteReading)) setNoteReading(saved as NoteReading);
       })
       .catch(() => undefined);
     invoke<{ result: { value: string | null } }>("engine_request", {
@@ -2014,6 +2049,10 @@ export default function App() {
           onBudget={changeBudget}
           onVoice={switchVoice}
           onRate={rememberRate}
+          chime={chime}
+          noteReading={noteReading}
+          onChime={rememberChime}
+          onNoteReading={rememberNoteReading}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
           onOpenHub={() => { setSettingsOpen(false); setHubOpen(true); }}
           /* Just close. This used to re-list the catalogue on the way out,

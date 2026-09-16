@@ -50,6 +50,16 @@ import {
 
 export type { Voice };
 
+/** The sound between chapters and how much of a footnote is read - the
+ * engine's `chapter_chime` and `note_reading` settings, listed here in
+ * the order the select shows them (owner, 16/09; HIG 5.1). */
+export const CHIMES = ["off", "marimba", "harp", "piano"] as const;
+export type Chime = (typeof CHIMES)[number];
+export const NOTE_READINGS = ["short", "full", "off"] as const;
+export type NoteReading = (typeof NOTE_READINGS)[number];
+export const DEFAULT_CHIME: Chime = "marimba";
+export const DEFAULT_NOTE_READING: NoteReading = "short";
+
 export function languageName(language: ReadingLanguage): string {
   return text(language === "vi" ? "language.vi" : "language.en");
 }
@@ -76,6 +86,10 @@ export function SettingsPanel({
   onBudget,
   onVoice,
   onRate,
+  chime,
+  noteReading,
+  onChime,
+  onNoteReading,
   onManageVoices,
   onOpenHub,
   onClose,
@@ -111,6 +125,10 @@ export function SettingsPanel({
   onBudget: (usd: number | null) => void;
   onVoice: (voiceId: string) => void;
   onRate: (rate: number) => void;
+  chime: Chime;
+  noteReading: NoteReading;
+  onChime: (chime: Chime) => void;
+  onNoteReading: (reading: NoteReading) => void;
   onManageVoices: () => void;
   onOpenHub: () => void;
   onClose: () => void;
@@ -299,6 +317,34 @@ export function SettingsPanel({
                   <Select value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
                     {rates.map((value) => (
                       <option key={value} value={value}>{value}×</option>
+                    ))}
+                  </Select>
+                }
+              />
+              {/* How the document SOUNDS beyond the voice and its speed:
+                  the chime between chapters and how much of a footnote is
+                  read. Each subtitle is the rule the choice sets, so the
+                  row explains itself (HIG 5.1). Neither is locked while
+                  reading: the engine reads both at the next press of
+                  Read, which is when a change can take effect anyway. */}
+              <GroupedRow
+                title={text("settings.chime")}
+                subtitle={text("settings.chime_hint")}
+                trailing={
+                  <Select value={chime} onChange={(event) => onChime(event.target.value as Chime)}>
+                    {CHIMES.map((value) => (
+                      <option key={value} value={value}>{text(`settings.chime_${value}`)}</option>
+                    ))}
+                  </Select>
+                }
+              />
+              <GroupedRow
+                title={text("settings.notes")}
+                subtitle={text(`settings.notes_${noteReading}_hint`)}
+                trailing={
+                  <Select value={noteReading} onChange={(event) => onNoteReading(event.target.value as NoteReading)}>
+                    {NOTE_READINGS.map((value) => (
+                      <option key={value} value={value}>{text(`settings.notes_${value}`)}</option>
                     ))}
                   </Select>
                 }

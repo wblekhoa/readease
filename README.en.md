@@ -49,6 +49,7 @@ Documents, progress, notes and downloaded voices live in `~/Library/Application 
 
 - **Library:** import your text-based PDFs and reflowable EPUBs, save reading progress and continue later.
 - **In-app reader:** choose a chapter, read continuously by paragraph or read only selected text.
+- **Headings, chapters and footnotes that sound right:** a heading is read a touch slower and louder with a breath before and after; a new chapter opens with a short chime (marimba, harp or piano - or none, under **Voice settings**); a bibliographic footnote ("Ibid., p. 45") is not read, a remark keeps its first two sentences, and an in-text citation "(Taleb, 2007)" is skipped - switch to reading them whole, or none, in the same place. The text on the page does not change.
 - **EPUB figures:** show meaningful local raster images in reading order, number them as **Figure 1, Figure 2…**, and add a spoken cue at the correct position.
 - **Paste text:** paste up to 100,000 characters while preserving paragraph boundaries; long passages are split into manageable playback parts.
 - **Read from Apple Books:** select text and press the read shortcut (**Control-Option-Command-R** by default, changeable in the **Read books** view) without bringing ReadEase to the foreground.

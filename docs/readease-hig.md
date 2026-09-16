@@ -258,7 +258,9 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
 - **Anatomy (bảng giọng đọc)**: `SegmentedControl` "Ngôn ngữ đọc" Tiếng Việt / Tiếng Anh ở đầu;
   `SuggestionDot` trên tuỳ chọn của ngôn ngữ **nội dung** khi khác tab; `Notice tone="info" action=` một câu
   + một nút ("Đọc bằng tiếng Anh" / "Thêm giọng tiếng Việt"); nhóm Giọng (select gộp `optgroup` Trên máy /
-  API · Quản lý giọng · Tốc độ · giới hạn chi khi giọng trả phí); nhóm Mô hình & API = một hàng tóm tắt +
+  API · Quản lý giọng · Tốc độ · **Âm hiệu chương** (Tắt / Marimba / Harp / Piano) · **Chú thích** (Rút gọn /
+  Đầy đủ / Bỏ qua) — hai `GroupedRow` + `Select` như Tốc độ, subtitle một dòng nói luật (§5.1), ghi thẳng
+  vào engine qua `config.set` và nhớ qua khởi động · giới hạn chi khi giọng trả phí); nhóm Mô hình & API = một hàng tóm tắt +
   "Quản lý…" mở sheet. Tab không có giọng nào: hàng "Chưa có giọng … trên máy này" + hàng mô hình của
   tiếng đó (tải ngay tại chỗ) + nút mở sheet.
 - **Behavior**: đổi tab = đổi sang giọng đã dùng cho tiếng đó (`voice_vi`/`voice_en`), không có thì giọng
@@ -644,6 +646,26 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   nguyên. Gạch MỞ lời thoại (đầu văn bản hoặc ngay sau câu đã kết) không cắt lần nữa.
 - **Số chú thích siêu chỉ số không đọc** — "Tang.³", "người³" là số chú thích cho MẮT; giọng đọc thành "ba" dính vào từ trước là rác. Quét thư viện 02/09: 6/6 siêu chỉ số đều là chú thích, 0 phép toán. Trang giữ nguyên ký hiệu; chỉ lời nói bỏ. Siêu chỉ số đứng ngay sau CHỮ SỐ là luỹ thừa ("10³") nên giữ (`drop_note_marks`, chỉ trong `speakable_text`). **Lỗ đã biết**: đơn vị đo sau chữ cái ("m²", "km²") sẽ bị coi là chú thích — thư viện hiện 0 ca (quét 02/09), gặp thì mới quyết bằng tai, không mở rộng trước.
 - **Tiêu đề đánh số có số 0 đệm nói số, không nói số 0** — "01"…"09" (9 tiêu đề trong 203 tiêu đề số của sách 100 nguyên tắc của chủ). Chứng minh 02/09 trên sách thật, engine cũ → mới: "01" 0,72s → 0,48s, "02" 0,88s → 0,56s — số 0 đúng là được đọc ("không"), bản mới chỉ nói số. Chỉ TIÊU ĐỀ, chỉ số 0 dẫn đầu ngay trước chữ số ("0", "0.5 giây" giữ; đoạn văn "01/09" giữ). Trang giữ "01".
+- **Tiêu đề nghe khác đoạn văn** (chủ, 16/09: "đổi giọng điệu hoặc đọc to hơn một xíu các tiêu đề, thêm
+  ngắt nghỉ phù hợp trước và sau"). Hai giọng trên máy không đổi được cao độ, nên tiêu đề đọc **chậm hơn 8 %**
+  (`HEADING_RATE` 0,92 nhân với tốc độ đang chọn) và **to hơn 2 dB** (`HEADING_GAIN` 1,26, kẹp ±1), nghỉ
+  **1 000 ms trước / 850 ms sau** (đoạn văn 800/700). Áp cho MỌI heading vì `Segment` chưa có cấp; áp SAU
+  cache câu (cache lưu PCM gốc của giọng), nên đổi số không phát lại bản cũ và không bump `READING_REVISION`.
+  Không có tick âm cho tiêu đề: chủ nghe bốn mẫu 16/09 và không chọn.
+- **Chuyển chương có nhạc chờ** (chủ, 16/09: "sound effect dạng nhạc chờ ngắn giữa các chương"). Ba âm sinh
+  bằng ElevenLabs rồi hạ mono 48 kHz, −14 dBFS, đóng vào gói `speech/chimes/` (marimba 0,9 s · harp 2 s ·
+  piano 2 s; nguồn ghi ở `THIRD_PARTY_NOTICES.md`, audit công khai ghim hash). Thay chỗ 1 200 ms im lặng
+  bằng **300 ms → âm → 500 ms**; chỉ khi ĐỔI chương giữa bài, không ở câu đầu; phát như khung im lặng
+  (`from_voice=False`: không stretch theo tốc độ, không vào cache, không tính tiền giọng API). Setting
+  `chapter_chime` ∈ {off, marimba, harp, piano}, mặc định **marimba** (ngắn nhất); setting chưa từng ghi =
+  mặc định, không phải tắt.
+- **Chú thích không lê thê** (chủ, 16/09: "tối ưu nội dung khi đọc các ref để tránh dài dòng"). Setting
+  `note_reading` ∈ {full, short, off}, mặc định **short**: thân chú thích là *thư mục* (Sđd/Ibid/op. cit.,
+  "tr."/"p."/"pp.", năm bốn số + NXB/Press, URL/DOI/ISBN, số tạp chí) → **không đọc**; thân là *bình luận* →
+  đọc **2 câu đầu hoặc 40 chữ** rồi "…"; `full` đọc nguyên văn; `off` bỏ mọi chú thích. Trích dẫn trong
+  ngoặc "(Taleb, 2007)", "(Nguyễn & Trần, 2019, tr. 12)", "[12]", "[3–5]" **không đọc** ở mọi chế độ trừ
+  `full`; ngoặc là chữ ("(một người bạn cũ)") và năm trong câu giữ nguyên. Chữ trên trang không đổi; ước
+  tính chi phí giọng API đi qua cùng hàm nên tính đúng chữ được đọc.
 - **Ký hiệu liệt kê "(a) … (b) …" nói thành chữ cái kèm nghỉ** — chủ chọn bằng tai 02/09 giữa 4 bản render cùng một câu (giữ nguyên · xoá · "một là/hai là" · chữ cái + nghỉ): "khớp với a, nhiệm vụ hiện tại, hoặc b, sở thích cá nhân". Nghỉ đặt TRƯỚC liên từ dẫn vào ký hiệu (hoặc/hay/và/rồi/cũng như). Tham chiếu "mục (b)" → "mục b", không nghỉ. Chỉ chữ thường đơn có khoảng trắng phía trước; "book(s)", "(ii)", "(1)" không đụng (thư viện: 31 ký hiệu, 0 chữ số/hoa/tham chiếu). Test chốt = chính câu chủ duyệt, so khớp từng ký tự với bản render đã nghe.
 
 
