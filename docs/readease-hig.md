@@ -652,8 +652,9 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
 Control 30px `rounded-xl` · nhỏ 28px `rounded-lg` (phím tắt `Kbd` cùng bậc) · icon-button 32
 tròn · pill cho nav/ngôn ngữ · surface + ô nhập nhiều dòng `rounded-2xl` · chữ 16 bold (tiêu đề)
 / **14 base** / 12 micro (+18 màn chào) · trong-cặp 8 / giữa-cặp 16 / khối 24 · cột đọc 65ch ·
-hover na10 · pressed na20 · hairline `edge` · cột bên **240** (đầu 52 = vùng kéo, đèn {20,20}; thu = 0; dải
-trên chừa 76 khi thu) · ngưỡng tự thu **1100** px.
+hover na10 · pressed na20 · hairline `edge` · cột bên **240** (kéo được 200–400; đầu 52 = vùng kéo, đèn {20,20}; thu = 0;
+dải trên chừa 76 khi thu; **lót trong 16**, hàng rail 36, khối cách 24 — chủ 16/09 "tăng spacing tổng thể… thoáng") ·
+ngưỡng tự thu **1100** px.
 
 **Ngoài thang là lỗi**: `rounded-md` (6px) không thuộc thang nào — cổng `audit:ui` chặn. Bốn
 biến thể nút: `primary` (CTA brand) · `secondary` (viền) · `ghost` (không viền, việc phụ như
