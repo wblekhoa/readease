@@ -639,7 +639,7 @@ class PlaybackCoordinator:
         except Exception:
             self._publish(
                 PlaybackState.ERROR,
-                error="Không thể lưu vị trí đọc. Sách vẫn có thể mở lại.",
+                error="Không thể lưu vị trí đọc. Tài liệu vẫn có thể mở lại.",
                 generation=token,
             )
             return
@@ -700,7 +700,7 @@ class PlaybackCoordinator:
         except Exception:
             self._publish(
                 PlaybackState.ERROR,
-                error="Không thể lưu vị trí đọc. Sách vẫn có thể mở lại.",
+                error="Không thể lưu vị trí đọc. Tài liệu vẫn có thể mở lại.",
                 generation=token,
             )
             return False
