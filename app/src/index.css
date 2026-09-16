@@ -387,7 +387,16 @@ textarea, input { user-select: text; cursor: auto; }
    border-radius until appearance is off - the classes were correct, the
    engine refused them. Turning appearance off also removes the system
    chevron, so one is drawn here (mid-grey #8A9099 reads on both themes'
-   paper). These rules are un-layered, so they outrank utility padding. */
+   paper). These rules are un-layered, so they outrank utility padding.
+
+   The label clips INSIDE the control, with an ellipsis. WKWebView lays the
+   chosen option's text out at its full width and only then covers it, and
+   the covered part still counts as layout overflow of the nearest scroller:
+   a 56-character ElevenLabs name in the 26rem settings panel measured 651px
+   of scroll width in a 414px body (16/09), so a horizontal bar appeared,
+   took 13px of height, and tipped a panel that just fit into a vertical bar
+   as well. Chromium clips inside the box on its own, which is why the
+   render audit never saw it. */
 select {
   appearance: none;
   -webkit-appearance: none;
@@ -395,6 +404,8 @@ select {
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 28px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: default;
 }
 

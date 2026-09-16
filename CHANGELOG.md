@@ -4,6 +4,21 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The voice no longer goes silent until a relaunch after a model download
+  or two quick presses. A reading asked for while a model was downloading
+  (or while another reading ran) and then stopped - Dừng, or Đọc pressed
+  again - used to start anyway, after the download, for a player that had
+  already let it go; the engine then waited for room that never came, with
+  every later reading queued behind it. A stop now covers every reading
+  asked for before it, queued or playing. Cancelling a download is its own
+  action: Dừng stops the voice and leaves the download running.
+- The voice settings panel no longer grows scrollbars when the chosen
+  voice has a long name. The name is clipped inside its control, with an
+  ellipsis; the panel scrolls down when the window is shorter than it, and
+  never sideways.
+
 ## 0.1.3
 
 English books read by a voice on this Mac, and the choice of what to

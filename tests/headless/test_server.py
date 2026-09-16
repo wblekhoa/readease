@@ -1246,7 +1246,8 @@ class ProtocolTests(unittest.TestCase):
 
         The Qt setup screen could cancel; the rewrite lost that until
         2026-09-02. The progress callback is the cancel point, because it is
-        the only moment a long download hands control back.
+        the only moment a long download hands control back. The word is the
+        download's own since 16/09: `stop` is for the voice (below).
         """
         engine = FakeEngine()
         reported: list[float] = []
@@ -1259,15 +1260,88 @@ class ProtocolTests(unittest.TestCase):
         engine.prepare_model = prepare
         replies = run_server([
             {"id": 70, "method": "model.prepare"},
-            {"id": 71, "method": "stop"},
+            {"id": 71, "method": "model.cancel"},
         ], engine)
 
+        cancel = next(r for r in replies if r.get("id") == 71)
+        self.assertEqual(cancel["result"], {"cancelled": True})
         done = [r for r in replies if r.get("id") == 70 and "ok" in r]
         self.assertEqual(len(done), 1)
         self.assertTrue(done[0]["result"]["cancelled"])
         self.assertFalse(done[0]["result"]["ready"])
         # It really stopped early rather than finishing and claiming a cancel.
         self.assertLess(len(reported), 40)
+
+    def test_a_cancel_with_nothing_downloading_says_so(self) -> None:
+        replies = run_server([{"id": 72, "method": "model.cancel"}], FakeEngine())
+
+        self.assertEqual(replies[0]["result"], {"cancelled": False})
+
+    def test_a_stop_during_a_download_stops_the_reading_queued_behind_it(self) -> None:
+        """Đọc pressed while a model downloads, then Dừng (16/09).
+
+        The read waits behind the download by design. The stop used to be
+        spent on the download instead - cancelling what nobody meant to
+        cancel - and the read then ran AFTER it, for a shell that had
+        already dropped its id: no credits came, and past the window the
+        engine waited for room forever, every later reading queued behind
+        it. The person saw the voice never come back until a relaunch.
+        Now the stop answers the queued reading and the download goes on.
+        """
+        engine = FakeEngine()
+        reported: list[float] = []
+
+        def prepare(report):
+            for step in range(1, 40):
+                report(step / 40, "Đang tải…")
+                reported.append(step / 40)
+
+        engine.prepare_model = prepare
+        replies = run_server([
+            {"id": 70, "method": "model.prepare"},
+            {"id": 73, "method": "read",
+             "params": {"text": "Câu này không bao giờ được đọc.", "voice_id": "adam"}},
+            {"id": 71, "method": "stop"},
+        ], engine)
+
+        stop = next(r for r in replies if r.get("id") == 71)
+        self.assertEqual(stop["result"], {"stopped": True})
+        read = next(r for r in replies if r.get("id") == 73 and "ok" in r)
+        self.assertEqual(read["result"], {"frames": 0, "voiced_frames": 0, "stopped": True})
+        # Not a frame of it, and the model never asked to speak it.
+        self.assertEqual([r for r in replies if r.get("id") == 73 and r.get("event") == "chunk"], [])
+        self.assertEqual(engine.requests, [])
+        # The download the person did not cancel finished.
+        done = next(r for r in replies if r.get("id") == 70 and "ok" in r)
+        self.assertEqual(done["result"], {"ready": True})
+        self.assertEqual(len(reported), 39)
+
+    def test_a_cancel_reaches_a_download_still_queued_behind_a_reading(self) -> None:
+        """Huỷ tải pressed before the download even began - the reading it
+        waits behind is still streaming. The cancel is not lost on the
+        reading: the queued download is answered as cancelled and never
+        starts."""
+        engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.005)
+        started: list[float] = []
+
+        def prepare(report):
+            started.append(0.0)
+            report(1.0, "Xong.")
+
+        engine.prepare_model = prepare
+        replies = run_server([
+            {"id": 74, "method": "read",
+             "params": {"text": "Một câu dài đang đọc.", "voice_id": "adam"}},
+            {"id": 75, "method": "model.prepare"},
+            {"id": 76, "method": "model.cancel"},
+        ], engine)
+
+        cancelled = next(r for r in replies if r.get("id") == 75 and "ok" in r)
+        self.assertEqual(cancelled["result"], {"ready": False, "cancelled": True})
+        self.assertEqual(started, [])
+        # The reading it was queued behind was not what the cancel was for.
+        reading = next(r for r in replies if r.get("id") == 74 and "ok" in r)
+        self.assertFalse(reading["result"]["stopped"])
 
     def test_set_precision_persists_and_demands_a_restart(self) -> None:
         from tempfile import TemporaryDirectory
@@ -2536,6 +2610,51 @@ class ProtocolTests(unittest.TestCase):
         finally:
             requests.close()
             reader.close()
+
+    def test_a_second_stop_covers_the_reading_the_first_stop_left_queued(self) -> None:
+        """Two quick presses while listening - a paragraph double-clicked,
+        Đọc twice, the voice switched twice. The shell sends stop+read for
+        each and keeps the LAST id. The engine spent one stop on the reading
+        in flight and then ran the first queued read for a shell that had
+        already dropped its id: nobody credited its frames, and past the
+        window it waited for room forever, the wanted reading queued behind
+        it (reproduced on the 0.1.3 engine, 16/09). A stop covers every
+        reading asked for before it, queued or streaming.
+        """
+        engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)
+        with _live_server(engine) as (requests, replies):
+            _say(requests, {"id": 10, "method": "read",
+                            "params": {"text": "Câu thứ nhất.", "voice_id": "adam", "window": 2}})
+            _until(replies, lambda m: m.get("event") == "chunk")
+            # Both pairs in one breath, the way two Tauri threads deliver them.
+            requests.write("".join(json.dumps(r) + "\n" for r in [
+                {"id": 11, "method": "stop"},
+                {"id": 12, "method": "read",
+                 "params": {"text": "Câu bị bỏ qua.", "voice_id": "adam", "window": 2}},
+                {"id": 13, "method": "stop"},
+                {"id": 14, "method": "read",
+                 "params": {"text": "Câu được muốn.", "voice_id": "adam", "window": 2}},
+            ]))
+            requests.flush()
+            # A ping is answered even by a wedged engine (from its wait for
+            # room), so the receipt ends cleanly either way instead of
+            # hanging the suite on a regression: by the time it is answered,
+            # a working engine has been streaming the wanted reading for a
+            # second and more.
+            time.sleep(1.5)
+            _say(requests, {"id": 15, "method": "ping"})
+            seen = _until(replies, lambda m: m.get("id") == 15)
+
+        first = next(m for m in seen if m.get("id") == 10 and "ok" in m)
+        self.assertTrue(first["result"]["stopped"])
+        skipped = next((m for m in seen if m.get("id") == 12 and "ok" in m), None)
+        self.assertIsNotNone(skipped, "the queued reading was never answered: it ran, and is waiting for room")
+        self.assertEqual(skipped["result"], {"frames": 0, "voiced_frames": 0, "stopped": True})
+        self.assertEqual([m for m in seen if m.get("id") == 12 and m.get("event") == "chunk"], [])
+        # The wanted reading streams - with a window of 2 and no credits,
+        # it would have sat behind the skipped one for good.
+        self.assertGreater(len([m for m in seen if m.get("id") == 14 and m.get("event") == "chunk"]), 0)
+        self.assertEqual([text for text, _ in engine.requests], ["Câu thứ nhất.", "Câu được muốn."])
 
     def test_quick_requests_are_answered_while_a_reading_streams(self) -> None:
         """Listening is not a modal state. Switching to the library, saving a
