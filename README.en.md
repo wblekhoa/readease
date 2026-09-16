@@ -2,7 +2,7 @@
 
 **Source-available · free for noncommercial use** ([PolyForm Noncommercial 1.0.0](LICENSE)). The source is public so anyone can check the promise below for themselves: with the on-device voice, nothing leaves the Mac.
 
-ReadEase is a local-first macOS app that reads text-based PDFs, reflowable EPUBs and pasted text with Vietnamese VieNeu-TTS. By default it requires **no API key**, sends no book content anywhere and works offline after the first voice-model setup.
+ReadEase is a local-first macOS app that reads your **EPUB and PDF files** (text-based PDFs, reflowable EPUBs) and pasted text aloud with the Vietnamese VieNeu-TTS voice - and, optionally, the English Kokoro voice. By default it requires **no API key**, sends no document content anywhere and works offline after the first voice-model setup. It opens only the files you bring to it.
 
 > **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).
 
@@ -17,7 +17,7 @@ ReadEase is a local-first macOS app that reads text-based PDFs, reflowable EPUBs
   <img src="assets/screenshots/shelf.png" width="400" alt="The library: covers, reading progress, From Apple Books and Open PDF or EPUB buttons">
   <img src="assets/screenshots/voices.png" width="400" alt="The voice list: 20 on-device voices, a male/female filter, preview and quick-switch toggles">
 </p>
-<p align="center"><sub>The library with per-book progress · 20 on-device voices, each with a preview before you commit.</sub></p>
+<p align="center"><sub>The library with per-document progress · 20 on-device voices, each with a preview before you commit.</sub></p>
 
 ## Download ReadEase
 
@@ -43,18 +43,18 @@ You do not need an API key, Homebrew, Python or programming knowledge.
 
 In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build. Only the build you pick is downloaded, never both: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower.
 
-Books, progress, notes and downloaded voices live in `~/Library/Application Support/VieNeu Reader/`, outside the app - upgrading is dragging the new build over the old one, and nothing is lost. Gatekeeper details, permissions and troubleshooting: [INSTALL.en.md](INSTALL.en.md).
+Documents, progress, notes and downloaded voices live in `~/Library/Application Support/VieNeu Reader/`, outside the app - upgrading is dragging the new build over the old one, and nothing is lost. Gatekeeper details, permissions and troubleshooting: [INSTALL.en.md](INSTALL.en.md).
 
 ## Main features
 
-- **Book library:** import text-based PDFs and reflowable EPUBs, save reading progress and continue later.
+- **Library:** import your text-based PDFs and reflowable EPUBs, save reading progress and continue later.
 - **In-app reader:** choose a chapter, read continuously by paragraph or read only selected text.
 - **EPUB figures:** show meaningful local raster images in reading order, number them as **Figure 1, Figure 2…**, and add a spoken cue at the correct position.
 - **Paste text:** paste up to 100,000 characters while preserving paragraph boundaries; long passages are split into manageable playback parts.
 - **Read from Apple Books:** select text and press the read shortcut (**Control-Option-Command-R** by default, changeable in the **Read books** view) without bringing ReadEase to the foreground.
 - **Session history:** replay up to 10 recent items from books, pasted text or Apple Books. History disappears when the app closes.
 - **Vietnamese and English UI:** choose `🇻🇳 Tiếng Việt` or `🇬🇧 English` from the language selector. The choice is applied immediately and saved for the next launch.
-- **Local-first privacy:** books, progress, model data and audio cache stay on the Mac. There is no API key, telemetry or background server.
+- **Local-first privacy:** documents, progress, model data and audio cache stay on the Mac. There is no API key, telemetry or background server.
 - **Choose how to read:** one model per language on the Mac — Vietnamese (VieNeu, 330 or 625 MB) and English (Kokoro-82M, 330 MB, six American voices) — fetched or removed as you need, none of them required; or API voices on your own key. The first-run screen and the **Voices & models** button on the home screen show what this Mac reads, with what, and let you add or remove.
 - **Pick the language first, then the voice:** the voice panel asks which language you read in, then shows that language's voices and models. No voice is ever blocked: when the text in front of you is in the other language, the app only suggests — one sentence, one button — and the choice stays yours.
 
@@ -66,7 +66,7 @@ The English option translates the app interface, status messages and common impo
 
 1. Open ReadEase from `~/Applications`.
 2. Choose **Library → Open PDF or EPUB**, or drag a supported file into the window.
-3. Select a book and chapter, then click **Read** for continuous playback.
+3. Select a document and chapter, then click **Read** for continuous playback.
 4. Select text in the reader and click **Read selection** to hear only that passage.
 5. Use **Previous**, **Next**, **Stop**, voice and speed controls in the player.
 
@@ -78,13 +78,13 @@ For reflowable EPUBs, ReadEase displays text and local raster images in reading 
 2. Paste the content and select a voice and speed.
 3. Click **Read text**. Long text shows progress such as **Reading part 2/7**.
 
-Pasted text stays in the current session, does not become a library book and does not change saved book progress.
+Pasted text stays in the current session, does not become a library document and does not change saved progress.
 
 ### Read selected text from Apple Books
 
-1. Open the **Read books** view in ReadEase to confirm shortcut status.
+1. Open the **Read a selection** view in ReadEase to confirm shortcut status.
 2. Open Apple Books and select the text you want to hear.
-3. Press the read shortcut shown in the **Read books** view (**Control-Option-Command-R** unless you changed it).
+3. Press the read shortcut shown in the **Read a selection** view (**Control-Option-Command-R** unless you changed it).
 4. The first time, enable ReadEase in **System Settings → Privacy & Security → Accessibility**. Use **Open permission settings** in ReadEase to open the correct pane directly.
 
 For each shortcut transaction, ReadEase keeps an in-memory copy of the current clipboard, sends the copy command to Apple Books, then restores every clipboard item/type/byte before reading. If restoration cannot be verified, the app stops before playback. ReadEase does not monitor the screen in the background.
@@ -97,7 +97,7 @@ Open **Session history** in the player to replay recent content. Exact duplicate
 
 ## Local data and privacy
 
-ReadEase stores imported books, reading progress, voice-model data and audio cache at:
+ReadEase stores imported documents, reading progress, voice-model data and audio cache at:
 
 ```text
 ~/Library/Application Support/VieNeu Reader/
@@ -111,7 +111,7 @@ See [PRIVACY.md](PRIVACY.md) for the full privacy boundary.
 
 - Image-only scanned PDFs require OCR before import; ReadEase does not include OCR yet.
 - Password-protected PDFs, DRM-protected EPUBs and damaged files are not supported.
-- The EPUB reader does not reproduce every book stylesheet/layout, interactive SVG, complex table or fixed-layout publication.
+- The EPUB reader does not reproduce every stylesheet/layout, interactive SVG, complex table or fixed-layout publication.
 - The external read-selection shortcut currently supports Apple Books only.
 - VieNeu provides Vietnamese speech. English UI support does not add an English voice model.
 - The source build is ad-hoc signed on the user’s Mac and is not a Developer ID-signed, notarized public binary.
@@ -127,13 +127,13 @@ uv sync --locked --managed-python --python 3.13
 ./scripts/verify.sh
 ```
 
-`uv.lock` is the dependency source of truth. Do not commit model weights, copyrighted books, generated audio, databases, caches or user data. See [CONTRIBUTING.md](CONTRIBUTING.md).
+`uv.lock` is the dependency source of truth. Do not commit model weights, copyrighted documents, generated audio, databases, caches or user data. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Troubleshooting
 
 1. For a Gatekeeper **Not Opened** warning, follow [INSTALL.en.md](INSTALL.en.md), not a system-wide Gatekeeper bypass.
 2. If voice setup fails, check the internet connection and click **Try again**.
-3. If book import was interrupted, reopen the same source file; ReadEase never deletes the original book.
+3. If an import was interrupted, reopen the same source file; ReadEase never deletes the original file.
 4. For a repeatable crash, keep the newest report from `~/Library/Logs/DiagnosticReports/` for diagnosis.
 
 ## License
@@ -142,6 +142,6 @@ First-party source, documentation and application framework are available under 
 
 VieNeu, MOSS and other dependencies retain their own licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), [`legal/`](legal/) and [PRIVACY.md](PRIVACY.md). Every source/app build carries the static provenance ID `READEASE-THU-AM-NC-2026-01`; it contains no user information, makes no network connection and performs no tracking.
 
-### 5. Move notes to another copy of a book
+### 5. Move notes to another copy of a document
 
-The **Move notes** tab reads your Apple Books library to show which notes and highlights would carry over to another copy of the same book. Once you have previewed them, **Copy across** moves them for real. It reads only when you open that tab, and writes only when you press that button - after a preview of that exact pair and a confirmation naming the count. It only copies notes whose chapter is byte-for-byte identical between the two copies - two files can share an edition id and still differ inside, and copying on that assumption puts highlights on the wrong words; the rest stay listed but are not copied. Before writing it backs up your Apple Books data to `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/`; it only ever **adds** to the target book, never edits or deletes, and leaves the source book untouched. Apple Books has to be closed for the copy to run. If Apple Books syncs with iCloud, the copied notes appear on your other devices too. Details in [`PRIVACY.md`](PRIVACY.md).
+The **Move notes** tab reads your Apple Books library to show which notes and highlights would carry over to another copy of the same document. Once you have previewed them, **Copy across** moves them for real. It reads only when you open that tab, and writes only when you press that button - after a preview of that exact pair and a confirmation naming the count. It only copies notes whose chapter is byte-for-byte identical between the two copies - two files can share an edition id and still differ inside, and copying on that assumption puts highlights on the wrong words; the rest stay listed but are not copied. Before writing it backs up your Apple Books data to `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/`; it only ever **adds** to the target book, never edits or deletes, and leaves the source book untouched. Apple Books has to be closed for the copy to run. If Apple Books syncs with iCloud, the copied notes appear on your other devices too. Details in [`PRIVACY.md`](PRIVACY.md).

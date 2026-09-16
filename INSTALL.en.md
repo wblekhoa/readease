@@ -41,8 +41,8 @@ To select text in a web page, PDF, Apple Books… and press a shortcut to hear i
 
 ## Upgrading, removing, where your data lives
 
-- **Upgrade:** download the new zip and drag `ReadEase.app` over the old one. Books, progress, notes and downloaded voices **are kept** — they live outside the app in `~/Library/Application Support/VieNeu Reader/`. Upgrading from 0.1.0/0.1.1 to 0.1.2 asks you to enable **Accessibility** once more (the app's signature changed from ad-hoc to Developer ID); from 0.1.2 on the permission survives updates.
-- **Remove:** drag `ReadEase.app` to the Trash. To remove books and voices too, delete that folder as well.
+- **Upgrade:** download the new zip and drag `ReadEase.app` over the old one. Documents, progress, notes and downloaded voices **are kept** — they live outside the app in `~/Library/Application Support/VieNeu Reader/`. Upgrading from 0.1.0/0.1.1 to 0.1.2 asks you to enable **Accessibility** once more (the app's signature changed from ad-hoc to Developer ID); from 0.1.2 on the permission survives updates.
+- **Remove:** drag `ReadEase.app` to the Trash. To remove documents and voices too, delete that folder as well.
 - **Cost:** none. The on-device voice is free for good. Only if **you** enter your own OpenAI or ElevenLabs key to use a paid AI voice do you pay that provider, at the price shown in the read button; the app takes nothing.
 
 ## Common problems

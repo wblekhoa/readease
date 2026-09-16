@@ -1,10 +1,10 @@
 # ReadEase — Thư Âm
 
-**Miễn phí, mã nguồn công khai — dùng phi thương mại** ([PolyForm Noncommercial 1.0.0](LICENSE)). Công khai để ai cũng tự kiểm được lời hứa bên dưới: đọc bằng giọng trên máy thì sách không đi đâu cả.
+**Miễn phí, mã nguồn công khai — dùng phi thương mại** ([PolyForm Noncommercial 1.0.0](LICENSE)). Công khai để ai cũng tự kiểm được lời hứa bên dưới: đọc bằng giọng trên máy thì tài liệu của bạn không đi đâu cả.
 
-Ứng dụng macOS đọc PDF, EPUB và văn bản tiếng Việt bằng **VieNeu-TTS chạy cục bộ**. Mặc định ReadEase không cần API key, không gửi nội dung sách đi đâu cả và đọc được offline sau khi chuẩn bị giọng lần đầu.
+Ứng dụng macOS đọc thành tiếng các tệp **EPUB và PDF** cùng văn bản dán vào, bằng giọng tiếng Việt **VieNeu-TTS chạy cục bộ** (và giọng tiếng Anh Kokoro, tuỳ chọn). Mặc định ReadEase không cần API key, không gửi nội dung tài liệu đi đâu cả và đọc được offline sau khi chuẩn bị giọng lần đầu. Tài liệu là của bạn — ReadEase chỉ mở những tệp bạn tự đưa vào.
 
-> **Một ngoại lệ, và bạn phải tự bật:** ReadEase đọc được bằng **giọng AI trả phí của OpenAI hoặc ElevenLabs**, bằng khoá của chính bạn. Khi dùng, đoạn văn sắp đọc sẽ được gửi thẳng từ máy bạn tới nhà cung cấp đó — không qua máy chủ nào của ReadEase, vì không có máy chủ nào cả. Không gửi tên sách, tiến độ, ghi chú hay bất cứ thứ gì nhận dạng bạn. Giá tính theo ký tự và **hiện sẵn trong nút đọc trước khi bấm**; bạn đặt được trần cho cả phạm vi đọc lẫn số tiền mỗi phiên. Không bật thì không có gì rời khỏi máy. Chi tiết: [PRIVACY.md](PRIVACY.md).
+> **Một ngoại lệ, và bạn phải tự bật:** ReadEase đọc được bằng **giọng AI trả phí của OpenAI hoặc ElevenLabs**, bằng khoá của chính bạn. Khi dùng, đoạn văn sắp đọc sẽ được gửi thẳng từ máy bạn tới nhà cung cấp đó — không qua máy chủ nào của ReadEase, vì không có máy chủ nào cả. Không gửi tên tài liệu, tiến độ, ghi chú hay bất cứ thứ gì nhận dạng bạn. Giá tính theo ký tự và **hiện sẵn trong nút đọc trước khi bấm**; bạn đặt được trần cho cả phạm vi đọc lẫn số tiền mỗi phiên. Không bật thì không có gì rời khỏi máy. Chi tiết: [PRIVACY.md](PRIVACY.md).
 
 > **English documentation:** [README.en.md](README.en.md)
 
@@ -17,7 +17,7 @@
   <img src="assets/screenshots/shelf.png" width="400" alt="Thư viện: bìa sách, tiến độ đã đọc, nút Từ Apple Books và Mở PDF hoặc EPUB">
   <img src="assets/screenshots/voices.png" width="400" alt="Danh sách giọng đọc: 20 giọng trên máy, lọc nam/nữ, nghe thử và bật giọng để đổi nhanh">
 </p>
-<p align="center"><sub>Thư viện với tiến độ từng cuốn · Danh sách 20 giọng trên máy, nghe thử trước khi chọn.</sub></p>
+<p align="center"><sub>Thư viện với tiến độ từng tài liệu · Danh sách 20 giọng trên máy, nghe thử trước khi chọn.</sub></p>
 
 ## Tải và cài ngay
 
@@ -43,19 +43,19 @@ Bạn **không cần** API key, Homebrew, Python hay kiến thức lập trình.
 
 Bấm **Chuẩn bị giọng đọc**. App tải khoảng 330 MB dữ liệu giọng ở lần đầu; sau đó bạn có thể đọc offline. Ngay trên nút đó có ô **Chất lượng giọng đọc**. App **chỉ tải bản bạn chọn**, không tải cả hai: *Tiêu chuẩn* (mặc định) tốn khoảng 330 MB tổng cộng, *Cao nhất* khoảng 625 MB và đọc chậm hơn chừng 11%. Đổi bản ở thanh phát khi đang đọc thì app hỏi lại trước, nói rõ cần tải bao nhiêu nếu bản đó chưa có trên máy. Sau khi đổi, app báo bản cũ đang chiếm bao nhiêu và cho xoá bằng một nút.
 
-Sách, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/Application Support/VieNeu Reader/`, ngoài app — nâng cấp bằng cách kéo bản mới đè lên bản cũ, không mất gì. Chi tiết cài đặt, cấp quyền và xử lý lỗi: [INSTALL.md](INSTALL.md).
+Tài liệu, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/Application Support/VieNeu Reader/`, ngoài app — nâng cấp bằng cách kéo bản mới đè lên bản cũ, không mất gì. Chi tiết cài đặt, cấp quyền và xử lý lỗi: [INSTALL.md](INSTALL.md).
 
 ## ReadEase làm được gì?
 
-- **Thư viện:** nhập PDF có lớp văn bản và EPUB, lưu tiến độ và tiếp tục đọc ở lần sau.
+- **Thư viện:** nhập tệp PDF có lớp văn bản và EPUB của bạn, lưu tiến độ và tiếp tục đọc ở lần sau.
 - **Trình đọc trong app:** chọn chương, đọc liên tục theo đoạn, đọc riêng phần đang quét chọn và điều chỉnh giọng/tốc độ.
 - **Đọc có ngắt nghỉ:** ReadEase ngắt theo cấu trúc văn bản chứ không đọc luông tuồng — nghỉ dài nhất khi sang chương, vừa khi hết đoạn, rồi ngắn dần ở tiêu đề, danh sách, dấu chấm, dấu hai chấm và gạch ngang. Cụm chữ viết hoa toàn bộ (chữ trên biển báo, tiêu đề) được đọc như chữ thường để phát âm đúng, nhưng chữ hiển thị vẫn nguyên như tác giả viết. Khoảng nghỉ co lại khi bạn tăng tốc độ đọc.
 - **Hình trong EPUB:** đặt hình có ý nghĩa theo thứ tự đọc, đánh số **Hình 1, Hình 2…** và nhắc “Mời bạn xem Hình …” ở đúng vị trí.
 - **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
 - **Quét đọc ở mọi ứng dụng:** bôi đen chữ ở bất kỳ đâu — trang web, PDF, thư, ghi chú, Apple Books — rồi nhấn phím tắt đọc (mặc định **Option-Command-R**, đổi được trong màn hình **Quét đọc**) để nghe mà không cần chuyển cửa sổ. Phần được trình quản lý mật khẩu đánh dấu bí mật thì app từ chối đọc.
 - **Dừng mà không phải rời chỗ đang đọc:** nhấn lại chính phím tắt đó là dừng. Trong lúc đang đọc, ReadEase cũng hiện một biểu tượng nhỏ trên thanh menu — bấm vào là dừng, và nó biến mất khi đọc xong.
-- **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ sách, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
-- **Riêng tư và local-first:** sách, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
+- **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ tài liệu, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
+- **Riêng tư và local-first:** tài liệu, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
 - **Giao diện song ngữ:** chuyển tức thời giữa `🇻🇳 Tiếng Việt` và `🇬🇧 English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
 - **Chọn cách đọc theo nhu cầu:** mỗi ngôn ngữ một mô hình trên máy — tiếng Việt (VieNeu, 330 hoặc 625 MB) và tiếng Anh (Kokoro-82M, 330 MB, sáu giọng Mỹ) — tải hay xoá tuỳ bạn, không bắt buộc tải mô hình nào; hoặc dùng giọng API bằng khoá của bạn. Màn đầu tiên và nút **Giọng đọc & mô hình** trên trang chủ là nơi xem máy đọc được gì, bằng gì, và thêm bớt.
 - **Chọn ngôn ngữ đọc trước, rồi chọn giọng:** bảng giọng đọc hỏi bạn đọc bằng tiếng gì, rồi mới hiện giọng và mô hình của tiếng đó. Không giọng nào bị chặn: khi nội dung đang mở là thứ tiếng khác với giọng đang chọn, app chỉ gợi ý — một câu và một nút — còn chọn gì là quyền của bạn.
@@ -65,8 +65,8 @@ Sách, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/Applic
 ### 1. Đọc PDF hoặc EPUB trong Thư viện
 
 1. Mở **ReadEase** trong `~/Applications`.
-2. Chọn **Thư viện** → **Mở PDF hoặc EPUB**, hoặc kéo tệp sách vào cửa sổ.
-3. Chọn sách và chương, rồi bấm **Đọc** để đọc liên tục.
+2. Chọn **Thư viện** → **Mở PDF hoặc EPUB**, hoặc kéo tệp vào cửa sổ.
+3. Chọn tài liệu và chương, rồi bấm **Đọc** để đọc liên tục.
 4. Quét chọn một phần trong trình đọc và bấm **Đọc phần đã chọn** nếu chỉ muốn nghe đoạn đó.
 5. Dùng **Trước**, **Sau**, **Dừng**, giọng đọc và tốc độ ở thanh phát phía dưới.
 
@@ -78,7 +78,7 @@ Với EPUB dạng reflowable, ReadEase hiển thị văn bản và ảnh raster 
 2. Dán văn bản, chọn giọng và tốc độ.
 3. Bấm **Đọc nội dung**. Với văn bản dài, trạng thái sẽ hiển thị tiến độ như **Đang đọc đoạn 2/7**.
 
-Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo sách mới và không thay đổi tiến độ của sách trong Thư viện.
+Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo tài liệu mới và không thay đổi tiến độ của tài liệu trong Thư viện.
 
 ### 3. Quét đọc phần đang chọn ở bất kỳ ứng dụng nào
 
@@ -96,13 +96,13 @@ ReadEase **không bao giờ** tự xem clipboard. App chỉ đọc đúng lúc b
 Mở **Lịch sử phiên** trên thanh phát để nghe lại nội dung. Các mục trùng chính xác được gộp; bạn có thể xóa lịch sử ngay, và toàn bộ lịch sử tự mất khi thoát ReadEase.
 
 
-### 5. Chuyển ghi chú sang bản sách khác
+### 5. Chuyển ghi chú sang bản khác
 
-Mục **Chuyển ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng cuốn sách. Xem trước xong, bấm **Chép sang** là ReadEase chuyển chúng thật. ReadEase chỉ đọc khi bạn mở mục đó, và chỉ ghi khi bạn tự bấm nút — sau khi xem trước đúng cặp sách đó và xác nhận số mục. ReadEase chỉ chép những ghi chú nằm ở chương **giống hệt nhau** giữa hai bản — hai file có thể cùng edition mà nội dung vẫn khác, và chép nhầm thì highlight sẽ rơi sai chỗ; những mục còn lại vẫn hiện trong danh sách nhưng không được chép. Trước khi ghi, app sao lưu dữ liệu Apple Books vào `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/`; app chỉ **thêm** vào cuốn đích, không sửa hay xoá gì, và không đụng tới cuốn nguồn. Phải thoát Apple Books thì mới chép được. Nếu bạn bật iCloud cho Apple Books thì các ghi chú này cũng hiện trên thiết bị khác. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
+Mục **Chuyển ghi chú** đọc thư viện Apple Books để cho biết ghi chú và đoạn bôi màu nào chuyển được sang bản kia của cùng một tài liệu. Xem trước xong, bấm **Chép sang** là ReadEase chuyển chúng thật. ReadEase chỉ đọc khi bạn mở mục đó, và chỉ ghi khi bạn tự bấm nút — sau khi xem trước đúng cặp đó và xác nhận số mục. ReadEase chỉ chép những ghi chú nằm ở chương **giống hệt nhau** giữa hai bản — hai file có thể cùng edition mà nội dung vẫn khác, và chép nhầm thì highlight sẽ rơi sai chỗ; những mục còn lại vẫn hiện trong danh sách nhưng không được chép. Trước khi ghi, app sao lưu dữ liệu Apple Books vào `~/Library/Application Support/VieNeu Reader/AppleBooksBackups/`; app chỉ **thêm** vào bản đích, không sửa hay xoá gì, và không đụng tới bản nguồn. Phải thoát Apple Books thì mới chép được. Nếu bạn bật iCloud cho Apple Books thì các ghi chú này cũng hiện trên thiết bị khác. Chi tiết trong [`PRIVACY.md`](PRIVACY.md).
 
 ## Dữ liệu và quyền riêng tư
 
-ReadEase lưu sách đã nhập, vị trí đọc, mô hình và audio cache tại:
+ReadEase lưu tài liệu đã nhập, vị trí đọc, mô hình và audio cache tại:
 
 ```text
 ~/Library/Application Support/VieNeu Reader/
@@ -114,7 +114,7 @@ Tên thư mục cũ được giữ để người dùng nâng cấp không mất
 
 - PDF scan chỉ chứa ảnh cần OCR trước khi nhập; ReadEase chưa tích hợp OCR.
 - Chưa hỗ trợ PDF đặt mật khẩu, EPUB có DRM hoặc tệp bị hỏng.
-- Trình đọc EPUB chưa tái tạo toàn bộ CSS/layout của sách, fixed-layout, SVG tương tác, bảng phức tạp hoặc mô tả ảnh bằng AI.
+- Trình đọc EPUB chưa tái tạo toàn bộ CSS/layout của tệp, fixed-layout, SVG tương tác, bảng phức tạp hoặc mô tả ảnh bằng AI.
 - Bản source này được build và ký ad-hoc trên máy của bạn; chưa phải binary có Developer ID và notarization để phát hành đại trà.
 
 ## Chạy local để phát triển
@@ -128,13 +128,13 @@ uv sync --locked --managed-python --python 3.13
 ./scripts/verify.sh
 ```
 
-`uv.lock` là nguồn sự thật cho dependency. Đừng thêm model weights, sách có bản quyền, audio sinh ra, database, cache hoặc dữ liệu người dùng vào repository. Xem [CONTRIBUTING.md](CONTRIBUTING.md) để biết quy ước đóng góp.
+`uv.lock` là nguồn sự thật cho dependency. Đừng thêm model weights, tài liệu có bản quyền, audio sinh ra, database, cache hoặc dữ liệu người dùng vào repository. Xem [CONTRIBUTING.md](CONTRIBUTING.md) để biết quy ước đóng góp.
 
 ## Khi app không mở được
 
 1. Mở lại app một lần.
 2. Nếu lỗi khi chuẩn bị giọng, kiểm tra mạng rồi bấm **Thử lại**.
-3. Mở lại cùng tệp nếu quá trình nhập sách bị gián đoạn; app không xóa sách gốc.
+3. Mở lại cùng tệp nếu quá trình nhập bị gián đoạn; app không xóa tệp gốc.
 4. Nếu vẫn lỗi, giữ báo cáo crash mới nhất trong `~/Library/Logs/DiagnosticReports/` để chẩn đoán.
 
 ## Giấy phép
@@ -149,7 +149,7 @@ Model VieNeu, codec MOSS và các dependency giữ giấy phép riêng của nh�
 
 # English
 
-ReadEase — Thư Âm is a local-first macOS app that reads PDFs, EPUBs and pasted text with Vietnamese VieNeu-TTS. By default it requires no API key and works offline after the first voice-model setup.
+ReadEase — Thư Âm is a local-first macOS app that reads your **EPUB and PDF files** and pasted text aloud with the Vietnamese VieNeu-TTS voice (and, optionally, the English Kokoro voice). It opens only the files you bring to it. By default it requires no API key and works offline after the first voice-model setup.
 
 > **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).
 
@@ -173,7 +173,7 @@ Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, about 220 M
 - Read selected text from any app with a configurable shortcut (**Option-Command-R** by default) after granting Accessibility permission.
 - Stop without leaving what you are reading: press the same shortcut again, or click the menu bar item that appears while a reading is under way.
 - Replay up to 10 recent items during the current session.
-- Keep books, model data, progress and audio cache on the Mac; no API key, telemetry or background server.
+- Keep documents, model data, progress and audio cache on the Mac; no API key, telemetry or background server.
 
 ## Local development
 
@@ -184,7 +184,7 @@ uv sync --locked --managed-python --python 3.13
 ./scripts/verify.sh
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development rules. Scanned-image PDFs require OCR; DRM-protected books, password-protected PDFs and complex fixed-layout EPUBs are not supported.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development rules. Scanned-image PDFs require OCR; DRM-protected files, password-protected PDFs and complex fixed-layout EPUBs are not supported.
 
 ## License
 

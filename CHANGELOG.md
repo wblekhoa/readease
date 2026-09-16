@@ -6,6 +6,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- ReadEase describes itself as what it is: a reader of your EPUB and PDF
+  files. Every sentence the app shows - in both languages, from the shell
+  and from the engine - now says document, file or copy where it used to
+  say book; the sample shelf in the developer preview names invented
+  documents rather than real titles. Apple Books keeps its name, being
+  a product, and the feature that moves notes between two copies of the
+  same document is unchanged.
 - A side column, the way Codex has one: a real column of the layout on the
   left, from the window's own buttons down, with the content beside it -
   not a layer over the page. It carries the navigation (Library, Paste,
