@@ -4,6 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The app opens on the Library. An empty shelf still offers the paste
+  screen with one button.
+
 ## 0.1.5
 
 The contents, notes and search in a book stand beside the page on glass.

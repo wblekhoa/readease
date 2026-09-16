@@ -117,6 +117,9 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   (`--shadow-neutral-to-bot-2`: một lớp toả rộng + một lớp tiếp xúc sát) — `shadow-sm` của
   Tailwind là một nét cứng, cạnh shadow DS đọc ra như đường kẻ in dưới nút.
 - **Don't**: tiêu đề app trong toolbar (macOS đã vẽ trên titlebar) · nút trùng chức năng với tab đứng cạnh (đều đã gỡ, 08/31).
+- **Mở app là vào Thư viện** (chủ, 16/09: "trang mặc định của app là trang Thư Viện"): màn đầu = tab đầu
+  của rãnh, đúng thứ tự CHÍNH đã xếp — sách trước, dán sau. Kệ trống tự dẫn sang Dán nội dung bằng nút của
+  nó (`EmptyState` → `onPaste`), nên người chưa có sách không mất gì. Trước 16/09 app mở vào Dán nội dung.
 - **Hai bậc tính năng** (chủ, 02/09: "phân chia rõ tính năng phụ và tính năng chính"): **CHÍNH** = cách
   đưa chữ tới giọng — Thư viện (sách) · Dán nội dung — nằm trong rãnh `AppTabs`, mỗi tab một glyph
   (`AppTab.icon`). **PHỤ** = công cụ quanh việc đọc — Quét đọc (đọc phần bôi đen ở app khác) · Chuyển
