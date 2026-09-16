@@ -25,7 +25,7 @@ import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
 import { SearchPanel } from "../ui/SearchPanel";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
-import { ListRow } from "../ui/patterns";
+import { ListRow, Sidebar } from "../ui/patterns";
 import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
 import { noteCount } from "../ui/annotationsList";
@@ -836,31 +836,13 @@ export function Reader({
 
   /* The contents float over the book in BOTH modes (owner, 02/09: the
    * overlay "quá tối ưu"): closed until asked for, a chapter jumps and
-   * closes it. A fixed column would eat the page's own width. In the scroll
-   * the panel starts under the header bar; on pages the section already
-   * pads for it. */
+   * closes it. A fixed column would eat the page's own width. Since 15/09 a
+   * Sidebar (HIG 3.15): the whole height between the bars, on glass, with
+   * Escape and a click outside to leave - it used to be the one panel in
+   * the app with neither. 288 rather than 256, because a chapter title is a
+   * sentence and this is the panel whose whole job is to show them. */
   const contents = showToc && (
-    <Surface
-      edge="strong"
-      radius="sheet"
-      /* Built like NotesPanel, its sibling over the same page: a heading that
-         stays put, a way out that is not the toolbar, and only the list
-         scrolling under them. It used to be a bare box of rows - the one
-         panel in the app with no name on it and no close (owner, 04/09).
-         288 rather than 256, because a chapter title is a sentence and this
-         is the panel whose whole job is to show them. */
-      className={`flex flex-col overflow-hidden absolute left-0 z-10 w-72 shadow-lifted ${
-        paged
-          ? "top-0 max-h-full"
-          : "top-[calc(var(--shell-top-inner)+var(--layer-gap))] layer-capped"
-      }`}
-    >
-      <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
-        <h3 className="m-0 flex-1 text-sm font-bold">{text("reader.toc_title")}</h3>
-        <IconButton onClick={onHideToc} aria-label={text("aria.close")} title={text("aria.close")}>
-          <CloseIcon />
-        </IconButton>
-      </div>
+    <Sidebar title={text("reader.toc_title")} onClose={onHideToc} paged={paged} width="w-72">
       <nav className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
         {opened.book.chapters.map((chapter, index) => (
           <ListRow
@@ -889,7 +871,7 @@ export function Reader({
           />
         ))}
       </nav>
-    </Surface>
+    </Sidebar>
   );
 
   /* Search, on the other side of the page from the contents. A hit shows

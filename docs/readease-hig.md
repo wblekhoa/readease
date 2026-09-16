@@ -17,6 +17,7 @@ diệt mơ hồ "token này áp vào đâu") · **Behavior** (trạng thái + b�
 | Người dùng cần… | Pattern | Ở đâu trong app |
 |---|---|---|
 | Duyệt danh sách mục, mỗi mục có hành động | `ListRow` | Lịch sử Quét đọc, mục lục sách |
+| Một danh sách ĐỨNG CẠNH trang sách, mở khi cần rồi biến đi (mục lục · ghi chú · tìm) | `Sidebar` (§3.15) — lớp kính mờ suốt chiều cao giữa hai thanh chrome | Reader: ▤ mục lục, ghi chú (trái) · tìm trong sách (phải) |
 | Chọn một CUỐN SÁCH trong nhiều cuốn | `BookGrid` + `BookCard` + `BookCover` | Thư viện (kệ bìa) |
 | Xem/chọn trong một nhóm thiết lập | `GroupedSection`+`GroupedRow` | Panel Chất lượng, danh sách xem-trước ghi chú |
 | Bắt đầu khi chưa có gì | `EmptyState` | Thư viện rỗng |
@@ -799,6 +800,40 @@ xanh lá), `p.textContent` không đổi một ký tự.
 
 **Giới hạn còn lại (chưa sửa, cố ý)**: sửa nội dung ghi chú chưa có — ghi chú vẫn là dữ liệu một chiều từ
 Apple Books.
+
+### 3.15 Sidebar — danh sách đứng cạnh trang, trên nền kính mờ (15/09)
+
+Chủ 15/09: "một sidebar trái được mở ra cho một vài tính năng, style có background blur, ví dụ khi bấm nút mở
+chương". Thay cho ba thẻ đục rời (mục lục 288, ghi chú 368, tìm 352) — mỗi thẻ một vỏ, cao tối đa
+`100vh − chrome − 2rem`, ở cửa sổ 600 px chỉ còn ~14 dòng chương — là **một** lớp cho cả ba.
+
+- **Usage**: một DANH SÁCH nơi chốn trong sách mà người đọc mở, nhìn, chọn rồi quay về chữ: mục lục, ghi chú,
+  kết quả tìm. KHÔNG dùng cho bảng thiết lập (chúng là popover neo vào nút của mình, §3.9d), không dùng ở màn
+  ngoài Reader, không phải sidebar điều hướng cấp app (đó là `AppTabs`). Vẫn là **lớp NỔI** trên trang, không
+  phải cột cố định — chủ 02/09: một cột cố định ăn mất bề rộng trang; và trang không được biến mất dưới nó,
+  nên nền là kính chứ không phải giấy đục.
+- **Anatomy** (`patterns.tsx::Sidebar`, `side="left" | "right"`): *frame* — hộp `absolute z-10`, bo `sheet`
+  (24), viền `edge-strong` ở CẢ hai theme (kính cần một mép; ở tối lớp n10 76% trên n00 mờ đi không tự đứng),
+  `shadow-lifted`, `overflow-hidden` để danh sách cuộn trong góc bo; *kính* — một lớp con `absolute inset-0`
+  mang tint **giấy theo theme** (`--fill-neutral-base`, 76 %) + `backdrop-filter: blur(24px) saturate(140%)`;
+  đặt trên lớp con chứ không trên frame để filter không thành containing block của thứ gì `fixed` bên trong;
+  *header* — tiêu đề `text-sm font-bold` + `IconButton` đóng, lót 24/20 như mọi panel nổi (§3.9d); *thân* — do
+  nơi dùng cung cấp, `min-h-0 flex-1 overflow-y-auto`, track hẹp theo inset hàng (mục lục `px-3.5`, ghi chú
+  `px-5`) để chữ hàng thẳng với tiêu đề; *chiều cao* — suốt khoảng giữa hai thanh: cuộn → `top = --shell-top-inner
+  + --layer-gap`, `bottom = --shell-bottom-inner + --layer-gap` (thanh player hiện khi đọc thì mép dưới lùi theo,
+  live, nhờ observer của App); lật trang → cột đã lùi đúng `--shell-top-h`/`--shell-bottom-h`, nên trừ lại hai
+  số đó để vẫn cách CONTROL 12 px ở cả hai chế độ (đo 15/09: neo theo cột thì lật trang cách 36, cuộn cách 12 —
+  hai lớp khác nhau cho cùng một thứ). Bề rộng theo nội dung (mục lục `w-72`, ghi chú `w-[23rem]`, tìm `w-[22rem]`).
+  Material giới hạn trong vùng sidebar là điều §7 cho phép; toàn cửa sổ vẫn nghỉ hưu.
+- **Behavior**: mở bằng nút toolbar (▤ · ghi chú · tìm) — nút mang `data-popover-trigger` và `blur()` sau click
+  để là CÔNG TẮC thật (bấm lần nữa đóng, không đóng-rồi-mở); trượt vào 12 px + hiện dần 180 ms bằng
+  `@starting-style` (`starting:` của Tailwind), `motion-reduce:` tắt; đóng bằng Escape, bấm ra ngoài, nút ✕ —
+  cùng một `useDismiss` cho cả ba (mục lục từng không có Escape, ghi chú từng không đóng khi bấm ngoài); mục lục
+  ↔ ghi chú ↔ tìm loại trừ nhau (luật ở App); chọn chương / ghi chú → nhảy và ĐÓNG; chọn kết quả tìm → nhảy,
+  GIỮ MỞ (lần tìm tiếp một click); mục lục không cướp focus (phím đọc vẫn chạy), tìm autofocus ô nhập; note
+  editor (z-40), peek và lightbox (z-30) vẫn ở trên. Không có hoạt cảnh đóng: unmount tức thì như mọi lớp.
+- **Content**: tiêu đề là tên danh sách ("Mục lục", "Highlight và ghi chú", "Tìm trong sách"); không dòng mô
+  tả; hàng hai dòng cho tiêu đề chương (`line-clamp-2`); rỗng thì `EmptyState` của nơi dùng.
 
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
