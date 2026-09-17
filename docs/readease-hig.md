@@ -502,11 +502,12 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Panel là DANH SÁCH DÒNG** (mục lục, tìm trong sách, ghi chú) theo cùng luật, chỉ khác cách đạt tới 24: header và ô
   nhập `px-6`, còn track của danh sách hẹp hơn đúng phần inset của hàng (`ListRow dense` = 10 px ⇒ `px-3.5`; hàng ghi chú
   = 8 px ⇒ `px-5`), để CHỮ của hàng thẳng hàng với tiêu đề. Cùng `radius="sheet"` (chủ, 06/09: "đồng bộ").
-- **Góc của nhóm = góc ô bên trong + lót, không phải pill** (17/09, chủ: "radius tổng thể của các group vừa đủ với
-  item bên trong, để khi tăng height nó không còn là pill"): ô trong `SegmentedControl` bo `--ctl-radius` (12), lót 4 →
-  nhóm bo **16** (`rounded-2xl`); cụm cỡ chữ và nút "Tuỳ chỉnh" cùng 16. `rounded-full` chỉ tròn đẹp ở đúng một chiều
-  cao — cụm cỡ chữ cao 44 → 60 khi mở hàng chấm thì stadium 28 px biến hình. Áp cho MỌI `SegmentedControl` (bảng giọng,
-  tab cột bên) để một control chỉ có một hình. Luật chung đã ghi ở §3.9d (menu 12 + 8 = 20).
+- **Góc của nhóm = NỬA CHIỀU CAO MẶC ĐỊNH, cố định** (17–18/09, chủ: "radius tổng thể của các group vừa đủ với item
+  bên trong, để khi tăng height nó không còn là pill" rồi "vừa đủ để pill"): nhóm cao 44 → bo **22** (`rounded-[22px]`)
+  — đúng pill ở 44, và VẪN 22 khi cụm cỡ chữ mở hàng chấm lên 60 (không thành stadium 30 như `rounded-full`); ô bên
+  trong cao 36 → bo **18** (22 − lót 4, cũng đúng pill). Cụm cỡ chữ và nút "Tuỳ chỉnh" cùng 22/18. Bản 16/12 (rounded
+  rect) chỉ sống một giờ: chủ muốn giữ dáng pill ở trạng thái thường. Áp cho MỌI `SegmentedControl` (bảng giọng, tab
+  cột bên — cao 36 thì 22 tự kẹp về pill) để một control chỉ có một hình. Luật chung §3.9d: góc ngoài = góc trong + lót.
 - Hàng điều khiển bên trong panel nổi theo Books: hàng toàn bề rộng cao 44, ô chia đều (`SegmentedControl size="lg"`),
   có icon + chữ `text-sm` không xuống dòng; phần mở rộng đặt trong khối `bg-band rounded-2xl px-5 py-4`.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click**: tooltip theo focus sẽ không treo trên

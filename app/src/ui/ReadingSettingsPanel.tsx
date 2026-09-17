@@ -86,7 +86,7 @@ export function ReadingSettingsPanel({
           <div
             role="group"
             aria-label={text("settings.text_size_level", { n: step + 1, total: sizes.length })}
-            className="flex flex-col rounded-2xl bg-band p-1"
+            className="flex flex-col rounded-[22px] bg-band p-1"
           >
             <div className="flex h-9 items-stretch">
               <button
@@ -95,7 +95,7 @@ export function ReadingSettingsPanel({
                 disabled={size === sizes[0]}
                 aria-label={text("reader.text_smaller")}
                 title={text("reader.text_smaller")}
-                className="flex flex-1 items-center justify-center rounded-[var(--ctl-radius)] text-ink transition-colors hover-wash disabled:text-ink-faint"
+                className="flex flex-1 items-center justify-center rounded-[18px] text-ink transition-colors hover-wash disabled:text-ink-faint"
               >
                 <TextSmallerIcon className="h-5 w-5" />
               </button>
@@ -106,7 +106,7 @@ export function ReadingSettingsPanel({
                 disabled={size === sizes[sizes.length - 1]}
                 aria-label={text("reader.text_larger")}
                 title={text("reader.text_larger")}
-                className="flex flex-1 items-center justify-center rounded-[var(--ctl-radius)] text-ink transition-colors hover-wash disabled:text-ink-faint"
+                className="flex flex-1 items-center justify-center rounded-[18px] text-ink transition-colors hover-wash disabled:text-ink-faint"
               >
                 <TextLargerIcon className="h-6 w-6" />
               </button>
@@ -165,7 +165,7 @@ export function ReadingSettingsPanel({
             type="button"
             onClick={() => setMore((value) => !value)}
             aria-expanded={more}
-            className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-band px-4 text-sm font-semibold text-ink transition-colors hover-wash"
+            className="flex h-11 items-center justify-center gap-2 rounded-[22px] bg-band px-4 text-sm font-semibold text-ink transition-colors hover-wash"
           >
             <SlidersIcon />
             {text("settings.customize")}
