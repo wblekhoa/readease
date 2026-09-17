@@ -863,7 +863,9 @@ export function SideColumn({
  * `useDismiss` already treats a click on it as a click outside the sheet,
  * and keeps the sheet up while a download runs. */
 export function Scrim() {
-  return <div aria-hidden="true" className="fixed inset-0 z-20 bg-black/20 backdrop-blur-[6px]" />;
+  // A strong blur: the window behind is a backdrop, not a page seen through
+  // gauze (owner, 17/09: "blur mạnh hơn, để nó như là một nền background").
+  return <div aria-hidden="true" className="fixed inset-0 z-20 bg-black/25 backdrop-blur-2xl" />;
 }
 
 /** One entry of the column's navigation: a glyph and a name, painted `wash`
