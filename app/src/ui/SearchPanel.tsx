@@ -80,7 +80,7 @@ export function SearchPanel({
           }}
           className="w-full"
         />
-        <p className="m-0 mt-1.5 text-xs text-ink-mute">
+        <p className="m-0 mt-3 text-xs text-ink-mute">
           {!enough
             ? text("reader.search_hint")
             : hits.length === 0
