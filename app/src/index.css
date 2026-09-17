@@ -302,19 +302,25 @@
    gradient mask: at this size the shell's eight-layer ramp would be spent
    on 24 pixels. Also reachable by keyboard: `focus-visible` shows it. */
 @utility tail-reveal {
+  /* A chip the size of the button, in the row's top-right corner - not a
+     strip the height of the row (owner, 17/09: "chỉ nằm trong vùng của
+     button thôi, chứ không full height"). Glass so the words under it
+     are felt, an edge so it reads as a thing on top of them. */
   position: absolute;
-  inset-block: 0;
-  right: 0;
+  top: 0.5rem;
+  right: 0.5rem;
   display: flex;
-  align-items: flex-start;
-  padding: 0.625rem 0.5rem 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ctl-radius);
+  border: 1px solid var(--color-edge);
   opacity: 0;
   transition: opacity 120ms ease-out;
-  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--color-column) 90%, transparent) 60%);
+  background: color-mix(in srgb, var(--color-column) 85%, transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 55%);
-  mask-image: linear-gradient(to right, transparent, black 55%);
 }
 
 /* The material of a layer that floats over the page: Books' popover glass
