@@ -829,8 +829,13 @@ export function Reader({
             mark, and "10." overran a 20 px gutter). */}
         <span
           aria-hidden
-          className={`absolute left-0 top-1 w-8 pr-2 text-right tabular-nums ${
-            marker.kind === "dot" ? "list-dot" : "text-ink-mute"
+          className={`absolute left-0 top-1 w-8 text-right tabular-nums ${
+            // The dot sits under the DIGIT of a number, not under its
+            // period: a number is right-aligned to 8 px from the text, so
+            // its figure's centre is about 15 px in, and a 5 px dot set
+            // 14 px from the text lands there (owner, 17/09: "xa ra bên
+            // trái một xíu để align với number").
+            marker.kind === "dot" ? "list-dot pr-3.5" : "text-ink-mute pr-2"
           }`}
         >
           {marker.kind === "dot"

@@ -456,8 +456,10 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   tràn đè lên chữ. Nay hai bậc (chủ chốt sau khi xem bản "cùng mực với chữ": "bullet có màu riêng, số màu nhẹ hơn để phân cấp"):
   **chấm 5 px màu `brand-600`** (≈ dấu • của font; điểm nhấn duy nhất của app trên trang chữ), giữa x-height dòng đầu
   (`top-1` = `py-1` của khối, line-height thừa kế); **số đúng cỡ chữ, `tabular-nums`, màu `ink-mute`** — nhẹ hơn lời để
-  đứng dưới lời. Cả hai canh phải trong **cùng một rãnh 32 px** (`pl-8`, `w-8 pr-2`, chứa tới "99.") để mép chữ của mọi
-  danh sách trong chương thẳng nhau (chủ 17/09: "padding left của bullet bằng với number"; bản 24/32 tách rãnh chỉ
+  đứng dưới lời. Cả hai canh phải trong **cùng một rãnh 32 px** (`pl-8`, `w-8`, chứa tới "99.") để mép chữ của mọi
+  danh sách trong chương thẳng nhau; số cách chữ 8 px (`pr-2`), chấm cách chữ 14 px (`pr-3.5`) để **chấm nằm dưới CHỮ
+  SỐ chứ không dưới dấu chấm của số** (tâm chữ số ≈ 15 px kể từ chữ; chủ 17/09: "bullet xa ra bên trái một xíu để
+  align với number") (chủ 17/09: "padding left của bullet bằng với number"; bản 24/32 tách rãnh chỉ
   sống vài phút).
 - **`ink-faint` là màu VÔ HIỆU, đừng dùng cho chữ của sách.** Nhánh "trích dẫn ngắn = nhãn" (`quoteRole`, ≤3 từ và
   không có dấu kết câu) từng tô chữ thật của sách bằng `ink-faint`, tương phản ~2:1 trên giấy trắng — chủ đọc không
