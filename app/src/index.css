@@ -342,6 +342,12 @@
 html[data-host="window"] body { background: transparent; }
 html[data-host="window"] aside.bg-column { background: transparent; }
 
+/* The dot of a bulleted list item on the page: the brand colour, the one
+   accent on a page of text (owner, 17/09: "bullet có màu riêng"). Named
+   here rather than typed into the screen because brand red in a screen is
+   what the UI audit forbids - identity is decided once, in one place. */
+.list-dot { color: var(--color-brand-600); }
+
 @utility hover-wash {
   &:hover {
     background-image: linear-gradient(var(--color-wash), var(--color-wash));

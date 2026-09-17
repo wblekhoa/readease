@@ -830,7 +830,7 @@ export function Reader({
         <span
           aria-hidden
           className={`absolute left-0 top-1 w-8 pr-2 text-right tabular-nums ${
-            marker.kind === "dot" ? "text-brand-600" : "text-ink-mute"
+            marker.kind === "dot" ? "list-dot" : "text-ink-mute"
           }`}
         >
           {marker.kind === "dot"
