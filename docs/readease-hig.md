@@ -451,6 +451,12 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   chẳng có gì để bo ngoài **vạch trái của khối trích dẫn**, nên vạch bị cong hai đầu (chủ 06/09). Dùng `2xl` chứ
   không phải `xl`: thang bán kính chỉ có hai nấc — surface `2xl`, content `lg` — `xl` nằm ngoài thang và
   `npm run audit:ui` chặn nó.
+- **Dấu đầu dòng là chữ của tài liệu, không phải chrome** (17/09, chủ: "style của các bullet point đẹp hơn"). Trước:
+  chấm 6 px và số "1." ở 0,9em đều `ink-mute` — số đọc như dấu chú thích chứ không phải thứ tự, và rãnh 20 px làm "10."
+  tràn đè lên chữ. Nay: **số đúng cỡ chữ, màu `ink`, `tabular-nums`, canh phải trong rãnh 32 px** (`pl-8`, `w-8 pr-2`
+  — chứa tới "99."); **chấm 5 px màu `ink`** (≈ dấu • của font) trong rãnh 24 px (`pl-6`, `w-5 pr-1`), giữa x-height
+  dòng đầu (`top-1` = `py-1` của khối, line-height thừa kế). Sách in làm thế: số thứ tự và chấm cùng mực với chữ, chỉ
+  hình dạng nói "danh sách".
 - **`ink-faint` là màu VÔ HIỆU, đừng dùng cho chữ của sách.** Nhánh "trích dẫn ngắn = nhãn" (`quoteRole`, ≤3 từ và
   không có dấu kết câu) từng tô chữ thật của sách bằng `ink-faint`, tương phản ~2:1 trên giấy trắng — chủ đọc không
   ra và hỏi "nội dung gì mà mờ quá vậy". **Nhãn là NHỎ và khẽ, không phải không dùng được**: cỡ chữ và độ đậm nói
