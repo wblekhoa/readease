@@ -916,9 +916,11 @@ ngại đó.
   trắng" — n00 ở tối; bản n05 xám chỉ sống một giờ), viền phải hairline `edge` là thứ duy nhất ngăn cột với
   trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
   đo 16/09); ba tầng — *đầu* **68 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
-  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 28}** → tâm
-  đèn y = 34 = tâm hàng toolbar của cột nội dung (pt-4 + 36/2); trước là {20, 20} và đầu cột 52 px: khi cột thu, đèn
-  cao hơn hàng "⇅ Thư viện" 8 px và nút đầu tiên đứng sát đèn 4 px — chủ 17/09 "vị trí các nút window… chưa đẹp") và
+  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 33}** → tâm
+  đèn y ≈ 34 = tâm hàng toolbar của cột nội dung (pt-4 + 36/2). **`y` của tao ≈ TÂM đèn, không phải mép trên**: tao
+  đặt chiều cao khung title bar = cao nút + y và giữ nguyên origin của nút trong khung, nên tâm ≈ y + 1 (đo trên bản
+  cài 17/09: y 28 → tâm 28,5, vẫn cao hơn hàng 6 px). Trước là {20, 20} và đầu cột 52 px: khi cột thu, đèn cao hơn
+  hàng "⇅ Thư viện" ~13 px và nút đầu tiên đứng sát đèn 4 px — chủ 17/09 "vị trí các nút window… chưa đẹp") và
   nút thu/mở ở mép phải; **một đường ngang duy nhất** cho đèn · nút thu/mở · toolbar; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
   `ink`, luật state layer §2) rồi nhóm **Đang đọc** (nhãn nhóm = kiểu nhãn của `GroupedSection`: xs semibold IN HOA
   `tracking-wide` `ink-mute` — chủ 17/09 "thử style khác" cho nhãn thường; tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
