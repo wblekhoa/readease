@@ -13,7 +13,7 @@ import { ReadingSources, type SourcesProps } from "../ui/SourcesHub";
 
 export function FirstRun({ onEnter, ...sources }: SourcesProps & { onEnter: () => void }) {
   return (
-    <div className="flex h-screen items-center justify-center px-6">
+    <div className="flex h-screen items-center justify-center bg-ground px-6">
       {/* Centred while it fits, scrolling inside its own column when the
           window is short - the rows must never be cut off at the top. */}
       <div className="max-h-full w-[34rem] max-w-full overflow-y-auto py-10">

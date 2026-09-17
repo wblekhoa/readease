@@ -4,7 +4,7 @@
  * 16/09: "cột trái sẽ có thể ẩn hiện thông minh tuỳ vào nhu cầu. User có thể
  * tắt/mở giống codex"):
  *
- * 1. A hand beats the automation. The toggle button and ⌃⌘S are a CHOICE,
+ * 1. A hand beats the automation. The toggle button and ⌥⌘S are a CHOICE,
  *    kept for the session and remembered across launches; after one, the
  *    window's width never opens or closes the column again.
  * 2. Until a choice is made, the width decides: narrower than `NARROW`
@@ -59,7 +59,7 @@ export function storedWidth(remembered: string | null): number {
 }
 
 export type SidebarEvent =
-  /** The toggle button or ⌃⌘S. */
+  /** The toggle button or ⌥⌘S. */
   | { type: "toggle" }
   /** The window crossed the width threshold, or was measured at start. */
   | { type: "width"; narrow: boolean }

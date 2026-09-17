@@ -71,6 +71,7 @@ export function NotesPanel({
           /* Rows outdent by 8 so the hover wash reaches past the text; the
              rule is pushed back in by the same 8 to line up with it. */
           <GroupedSection
+            heading="name"
             key={group.chapterId}
             title={group.chapterTitle}
             className="[--dot-inset:0.5rem]"
@@ -129,7 +130,7 @@ export function NotesPanel({
                   tabIndex={0}
                   aria-label={text("notes.remove")}
                   title={text("notes.remove")}
-                  className="tail-reveal text-ink-faint hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+                  className="tail-reveal text-ink-mute hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
                   onClick={(event) => { event.stopPropagation(); setConfirming(item.id); }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;

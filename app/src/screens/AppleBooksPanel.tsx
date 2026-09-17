@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
 import { Button, IconButton, Input, Notice, Surface } from "../ui/controls";
-import { BookTile, EmptyState, MenuButton, MiniCover } from "../ui/patterns";
+import { BookTile, EmptyState, MenuButton, MiniCover, Scrim } from "../ui/patterns";
 import { BookClosedIcon, BookIcon, ChevronDownIcon, CloseIcon, ImportIcon, LockIcon, SyncIcon } from "../ui/icons";
 import { useCover } from "../ui/useCover";
 import { SEARCH_ABOVE, matchesQuery, orderShelfItems } from "../ui/shelfFilter";
@@ -177,10 +177,12 @@ export function AppleBooksPanel({
   const searchable = books.length > SEARCH_ABOVE;
 
   return (
+    <>
+    <Scrim />
     <Surface
       edge="strong"
       radius="sheet"
-      className="absolute left-1/2 top-1/2 z-30 flex max-h-[84%] w-[38rem] -translate-x-1/2 -translate-y-1/2 flex-col shadow-lifted"
+      className="fixed left-1/2 top-1/2 z-30 flex max-h-[84%] w-[38rem] -translate-x-1/2 -translate-y-1/2 flex-col shadow-lifted"
     >
       <div className="flex items-start gap-3 px-6 pb-4 pt-5">
         <div className="min-w-0 flex-1">
@@ -261,5 +263,6 @@ export function AppleBooksPanel({
         </span>
       </div>
     </Surface>
+    </>
   );
 }

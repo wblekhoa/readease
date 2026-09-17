@@ -18,13 +18,14 @@
  * everywhere else): drag to copy, or hand the selection to the voice through
  * the pill. A plain click on a paragraph still moves the voice.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
-import { SearchPanel } from "../ui/SearchPanel";
+import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
+import { matchRanges } from "../ui/textSearch";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
 import type { SidebarTab } from "../ui/sidebarState";
@@ -253,6 +254,8 @@ export function Reader({
   onPageInfo: (info: PageInfo | null) => void;
 }) {
   const [opened, setOpened] = useState<OpenedBook | null>(null);
+  /** What the Tìm tab is looking for, so the page can mark it (HIG 3.16). */
+  const [searchMarks, setSearchMarks] = useState<SearchMarks>({ query: "", current: null });
   /** Why the book would not open, and why one that was deleted came back. */
   const [openError, setOpenError] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -687,17 +690,57 @@ export function Reader({
    * each piece knows which highlight made it, and so which colour and which
    * note belong to it.
    */
+  /** The search's marks on a stretch of a paragraph: the stretch cut at
+   *  every match that falls inside it, the matches wrapped. `offset` is
+   *  where the stretch starts in the printed paragraph, so a match found
+   *  on the whole paragraph lands on the right characters of a piece cut
+   *  out of it by a highlight. The match the list chose is the k-th of its
+   *  paragraph, which is how the page counts them too. */
+  const searched = (
+    piece: string, offset: number, ranges: Array<[number, number]>, currentOccurrence: number | null,
+  ): ReactNode => {
+    const end = offset + piece.length;
+    const inside = ranges
+      .map((range, occurrence) => ({ range, occurrence }))
+      .filter(({ range }) => range[0] < end && range[1] > offset);
+    if (inside.length === 0) return piece;
+    const out: ReactNode[] = [];
+    let cursor = offset;
+    inside.forEach(({ range, occurrence }) => {
+      const from = Math.max(range[0], cursor);
+      const to = Math.min(range[1], end);
+      if (from > cursor) out.push(<Fragment key={`t${cursor}`}>{piece.slice(cursor - offset, from - offset)}</Fragment>);
+      out.push(
+        <mark key={`m${from}`} data-search={occurrence === currentOccurrence ? "current" : "match"}>
+          {piece.slice(from - offset, to - offset)}
+        </mark>,
+      );
+      cursor = to;
+    });
+    if (cursor < end) out.push(<Fragment key={`t${cursor}`}>{piece.slice(cursor - offset)}</Fragment>);
+    return <>{out}</>;
+  };
+
   /** `shown` is the text as the page prints it - a list item minus the
    *  marker the book typed into it. Highlights match by their own words, so
    *  a shorter string still finds them. */
   const marked = (segment: BookSegment, shown = segment.text) => {
     const items = highlightsBySegment.get(segment.id);
-    if (!items) return shown;
+    const ranges = searchMarks.query ? matchRanges(shown, searchMarks.query) : [];
+    const currentOccurrence =
+      searchMarks.current?.segmentId === segment.id ? searchMarks.current.occurrence : null;
+    if (!items) return ranges.length ? searched(shown, 0, ranges, currentOccurrence) : shown;
     const pieces = markParagraph(shown, items.map((item) => item.selected_text));
     // Nothing found: hand back the plain string, not a wrapped one.
-    if (pieces.every((piece) => piece.index === null)) return shown;
+    if (pieces.every((piece) => piece.index === null)) {
+      return ranges.length ? searched(shown, 0, ranges, currentOccurrence) : shown;
+    }
+    let offset = 0;
     return pieces.map((piece, at) => {
-      if (piece.index === null) return <Fragment key={at}>{piece.text}</Fragment>;
+      const start = offset;
+      offset += piece.text.length;
+      const body = searched(piece.text, start, ranges, currentOccurrence);
+      if (piece.index === null) return <Fragment key={at}>{body}</Fragment>;
       const item = items[piece.index];
       return (
         <Fragment key={at}>
@@ -724,7 +767,7 @@ export function Reader({
               <NoteIcon />
             </InlineIconButton>
           )}
-          <mark data-style={item.style || undefined}>{piece.text}</mark>
+          <mark data-style={item.style || undefined}>{body}</mark>
         </Fragment>
       );
     });
@@ -737,7 +780,7 @@ export function Reader({
    * - a list item hangs from a gutter with a dot, or the book's own number;
    * - a quotation is set in from the left; a one-word "quote" is a label.
    * The heading keeps its old shape. */
-  const blockClasses = (segment: BookSegment, onPages: boolean): string => {
+  const blockClasses = (segment: BookSegment, onPages: boolean, first = false): string => {
     // Spacing is TOP margin only, so a block decides its own distance from
     // the one above and a cut paragraph can close that distance to nothing.
     // Each block carries `py-1` for its hover band; the split's negative
@@ -746,9 +789,19 @@ export function Reader({
     const split = continues(segment.joint);
     switch (segment.kind) {
       case "heading":
-        return (onPages ? "mt-2 " : "mt-10 ") + "text-[1.35em] font-bold leading-snug ";
+        // On pages the chapter's opening heading sits at the top of the
+        // first page and needs no room; a section heading further down
+        // needs air from the paragraph above it (owner, 17/09: at 8 px it
+        // clung to the body). A heading that lands at a column's top has
+        // its margin truncated at the break, so the air never opens a
+        // hole at the head of a page.
+        return (onPages ? (first ? "mt-2 " : "mt-6 ") : "mt-10 ") + "text-[1.35em] font-bold leading-snug ";
       case "list_item":
-        return (split ? "-mt-2 " : "mt-1 ") + "relative pl-6 ";
+        // One gutter for dotted and numbered items alike (32 px, room for
+        // "99."), so the text edge is the same down a chapter whatever the
+        // list's marker (owner, 17/09: "padding left của bullet bằng với
+        // number"; HIG 3.9e).
+        return (split ? "-mt-2 " : "mt-1 ") + "relative pl-8 ";
       case "quote":
         return quoteRole(segment.text) === "label"
           // `ink-faint` is the DISABLED colour. It was painting real words
@@ -773,14 +826,27 @@ export function Reader({
         {/* The gutter mark shares the first line's baseline: `top-1` is the
             block's own `py-1`, and the line-height is inherited rather than
             re-typed, so a dot or "1." sits where the eye expects a bullet -
-            level with the first line, not perched above it. */}
+            level with the first line, not perched above it. Two ranks
+            (owner, 17/09): the dot in the brand colour - a mark of the
+            app's, the one accent on a page of text - and the number, an
+            ordinal at the text's size in tabular figures, a shade lighter
+            than the words so it ranks below them, right-aligned in a
+            gutter that holds "99." (the 0.9em number read as a footnote
+            mark, and "10." overran a 20 px gutter). */}
         <span
           aria-hidden
-          className="absolute left-0 top-1 w-5 pr-1 text-right text-ink-mute tabular-nums"
+          className={`absolute left-0 top-1 w-8 text-right tabular-nums ${
+            // The dot sits under the DIGIT of a number, not under its
+            // period: a number is right-aligned to 8 px from the text, so
+            // its figure's centre is about 15 px in, and a 5 px dot set
+            // 14 px from the text lands there (owner, 17/09: "xa ra bên
+            // trái một xíu để align với number").
+            marker.kind === "dot" ? "list-dot pr-3.5" : "text-ink-mute pr-2"
+          }`}
         >
           {marker.kind === "dot"
-            ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />
-            : <span className="text-[0.9em]">{marker.label}</span>}
+            ? <span className="inline-block h-[5px] w-[5px] rounded-full bg-current align-middle" />
+            : marker.label}
         </span>
         {marked(segment, rest)}
       </>
@@ -788,7 +854,7 @@ export function Reader({
   };
 
   const chapterBody = (chapter: BookChapter) =>
-    chapter.segments.map((segment) => (
+    chapter.segments.map((segment, index) => (
       <div key={segment.id}>
         {chapter.figures
           .filter((figure) =>
@@ -819,7 +885,7 @@ export function Reader({
             // on it: a cut paragraph's negative margin swallows exactly
             // these two paddings to sit one line-height under its head.
             "-mx-2 cursor-text px-2 py-1 read-from-here " +
-            blockClasses(segment, paged) +
+            blockClasses(segment, paged, index === 0) +
             (segment.id === marker ? "voice-here" : "")
           }
         >
@@ -841,7 +907,7 @@ export function Reader({
    * narrow no longer eats the page's width). A chapter jumps; the column
    * stays, because a column is not a thing that disappears when used. */
   const contents = showToc && (
-    <nav aria-label={text("reader.toc_title")} className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+    <nav aria-label={text("reader.toc_title")} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1.5 pb-6">
         {opened.book.chapters.map((chapter, index) => (
           <ListRow
             key={chapter.id}
@@ -864,7 +930,7 @@ export function Reader({
             /* Two lines, not one truncated to nothing: a title long enough to
                be cut is the one carrying the most, and this list is read by
                scanning it rather than by width. */
-            title={<span className="line-clamp-2 text-sm">{chapter.title}</span>}
+            title={<span className="line-clamp-2 text-sm leading-snug">{chapter.title}</span>}
           />
         ))}
     </nav>
@@ -877,6 +943,7 @@ export function Reader({
   const search = sidebarTab === "search" && (
     <SearchPanel
       chapters={opened.book.chapters}
+      onMarks={setSearchMarks}
       onJump={(hit) => {
         if (paged) {
           setChapterIndex(hit.chapterIndex);

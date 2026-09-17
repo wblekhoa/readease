@@ -52,6 +52,10 @@ export function foldQuery(query: string): string {
   return fold(query).replace(/\s+/g, " ").trim();
 }
 
+/** A list item's own marker - "• ", "1. ", "a) " - typed into the text by
+ * the book. On the page it is a mark for the eye; in a hit it is noise. */
+const LIST_MARKER = /^(?:[•·\-–—*]|\d{1,3}[.)]|[a-z][.)])\s+/;
+
 function cutBefore(text: string, end: number): string {
   const start = Math.max(0, end - CONTEXT.before);
   let piece = text.slice(start, end);
@@ -59,6 +63,8 @@ function cutBefore(text: string, end: number): string {
     const space = piece.indexOf(" ");
     piece = (space >= 0 && space < piece.length - 1 ? piece.slice(space + 1) : piece);
     piece = "…" + piece;
+  } else {
+    piece = piece.replace(LIST_MARKER, "");
   }
   return piece;
 }
@@ -71,6 +77,23 @@ function cutAfter(text: string, start: number): string {
     piece = (space > 0 ? piece.slice(0, space) : piece) + "…";
   }
   return piece;
+}
+
+/** Where a query lands in ONE text, as [start, end) ranges of the original
+ * characters, in order - what the page marks. The same fold as the list,
+ * on the text as the page prints it, so a list item shorn of its marker
+ * still marks the right characters. Empty for a query too short to search. */
+export function matchRanges(text: string, query: string): Array<[number, number]> {
+  const needle = foldQuery(query);
+  if (needle.length < MIN_QUERY) return [];
+  const { folded, map } = foldMap(text);
+  const ranges: Array<[number, number]> = [];
+  let at = folded.indexOf(needle);
+  while (at >= 0) {
+    ranges.push([map[at], map[at + needle.length - 1] + 1]);
+    at = folded.indexOf(needle, at + needle.length);
+  }
+  return ranges;
 }
 
 export function searchBook(chapters: readonly SearchChapter[], query: string, limit = MAX_HITS): SearchHit[] {

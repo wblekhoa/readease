@@ -107,7 +107,10 @@ export function ListRow({
   dense?: boolean;
 }) {
   const shape = dense
-    ? "rounded-[var(--ctl-radius)] px-2.5 py-1.5"
+    // 8 px above and below, not 6: a chapter title on two lines needs the
+    // air, and a one-line row is 36 - the column's control height (owner,
+    // 18/09; HIG 3.16).
+    ? "rounded-[var(--ctl-radius)] px-2.5 py-2"
     : "rounded-2xl px-3 py-2";
   return (
     <div
@@ -149,6 +152,7 @@ export function GroupedSection({
   children,
   className = "",
   roomy = false,
+  heading = "label",
 }: {
   title?: ReactNode;
   children: ReactNode;
@@ -156,6 +160,12 @@ export function GroupedSection({
   /** A sheet that lists things to act on breathes more than a settings
    * group (owner, 02/09): wider header gap, the rows opt in themselves. */
   roomy?: boolean;
+  /** What the title IS. A `label` names a kind of thing ("Giọng") and is
+   * set in small caps; a `name` is content - a chapter's title over its
+   * notes - and is written as its author wrote it, wrapping if it must.
+   * Caps hold for a few words and not for a Vietnamese chapter title
+   * (owner, 17/09: "Uppercase không đẹp"). */
+  heading?: "label" | "name";
 }) {
   return (
     /* A TITLED section starts a new subject, so it opens a wider gap above
@@ -166,7 +176,9 @@ export function GroupedSection({
        sites cannot each pick their own. */
     <section className={`${title ? "mt-6" : ""} ${className}`}>
       {title && (
-        <h3 className={`m-0 text-xs font-semibold uppercase tracking-wide text-ink-mute ${roomy ? "mb-2.5" : "mb-1.5"}`}>
+        <h3 className={`m-0 font-semibold text-ink-mute ${
+          heading === "name" ? "text-[13px] leading-snug" : "text-xs uppercase tracking-wide"
+        } ${roomy ? "mb-2.5" : "mb-1.5"}`}>
           {title}
         </h3>
       )}
@@ -696,6 +708,8 @@ export function MenuButton({
       {open && (
         <Surface
           edge="strong"
+          material="glass"
+          radius="menu"
           className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div role="menu" className="flex flex-col">
@@ -717,8 +731,11 @@ export function MenuButton({
                   <span className="shrink-0 text-ink-mute [&_svg]:h-4 [&_svg]:w-4">{item.icon}</span>
                 )}
                 <span className="flex-1">{item.label}</span>
+                {/* Mute, not faint: the hint says something ("Đang mở",
+                    "⌥⌘S") and faint is the disabled shade - on the dark menu
+                    it measured under 2:1 (owner, 17/09: "mờ quá"). */}
                 {(item.hint || index === 0) && (
-                  <span className="text-xs text-ink-faint">{item.hint ?? ""}</span>
+                  <span className="text-xs text-ink-mute">{item.hint ?? ""}</span>
                 )}
               </button>
             ))}
@@ -816,16 +833,22 @@ export function SideColumn({
           title={resizeLabel}
           onPointerDown={onPointerDown}
           onDoubleClick={() => { onResize(Number.NaN); onResize(null); }}
-          className="absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
+          data-dragging={dragging || undefined}
+          className="rail-grip absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
         />
       )}
       <div className="flex h-full flex-col" style={{ width }}>
-        {/* The lights live in the first 76px of this strip (x 20-72) - in
-            the window; a browser has none, and leaves no hole for them. The
-            switch takes the far end, where Codex puts it. */}
+        {/* The lights live in the first 88px of this strip (x 20-72, then
+            16px of air) - in the window; a browser has none, and leaves no
+            hole for them. The switch takes the far end, where Codex puts it.
+            60px tall so its centre line (30) is the content toolbar's
+            (pt-3 + half of 36): the lights, this switch and the toolbar's
+            controls sit on ONE line across the window, folded or not
+            (owner, 17/09: the lights rode above the title; then "đưa
+            navbar lên trên một xíu"). */}
         <div
           data-tauri-drag-region
-          className={`flex h-[52px] shrink-0 items-center justify-end pr-3 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[76px]" : "pl-4"}`}
+          className={`flex h-[60px] shrink-0 items-center justify-end pr-3 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[88px]" : "pl-4"}`}
         >
           <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
             <SidebarIcon />
@@ -838,6 +861,17 @@ export function SideColumn({
       </div>
     </aside>
   );
+}
+
+/** The dimmed, blurred window under a sheet in the middle of it (HIG 3.13,
+ * owner 17/09: "một lớp blur overlay để focus vào phần modal"). Fixed to
+ * the window so the side column dims with the page. It is not a button:
+ * `useDismiss` already treats a click on it as a click outside the sheet,
+ * and keeps the sheet up while a download runs. */
+export function Scrim() {
+  // A strong blur: the window behind is a backdrop, not a page seen through
+  // gauze (owner, 17/09: "blur mạnh hơn, để nó như là một nền background").
+  return <div aria-hidden="true" className="fixed inset-0 z-20 bg-black/25 backdrop-blur-2xl" />;
 }
 
 /** One entry of the column's navigation: a glyph and a name, painted `wash`
@@ -870,13 +904,73 @@ export function RailItem({
   );
 }
 
-/** A named group of rail items - "Đang đọc" - with the heading Codex gives
- * its Pinned and Recents: small, quiet, above the rows. */
+/** One document in the column's "Đang đọc" group: the row you pick a
+ * document back up from (HIG 3.16, 17/09).
+ *
+ * What the purpose asks for and a truncated name alone did not give: the
+ * cover, which is how a document is recognised before its name is read;
+ * two lines of the name, because the part that tells two copies apart
+ * ("— bản nháp thứ ba") is the part a single line cut; and where you got
+ * to - a 2 px strip along the cover's foot, the same language as the bar
+ * under a shelf cover, with the figure and the chapter as one quiet line.
+ * No "chosen" state: opening a document turns the column into its lists.
+ */
+export function RailDocument({
+  title,
+  cover,
+  progress = null,
+  chapter = null,
+  onPress,
+}: {
+  title: string;
+  /** undefined = still loading, null = the document has none. */
+  cover: string | null | undefined;
+  progress?: number | null;
+  chapter?: string | null;
+  onPress: () => void;
+}) {
+  const percent = progress === null ? null : Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  const meta = [percent !== null && `${percent}%`, chapter].filter(Boolean).join(" · ");
+  return (
+    <button
+      onClick={onPress}
+      title={title}
+      className="flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-3 py-2 text-left transition-colors hover:bg-wash"
+    >
+      <span className="relative h-9 w-6 shrink-0 overflow-hidden rounded-[3px] bg-band shadow-edge">
+        {cover ? (
+          <img src={cover} alt="" className="h-full w-full object-cover" draggable={false} />
+        ) : (
+          <span className="absolute inset-y-0 left-0 w-[3px] bg-wash" />
+        )}
+        {percent !== null && (
+          <span className="absolute inset-x-0 bottom-0 h-[2px] bg-wash">
+            <span className="block h-full bg-progress" style={{ width: `${percent}%` }} />
+          </span>
+        )}
+      </span>
+      {/* Two ranks, not one: the name in ink at medium weight, the fact a
+          size smaller in mute, and air between them - a name and its fact
+          set in the same grey two pixels apart read as one blurred line
+          (owner, 17/09: "text title đậm màu hơn và spacing của phần
+          description sẽ cần nhiều hơn"). */}
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-sm font-medium leading-snug text-ink">{title}</span>
+        {meta && <span className="mt-1.5 block truncate text-xs text-ink-mute">{meta}</span>}
+      </span>
+    </button>
+  );
+}
+
+/** A named group of rail items - "Đang đọc" - with the heading the app's
+ * other groups wear (`GroupedSection`: small caps, tracked, mute), so a
+ * section reads as a section here as it does in the settings panels
+ * (owner, 17/09, of the plain sentence-case label: "thử style khác"). */
 export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="pt-6">
-      <p className="m-0 px-3 pb-2 text-xs font-semibold text-ink-mute">{title}</p>
-      {children}
+      <p className="m-0 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-ink-mute">{title}</p>
+      <div className="flex flex-col gap-1">{children}</div>
     </div>
   );
 }

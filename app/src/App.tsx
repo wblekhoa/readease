@@ -3,10 +3,12 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
-import { GradientBlur, MenuButton, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
+import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
+import { useCover } from "./ui/useCover";
 import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
-import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
+import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
 import {
@@ -112,6 +114,14 @@ function useAppearance(): [Theme, () => void, ThemePreference, (preference: Them
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  // The window's own appearance follows the choice too: the sidebar
+  // material behind the column is the Mac's, and painted for the window's
+  // appearance, not the page's - an app in dark over a light desktop would
+  // otherwise get a light frosted column. "System" hands the choice back.
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    void getCurrentWindow().setTheme(preference === "system" ? null : preference).catch(() => undefined);
+  }, [preference]);
   const toggle = useCallback(() => {
     const next = nextTheme(theme);
     rememberThemePreference(next);
@@ -131,6 +141,22 @@ function useAppearance(): [Theme, () => void, ThemePreference, (preference: Them
 function anchor(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
   return { centre: rect.left + rect.width / 2, top: rect.top };
+}
+
+/** A row of the column's "Đang đọc" group. The cover is fetched here, per
+ * row, through the same cache the shelf fills - so a document already seen
+ * on the shelf costs nothing to draw again. */
+function ReadingNowRow({ book, onPress }: { book: LibraryBook; onPress: () => void }) {
+  const cover = useCover(book.id);
+  return (
+    <RailDocument
+      title={book.title}
+      cover={cover}
+      progress={book.progress_ratio}
+      chapter={book.progress_chapter}
+      onPress={onPress}
+    />
+  );
 }
 
 export default function App() {
@@ -1058,23 +1084,57 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [reading, togglePause]);
 
-  /* The side column's keys (HIG §4): ⌃⌘S folds and unfolds it - the Mac's
-     own "Toggle Sidebar" chord - and ⌘F in a book opens the search tab. */
+  /* The side column's keys (HIG §4). ⌥⌘S folds and unfolds it - Finder's,
+     Notes' and Photos' own "Hide/Show Sidebar" chord, and off the ⌃⌘ layer
+     the system keeps for itself (⌃⌘Space, ⌃⌘F, ⌃⌘Q, ⌃⌘D; owner, 17/09:
+     "tránh các phím tắt thông dụng khác"). ⌘1-⌘4 go to the four screens
+     outside a document and to the column's three lists inside one, the
+     way Finder and Mail number their views; ⌘F in a document brings the
+     search up and puts the cursor in it - and only that: with the search
+     already showing it selects the query for typing over, where the
+     switch semantics of `show` would have folded the column. Keys are
+     read by `code`, not `key`: with ⌥ held the Mac reports "ß" for S. */
   const inBook = tab === "library" && openBook !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (event.metaKey && event.ctrlKey && !event.altKey && key === "s") {
+      if (!event.metaKey || event.ctrlKey) return;
+      if (event.altKey && !event.shiftKey && event.code === "KeyS") {
         event.preventDefault();
         dispatchSide({ type: "toggle" });
-      } else if (event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && key === "f" && inBook) {
+        return;
+      }
+      if (event.altKey || event.shiftKey) return;
+      if (event.code === "KeyF" && inBook) {
         event.preventDefault();
-        dispatchSide({ type: "show", tab: "search" });
+        const field = sideSlot?.querySelector<HTMLInputElement>('input[type="search"]');
+        if (sideOpen && side.tab === "search" && field) {
+          field.focus();
+          field.select();
+        } else {
+          dispatchSide({ type: "show", tab: "search" });
+        }
+        return;
+      }
+      const digit = /^Digit([1-4])$/.exec(event.code);
+      if (!digit) return;
+      const nth = Number(digit[1]);
+      if (inBook) {
+        const lists: SidebarTab[] = ["contents", "notes", "search"];
+        if (nth <= lists.length) {
+          event.preventDefault();
+          dispatchSide({ type: "show", tab: lists[nth - 1] });
+        }
+      } else {
+        // The four screens in the order the column and the mode menu
+        // list them (`tabs` then `tools`, declared further down).
+        const screens = ["library", "paste", "external", "transfer"];
+        event.preventDefault();
+        setTab(screens[nth - 1]);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [inBook]);
+  }, [inBook, sideOpen, side.tab, sideSlot]);
 
   /* A choice made by hand is remembered; the automation's answer is not
      (it is recomputed from the window each launch). */
@@ -1303,9 +1363,9 @@ export default function App() {
             {readingNow.length > 0 && (
               <RailGroup title={text("sidebar.reading")}>
                 {readingNow.map((book) => (
-                  <RailItem
+                  <ReadingNowRow
                     key={book.id}
-                    label={book.title}
+                    book={book}
                     onPress={() => { setTab("library"); setPosition(null); setOpenBook(book); }}
                   />
                 ))}
@@ -1322,25 +1382,27 @@ export default function App() {
        beside the side column; the insets are measured inside it. */}
     <div
       ref={shell}
-      className="relative min-w-0 flex-1 overflow-hidden"
-      style={{ "--shell-top-h": "76px", "--shell-bottom-h": showFooter ? "76px" : "0px" } as CSSProperties}
+      className="relative min-w-0 flex-1 overflow-hidden bg-ground"
+      style={{ "--shell-top-h": "72px", "--shell-bottom-h": showFooter ? "72px" : "0px" } as CSSProperties}
     >
       {/* The window's title bar is an overlay, so this strip is what a
           person drags the window by (data-tauri-drag-region: a mousedown
           on the strip itself, never on a control inside it). */}
       <div ref={headerBar} data-tauri-drag-region className="absolute inset-x-0 top-0 z-20">
         <GradientBlur edge="top" />
-        <div ref={headerRow} data-tauri-drag-region className="relative z-10 px-6 pb-6 pt-4">
+        <div ref={headerRow} data-tauri-drag-region className="relative z-10 px-6 pb-6 pt-3">
       <Toolbar
         leading={
           <div className="flex min-w-0 items-center gap-1">
           {/* Folded, the column's head is gone and the Mac's window buttons
-              sit over this corner instead: room for them, then - on the home
+              sit over this corner instead: room for them (they end at x 72;
+              with the 24px gutter this spacer puts the first control at 88,
+              16px of air after the zoom button), then - on the home
               screens - the switch that brings the column back, Codex's own
               arrangement. A book's toolbar has no such switch (owner, 16/09:
               "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
               search buttons each unfold the column on their own list. */}
-          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[52px] shrink-0" />}
+          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[64px] shrink-0" />}
           {/* A home screen's title, where a book's stands, with the mode
               switch before it (owner, 16/09: "trên title thì nút ở đây là
               nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of
@@ -1364,7 +1426,7 @@ export default function App() {
                   ...(sideOpen ? [] : [{
                     icon: <SidebarIcon />,
                     label: text("sidebar.label"),
-                    hint: "⌃⌘S",
+                    hint: "⌥⌘S",
                     onSelect: () => dispatchSide({ type: "toggle" }),
                   }]),
                 ]}
@@ -1655,10 +1717,11 @@ export default function App() {
             </div>
           );
         })()}
-        {/* Same height as the header (76px): the frost's room sits on the
-            inner edge of each bar - the header's bottom, the footer's top
-            (owner, 02/09: "tương đồng với header"). */}
-        <div ref={footerRow} className="relative z-10 grid min-h-[76px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-4 pt-6">
+        {/* Same height as the header (72px: 12 outer, 36 row, 24 frost):
+            the frost's room sits on the inner edge of each bar - the
+            header's bottom, the footer's top (owner, 02/09: "tương đồng với
+            header"). */}
+        <div ref={footerRow} className="relative z-10 grid min-h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-3 pt-6">
           {/* Left: the other way in. Middle: what a click does. Right: what
               the voice is up to. A grid keeps the middle in the middle
               whatever the sides say - and gives the bar its height (an
@@ -1814,6 +1877,7 @@ export default function App() {
                       >
                         <Surface
                           edge="strong"
+                          material="glass"
                           className="w-[24rem] max-w-[calc(100vw-3rem)] p-3 shadow-lifted"
                         >
                           <span className="block text-xs text-ink-mute">
@@ -1831,7 +1895,7 @@ export default function App() {
                             className="-mx-1 mt-1 block w-full rounded-lg px-1 py-1 text-left text-sm leading-relaxed hover-wash"
                           >
                             <span className="line-clamp-3">{pageInfo.resumeExcerpt}</span>
-                            <span className="mt-1 block text-xs text-ink-faint">
+                            <span className="mt-1 block text-xs text-ink-mute">
                               {text("player.resume_goto")}
                             </span>
                           </button>

@@ -302,20 +302,51 @@
    gradient mask: at this size the shell's eight-layer ramp would be spent
    on 24 pixels. Also reachable by keyboard: `focus-visible` shows it. */
 @utility tail-reveal {
+  /* A chip the size of the button, in the row's top-right corner - not a
+     strip the height of the row (owner, 17/09: "chỉ nằm trong vùng của
+     button thôi, chứ không full height"). Glass so the words under it
+     are felt, an edge so it reads as a thing on top of them. */
   position: absolute;
-  inset-block: 0;
-  right: 0;
+  top: 0.5rem;
+  right: 0.5rem;
   display: flex;
-  align-items: flex-start;
-  padding: 0.625rem 0.5rem 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ctl-radius);
+  border: 1px solid var(--color-edge);
   opacity: 0;
   transition: opacity 120ms ease-out;
-  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--color-column) 90%, transparent) 60%);
+  background: color-mix(in srgb, var(--color-column) 85%, transparent);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 55%);
-  mask-image: linear-gradient(to right, transparent, black 55%);
 }
+
+/* The material of a layer that floats over the page: Books' popover glass
+   (owner, 17/09: "tận dụng các thiết kế từ Apple để có style glass") -
+   paper at 74% over the page blurred and a touch more saturated, so the
+   page is felt behind the panel without competing with its text. Only for
+   layers OVER the page; sheets and the column stay paper (HIG 3.9d). */
+@utility glass-panel {
+  background: color-mix(in srgb, var(--color-paper) 74%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(28px) saturate(1.5);
+}
+
+/* In the Tauri window the body is clear and the side column shows macOS's
+   own sidebar material (the window is transparent and asks for the
+   `sidebar` effect); the content column and the first-run screen paint
+   the ground themselves, so the material lives in the column and nowhere
+   else. A browser has no material: the column keeps its solid `column`. */
+html[data-host="window"] body { background: transparent; }
+html[data-host="window"] aside.bg-column { background: transparent; }
+
+/* The dot of a bulleted list item on the page: the brand colour, the one
+   accent on a page of text (owner, 17/09: "bullet có màu riêng"). Named
+   here rather than typed into the screen because brand red in a screen is
+   what the UI audit forbids - identity is decided once, in one place. */
+.list-dot { color: var(--color-brand-600); }
 
 @utility hover-wash {
   &:hover {
@@ -405,7 +436,10 @@ body {
   font-size: 14px;
   /* The desk is the DS neutral, exactly - the whole-window material
      diluted the ramp's tone however low the bleed, so it was retired (owner's call, 2026-09-01). Any future material lives in a bounded
-     region, never under the entire page. */
+     region, never under the entire page: since 17/09 that region is the
+     side column (below), and in the window the body is clear so the
+     column can show the Mac's sidebar material while every other region
+     paints `ground` itself. */
   background: var(--app-ground, #FFFFFF);
   color: var(--text-color-neutral-primary, #21262D);
   -webkit-font-smoothing: antialiased;
@@ -499,7 +533,20 @@ textarea:focus-visible {
 }
 .voice-here,
 .voice-here:hover {
-  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
+  /* 55%, up from the 40% of 15/09 (owner, 17/09: "đậm hơn xíu"): at 40%
+     the dots on light paper were lost from a step back. */
+  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
+}
+
+/* The side column's resize grip is invisible until the pointer finds it;
+   then the hairline it sits on darkens, and stays dark while dragging
+   (owner, 17/09: "hover vào sẽ đậm màu line hơn") - the way Finder says
+   "this edge moves". The line is the column's own border (the grip cannot
+   draw over it: the column clips at its padding box), so the column is
+   what changes, through :has(). */
+aside:has(> .rail-grip:hover),
+aside:has(> .rail-grip[data-dragging]) {
+  border-right-color: color-mix(in srgb, var(--color-ink) 35%, transparent);
 }
 
 /* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover
@@ -552,6 +599,19 @@ mark {
   color: inherit;
   border-radius: 0.2em;
   padding: 0 0.05em;
+}
+/* A search match on the page, while the Tìm tab holds a query (HIG 3.16,
+   owner 17/09): the DS yellow at a wash - "find" is yellow on every Mac,
+   Safari's and Books' - and the hit just chosen in the list solid, with
+   the page's ink on it. Stronger than a reader's yellow highlight (ya30)
+   so the two are told apart; it may sit INSIDE a highlight and never
+   replaces that colour. (Brand red at first; owner: "màu vàng".) */
+mark[data-search] {
+  background: var(--yellow-alpha-ya50);
+}
+mark[data-search="current"] {
+  background: var(--yellow-y100);
+  color: var(--color-ink);
 }
 
 /* The note marker sitting at the head of a highlight.

@@ -364,6 +364,7 @@ export function Surface({
   className = "",
   edge = "field",
   radius = "surface",
+  material = "paper",
   ref,
 }: {
   children: ReactNode;
@@ -377,13 +378,22 @@ export function Surface({
   edge?: "field" | "strong";
   /** `surface` = the 16px card tier. `sheet` = 24px for a layer that stands
    * on its own in the middle of the window (owner, 02/09: a modal should be
-   * rounder than a card). */
-  radius?: "surface" | "sheet";
+   * rounder than a card). `menu` = 20px: a menu's rows are 12px corners set
+   * in by 8px, and a corner concentric with them is their radius plus the
+   * inset - 16 made the menu squarer than its own rows (owner, 17/09). */
+  radius?: "surface" | "sheet" | "menu";
+  /** `paper`: opaque, for a card in the page or a sheet in the middle of
+   * the window. `glass`: the material of Books' popovers - paper at 74%
+   * over a blurred page (HIG 3.9d, owner 17/09) - for a layer that floats
+   * OVER the page: popovers, menus, the chapter tooltip. */
+  material?: "paper" | "glass";
 }) {
   return (
     <div
       ref={ref}
-      className={`border bg-paper ${radius === "sheet" ? "rounded-3xl" : "rounded-2xl"} ${
+      className={`border ${material === "glass" ? "glass-panel" : "bg-paper"} ${
+        radius === "sheet" ? "rounded-3xl" : radius === "menu" ? "rounded-[20px]" : "rounded-2xl"
+      } ${
         edge === "strong" ? "border-edge-strong" : "border-edge-field"
       } ${className}`}
     >
@@ -607,7 +617,12 @@ export function SegmentedControl<T extends string | number>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={`flex items-stretch rounded-full bg-band p-1 ${size === "lg" ? "h-11" : "h-9"} ${className}`}
+      // 22 outside, 18 inside: half the group's resting height, so it is a
+      // pill at 44 and keeps that corner when a group grows (the size group
+      // opens to 60), instead of `rounded-full` turning into a bigger
+      // stadium; the option's 18 is the 22 less the 4 px inset (owner,
+      // 17-18/09; HIG 3.9d). A 36 px group clamps 22 to a pill by itself.
+      className={`flex items-stretch rounded-[22px] bg-band p-1 ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -636,7 +651,7 @@ export function SegmentedControl<T extends string | number>({
             title={option.title}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
+            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[18px] text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
               compact && !on ? "flex-none px-2.5" : "flex-1 px-3"
             } ${size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""} ${chosen}`}
           >

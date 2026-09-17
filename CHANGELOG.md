@@ -4,6 +4,34 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The side column shows the Mac's own sidebar material behind it - the
+  desktop and windows behind ReadEase, blurred - dark when the app is,
+  and stays paper-solid nowhere else.
+- "Đang đọc" in the column: each document carries its cover with a
+  progress strip, two lines of its name and "42% · Chương 3", in two
+  ranks; the group's label is set in small caps.
+- Panels over the page (voice settings, reading settings, the cost panel,
+  menus, the chapter tooltip) are glass: the page shows through, blurred.
+  A sheet in the middle of the window (Voices & models, the Apple Books
+  list) stands on a strongly blurred, dimmed window and is centred on the
+  window rather than on the page.
+- Search marks its matches on the page while the Tìm tab holds a query,
+  the hit just chosen stronger; the search box is the taller one with
+  the lens inside.
+- Keys: ⌥⌘S folds and unfolds the column (was ⌃⌘S - the ⌃⌘ layer is the
+  system's); ⌘1-⌘4 go to the four screens, and inside a document to
+  Contents, Notes and Search; ⌘F puts the cursor in the search and keeps
+  it there.
+- The window's buttons, the column's switch and the toolbar sit on one
+  line, 16 px of air after the zoom button; the toolbar row is 4 px
+  higher. The line under the paragraph being read is a step darker; the
+  hairline darkens while the pointer is on the column's resize grip; the
+  delete control in the notes list is a button-sized chip; a chapter's
+  name over its notes is written as its author wrote it; menus are as
+  round as their rows; hints that say something are no longer faint.
+
 ## 0.1.6
 
 A side column that folds like Codex's, headings and chapters you can hear,

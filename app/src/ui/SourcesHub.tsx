@@ -15,7 +15,7 @@
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
 import { CloseIcon } from "./icons";
-import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
+import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
 import { ModelProgress, ModelRows } from "./ModelPanel";
 import { ProviderKeys } from "./ProviderKeys";
 import { isPaidVoice, providerOf } from "./readingCost";
@@ -118,13 +118,15 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
   // would go on behind a closed sheet with nothing on screen to say so.
   const sheet = useDismiss(onClose, !downloading);
   return (
+    <>
+    <Scrim />
     <Surface
       edge="strong"
       radius="sheet"
       ref={sheet}
       /* The Apple Books sheet's frame: a layer that stands on its own in the
          middle of the window, capped so a short window scrolls the body. */
-      className="absolute left-1/2 top-1/2 z-30 flex max-h-[84%] w-[36rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted"
+      className="fixed left-1/2 top-1/2 z-30 flex max-h-[84%] w-[36rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-start gap-3 px-6 pb-2 pt-5">
         <div className="min-w-0 flex-1">
@@ -149,5 +151,6 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
         <Button size="sm" disabled={downloading} onClick={onClose}>{text("aria.close")}</Button>
       </div>
     </Surface>
+    </>
   );
 }

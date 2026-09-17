@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MAX_HITS, foldMap, foldQuery, searchBook } from "../src/ui/textSearch.ts";
+import { MAX_HITS, foldMap, foldQuery, matchRanges, searchBook } from "../src/ui/textSearch.ts";
 
 const BOOK = [
   { id: "c1", title: "Một", segments: [
@@ -40,4 +40,23 @@ test("short or empty queries find nothing, and spaces do not matter", () => {
 test("hits stop at the cap", () => {
   const long = { id: "c", title: "Dài", segments: Array.from({ length: 300 }, (_, i) => ({ id: `s${i}`, text: "lặp lại" })) };
   assert.equal(searchBook([long], "lặp").length, MAX_HITS);
+});
+
+test("the page marks every match of the query, in order, on the printed text", () => {
+  const text = "Tính năng này, và tinh nang kia; TÍNH NĂNG nữa.";
+  const ranges = matchRanges(text, "tinh nang");
+  assert.deepEqual(ranges.map(([start, end]) => text.slice(start, end)), ["Tính năng", "tinh nang", "TÍNH NĂNG"]);
+  assert.deepEqual(matchRanges(text, "t"), []);
+  assert.deepEqual(matchRanges("không có gì", "tính năng"), []);
+});
+
+test("a hit at the head of a list item drops the item's marker from its snippet", () => {
+  const chapters = [{ id: "c", title: "C", segments: [
+    { id: "s1", text: "• Thiết kế và phát triển Web." },
+    { id: "s2", text: "1. Thiết kế đồ họa." },
+    { id: "s3", text: "Không phải danh sách: thiết kế in ấn." },
+  ] }];
+  const hits = searchBook(chapters, "thiet ke");
+  assert.deepEqual(hits.map((hit) => hit.before), ["", "", "Không phải danh sách: "]);
+  assert.deepEqual(hits.map((hit) => hit.match), ["Thiết kế", "Thiết kế", "thiết kế"]);
 });

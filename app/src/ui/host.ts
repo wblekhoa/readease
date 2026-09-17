@@ -14,3 +14,13 @@ declare global {
 
 export const WINDOW_BUTTONS_IN_PAGE =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window && !window.__READEASE_MOCK__;
+
+/** Whether the page is inside the Tauri window at all - the mock in a
+ * browser is not. The window is transparent behind the side column, where
+ * macOS paints its sidebar material (HIG 3.16, owner 17/09: "sidebar sẽ có
+ * background blur"); the page paints its own ground everywhere else. */
+export const IN_WINDOW = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+if (IN_WINDOW && typeof document !== "undefined") {
+  document.documentElement.dataset.host = "window";
+}
