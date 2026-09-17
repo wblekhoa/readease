@@ -1084,23 +1084,57 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [reading, togglePause]);
 
-  /* The side column's keys (HIG §4): ⌃⌘S folds and unfolds it - the Mac's
-     own "Toggle Sidebar" chord - and ⌘F in a book opens the search tab. */
+  /* The side column's keys (HIG §4). ⌥⌘S folds and unfolds it - Finder's,
+     Notes' and Photos' own "Hide/Show Sidebar" chord, and off the ⌃⌘ layer
+     the system keeps for itself (⌃⌘Space, ⌃⌘F, ⌃⌘Q, ⌃⌘D; owner, 17/09:
+     "tránh các phím tắt thông dụng khác"). ⌘1-⌘4 go to the four screens
+     outside a document and to the column's three lists inside one, the
+     way Finder and Mail number their views; ⌘F in a document brings the
+     search up and puts the cursor in it - and only that: with the search
+     already showing it selects the query for typing over, where the
+     switch semantics of `show` would have folded the column. Keys are
+     read by `code`, not `key`: with ⌥ held the Mac reports "ß" for S. */
   const inBook = tab === "library" && openBook !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (event.metaKey && event.ctrlKey && !event.altKey && key === "s") {
+      if (!event.metaKey || event.ctrlKey) return;
+      if (event.altKey && !event.shiftKey && event.code === "KeyS") {
         event.preventDefault();
         dispatchSide({ type: "toggle" });
-      } else if (event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && key === "f" && inBook) {
+        return;
+      }
+      if (event.altKey || event.shiftKey) return;
+      if (event.code === "KeyF" && inBook) {
         event.preventDefault();
-        dispatchSide({ type: "show", tab: "search" });
+        const field = sideSlot?.querySelector<HTMLInputElement>('input[type="search"]');
+        if (sideOpen && side.tab === "search" && field) {
+          field.focus();
+          field.select();
+        } else {
+          dispatchSide({ type: "show", tab: "search" });
+        }
+        return;
+      }
+      const digit = /^Digit([1-4])$/.exec(event.code);
+      if (!digit) return;
+      const nth = Number(digit[1]);
+      if (inBook) {
+        const lists: SidebarTab[] = ["contents", "notes", "search"];
+        if (nth <= lists.length) {
+          event.preventDefault();
+          dispatchSide({ type: "show", tab: lists[nth - 1] });
+        }
+      } else {
+        // The four screens in the order the column and the mode menu
+        // list them (`tabs` then `tools`, declared further down).
+        const screens = ["library", "paste", "external", "transfer"];
+        event.preventDefault();
+        setTab(screens[nth - 1]);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [inBook]);
+  }, [inBook, sideOpen, side.tab, sideSlot]);
 
   /* A choice made by hand is remembered; the automation's answer is not
      (it is recomputed from the window each launch). */
@@ -1392,7 +1426,7 @@ export default function App() {
                   ...(sideOpen ? [] : [{
                     icon: <SidebarIcon />,
                     label: text("sidebar.label"),
-                    hint: "⌃⌘S",
+                    hint: "⌥⌘S",
                     onSelect: () => dispatchSide({ type: "toggle" }),
                   }]),
                 ]}

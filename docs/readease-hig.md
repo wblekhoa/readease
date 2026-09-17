@@ -144,7 +144,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   năng và sẽ có nút khác nhau")**: ở trang chủ, cụm dẫn = [chỗ đèn 52 px khi cột thu — chỉ trong cửa sổ Tauri, trình
   duyệt không có đèn nên không chừa (`ui/host.ts`)] + **nút đổi chế độ** (`MenuButton`, icon `ArrowSwapIcon` = mũi
   tên swap dựng đứng, khác glyph ngang của Chuyển ghi chú; menu = bốn màn, màn đang mở ghi "Đang mở"; khi cột thu có
-  thêm hàng "Cột bên ⌃⌘S" để mở cột — không còn nút mở cột riêng) + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
+  thêm hàng "Cột bên ⌥⌘S" để mở cột — không còn nút mở cột riêng) + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
   "Dán nội dung", "Quét đọc", "Chuyển ghi chú") — cùng chỗ và cùng cỡ với tên sách khi đang đọc. **Mỗi tính năng mang
   nút riêng ở chỗ này**: sách mang ← ▤ ghi chú ⓘ; trang chủ mang nút đổi chế độ. **Một tiêu đề cho một
   màn**: trang không lặp lại tên dưới toolbar (Thư viện bỏ "Thư viện sách", Dán bỏ "Dán nội dung để đọc", Quét bỏ
@@ -643,8 +643,10 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 |---|---|---|
 | ⌥⌘R (đổi được) | toàn hệ thống | đọc vùng chọn; đang đọc → dừng |
 | Space | trong app, ngoài ô nhập | tạm dừng/tiếp tục |
-| ⌃⌘S | mọi màn (trừ Setup) | thu/mở cột bên — là lựa chọn tay, được nhớ |
-| ⌘F | trong sách | mở cột bên ở tab Tìm, focus ô nhập |
+| ⌥⌘S | mọi màn (trừ Setup) | thu/mở cột bên — là lựa chọn tay, được nhớ. Là chord "Hide/Show Sidebar" của Finder · Notes · Photos · Reminders; đổi từ ⌃⌘S 17/09 (chủ: "thông minh hơn và tránh các phím tắt thông dụng khác" — ⌃⌘ là tầng chord hệ thống: ⌃⌘Space emoji, ⌃⌘F toàn màn hình, ⌃⌘Q khoá máy, ⌃⌘D tra từ). Bắt bằng `event.code` (KeyS), vì với ⌥ macOS đổi `event.key` thành "ß" |
+| ⌘1 · ⌘2 · ⌘3 · ⌘4 | ngoài tài liệu | về màn Thư viện · Dán nội dung · Quét đọc · Chuyển ghi chú (thứ tự menu Đổi chế độ) — khuôn ⌘1–4 của Finder/Mail |
+| ⌘1 · ⌘2 · ⌘3 | trong tài liệu | Mục lục · Ghi chú · Tìm của cột bên, qua `show(tab)`: cột gập thì mở đúng tab, bấm đúng tab đang hiện thì gập (công tắc) |
+| ⌘F | trong tài liệu | mở cột bên ở tab Tìm và focus ô nhập; tab Tìm ĐANG hiện thì chỉ focus + chọn sẵn chữ để gõ đè (không gập — ⌘F là "tìm", không phải công tắc; trước 17/09 bấm ⌘F lần hai là gập cột) |
 | ↑/↓ · Tab | cột bên | đi qua các mục (nút thường, thứ tự DOM; roving focus của AppTabs cũ không còn) |
 | Esc | recorder phím tắt | giữ phím cũ |
 | Esc | panel Chất lượng | đóng panel — trừ khi đang tải bản giọng (đóng lúc đó = giấu việc đang chạy) |
@@ -979,7 +981,7 @@ ngại đó.
   240, nhớ trong `localStorage["readease.sidebar-width"]` lúc thả tay (không ghi từng pixel); bấm đúp về 240; trong lúc
   kéo tắt transition (cột chạy đuổi theo con trỏ thì lag). Thu/mở vẫn là 0 ↔ bề rộng đã chọn.
 - **Behavior** (luật kiểm được, reducer thuần `ui/sidebarState.ts`): (1) **tay thắng tự động** — bấm nút hoặc
-  ⌃⌘S là lựa chọn, nhớ trong `localStorage["readease.sidebar"]`; (2) chưa từng chọn → **tự động theo bề rộng**:
+  ⌥⌘S là lựa chọn, nhớ trong `localStorage["readease.sidebar"]`; (2) chưa từng chọn → **tự động theo bề rộng**:
   cửa sổ < 1100 px thu, ≥ 1100 mở, đổi live khi kéo cửa sổ (kể cả cửa sổ mặc định 1060 → thu, để trang được
   rộng; chủ 02/09); (3) **ngữ cảnh đổi nội dung, không đổi hiển thị**: mở sách → tab Mục lục (chương đang đọc
   đánh dấu và cuộn tới), quay lại thư viện → điều hướng; (4) `show(tab)` — ▤ · nút ghi chú · nút tìm · ⌘F · icon
@@ -999,7 +1001,7 @@ ngại đó.
   không thay màu của họ; xoá từ khoá hay rời tab Tìm là trang sạch lại. Safari/Books làm đúng thế: thấy chỗ khớp
   ngay trên trang, chỗ đang đứng đậm hơn.
 - **Content**: nhãn điều hướng = nhãn tab cũ (`nav.*`); nhóm "Đang đọc" (`sidebar.reading`); tab sách "Mục lục"
-  · "Ghi chú" · "Tìm"; nút thu/mở `aria-label` "Thu cột bên" / "Mở cột bên", tooltip kèm ⌃⌘S.
+  · "Ghi chú" · "Tìm"; nút thu/mở `aria-label` "Thu cột bên" / "Mở cột bên", tooltip kèm ⌥⌘S.
 - **Don't**: cột trên màn Setup · cột che thanh player (player nằm trong cột nội dung) · hai nơi cùng mang
   theme/ngôn ngữ khi cột đang mở · kính/blur (cột đứng cạnh nội dung, không có gì sau nó để mờ; vibrancy
   của macOS là việc sau).

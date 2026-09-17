@@ -729,7 +729,7 @@ export function MenuButton({
                 )}
                 <span className="flex-1">{item.label}</span>
                 {/* Mute, not faint: the hint says something ("Đang mở",
-                    "⌃⌘S") and faint is the disabled shade - on the dark menu
+                    "⌥⌘S") and faint is the disabled shade - on the dark menu
                     it measured under 2:1 (owner, 17/09: "mờ quá"). */}
                 {(item.hint || index === 0) && (
                   <span className="text-xs text-ink-mute">{item.hint ?? ""}</span>
