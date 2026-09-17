@@ -1028,6 +1028,12 @@ ngại đó.
   (vàng đặc `--yellow-y100`, chữ `ink`), xác định bằng (đoạn, thứ tự khớp trong đoạn). Tô CHỒNG lên highlight của người đọc (mark lồng mark),
   không thay màu của họ; xoá từ khoá hay rời tab Tìm là trang sạch lại. Safari/Books làm đúng thế: thấy chỗ khớp
   ngay trên trang, chỗ đang đứng đậm hơn.
+- **Mục lục trong cột** (18/09, chủ: "thêm một xíu gap cho các item mục lục, audit và tối ưu design"): audit — các hàng
+  dính nhau (không gap) nên `band` của chương đang đọc chạm hàng trên/dưới, hàng `py-1.5` chật với tên chương hai dòng,
+  và tên chương hai dòng dùng leading mặc định. Sửa: danh sách `flex-col gap-1` (4 px, cùng nhịp với nhóm điều hướng ở
+  trang chủ), hàng `ListRow dense` cao hơn một nấc (`py-2`; 36 px với tên một dòng), tên chương `leading-snug`. Không
+  thêm số trang/phần trăm cạnh chương (EPUB không có trang; Books cũng chỉ tô hàng đang đọc), không đổi màu chữ theo
+  chương — hàng đang đọc nói bằng `band` là đủ.
 - **Hàng kết quả tìm** (17/09, chủ: "phân tích và tối ưu design của item"): mục đích của hàng là *nhận ra đúng chỗ
   khớp trong một giây* — nên (1) chỗ khớp mang **đúng màu vàng của trang** (`mark[data-search]`, không phải chip `band`
   xám semibold như trước: cùng một thứ thì cùng một màu ở danh sách và trên trang); (2) lời quanh chỗ khớp là phụ →

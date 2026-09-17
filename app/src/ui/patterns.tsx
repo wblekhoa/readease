@@ -107,7 +107,10 @@ export function ListRow({
   dense?: boolean;
 }) {
   const shape = dense
-    ? "rounded-[var(--ctl-radius)] px-2.5 py-1.5"
+    // 8 px above and below, not 6: a chapter title on two lines needs the
+    // air, and a one-line row is 36 - the column's control height (owner,
+    // 18/09; HIG 3.16).
+    ? "rounded-[var(--ctl-radius)] px-2.5 py-2"
     : "rounded-2xl px-3 py-2";
   return (
     <div
