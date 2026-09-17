@@ -499,7 +499,9 @@ textarea:focus-visible {
 }
 .voice-here,
 .voice-here:hover {
-  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
+  /* 55%, up from the 40% of 15/09 (owner, 17/09: "đậm hơn xíu"): at 40%
+     the dots on light paper were lost from a step back. */
+  text-decoration-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
 }
 
 /* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover

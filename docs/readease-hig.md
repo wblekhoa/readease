@@ -286,6 +286,11 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   VÀ chữ ≤ 19 px; mỗi trang ≤ 40em; khe 48 px. Số trang là dẫn xuất của cỡ chữ + cửa sổ nên chỉ
   tính theo chương ("Trang 3/12") kèm % toàn sách theo chỉ số đoạn — và chỉ hiện trong tooltip ⓘ
   trên toolbar (§3.4), không có dòng đếm dưới trang (chủ bỏ 02/09).
+- **Đoạn giọng đang đọc = gạch chấm dưới chữ, màu brand** (`.voice-here`, `index.css`): chấm 2 px, offset
+  0,22em, không né nét chữ — một vạch dưới đoạn, không phải link; mực chữ giữ nguyên. Độ đậm: đặc 60 % (đầu) → chấm
+  40 % (chủ 15/09: "nhẹ hơn") → chấm **55 %** (chủ 17/09: "đậm hơn xíu" — 40 % trên nền sáng còn lẫn với giấy khi
+  nhìn xa). Con trỏ rê qua đoạn khác: cùng gạch chấm nhưng mực trung tính 30 %; đoạn đang đọc thắng khi hai cái gặp
+  nhau.
 - **Địa chỉ = đoạn, không phải số trang**: giọng, mục lục, vị trí đã lưu, engine đều theo
   `segment_id` (không đổi). Mở sách → mở đúng trang có vị trí đã lưu. Đổi cỡ chữ / cửa sổ → phân
   trang lại, giữ đoạn đầu trang đang xem (`anchor`). Ảnh của chương tải NGAY (ảnh ở cột tràn không
@@ -919,8 +924,10 @@ ngại đó.
   ảnh thật hoặc panel `band` có gáy) mang **dải tiến độ 2 px** ở mép dưới (`brand` trên `wash`) — cùng ngôn ngữ với
   vạch dưới bìa ở kệ; *tên* tối đa **hai dòng** (`line-clamp-2`, tên tài liệu tiếng Việt dài, một dòng cắt mất phần
   phân biệt "— bản nháp thứ ba"), `title=` tên đầy đủ; *dòng dữ kiện* xs `ink-mute`: "42% · Chương 3" (phần trăm
-  rồi chương, chương cắt một dòng; thiếu cả hai thì bỏ dòng; `ink-faint` đo 1,76:1 trên nền tối — không đọc được — nên dòng này cũng `ink-mute`, phân cấp bằng cỡ chữ). Màu như `RailItem`: `ink-mute` → `ink` khi hover,
-  nền `wash`; không có trạng thái "đang chọn" vì mở tài liệu là cột đổi sang danh sách của nó; trong sách: `SegmentedControl compact`
+  rồi chương, chương cắt một dòng; thiếu cả hai thì bỏ dòng; `ink-faint` đo 1,76:1 trên nền tối — không đọc được — nên dòng này cũng `ink-mute`, phân cấp bằng cỡ chữ). Hai bậc rõ (chủ 17/09: "title đậm màu hơn và spacing của
+  phần description sẽ cần nhiều hơn"): tên `ink` + `font-medium`, dòng dữ kiện cách tên **6 px** (`mt-1.5`), hàng
+  cách hàng 4 px như nhóm điều hướng; hover chỉ thêm nền `wash`; không có trạng thái "đang chọn" vì mở tài liệu là
+  cột đổi sang danh sách của nó; trong sách: `SegmentedControl compact`
   — mỗi tab mang glyph của nút toolbar tương ứng (▤ · ghi chú · kính lúp), **tab đang mở mới có nhãn** ("Ghi chú · 6"),
   hai tab kia chỉ còn icon (chủ 16/09: "khi active thì mới có label, còn bình thường sẽ là dạng icon only" — rãnh 216
   px không đủ cho ba nhãn, "Tìm" từng bị cắt) rồi danh sách của tab đó — Reader vẫn là CHỦ ba danh sách và render chúng
