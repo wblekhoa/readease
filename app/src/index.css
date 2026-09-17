@@ -504,6 +504,17 @@ textarea:focus-visible {
   text-decoration-color: color-mix(in srgb, var(--color-brand-600) 55%, transparent);
 }
 
+/* The side column's resize grip is invisible until the pointer finds it;
+   then the hairline it sits on darkens, and stays dark while dragging
+   (owner, 17/09: "hover vào sẽ đậm màu line hơn") - the way Finder says
+   "this edge moves". The line is the column's own border (the grip cannot
+   draw over it: the column clips at its padding box), so the column is
+   what changes, through :has(). */
+aside:has(> .rail-grip:hover),
+aside:has(> .rail-grip[data-dragging]) {
+  border-right-color: color-mix(in srgb, var(--color-ink) 35%, transparent);
+}
+
 /* The scrollbar, per the DS Scroller recipe: thin, and revealed on hover
    rather than parked there. A 10px rail with a permanent thumb is a lot of
    furniture next to a list of highlights, and it read as if the panel had

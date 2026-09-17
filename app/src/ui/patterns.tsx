@@ -816,7 +816,8 @@ export function SideColumn({
           title={resizeLabel}
           onPointerDown={onPointerDown}
           onDoubleClick={() => { onResize(Number.NaN); onResize(null); }}
-          className="absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
+          data-dragging={dragging || undefined}
+          className="rail-grip absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
         />
       )}
       <div className="flex h-full flex-col" style={{ width }}>
