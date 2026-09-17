@@ -617,7 +617,10 @@ export function SegmentedControl<T extends string | number>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={`flex items-stretch rounded-full bg-band p-1 ${size === "lg" ? "h-11" : "h-9"} ${className}`}
+      // 16 outside, 12 inside: the group's corner is the option's corner
+      // plus the 4 px inset, so it stays the same shape at any height - a
+      // pill only looks right at one (owner, 17/09; HIG 3.9d).
+      className={`flex items-stretch rounded-2xl bg-band p-1 ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -646,7 +649,7 @@ export function SegmentedControl<T extends string | number>({
             title={option.title}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
+            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--ctl-radius)] text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
               compact && !on ? "flex-none px-2.5" : "flex-1 px-3"
             } ${size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""} ${chosen}`}
           >

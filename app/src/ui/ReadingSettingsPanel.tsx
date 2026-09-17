@@ -86,16 +86,16 @@ export function ReadingSettingsPanel({
           <div
             role="group"
             aria-label={text("settings.text_size_level", { n: step + 1, total: sizes.length })}
-            className="flex h-14 flex-col rounded-[1.75rem] bg-band p-1"
+            className="flex flex-col rounded-2xl bg-band p-1"
           >
-            <div className="flex min-h-0 flex-1 items-stretch">
+            <div className="flex h-9 items-stretch">
               <button
                 type="button"
                 onClick={() => onSize(-1)}
                 disabled={size === sizes[0]}
                 aria-label={text("reader.text_smaller")}
                 title={text("reader.text_smaller")}
-                className="flex flex-1 items-center justify-center rounded-[1.5rem] text-ink transition-colors hover-wash disabled:text-ink-faint"
+                className="flex flex-1 items-center justify-center rounded-[var(--ctl-radius)] text-ink transition-colors hover-wash disabled:text-ink-faint"
               >
                 <TextSmallerIcon className="h-5 w-5" />
               </button>
@@ -106,7 +106,7 @@ export function ReadingSettingsPanel({
                 disabled={size === sizes[sizes.length - 1]}
                 aria-label={text("reader.text_larger")}
                 title={text("reader.text_larger")}
-                className="flex flex-1 items-center justify-center rounded-[1.5rem] text-ink transition-colors hover-wash disabled:text-ink-faint"
+                className="flex flex-1 items-center justify-center rounded-[var(--ctl-radius)] text-ink transition-colors hover-wash disabled:text-ink-faint"
               >
                 <TextLargerIcon className="h-6 w-6" />
               </button>
@@ -114,24 +114,30 @@ export function ReadingSettingsPanel({
             {/* At the default size the marks go quiet: a reader who has not
                 moved the size does not need to be told where they are on a
                 scale they never used, and the row reading "you are here" at
-                rest made the standard size look like a setting. Faded, not
-                unmounted - the pill is a fixed height and taking the row out
-                would jog the letters up and down across the default (owner,
-                06/09). The level still travels in the group's own name. */}
+                rest made the standard size look like a setting (owner,
+                06/09). The row FOLDS rather than fades in place (owner,
+                17/09: no dead band under the buttons at the default) - a
+                grid row going 0fr -> 1fr, so the pill grows from 44 to 60
+                smoothly instead of jogging the letters. The level still
+                travels in the group's own name. */}
             <div
               aria-hidden
-              className={`flex shrink-0 items-center justify-center gap-1.5 pb-1 pt-1.5 transition-opacity ${
-                size === DEFAULT_READING_SIZE ? "opacity-0" : "opacity-100"
+              className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
+                size === DEFAULT_READING_SIZE ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
               }`}
             >
-              {sizes.map((value, index) => (
-                <span
-                  key={value}
-                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                    index <= step ? "bg-ink-mute" : "bg-edge-strong"
-                  }`}
-                />
-              ))}
+              <div className="flex min-h-0 items-center justify-center gap-1.5 overflow-hidden">
+                <div className="flex items-center gap-1.5 pb-1 pt-1.5">
+                  {sizes.map((value, index) => (
+                    <span
+                      key={value}
+                      className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                        index <= step ? "bg-ink-mute" : "bg-edge-strong"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
           <SegmentedControl<ThemePreference>
@@ -159,7 +165,7 @@ export function ReadingSettingsPanel({
             type="button"
             onClick={() => setMore((value) => !value)}
             aria-expanded={more}
-            className="flex h-11 items-center justify-center gap-2 rounded-full bg-band px-4 text-sm font-semibold text-ink transition-colors hover-wash"
+            className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-band px-4 text-sm font-semibold text-ink transition-colors hover-wash"
           >
             <SlidersIcon />
             {text("settings.customize")}

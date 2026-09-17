@@ -502,7 +502,12 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Panel là DANH SÁCH DÒNG** (mục lục, tìm trong sách, ghi chú) theo cùng luật, chỉ khác cách đạt tới 24: header và ô
   nhập `px-6`, còn track của danh sách hẹp hơn đúng phần inset của hàng (`ListRow dense` = 10 px ⇒ `px-3.5`; hàng ghi chú
   = 8 px ⇒ `px-5`), để CHỮ của hàng thẳng hàng với tiêu đề. Cùng `radius="sheet"` (chủ, 06/09: "đồng bộ").
-- Hàng điều khiển bên trong panel nổi theo Books: pill toàn bề rộng cao 44, ô chia đều (`SegmentedControl size="lg"`),
+- **Góc của nhóm = góc ô bên trong + lót, không phải pill** (17/09, chủ: "radius tổng thể của các group vừa đủ với
+  item bên trong, để khi tăng height nó không còn là pill"): ô trong `SegmentedControl` bo `--ctl-radius` (12), lót 4 →
+  nhóm bo **16** (`rounded-2xl`); cụm cỡ chữ và nút "Tuỳ chỉnh" cùng 16. `rounded-full` chỉ tròn đẹp ở đúng một chiều
+  cao — cụm cỡ chữ cao 44 → 60 khi mở hàng chấm thì stadium 28 px biến hình. Áp cho MỌI `SegmentedControl` (bảng giọng,
+  tab cột bên) để một control chỉ có một hình. Luật chung đã ghi ở §3.9d (menu 12 + 8 = 20).
+- Hàng điều khiển bên trong panel nổi theo Books: hàng toàn bề rộng cao 44, ô chia đều (`SegmentedControl size="lg"`),
   có icon + chữ `text-sm` không xuống dòng; phần mở rộng đặt trong khối `bg-band rounded-2xl px-5 py-4`.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click**: tooltip theo focus sẽ không treo trên
   panel vừa mở.
@@ -536,8 +541,11 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   component dời điểm dừng qua biến `--fill`. Chuỗi hiển thị do **caller** truyền: dấu thập phân là chuyện ngôn ngữ
   (tiếng Việt viết `1,75` — `decimal()` trong `i18n.ts`), không phải chuyện của control.
 - **Chỉ báo bậc thì im khi đang ở mặc định** (hàng chấm dưới cụm cỡ chữ, chủ 06/09): người chưa đụng tới cỡ chữ không
-  cần được chỉ chỗ trên một thang họ chưa dùng. Làm mờ (`opacity-0`), **đừng tháo khỏi DOM** — viên thuốc cao cố định,
-  tháo hàng ra là chữ A nhảy lên xuống mỗi lần đi qua mặc định. Mức vẫn nằm trong `aria-label` của cả cụm.
+  cần được chỉ chỗ trên một thang họ chưa dùng. Mức vẫn nằm trong `aria-label` của cả cụm. **17/09 (chủ: "ở size mặc
+  định không cần space bên dưới")**: hàng chấm không còn chỉ mờ đi mà **xếp lại** — viên thuốc cao **44** ở mặc định
+  (bằng hai pill hàng dưới), mở ra 60 khi rời mặc định; xếp/mở bằng `grid-template-rows 0fr → 1fr` chuyển 200 ms +
+  opacity, nên chữ A không nhảy như khi tháo hàng khỏi DOM (lý do của bản 06/09 giữ hàng cố định), `motion-reduce`
+  tắt chuyển động.
 
 ### 3.9c `Kbd` - hiển thị phím tắt
 - **Usage**: cho THẤY tổ hợp phím hiện hành. Đây là THÔNG TIN, không phải hành động.
