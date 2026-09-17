@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.7
+
+The side column on the Mac's own sidebar material, glass panels, search
+that marks the page, and a day of small corrections to the reading page,
+the lists and the keys. Installs over 0.1.6.
 
 - The side column shows the Mac's own sidebar material behind it - the
   desktop and windows behind ReadEase, blurred - dark when the app is,

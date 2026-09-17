@@ -21,7 +21,7 @@
 
 ## Tải và cài ngay
 
-### [⬇️ Tải ReadEase 0.1.6 cho Mac Apple Silicon — 113 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip)
+### [⬇️ Tải ReadEase 0.1.7 cho Mac Apple Silicon — 113 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.7/ReadEase-0.1.7-arm64.zip)
 
 Bấm là tải ngay file `.zip`. Giải nén, rồi **kéo `ReadEase.app` vào thư mục Applications**. Không cần Terminal, không cần cài công cụ gì. Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
 
@@ -31,11 +31,11 @@ Chỉ có **một** bản app; giọng đọc thì bạn chọn ngay trong app v
 
 | Bạn muốn | Tải gì | Tổng | Lấy ở đâu |
 | --- | --- | --- | --- |
-| Đọc **tiếng Việt**, gọn nhẹ | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + giọng Việt *Tiêu chuẩn* | 113 MB + 330 MB | Màn đầu tiên "Chọn cách đọc để bắt đầu" → Tiếng Việt → **Tải và dùng** ở dòng *Tiêu chuẩn · 330 MB* |
-| Đọc **tiếng Việt**, chất lượng cao nhất | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + giọng Việt *Cao nhất* | 113 MB + 625 MB | Cùng màn đó → **Tải và dùng** ở dòng *Cao nhất · 625 MB* (đọc chậm hơn ~11 %) |
-| Đọc **tiếng Anh** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + giọng Anh Kokoro (6 giọng Mỹ) | 113 MB + 330 MB | Màn đầu tiên (hoặc **Giọng đọc & mô hình** trên trang chủ) → Tiếng Anh → **Tải về** |
-| Đọc **cả hai thứ tiếng** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + giọng Việt + giọng Anh | 113 MB + 660–955 MB | Hai bước trên; tải bản nào cũng xoá được sau |
-| Dùng **giọng AI trả phí** (OpenAI / ElevenLabs), không tải mô hình | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + khoá API của bạn | 113 MB | **Giọng đọc & mô hình → Giọng API → Thêm khoá**; đọc được cả hai thứ tiếng, tính phí theo ký tự |
+| Đọc **tiếng Việt**, gọn nhẹ | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.7/ReadEase-0.1.7-arm64.zip) + giọng Việt *Tiêu chuẩn* | 113 MB + 330 MB | Màn đầu tiên "Chọn cách đọc để bắt đầu" → Tiếng Việt → **Tải và dùng** ở dòng *Tiêu chuẩn · 330 MB* |
+| Đọc **tiếng Việt**, chất lượng cao nhất | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.7/ReadEase-0.1.7-arm64.zip) + giọng Việt *Cao nhất* | 113 MB + 625 MB | Cùng màn đó → **Tải và dùng** ở dòng *Cao nhất · 625 MB* (đọc chậm hơn ~11 %) |
+| Đọc **tiếng Anh** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.7/ReadEase-0.1.7-arm64.zip) + giọng Anh Kokoro (6 giọng Mỹ) | 113 MB + 330 MB | Màn đầu tiên (hoặc **Giọng đọc & mô hình** trên trang chủ) → Tiếng Anh → **Tải về** |
+| Đọc **cả hai thứ tiếng** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.7/ReadEase-0.1.7-arm64.zip) + giọng Việt + giọng Anh | 113 MB + 660–955 MB | Hai bước trên; tải bản nào cũng xoá được sau |
+| Dùng **giọng AI trả phí** (OpenAI / ElevenLabs), không tải mô hình | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.7/ReadEase-0.1.7-arm64.zip) + khoá API của bạn | 113 MB | **Giọng đọc & mô hình → Giọng API → Thêm khoá**; đọc được cả hai thứ tiếng, tính phí theo ký tự |
 
 > [!NOTE]
 > Bản phát hành được ký bằng chứng chỉ Apple Developer ID và đã qua notarize của Apple, nên mở như mọi app khác. Hướng dẫn đầy đủ (kể cả cho bản cũ 0.1.0/0.1.1 bị macOS chặn) ở [INSTALL.md](INSTALL.md).
