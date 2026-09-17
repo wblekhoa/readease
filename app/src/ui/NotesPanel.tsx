@@ -71,6 +71,7 @@ export function NotesPanel({
           /* Rows outdent by 8 so the hover wash reaches past the text; the
              rule is pushed back in by the same 8 to line up with it. */
           <GroupedSection
+            heading="name"
             key={group.chapterId}
             title={group.chapterTitle}
             className="[--dot-inset:0.5rem]"

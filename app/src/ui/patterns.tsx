@@ -149,6 +149,7 @@ export function GroupedSection({
   children,
   className = "",
   roomy = false,
+  heading = "label",
 }: {
   title?: ReactNode;
   children: ReactNode;
@@ -156,6 +157,12 @@ export function GroupedSection({
   /** A sheet that lists things to act on breathes more than a settings
    * group (owner, 02/09): wider header gap, the rows opt in themselves. */
   roomy?: boolean;
+  /** What the title IS. A `label` names a kind of thing ("Giọng") and is
+   * set in small caps; a `name` is content - a chapter's title over its
+   * notes - and is written as its author wrote it, wrapping if it must.
+   * Caps hold for a few words and not for a Vietnamese chapter title
+   * (owner, 17/09: "Uppercase không đẹp"). */
+  heading?: "label" | "name";
 }) {
   return (
     /* A TITLED section starts a new subject, so it opens a wider gap above
@@ -166,7 +173,9 @@ export function GroupedSection({
        sites cannot each pick their own. */
     <section className={`${title ? "mt-6" : ""} ${className}`}>
       {title && (
-        <h3 className={`m-0 text-xs font-semibold uppercase tracking-wide text-ink-mute ${roomy ? "mb-2.5" : "mb-1.5"}`}>
+        <h3 className={`m-0 font-semibold text-ink-mute ${
+          heading === "name" ? "text-[13px] leading-snug" : "text-xs uppercase tracking-wide"
+        } ${roomy ? "mb-2.5" : "mb-1.5"}`}>
           {title}
         </h3>
       )}

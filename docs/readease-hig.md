@@ -86,6 +86,10 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 - **`roomy`** (02/09): sheet liệt kê mục có hành động (Apple Books) thở hơn nhóm thiết lập — hàng
   `px-5 py-3.5`, gap 16/12, tiêu đề nhóm cách 10 px; mặc định không đổi cho panel cài đặt.
 - **Anatomy**: header 12 uppercase mute (tuỳ chọn) · một mặt giấy 2xl · hairline `edge` giữa các hàng · mỗi hàng: title 14 medium + subtitle 12 mute | trailing controls.
+- **Header là NHÃN hay là TÊN** (`heading="label" | "name"`, 17/09): nhãn nhóm ("Giọng", "Mô hình & API", "Đang đọc")
+  = IN HOA tracking-wide; **tên** — tên chương trong danh sách ghi chú — là nội dung, viết như tác giả viết: 13 px
+  semibold `ink-mute`, xuống dòng được (chủ 17/09 trước "CÁC NGUYÊN TẮC PHỔ QUÁT CỦA TRẢI NGHIỆM NGƯỜI DÙNG" hai dòng
+  in hoa: "Uppercase không đẹp"). Chữ in hoa chỉ chịu được vài từ; một tên chương tiếng Việt thì không.
 - **Behavior**: hàng không hover trừ khi bấm được cả hàng; control bên trong tự mang trạng thái.
 - **Content**: subtitle chỉ khi mang tin ("Đang dùng", "Chưa tải") — không lặp lại title.
 
