@@ -791,9 +791,11 @@ export function Reader({
       case "heading":
         return (onPages ? "mt-2 " : "mt-10 ") + "text-[1.35em] font-bold leading-snug ";
       case "list_item":
-        // A numbered item hangs from a wider gutter than a dotted one: "10."
-        // needs 24 px of figures, a dot needs 5 (HIG 3.9e).
-        return (split ? "-mt-2 " : "mt-1 ") + "relative " + (listLead(segment.text).marker.kind === "number" ? "pl-8 " : "pl-6 ");
+        // One gutter for dotted and numbered items alike (32 px, room for
+        // "99."), so the text edge is the same down a chapter whatever the
+        // list's marker (owner, 17/09: "padding left của bullet bằng với
+        // number"; HIG 3.9e).
+        return (split ? "-mt-2 " : "mt-1 ") + "relative pl-8 ";
       case "quote":
         return quoteRole(segment.text) === "label"
           // `ink-faint` is the DISABLED colour. It was painting real words
@@ -818,16 +820,17 @@ export function Reader({
         {/* The gutter mark shares the first line's baseline: `top-1` is the
             block's own `py-1`, and the line-height is inherited rather than
             re-typed, so a dot or "1." sits where the eye expects a bullet -
-            level with the first line, not perched above it. The mark is
-            the document's own ink, as in print: a number at the text's
-            size in tabular figures, right-aligned in a gutter that holds
-            "99."; a dot the size of the font's bullet (owner, 17/09 - the
-            mute 0.9em number read as a footnote mark, and "10." overran a
-            20 px gutter). */}
+            level with the first line, not perched above it. Two ranks
+            (owner, 17/09): the dot in the brand colour - a mark of the
+            app's, the one accent on a page of text - and the number, an
+            ordinal at the text's size in tabular figures, a shade lighter
+            than the words so it ranks below them, right-aligned in a
+            gutter that holds "99." (the 0.9em number read as a footnote
+            mark, and "10." overran a 20 px gutter). */}
         <span
           aria-hidden
-          className={`absolute left-0 top-1 text-right text-ink tabular-nums ${
-            marker.kind === "dot" ? "w-5 pr-1" : "w-8 pr-2"
+          className={`absolute left-0 top-1 w-8 pr-2 text-right tabular-nums ${
+            marker.kind === "dot" ? "text-brand-600" : "text-ink-mute"
           }`}
         >
           {marker.kind === "dot"
