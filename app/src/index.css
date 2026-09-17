@@ -595,13 +595,17 @@ mark {
   padding: 0 0.05em;
 }
 /* A search match on the page, while the Tìm tab holds a query (HIG 3.16,
-   owner 17/09): brand at a wash, the hit just chosen in the list stronger.
-   It may sit INSIDE a reader's highlight; it never replaces that colour. */
+   owner 17/09): the DS yellow at a wash - "find" is yellow on every Mac,
+   Safari's and Books' - and the hit just chosen in the list solid, with
+   the page's ink on it. Stronger than a reader's yellow highlight (ya30)
+   so the two are told apart; it may sit INSIDE a highlight and never
+   replaces that colour. (Brand red at first; owner: "màu vàng".) */
 mark[data-search] {
-  background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
+  background: var(--yellow-alpha-ya50);
 }
 mark[data-search="current"] {
-  background: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
+  background: var(--yellow-y100);
+  color: var(--color-ink);
 }
 
 /* The note marker sitting at the head of a highlight.
