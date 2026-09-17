@@ -1340,14 +1340,14 @@ export default function App() {
     <div
       ref={shell}
       className="relative min-w-0 flex-1 overflow-hidden"
-      style={{ "--shell-top-h": "76px", "--shell-bottom-h": showFooter ? "76px" : "0px" } as CSSProperties}
+      style={{ "--shell-top-h": "72px", "--shell-bottom-h": showFooter ? "72px" : "0px" } as CSSProperties}
     >
       {/* The window's title bar is an overlay, so this strip is what a
           person drags the window by (data-tauri-drag-region: a mousedown
           on the strip itself, never on a control inside it). */}
       <div ref={headerBar} data-tauri-drag-region className="absolute inset-x-0 top-0 z-20">
         <GradientBlur edge="top" />
-        <div ref={headerRow} data-tauri-drag-region className="relative z-10 px-6 pb-6 pt-4">
+        <div ref={headerRow} data-tauri-drag-region className="relative z-10 px-6 pb-6 pt-3">
       <Toolbar
         leading={
           <div className="flex min-w-0 items-center gap-1">
@@ -1674,10 +1674,11 @@ export default function App() {
             </div>
           );
         })()}
-        {/* Same height as the header (76px): the frost's room sits on the
-            inner edge of each bar - the header's bottom, the footer's top
-            (owner, 02/09: "tương đồng với header"). */}
-        <div ref={footerRow} className="relative z-10 grid min-h-[76px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-4 pt-6">
+        {/* Same height as the header (72px: 12 outer, 36 row, 24 frost):
+            the frost's room sits on the inner edge of each bar - the
+            header's bottom, the footer's top (owner, 02/09: "tương đồng với
+            header"). */}
+        <div ref={footerRow} className="relative z-10 grid min-h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-3 pt-6">
           {/* Left: the other way in. Middle: what a click does. Right: what
               the voice is up to. A grid keeps the middle in the middle
               whatever the sides say - and gives the bar its height (an

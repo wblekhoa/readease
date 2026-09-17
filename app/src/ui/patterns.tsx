@@ -824,13 +824,14 @@ export function SideColumn({
         {/* The lights live in the first 88px of this strip (x 20-72, then
             16px of air) - in the window; a browser has none, and leaves no
             hole for them. The switch takes the far end, where Codex puts it.
-            68px tall so its centre line (34) is the content toolbar's
-            (pt-4 + half of 36): the lights, this switch and the toolbar's
+            60px tall so its centre line (30) is the content toolbar's
+            (pt-3 + half of 36): the lights, this switch and the toolbar's
             controls sit on ONE line across the window, folded or not
-            (owner, 17/09: the lights rode 8px above the title). */}
+            (owner, 17/09: the lights rode above the title; then "đưa
+            navbar lên trên một xíu"). */}
         <div
           data-tauri-drag-region
-          className={`flex h-[68px] shrink-0 items-center justify-end pr-3 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[88px]" : "pl-4"}`}
+          className={`flex h-[60px] shrink-0 items-center justify-end pr-3 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[88px]" : "pl-4"}`}
         >
           <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
             <SidebarIcon />

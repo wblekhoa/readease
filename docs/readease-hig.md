@@ -915,9 +915,10 @@ ngại đó.
   **màu nền trang** (`--app-column` = `--app-ground`: trắng ở sáng — chủ 16/09 "background sidebar là màu
   trắng" — n00 ở tối; bản n05 xám chỉ sống một giờ), viền phải hairline `edge` là thứ duy nhất ngăn cột với
   trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
-  đo 16/09); ba tầng — *đầu* **68 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
-  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 33}** → tâm
-  đèn y ≈ 34 = tâm hàng toolbar của cột nội dung (pt-4 + 36/2). **`y` của tao ≈ TÂM đèn, không phải mép trên**: tao
+  đo 16/09); ba tầng — *đầu* **60 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
+  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 29}** → tâm
+  đèn y ≈ 30 = tâm hàng toolbar của cột nội dung (pt-3 + 36/2; hàng từng ở 34 với pt-4 — chủ 17/09 "đưa navbar lên
+  trên một xíu", đầu cột theo đó **60 px**). **`y` của tao ≈ TÂM đèn, không phải mép trên**: tao
   đặt chiều cao khung title bar = cao nút + y và giữ nguyên origin của nút trong khung, nên tâm ≈ y + 1 (đo trên bản
   cài 17/09: y 28 → tâm 28,5, vẫn cao hơn hàng 6 px). Trước là {20, 20} và đầu cột 52 px: khi cột thu, đèn cao hơn
   hàng "⇅ Thư viện" ~13 px và nút đầu tiên đứng sát đèn 4 px — chủ 17/09 "vị trí các nút window… chưa đẹp") và
