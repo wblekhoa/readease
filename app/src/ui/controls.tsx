@@ -378,8 +378,10 @@ export function Surface({
   edge?: "field" | "strong";
   /** `surface` = the 16px card tier. `sheet` = 24px for a layer that stands
    * on its own in the middle of the window (owner, 02/09: a modal should be
-   * rounder than a card). */
-  radius?: "surface" | "sheet";
+   * rounder than a card). `menu` = 20px: a menu's rows are 12px corners set
+   * in by 8px, and a corner concentric with them is their radius plus the
+   * inset - 16 made the menu squarer than its own rows (owner, 17/09). */
+  radius?: "surface" | "sheet" | "menu";
   /** `paper`: opaque, for a card in the page or a sheet in the middle of
    * the window. `glass`: the material of Books' popovers - paper at 74%
    * over a blurred page (HIG 3.9d, owner 17/09) - for a layer that floats
@@ -389,7 +391,9 @@ export function Surface({
   return (
     <div
       ref={ref}
-      className={`border ${material === "glass" ? "glass-panel" : "bg-paper"} ${radius === "sheet" ? "rounded-3xl" : "rounded-2xl"} ${
+      className={`border ${material === "glass" ? "glass-panel" : "bg-paper"} ${
+        radius === "sheet" ? "rounded-3xl" : radius === "menu" ? "rounded-[20px]" : "rounded-2xl"
+      } ${
         edge === "strong" ? "border-edge-strong" : "border-edge-field"
       } ${className}`}
     >

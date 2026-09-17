@@ -15,7 +15,7 @@
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
 import { CloseIcon } from "./icons";
-import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
+import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
 import { ModelProgress, ModelRows } from "./ModelPanel";
 import { ProviderKeys } from "./ProviderKeys";
 import { isPaidVoice, providerOf } from "./readingCost";
@@ -118,6 +118,8 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
   // would go on behind a closed sheet with nothing on screen to say so.
   const sheet = useDismiss(onClose, !downloading);
   return (
+    <>
+    <Scrim />
     <Surface
       edge="strong"
       radius="sheet"
@@ -149,5 +151,6 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
         <Button size="sm" disabled={downloading} onClick={onClose}>{text("aria.close")}</Button>
       </div>
     </Surface>
+    </>
   );
 }

@@ -706,6 +706,7 @@ export function MenuButton({
         <Surface
           edge="strong"
           material="glass"
+          radius="menu"
           className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div role="menu" className="flex flex-col">
@@ -854,6 +855,15 @@ export function SideColumn({
       </div>
     </aside>
   );
+}
+
+/** The dimmed, blurred window under a sheet in the middle of it (HIG 3.13,
+ * owner 17/09: "một lớp blur overlay để focus vào phần modal"). Fixed to
+ * the window so the side column dims with the page. It is not a button:
+ * `useDismiss` already treats a click on it as a click outside the sheet,
+ * and keeps the sheet up while a download runs. */
+export function Scrim() {
+  return <div aria-hidden="true" className="fixed inset-0 z-20 bg-black/20 backdrop-blur-[6px]" />;
 }
 
 /** One entry of the column's navigation: a glyph and a name, painted `wash`

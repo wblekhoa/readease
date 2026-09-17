@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
 import { Button, IconButton, Input, Notice, Surface } from "../ui/controls";
-import { BookTile, EmptyState, MenuButton, MiniCover } from "../ui/patterns";
+import { BookTile, EmptyState, MenuButton, MiniCover, Scrim } from "../ui/patterns";
 import { BookClosedIcon, BookIcon, ChevronDownIcon, CloseIcon, ImportIcon, LockIcon, SyncIcon } from "../ui/icons";
 import { useCover } from "../ui/useCover";
 import { SEARCH_ABOVE, matchesQuery, orderShelfItems } from "../ui/shelfFilter";
@@ -177,6 +177,8 @@ export function AppleBooksPanel({
   const searchable = books.length > SEARCH_ABOVE;
 
   return (
+    <>
+    <Scrim />
     <Surface
       edge="strong"
       radius="sheet"
@@ -261,5 +263,6 @@ export function AppleBooksPanel({
         </span>
       </div>
     </Surface>
+    </>
   );
 }

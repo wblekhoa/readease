@@ -246,6 +246,10 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
 ### 3.13 Giọng đọc & mô hình · bảng giọng đọc theo ngôn ngữ (15/09)
 - **Usage**: chủ muốn "một nơi thống kê để user quản lý và tải model hoặc nhập API", và bảng giọng đọc
   "cho user chọn trước là họ muốn đọc ở ngôn ngữ nào rồi mới hiển thị các nội dung liên quan".
+- **Scrim mờ dưới sheet** (17/09, chủ: "khi mở modal thì có một lớp blur overlay để focus vào phần modal"): mọi sheet
+  giữa màn (hub này, Danh sách giọng) đặt trên `Scrim` (`patterns.tsx`): `fixed inset-0`, đen 20 % + `backdrop-filter:
+  blur(6px)`, phủ cả cột bên; bấm vào scrim = bấm ra ngoài (đóng, trừ lúc đang tải — `useDismiss` giữ luật cũ). Popover
+  neo nút (§3.9d) KHÔNG có scrim: chúng là lớp tra cứu nhanh, trang vẫn phải bấm được.
 - **Anatomy (sheet)**: `Surface edge="strong" radius="sheet"` giữa màn (khung của sheet Apple Books,
   rộng 36rem, cao tối đa 84%, thân cuộn); header = tiêu đề 16 bold + caption 12 mute + đóng; mỗi ngôn
   ngữ một `GroupedSection` — hàng đầu là **trạng thái** (chấm `ok`/`edge-strong` + "Đọc được / Chưa đọc
@@ -461,6 +465,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   dùng `Surface radius="sheet"` (`rounded-3xl`) và **lót nội dung 24 px** (`px-6`, `pt-5`/`pb-6`) — cùng một inset với
   sheet, không phải 16 của card. Lý do: panel là một LỚP đứng trên trang, cần đọc như lớp; 16/2xl làm nó lẫn với thẻ
   trong trang (chủ, 06/09: "tăng padding và tăng radius của popover").
+- **Menu (`MenuButton`) bo 20 px** (17/09, chủ: "radius của dropdown tròn hơn để tương đồng với item bên trong"): hàng
+  menu bo 12 px (`rounded-xl`) đặt trong lót 8 px → góc ngoài đồng tâm = 12 + 8 = 20 (`Surface radius="menu"`); 16 của
+  card làm menu vuông hơn chính hàng của nó. Luật chung cho mọi vỏ có hàng bo bên trong: **góc ngoài = góc trong + lót**.
 - **Vật liệu = kính của Books** (17/09, chủ đưa hai popover của Apple Books: "tận dụng các thiết kế từ Apple để có
   style glass"): panel nổi và menu dùng `Surface material="glass"` — nền `paper` **74 %** + `backdrop-filter: blur(28px)
   saturate(1.5)`, viền `edge-strong`, bóng `lifted`; trang mờ đi phía sau như popover "Contents"/"Themes & Settings" của
