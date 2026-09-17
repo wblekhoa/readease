@@ -928,12 +928,14 @@ export function RailDocument({
   );
 }
 
-/** A named group of rail items - "Đang đọc" - with the heading Codex gives
- * its Pinned and Recents: small, quiet, above the rows. */
+/** A named group of rail items - "Đang đọc" - with the heading the app's
+ * other groups wear (`GroupedSection`: small caps, tracked, mute), so a
+ * section reads as a section here as it does in the settings panels
+ * (owner, 17/09, of the plain sentence-case label: "thử style khác"). */
 export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="pt-6">
-      <p className="m-0 px-3 pb-2 text-xs font-semibold text-ink-mute">{title}</p>
+      <p className="m-0 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-ink-mute">{title}</p>
       <div className="flex flex-col gap-1">{children}</div>
     </div>
   );

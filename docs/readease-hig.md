@@ -918,7 +918,8 @@ ngại đó.
   đo 16/09); ba tầng — *đầu* 52 px là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
   đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` {20, 20}) và
   nút thu/mở ở mép phải; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
-  `ink`, luật state layer §2) rồi nhóm **Đang đọc** (tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
+  `ink`, luật state layer §2) rồi nhóm **Đang đọc** (nhãn nhóm = kiểu nhãn của `GroupedSection`: xs semibold IN HOA
+  `tracking-wide` `ink-mute` — chủ 17/09 "thử style khác" cho nhãn thường; tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
   chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ). Mục đích của nhóm là **cầm lại đúng chỗ**, nên mỗi hàng
   là `RailDocument` (17/09; trước đó chỉ là tên bị cắt một dòng): *bìa nhỏ* 24×36 (2:3, bo 3 px, `MiniCover`-lite:
   ảnh thật hoặc panel `band` có gáy) mang **dải tiến độ 2 px** ở mép dưới (`brand` trên `wash`) — cùng ngôn ngữ với
