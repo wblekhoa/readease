@@ -49,3 +49,14 @@ test("the page marks every match of the query, in order, on the printed text", (
   assert.deepEqual(matchRanges(text, "t"), []);
   assert.deepEqual(matchRanges("không có gì", "tính năng"), []);
 });
+
+test("a hit at the head of a list item drops the item's marker from its snippet", () => {
+  const chapters = [{ id: "c", title: "C", segments: [
+    { id: "s1", text: "• Thiết kế và phát triển Web." },
+    { id: "s2", text: "1. Thiết kế đồ họa." },
+    { id: "s3", text: "Không phải danh sách: thiết kế in ấn." },
+  ] }];
+  const hits = searchBook(chapters, "thiet ke");
+  assert.deepEqual(hits.map((hit) => hit.before), ["", "", "Không phải danh sách: "]);
+  assert.deepEqual(hits.map((hit) => hit.match), ["Thiết kế", "Thiết kế", "thiết kế"]);
+});

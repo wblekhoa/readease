@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { text } from "../i18n";
 import { SearchField } from "./controls";
-import { ListRow } from "./patterns";
+import { GroupedSection, ListRow } from "./patterns";
 import { MAX_HITS, MIN_QUERY, foldQuery, searchBook, type SearchChapter, type SearchHit } from "./textSearch";
 
 /** What the page needs to mark the matches: the query as typed, and which
@@ -37,6 +37,17 @@ export function SearchPanel({
   const [chosen, setChosen] = useState<number | null>(null);
   const hits = useMemo(() => searchBook(chapters, query), [chapters, query]);
   const enough = foldQuery(query).length >= MIN_QUERY;
+  /* Hits come in chapter order, so a chapter's hits are one run; each run
+     is a group under the chapter's name, said once (HIG 3.16). */
+  const groups = useMemo(() => {
+    const out: { chapterId: string; chapterTitle: string; items: { hit: SearchHit; index: number }[] }[] = [];
+    hits.forEach((hit, index) => {
+      const last = out[out.length - 1];
+      if (last && last.chapterId === hit.chapterId) last.items.push({ hit, index });
+      else out.push({ chapterId: hit.chapterId, chapterTitle: hit.chapterTitle, items: [{ hit, index }] });
+    });
+    return out;
+  }, [hits]);
   useEffect(() => {
     if (!onMarks) return;
     const hit = chosen === null ? undefined : hits[chosen];
@@ -96,21 +107,35 @@ export function SearchPanel({
           reaches out past it (HIG 3.9d; owner, 17/09: "align với các thành
           phần khác"). */}
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-6">
-        {hits.map((hit, index) => (
-          <ListRow
-            key={`${hit.segmentId}:${index}`}
-            dense
-            active={index === chosen}
-            onPress={() => pick(index)}
-            title={
-              <span className="line-clamp-2 text-sm">
-                {hit.before}
-                <span className="rounded-sm bg-band px-0.5 font-semibold text-ink">{hit.match}</span>
-                {hit.after}
-              </span>
-            }
-            subtitle={<span className="text-xs text-ink-mute">{hit.chapterTitle}</span>}
-          />
+        {/* A hit is for recognising the right match in a second: the match
+            in the page's own yellow (the same mark the page draws, so one
+            colour means one thing in both places), the words around it
+            mute, and the chapter's name once over its run of hits rather
+            than under every row (owner, 17/09). The group's header sits
+            at the rows' text inset, 10 px in from the track. */}
+        {groups.map((group) => (
+          <GroupedSection
+            key={group.chapterId}
+            heading="name"
+            title={group.chapterTitle}
+            className="[--dot-inset:0.625rem] [&>h3]:px-2.5"
+          >
+            {group.items.map(({ hit, index }) => (
+              <ListRow
+                key={`${hit.segmentId}:${index}`}
+                dense
+                active={index === chosen}
+                onPress={() => pick(index)}
+                title={
+                  <span className="line-clamp-2 py-0.5 text-sm text-ink-mute">
+                    {hit.before}
+                    <mark data-search={index === chosen ? "current" : "match"} className="font-semibold text-ink">{hit.match}</mark>
+                    {hit.after}
+                  </span>
+                }
+              />
+            ))}
+          </GroupedSection>
         ))}
       </div>
     </div>

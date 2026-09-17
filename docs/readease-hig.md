@@ -1004,6 +1004,14 @@ ngại đó.
   (vàng đặc `--yellow-y100`, chữ `ink`), xác định bằng (đoạn, thứ tự khớp trong đoạn). Tô CHỒNG lên highlight của người đọc (mark lồng mark),
   không thay màu của họ; xoá từ khoá hay rời tab Tìm là trang sạch lại. Safari/Books làm đúng thế: thấy chỗ khớp
   ngay trên trang, chỗ đang đứng đậm hơn.
+- **Hàng kết quả tìm** (17/09, chủ: "phân tích và tối ưu design của item"): mục đích của hàng là *nhận ra đúng chỗ
+  khớp trong một giây* — nên (1) chỗ khớp mang **đúng màu vàng của trang** (`mark[data-search]`, không phải chip `band`
+  xám semibold như trước: cùng một thứ thì cùng một màu ở danh sách và trên trang); (2) lời quanh chỗ khớp là phụ →
+  `ink-mute`, chỗ khớp `ink` đậm — chip nổi khỏi câu như Spotlight; (3) kết quả **gom theo chương** (`GroupedSection
+  heading="name"`), tên chương đứng một lần trên nhóm thay vì lặp "Chương 3 · Bộ mẫu trình bày" dưới từng hàng — Books
+  cũng gom thế, và một màn chứa nhiều kết quả hơn; (4) dấu đầu dòng của đoạn danh sách ("• ", "1. ") bị cắt khỏi trích
+  đoạn khi trích bắt đầu từ đầu đoạn — nó là dấu cho mắt trên trang, trong hàng kết quả chỉ là rác; (5) hàng `py-2`
+  thay `py-1.5` cho hai dòng trích thở. Hàng đang chọn vẫn `band`.
 - **Content**: nhãn điều hướng = nhãn tab cũ (`nav.*`); nhóm "Đang đọc" (`sidebar.reading`); tab sách "Mục lục"
   · "Ghi chú" · "Tìm"; nút thu/mở `aria-label` "Thu cột bên" / "Mở cột bên", tooltip kèm ⌥⌘S.
 - **Don't**: cột trên màn Setup · cột che thanh player (player nằm trong cột nội dung) · hai nơi cùng mang

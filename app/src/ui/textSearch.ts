@@ -52,6 +52,10 @@ export function foldQuery(query: string): string {
   return fold(query).replace(/\s+/g, " ").trim();
 }
 
+/** A list item's own marker - "• ", "1. ", "a) " - typed into the text by
+ * the book. On the page it is a mark for the eye; in a hit it is noise. */
+const LIST_MARKER = /^(?:[•·\-–—*]|\d{1,3}[.)]|[a-z][.)])\s+/;
+
 function cutBefore(text: string, end: number): string {
   const start = Math.max(0, end - CONTEXT.before);
   let piece = text.slice(start, end);
@@ -59,6 +63,8 @@ function cutBefore(text: string, end: number): string {
     const space = piece.indexOf(" ");
     piece = (space >= 0 && space < piece.length - 1 ? piece.slice(space + 1) : piece);
     piece = "…" + piece;
+  } else {
+    piece = piece.replace(LIST_MARKER, "");
   }
   return piece;
 }
