@@ -915,9 +915,11 @@ ngại đó.
   **màu nền trang** (`--app-column` = `--app-ground`: trắng ở sáng — chủ 16/09 "background sidebar là màu
   trắng" — n00 ở tối; bản n05 xám chỉ sống một giờ), viền phải hairline `edge` là thứ duy nhất ngăn cột với
   trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
-  đo 16/09); ba tầng — *đầu* 52 px là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
-  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` {20, 20}) và
-  nút thu/mở ở mép phải; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
+  đo 16/09); ba tầng — *đầu* **68 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
+  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 28}** → tâm
+  đèn y = 34 = tâm hàng toolbar của cột nội dung (pt-4 + 36/2); trước là {20, 20} và đầu cột 52 px: khi cột thu, đèn
+  cao hơn hàng "⇅ Thư viện" 8 px và nút đầu tiên đứng sát đèn 4 px — chủ 17/09 "vị trí các nút window… chưa đẹp") và
+  nút thu/mở ở mép phải; **một đường ngang duy nhất** cho đèn · nút thu/mở · toolbar; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
   `ink`, luật state layer §2) rồi nhóm **Đang đọc** (nhãn nhóm = kiểu nhãn của `GroupedSection`: xs semibold IN HOA
   `tracking-wide` `ink-mute` — chủ 17/09 "thử style khác" cho nhãn thường; tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
   chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ). Mục đích của nhóm là **cầm lại đúng chỗ**, nên mỗi hàng
@@ -937,8 +939,8 @@ ngại đó.
   header/main/footer vẫn là overlay bên trong nó, inset đo như cũ; dải trên 52 px cũng là vùng kéo. Cột thu
   = `width: 0` (transition width 200 ms `ease-out`, `motion-reduce` tắt; KHÔNG dùng `@starting-style` — trong
   một WKWebView bị ẩn, timeline đứng và phần tử kẹt ở trạng thái đầu, đo 16/09), thân giữ bề rộng 240 để chữ
-  không gãy trong lúc thu; khi thu, đèn nằm trên góc trái của cột nội dung → dải trên chừa **76 px**, nút mở
-  đứng ngay cạnh đèn (Codex làm đúng thế).
+  không gãy trong lúc thu; khi thu, đèn nằm trên góc trái của cột nội dung → dải trên chừa **88 px** (đèn
+  chiếm x 20–72, rồi 16 px thở), nút mở đứng ngay cạnh đèn (Codex làm đúng thế).
   **Kéo mép phải để đổi bề rộng** (chủ 16/09: "sidebar có thể nắm kéo để resize"): tay nắm là dải 6 px đè lên hairline
   (`role=separator`, con trỏ `col-resize`, pointer capture nên kéo ra ngoài dải vẫn ăn; rê vào hoặc đang kéo thì
   hairline đậm lên — mực 35 % thay `edge`, qua `aside:has(.rail-grip:hover)`, chủ 17/09), bề rộng **200–400**, mặc định

@@ -1352,12 +1352,14 @@ export default function App() {
         leading={
           <div className="flex min-w-0 items-center gap-1">
           {/* Folded, the column's head is gone and the Mac's window buttons
-              sit over this corner instead: room for them, then - on the home
+              sit over this corner instead: room for them (they end at x 72;
+              with the 24px gutter this spacer puts the first control at 88,
+              16px of air after the zoom button), then - on the home
               screens - the switch that brings the column back, Codex's own
               arrangement. A book's toolbar has no such switch (owner, 16/09:
               "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
               search buttons each unfold the column on their own list. */}
-          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[52px] shrink-0" />}
+          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[64px] shrink-0" />}
           {/* A home screen's title, where a book's stands, with the mode
               switch before it (owner, 16/09: "trên title thì nút ở đây là
               nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of
