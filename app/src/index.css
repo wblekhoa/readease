@@ -594,6 +594,15 @@ mark {
   border-radius: 0.2em;
   padding: 0 0.05em;
 }
+/* A search match on the page, while the Tìm tab holds a query (HIG 3.16,
+   owner 17/09): brand at a wash, the hit just chosen in the list stronger.
+   It may sit INSIDE a reader's highlight; it never replaces that colour. */
+mark[data-search] {
+  background: color-mix(in srgb, var(--color-brand-600) 18%, transparent);
+}
+mark[data-search="current"] {
+  background: color-mix(in srgb, var(--color-brand-600) 40%, transparent);
+}
 
 /* The note marker sitting at the head of a highlight.
  *

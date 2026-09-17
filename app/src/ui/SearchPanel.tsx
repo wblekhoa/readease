@@ -7,23 +7,48 @@
  * choosing one shows that place and the column stays, so the next result is
  * one click away - the way Books does it.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { text } from "../i18n";
 import { SearchField } from "./controls";
 import { ListRow } from "./patterns";
 import { MAX_HITS, MIN_QUERY, foldQuery, searchBook, type SearchChapter, type SearchHit } from "./textSearch";
 
+/** What the page needs to mark the matches: the query as typed, and which
+ * match was just chosen in the list - by its paragraph and its place among
+ * that paragraph's matches, which is how the page counts them too. */
+export type SearchMarks = {
+  query: string;
+  current: { segmentId: string; occurrence: number } | null;
+};
+
 export function SearchPanel({
   chapters,
   onJump,
+  onMarks,
 }: {
   chapters: readonly SearchChapter[];
   onJump: (hit: SearchHit) => void;
+  /** Told whenever the query or the chosen hit changes, and told "nothing"
+   * when the panel goes away - the page's marks live exactly as long as
+   * the Tìm tab holds a query (HIG 3.16, owner 17/09). */
+  onMarks?: (marks: SearchMarks) => void;
 }) {
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<number | null>(null);
   const hits = useMemo(() => searchBook(chapters, query), [chapters, query]);
   const enough = foldQuery(query).length >= MIN_QUERY;
+  useEffect(() => {
+    if (!onMarks) return;
+    const hit = chosen === null ? undefined : hits[chosen];
+    const current = hit
+      ? {
+        segmentId: hit.segmentId,
+        occurrence: hits.slice(0, chosen!).filter((other) => other.segmentId === hit.segmentId).length,
+      }
+      : null;
+    onMarks({ query: enough ? query : "", current });
+  }, [onMarks, query, enough, hits, chosen]);
+  useEffect(() => () => { onMarks?.({ query: "", current: null }); }, [onMarks]);
 
   const pick = (index: number) => {
     const hit = hits[index];

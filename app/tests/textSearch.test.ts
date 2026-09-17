@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MAX_HITS, foldMap, foldQuery, searchBook } from "../src/ui/textSearch.ts";
+import { MAX_HITS, foldMap, foldQuery, matchRanges, searchBook } from "../src/ui/textSearch.ts";
 
 const BOOK = [
   { id: "c1", title: "Một", segments: [
@@ -40,4 +40,12 @@ test("short or empty queries find nothing, and spaces do not matter", () => {
 test("hits stop at the cap", () => {
   const long = { id: "c", title: "Dài", segments: Array.from({ length: 300 }, (_, i) => ({ id: `s${i}`, text: "lặp lại" })) };
   assert.equal(searchBook([long], "lặp").length, MAX_HITS);
+});
+
+test("the page marks every match of the query, in order, on the printed text", () => {
+  const text = "Tính năng này, và tinh nang kia; TÍNH NĂNG nữa.";
+  const ranges = matchRanges(text, "tinh nang");
+  assert.deepEqual(ranges.map(([start, end]) => text.slice(start, end)), ["Tính năng", "tinh nang", "TÍNH NĂNG"]);
+  assert.deepEqual(matchRanges(text, "t"), []);
+  assert.deepEqual(matchRanges("không có gì", "tính năng"), []);
 });

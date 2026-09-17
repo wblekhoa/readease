@@ -978,6 +978,13 @@ ngại đó.
   sidebar"): nút mở cột chỉ có ở toolbar TRANG CHỦ khi cột thu — trong sách, ▤ / ghi chú / tìm đã là ba nút
   mở cột đúng danh sách, thêm một nút mở chung là thừa; và toolbar sách khi cột thu chỉ nhận lại nút
   sáng/tối (luật 06/09: cạnh AA), không nhận bánh răng lẫn ngôn ngữ — chúng cách một lần mở cột.
+- **Tìm tô lên trang** (17/09, chủ: "thêm highlight nội dung trong bài với các keyword khớp"): trong lúc tab Tìm
+  có từ khoá (≥ 2 chữ), MỌI chỗ khớp trong chương đang mở được tô `mark[data-search]` (brand 18 %, bo 0,2em) — cùng
+  cách khớp không dấu với danh sách (`textSearch.ts::matchRanges`, trên chữ NHƯ TRANG IN, không phải chữ gốc của đoạn,
+  nên đoạn danh sách bị cắt dấu đầu dòng vẫn đúng chỗ); kết quả vừa bấm trong danh sách = `data-search="current"`
+  (brand 40 %), xác định bằng (đoạn, thứ tự khớp trong đoạn). Tô CHỒNG lên highlight của người đọc (mark lồng mark),
+  không thay màu của họ; xoá từ khoá hay rời tab Tìm là trang sạch lại. Safari/Books làm đúng thế: thấy chỗ khớp
+  ngay trên trang, chỗ đang đứng đậm hơn.
 - **Content**: nhãn điều hướng = nhãn tab cũ (`nav.*`); nhóm "Đang đọc" (`sidebar.reading`); tab sách "Mục lục"
   · "Ghi chú" · "Tìm"; nút thu/mở `aria-label` "Thu cột bên" / "Mở cột bên", tooltip kèm ⌃⌘S.
 - **Don't**: cột trên màn Setup · cột che thanh player (player nằm trong cột nội dung) · hai nơi cùng mang

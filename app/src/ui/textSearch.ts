@@ -73,6 +73,23 @@ function cutAfter(text: string, start: number): string {
   return piece;
 }
 
+/** Where a query lands in ONE text, as [start, end) ranges of the original
+ * characters, in order - what the page marks. The same fold as the list,
+ * on the text as the page prints it, so a list item shorn of its marker
+ * still marks the right characters. Empty for a query too short to search. */
+export function matchRanges(text: string, query: string): Array<[number, number]> {
+  const needle = foldQuery(query);
+  if (needle.length < MIN_QUERY) return [];
+  const { folded, map } = foldMap(text);
+  const ranges: Array<[number, number]> = [];
+  let at = folded.indexOf(needle);
+  while (at >= 0) {
+    ranges.push([map[at], map[at + needle.length - 1] + 1]);
+    at = folded.indexOf(needle, at + needle.length);
+  }
+  return ranges;
+}
+
 export function searchBook(chapters: readonly SearchChapter[], query: string, limit = MAX_HITS): SearchHit[] {
   const needle = foldQuery(query);
   if (needle.length < MIN_QUERY) return [];
