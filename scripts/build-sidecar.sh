@@ -92,12 +92,13 @@ if ! printf '{"id":1,"method":"ping","params":{}}\n' \
   exit 1
 fi
 # The English voice's front end - spaCy's tagger and the out-of-lexicon
-# reader - is in the bundle or it is not, and `ping` cannot tell. This can.
+# reader - and the three chapter chimes are in the bundle or they are not,
+# and `ping` cannot tell. This can.
 if ! HOME="$smoke_home" "$out/readease-engine" --self-test 2>"$smoke_home/stderr" \
     | grep -q '"ok": true'; then
-  echo "SIDECAR_SMOKE_FAILED - frozen engine failed the English self-test:" >&2
+  echo "SIDECAR_SMOKE_FAILED - frozen engine failed the self-test (English front end, chimes):" >&2
   tail -5 "$smoke_home/stderr" >&2
   exit 1
 fi
 rm -rf "$smoke_home"
-echo "SIDECAR_BUILT $(du -sh "$out" | cut -f1) (smoke: ping ok, english self-test ok)"
+echo "SIDECAR_BUILT $(du -sh "$out" | cut -f1) (smoke: ping ok, self-test ok: english front end + chimes)"

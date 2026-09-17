@@ -705,6 +705,23 @@ export const TEXT = {
     "Download the model, or add an API key under Voices & models.",
   ],
   "settings.sources": ["Mô hình & API", "Models & API"],
+  /* The two rows under Speed that shape how a document SOUNDS (owner,
+     16/09): the chime between chapters, and how much of a footnote is
+     read. Each subtitle states the rule the choice sets (HIG 5.1), so the
+     panel explains itself without a help page. */
+  "settings.chime": ["Âm hiệu chương", "Chapter chime"],
+  "settings.chime_hint": ["Một âm ngắn khi sang chương mới", "A short sound at each new chapter"],
+  "settings.chime_off": ["Tắt", "Off"],
+  "settings.chime_marimba": ["Marimba", "Marimba"],
+  "settings.chime_harp": ["Harp", "Harp"],
+  "settings.chime_piano": ["Piano", "Piano"],
+  "settings.notes": ["Chú thích", "Footnotes"],
+  "settings.notes_short": ["Rút gọn", "Short"],
+  "settings.notes_short_hint": ["Chỉ đọc lời bàn, hai câu đầu", "Remarks only, two sentences"],
+  "settings.notes_full": ["Đầy đủ", "Full"],
+  "settings.notes_full_hint": ["Đọc nguyên văn, kể cả trích dẫn", "Read whole, citations too"],
+  "settings.notes_off": ["Bỏ qua", "Off"],
+  "settings.notes_off_hint": ["Không đọc chú thích, trích dẫn", "No notes, no citations"],
   /* The nudge: the text is in a language the voice in use was not made
      for. A suggestion with one button - never acted on by itself (owner,
      15/09: "gợi ý cho user là phần nội dung đang là ngôn ngữ gì và đề xuất

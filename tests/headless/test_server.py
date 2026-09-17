@@ -302,6 +302,98 @@ class ProtocolTests(unittest.TestCase):
         self.assertNotEqual(expected, raw, "fixture no longer exercises unshout")
         self.assertEqual(engine.requests[0][0], expected)
 
+    def _two_chapter_book(self, root):
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        repository = LibraryRepository(root / "reader.sqlite3")
+        book = build_book([
+            ("Một", [("Đoạn một của chương đầu.", "paragraph"),
+                      ("Đoạn hai của chương đầu.", "paragraph")]),
+            ("Hai", [("Đoạn mở chương sau.", "heading"),
+                      ("Đoạn đầu của chương sau.", "paragraph")]),
+        ])
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        repository.add_book(book, source)
+        return repository, book
+
+    def test_a_heading_is_read_slower_and_a_touch_louder(self) -> None:
+        """Owner, 16/09: "đổi giọng điệu hoặc đọc to hơn một xíu các tiêu đề".
+        Neither local model takes a tone, so the heading is set apart by
+        what the pipe controls: its own slower rate and +2 dB - applied to
+        the model's samples after the cache, so the voice's output is the
+        same audio either way."""
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.domain.prosody import HEADING_GAIN, HEADING_RATE
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, book = self._two_chapter_book(root)
+            settings = root / "settings.json"
+            settings.write_text('{"chapter_chime": "off"}', encoding="utf-8")
+            # Half a second per sentence: the stretcher works in 2048-sample
+            # frames and drops a clip shorter than one, so the fake voice's
+            # 480-sample sentence would vanish under any rate but 1.0.
+            engine = FakeEngine(chunks_per_sentence=50)
+            replies = run_server(
+                [{"id": 9, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+                engine, repository=repository, settings_path=settings,
+            )
+            # Voice frames, grouped by the position that preceded them.
+            by_segment: dict[str, list[np.ndarray]] = {}
+            current = None
+            for reply in replies:
+                if reply.get("event") == "position":
+                    current = reply["segment_id"]
+                elif reply.get("event") == "chunk" and reply["from_voice"] and current:
+                    by_segment.setdefault(current, []).append(
+                        np.frombuffer(base64.b64decode(reply["pcm"]), dtype=np.float32))
+            flat = [segment for chapter in book.chapters for segment in chapter.segments]
+            paragraph = np.concatenate(by_segment[flat[0].id])
+            heading = np.concatenate(by_segment[flat[2].id])
+            # The fake voice gives every sentence the same 24000 samples at
+            # 0.25; the heading comes out longer (about 1/0.92, less the
+            # stretcher's frame rounding) and 26% taller.
+            self.assertEqual(paragraph.size, 24000)
+            self.assertGreater(heading.size / 24000, 1.05)
+            self.assertLess(heading.size / 24000, 1 / HEADING_RATE + 0.01)
+            self.assertAlmostEqual(float(paragraph.max()), 0.25, places=3)
+            self.assertAlmostEqual(float(heading.max()), 0.25 * HEADING_GAIN, places=2)
+
+    def test_a_chime_opens_each_later_chapter_unless_turned_off(self) -> None:
+        """Owner, 16/09: "nhạc chờ ngắn giữa các chương". The chime the
+        reader keeps sounds between chapters, in place of the flat rest, as
+        frames that are not the voice's; the first chapter of a reading gets
+        none, and "off" brings the 1200 ms rest back."""
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.speech.chimes import load_chime
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, book = self._two_chapter_book(root)
+            settings = root / "settings.json"
+            settings.write_text('{"chapter_chime": "marimba"}', encoding="utf-8")
+            replies = run_server(
+                [{"id": 10, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}],
+                FakeEngine(chunks_per_sentence=1), repository=repository, settings_path=settings,
+            )
+            rests = [np.frombuffer(base64.b64decode(r["pcm"]), dtype=np.float32)
+                     for r in replies if r.get("event") == "chunk" and not r["from_voice"]]
+            sounding = [r for r in rests if np.abs(r).max() > 0]
+            chime = load_chime("marimba")
+            self.assertEqual(sum(r.size for r in sounding), chime.size)
+            self.assertTrue(np.array_equal(np.concatenate(sounding), chime))
+            # Exactly one chime: two chapters, one boundary, none at the start
+            # - one 300 ms breath before it and one 500 ms after, both silent.
+            silent = [r.size for r in rests if np.abs(r).max() == 0]
+            self.assertEqual(silent.count(SAMPLE_RATE * 300 // 1000), 1)
+            self.assertEqual(silent.count(SAMPLE_RATE * 500 // 1000), 1)
+            self.assertNotIn(SAMPLE_RATE * 1200 // 1000, silent)
+
     def test_read_book_walks_positions_pauses_and_progress(self) -> None:
         from vieneu_reader.domain.prosody import pause_after_ms
         from vieneu_reader.storage.repository import LibraryRepository
@@ -323,11 +415,15 @@ class ProtocolTests(unittest.TestCase):
                     for segment in chapter.segments]
 
             engine = FakeEngine(chunks_per_sentence=1)
+            # This receipt is about the SILENCES; the chime that stands in
+            # for the chapter rest by default has its own receipt below.
+            settings = root / "settings.json"
+            settings.write_text('{"chapter_chime": "off"}', encoding="utf-8")
             replies = run_server(
                 [{"id": 8, "method": "read.book",
                   "params": {"book_id": BOOK_ID, "voice_id": "adam",
                               "rate": 1.0}}],
-                engine, repository=repository,
+                engine, repository=repository, settings_path=settings,
             )
 
             positions = [reply["segment_id"] for reply in replies
@@ -1880,6 +1976,97 @@ class ProtocolTests(unittest.TestCase):
             # Its own heading goes too: a chapter that WAS the notes has
             # nothing left to announce.
             self.assertNotIn("Chú thích.", spoken.replace("Nói thêm, ", ""))
+
+    def _book_with_two_notes(self, root):
+        """A sentence with a bibliographic note and a sentence with a
+        commentary note, plus the notes chapter at the back."""
+        from types import SimpleNamespace
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        repository = LibraryRepository(root / "reader.sqlite3")
+        book = build_book([
+            ("Một", [("Thị trường không đoán được (Trần, 2019) đâu 1.", "paragraph"),
+                      ("Câu này có lời bàn 2.", "paragraph")]),
+            ("Chú thích", [("Chú thích", "heading"),
+                           ("1. Sđd., tr. 45.", "paragraph"),
+                           ("2. Lời bàn thứ nhất. Lời bàn thứ hai. Lời bàn thứ ba.", "paragraph")]),
+        ])
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        repository.add_book(book, source)
+        first, second = book.chapters[0].segments
+        notes_chapter = book.chapters[1]
+        presentation = SimpleNamespace(chapters=[
+            SimpleNamespace(
+                chapter_id=book.chapters[0].id, figures=(),
+                notes=(
+                    SimpleNamespace(id="n1", label="1", chapter_id=book.chapters[0].id,
+                                    anchor_segment_id=first.id, offset=len(first.text) - 2, length=1,
+                                    text="Sđd., tr. 45."),
+                    SimpleNamespace(id="n2", label="2", chapter_id=book.chapters[0].id,
+                                    anchor_segment_id=second.id, offset=len(second.text) - 2, length=1,
+                                    text="Lời bàn thứ nhất. Lời bàn thứ hai. Lời bàn thứ ba."),
+                ),
+                spoken_elsewhere=(),
+            ),
+            SimpleNamespace(chapter_id=notes_chapter.id, figures=(), notes=(),
+                            spoken_elsewhere=tuple(s.id for s in notes_chapter.segments[1:])),
+        ])
+        service = SimpleNamespace(presentation_for=lambda book, path: presentation,
+                                  assets_for=lambda book, path, figures: {})
+        return repository, service, book
+
+    def test_notes_are_read_short_by_default_and_citations_not_at_all(self) -> None:
+        """Owner, 16/09: "tối ưu nội dung khi đọc các ref để tránh dài dòng".
+        A bibliographic note says nothing to the ear; a commentary note is
+        cut to its first two sentences; an in-text citation goes too. The
+        estimate counts the words that are actually sent."""
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, service, book = self._book_with_two_notes(root)
+            settings = root / "settings.json"
+            settings.write_text('{"chapter_chime": "off"}', encoding="utf-8")
+            engine = FakeEngine()
+            replies = run_server([
+                {"id": 94, "method": "estimate", "params": {"book_id": book.id, "voice_id": "adam"}},
+                {"id": 95, "method": "read.book", "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service, settings_path=settings)
+
+            spoken = " ".join(text for text, _voice in engine.requests)
+            self.assertEqual(
+                spoken,
+                "Thị trường không đoán được đâu. Câu này có lời bàn. "
+                "Nói thêm, Lời bàn thứ nhất. Lời bàn thứ hai.",
+            )
+            # The estimate counts what the reading sends, give or take the
+            # space between two sentences of one utterance (it counts the
+            # utterance, the reading sends sentences): the citation and the
+            # third sentence of the note are in neither.
+            estimate = next(r for r in replies if r.get("id") == 94)["result"]["chars"]
+            sent = sum(len(t) for t, _ in engine.requests)
+            self.assertTrue(sent <= estimate <= sent + 3, (sent, estimate))
+
+    def test_notes_can_be_read_whole_or_not_at_all(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        for mode, expected in (
+            ("full", "Thị trường không đoán được (Trần, 2019) đâu. Nói thêm, Sđd., tr. 45. "
+                     "Câu này có lời bàn. Nói thêm, Lời bàn thứ nhất. Lời bàn thứ hai. Lời bàn thứ ba."),
+            ("off", "Thị trường không đoán được đâu. Câu này có lời bàn."),
+        ):
+            with self.subTest(mode=mode), TemporaryDirectory() as directory:
+                root = Path(directory)
+                repository, service, book = self._book_with_two_notes(root)
+                settings = root / "settings.json"
+                settings.write_text(f'{{"chapter_chime": "off", "note_reading": "{mode}"}}', encoding="utf-8")
+                engine = FakeEngine()
+                run_server([{"id": 96, "method": "read.book", "params": {"book_id": book.id, "voice_id": "adam"}}],
+                           engine, repository=repository, service=service, settings_path=settings)
+                self.assertEqual(" ".join(text for text, _voice in engine.requests), expected)
 
     def test_reading_from_a_note_already_read_carries_on_instead_of_restarting(self) -> None:
         """A finger on a paragraph means "read from here", never "start over".
