@@ -21,9 +21,21 @@ ReadEase is a local-first macOS app that reads your **EPUB and PDF files** (text
 
 ## Download ReadEase
 
-### [⬇️ Download ReadEase (.zip) - Releases](https://github.com/wblekhoa/readease/releases/latest)
+### [⬇️ Download ReadEase 0.1.6 for Apple Silicon Macs - 113 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip)
 
-Download `ReadEase-<version>-arm64.zip`, unzip it, and **drag `ReadEase.app` into Applications**. No Terminal, no tools to install.
+One click downloads the `.zip`. Unzip it and **drag `ReadEase.app` into Applications**. No Terminal, no tools to install. Other versions and release notes: [Releases](https://github.com/wblekhoa/readease/releases).
+
+### Pick by what you want to do
+
+There is **one** app; the voices are chosen inside it, and the app **downloads only what you pick**. Add the sizes up to know what you will download:
+
+| You want to | Get | Total | Where |
+| --- | --- | --- | --- |
+| Read **Vietnamese**, small | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + Vietnamese voice *Standard* | 113 MB + 330 MB | First screen "Choose how to read, to begin" → Vietnamese → **Download and use** on the *Standard · 330 MB* row |
+| Read **Vietnamese**, best quality | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + Vietnamese voice *Highest* | 113 MB + 625 MB | Same screen → **Download and use** on the *Highest · 625 MB* row (reads ~11 % slower) |
+| Read **English** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + English voice Kokoro (6 American voices) | 113 MB + 330 MB | First screen (or **Voices & models** on the home screen) → English → **Download** |
+| Read **both languages** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + Vietnamese + English voices | 113 MB + 660-955 MB | Both steps above; any model can be removed later |
+| Use **paid AI voices** (OpenAI / ElevenLabs), no model download | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.6/ReadEase-0.1.6-arm64.zip) + your API key | 113 MB | **Voices & models → API voices → Add key**; reads both languages, billed per character |
 
 > [!NOTE]
 > Releases are signed with an Apple Developer ID certificate and notarized by Apple, so the app opens like any other. Full guide, including the older 0.1.0/0.1.1 builds that macOS blocks: [INSTALL.en.md](INSTALL.en.md).
@@ -41,7 +53,7 @@ You do not need an API key, Homebrew, Python or programming knowledge.
 
 ## First launch
 
-In ReadEase, click **Set up voice** once to download about 330 MB of Vietnamese voice data. Just above that button, **Voice quality** chooses the model build. Only the build you pick is downloaded, never both: *Standard* (the default) comes to about 330 MB in all, *Highest* to about 625 MB and reads roughly 11% slower.
+The first screen, **"Choose how to read, to begin"**, lists what this Mac can read with: one group per language, one row per voice model with its size and a **Download and use** button. Nothing is required - **Go to the library** is always available, and voices can be added later under **Voices & models** on the home screen. Only what you pick is downloaded: Vietnamese *Standard* ~330 MB, *Highest* ~625 MB (reads about 11 % slower), English ~330 MB; reading is offline after that. Switching models mid-reading asks first and says how much would be downloaded; a model you no longer use is removed with one button in the same place.
 
 Documents, progress, notes and downloaded voices live in `~/Library/Application Support/VieNeu Reader/`, outside the app - upgrading is dragging the new build over the old one, and nothing is lost. Gatekeeper details, permissions and troubleshooting: [INSTALL.en.md](INSTALL.en.md).
 

@@ -235,4 +235,5 @@ echo
 echo "Which build is installed, at any time:"
 echo "  /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' ~/Applications/ReadEase.app/Contents/Info.plist"
 echo
-echo "Not published by this script - upload it to a GitHub release yourself."
+echo "Not published by this script - upload it to a GitHub release yourself,"
+echo "then point the download links in README.md and README.en.md at the new asset."
