@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.6
+
+A side column that folds like Codex's, headings and chapters you can hear,
+footnotes that stop being long-winded, and an app that calls your files
+what they are. Installs over 0.1.5.
 
 - ReadEase describes itself as what it is: a reader of your EPUB and PDF
   files. Every sentence the app shows - in both languages, from the shell
