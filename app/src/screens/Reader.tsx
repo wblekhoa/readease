@@ -780,7 +780,7 @@ export function Reader({
    * - a list item hangs from a gutter with a dot, or the book's own number;
    * - a quotation is set in from the left; a one-word "quote" is a label.
    * The heading keeps its old shape. */
-  const blockClasses = (segment: BookSegment, onPages: boolean): string => {
+  const blockClasses = (segment: BookSegment, onPages: boolean, first = false): string => {
     // Spacing is TOP margin only, so a block decides its own distance from
     // the one above and a cut paragraph can close that distance to nothing.
     // Each block carries `py-1` for its hover band; the split's negative
@@ -789,7 +789,13 @@ export function Reader({
     const split = continues(segment.joint);
     switch (segment.kind) {
       case "heading":
-        return (onPages ? "mt-2 " : "mt-10 ") + "text-[1.35em] font-bold leading-snug ";
+        // On pages the chapter's opening heading sits at the top of the
+        // first page and needs no room; a section heading further down
+        // needs air from the paragraph above it (owner, 17/09: at 8 px it
+        // clung to the body). A heading that lands at a column's top has
+        // its margin truncated at the break, so the air never opens a
+        // hole at the head of a page.
+        return (onPages ? (first ? "mt-2 " : "mt-6 ") : "mt-10 ") + "text-[1.35em] font-bold leading-snug ";
       case "list_item":
         // One gutter for dotted and numbered items alike (32 px, room for
         // "99."), so the text edge is the same down a chapter whatever the
@@ -848,7 +854,7 @@ export function Reader({
   };
 
   const chapterBody = (chapter: BookChapter) =>
-    chapter.segments.map((segment) => (
+    chapter.segments.map((segment, index) => (
       <div key={segment.id}>
         {chapter.figures
           .filter((figure) =>
@@ -879,7 +885,7 @@ export function Reader({
             // on it: a cut paragraph's negative margin swallows exactly
             // these two paddings to sit one line-height under its head.
             "-mx-2 cursor-text px-2 py-1 read-from-here " +
-            blockClasses(segment, paged) +
+            blockClasses(segment, paged, index === 0) +
             (segment.id === marker ? "voice-here" : "")
           }
         >

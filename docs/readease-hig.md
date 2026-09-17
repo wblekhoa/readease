@@ -451,6 +451,11 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   chẳng có gì để bo ngoài **vạch trái của khối trích dẫn**, nên vạch bị cong hai đầu (chủ 06/09). Dùng `2xl` chứ
   không phải `xl`: thang bán kính chỉ có hai nấc — surface `2xl`, content `lg` — `xl` nằm ngoài thang và
   `npm run audit:ui` chặn nó.
+- **Tiêu đề giữa trang cách thân trên nó 24 px** (`mt-6`, 17/09, chủ: "space top của heading xa thêm xíu nữa với text
+  body bên trên"): ở chế độ trang, tiêu đề từng mang `mt-2` (8 px) cho MỌI tiêu đề vì tiêu đề mở chương đứng đầu trang
+  không cần khoảng trống — nhưng tiêu đề mục giữa trang thì dính vào đoạn trên. Nay: khối ĐẦU TIÊN của chương giữ
+  `mt-2`, tiêu đề còn lại `mt-6`; chế độ cuộn vẫn `mt-10`. Tiêu đề rơi đúng đầu cột trang thì margin bị cắt tại
+  điểm ngắt (css-break: margin trước một điểm ngắt không ép bị bỏ), nên không sinh khoảng trống ở đầu trang.
 - **Dấu đầu dòng là chữ của tài liệu, không phải chrome** (17/09, chủ: "style của các bullet point đẹp hơn"). Trước:
   chấm 6 px và số "1." ở 0,9em đều `ink-mute` — số đọc như dấu chú thích chứ không phải thứ tự, và rãnh 20 px làm "10."
   tràn đè lên chữ. Nay hai bậc (chủ chốt sau khi xem bản "cùng mực với chữ": "bullet có màu riêng, số màu nhẹ hơn để phân cấp"):
