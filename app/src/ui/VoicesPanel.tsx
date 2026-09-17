@@ -16,7 +16,7 @@ import { text } from "../i18n";
 import {
   Button, IconButton, Notice, SearchField, SegmentedControl, SuggestionDot, Surface, Switch,
 } from "./controls";
-import { Cluster, GroupedSection, Scrim, useDismiss } from "./patterns";
+import { Cluster, GroupedSection, useDismiss } from "./patterns";
 import {
   CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SlidersIcon, SpeakerIcon,
   StopIcon, WomanIcon,
@@ -178,7 +178,6 @@ export function VoicesPanel({
 
   return (
     <>
-    <Scrim />
     <Surface
       edge="strong"
       radius="sheet"

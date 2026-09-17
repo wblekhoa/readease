@@ -246,8 +246,13 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
 ### 3.13 Giọng đọc & mô hình · bảng giọng đọc theo ngôn ngữ (15/09)
 - **Usage**: chủ muốn "một nơi thống kê để user quản lý và tải model hoặc nhập API", và bảng giọng đọc
   "cho user chọn trước là họ muốn đọc ở ngôn ngữ nào rồi mới hiển thị các nội dung liên quan".
+- **Sheet ở giữa CỬA SỔ, không phải giữa cột nội dung** (17/09, chủ: "cho setting nằm giữa, tương đồng với việc
+  setting không có sidebar của nó"): hai sheet giữa màn (hub này, Tài liệu trong Apple Books) dùng `fixed left-1/2
+  top-1/2` thay `absolute` trong cột nội dung — khi cột bên mở, sheet vẫn đứng đúng tâm cửa sổ, cùng khung với scrim
+  phủ cả cửa sổ; sheet là của app, không của một cột. Danh sách giọng KHÔNG phải sheet giữa màn: nó neo trên nút của
+  nó ở góc footer (05/09) → không scrim, không dời.
 - **Scrim mờ dưới sheet** (17/09, chủ: "khi mở modal thì có một lớp blur overlay để focus vào phần modal"): mọi sheet
-  giữa màn (hub này, Danh sách giọng) đặt trên `Scrim` (`patterns.tsx`): `fixed inset-0`, đen 25 % + `backdrop-filter:
+  giữa màn (hub này, Tài liệu trong Apple Books) đặt trên `Scrim` (`patterns.tsx`): `fixed inset-0`, đen 25 % + `backdrop-filter:
   blur(40px)` (`blur-2xl`; 6 px lúc đầu còn đọc được chữ phía sau — chủ 17/09 "blur mạnh hơn, như một nền background"),
   phủ cả cột bên; bấm vào scrim = bấm ra ngoài (đóng, trừ lúc đang tải — `useDismiss` giữ luật cũ). Popover
   neo nút (§3.9d) KHÔNG có scrim: chúng là lớp tra cứu nhanh, trang vẫn phải bấm được.

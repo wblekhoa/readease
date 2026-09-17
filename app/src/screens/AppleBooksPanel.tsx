@@ -182,7 +182,7 @@ export function AppleBooksPanel({
     <Surface
       edge="strong"
       radius="sheet"
-      className="absolute left-1/2 top-1/2 z-30 flex max-h-[84%] w-[38rem] -translate-x-1/2 -translate-y-1/2 flex-col shadow-lifted"
+      className="fixed left-1/2 top-1/2 z-30 flex max-h-[84%] w-[38rem] -translate-x-1/2 -translate-y-1/2 flex-col shadow-lifted"
     >
       <div className="flex items-start gap-3 px-6 pb-4 pt-5">
         <div className="min-w-0 flex-1">
