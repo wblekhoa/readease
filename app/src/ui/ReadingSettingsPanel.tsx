@@ -57,6 +57,7 @@ export function ReadingSettingsPanel({
     <Surface
       ref={panel}
       edge="strong"
+      material="glass"
       /* A floating panel sets its content in by the sheets' 24 and takes the
          sheet radius - the rule every panel over a page follows
          (SettingsPanel, owner 03/09; restated 06/09 for this one, which had

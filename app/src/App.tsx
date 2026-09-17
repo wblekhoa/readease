@@ -1834,6 +1834,7 @@ export default function App() {
                       >
                         <Surface
                           edge="strong"
+                          material="glass"
                           className="w-[24rem] max-w-[calc(100vw-3rem)] p-3 shadow-lifted"
                         >
                           <span className="block text-xs text-ink-mute">

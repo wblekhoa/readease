@@ -696,6 +696,7 @@ export function MenuButton({
       {open && (
         <Surface
           edge="strong"
+          material="glass"
           className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div role="menu" className="flex flex-col">

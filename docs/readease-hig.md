@@ -457,6 +457,13 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   dùng `Surface radius="sheet"` (`rounded-3xl`) và **lót nội dung 24 px** (`px-6`, `pt-5`/`pb-6`) — cùng một inset với
   sheet, không phải 16 của card. Lý do: panel là một LỚP đứng trên trang, cần đọc như lớp; 16/2xl làm nó lẫn với thẻ
   trong trang (chủ, 06/09: "tăng padding và tăng radius của popover").
+- **Vật liệu = kính của Books** (17/09, chủ đưa hai popover của Apple Books: "tận dụng các thiết kế từ Apple để có
+  style glass"): panel nổi và menu dùng `Surface material="glass"` — nền `paper` **74 %** + `backdrop-filter: blur(28px)
+  saturate(1.5)`, viền `edge-strong`, bóng `lifted`; trang mờ đi phía sau như popover "Contents"/"Themes & Settings" của
+  Books. Chỉ LỚP NỔI TRÊN TRANG mới là kính (popover cài đặt giọng, cài đặt chữ, chi phí, menu đổi chế độ, tooltip
+  chương); sheet giữa màn (Giọng đọc & mô hình, Danh sách giọng) và cột bên vẫn đặc — Books cũng thế, và chủ 16/09 đã
+  chọn cột trắng. Kính thật của hệ (NSVisualEffectView qua `windows[].effects` của Tauri) cần cửa sổ trong suốt +
+  `macOSPrivateApi` — để dành, chưa cần. Đo chữ trên kính: 74 % paper trên trang chữ mờ vẫn ≥ 4,5:1 cho `ink`.
 - **Panel là DANH SÁCH DÒNG** (mục lục, tìm trong sách, ghi chú) theo cùng luật, chỉ khác cách đạt tới 24: header và ô
   nhập `px-6`, còn track của danh sách hẹp hơn đúng phần inset của hàng (`ListRow dense` = 10 px ⇒ `px-3.5`; hàng ghi chú
   = 8 px ⇒ `px-5`), để CHỮ của hàng thẳng hàng với tiêu đề. Cùng `radius="sheet"` (chủ, 06/09: "đồng bộ").

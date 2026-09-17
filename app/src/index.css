@@ -317,6 +317,17 @@
   mask-image: linear-gradient(to right, transparent, black 55%);
 }
 
+/* The material of a layer that floats over the page: Books' popover glass
+   (owner, 17/09: "tận dụng các thiết kế từ Apple để có style glass") -
+   paper at 74% over the page blurred and a touch more saturated, so the
+   page is felt behind the panel without competing with its text. Only for
+   layers OVER the page; sheets and the column stay paper (HIG 3.9d). */
+@utility glass-panel {
+  background: color-mix(in srgb, var(--color-paper) 74%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(28px) saturate(1.5);
+}
+
 @utility hover-wash {
   &:hover {
     background-image: linear-gradient(var(--color-wash), var(--color-wash));

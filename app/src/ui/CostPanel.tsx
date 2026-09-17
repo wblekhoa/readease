@@ -144,6 +144,7 @@ export function CostPanel({
     <Surface
       edge="strong"
       radius="sheet"
+      material="glass"
       ref={panel}
       className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 w-[26rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 p-6 shadow-lifted"
     >

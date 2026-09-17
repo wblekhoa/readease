@@ -364,6 +364,7 @@ export function Surface({
   className = "",
   edge = "field",
   radius = "surface",
+  material = "paper",
   ref,
 }: {
   children: ReactNode;
@@ -379,11 +380,16 @@ export function Surface({
    * on its own in the middle of the window (owner, 02/09: a modal should be
    * rounder than a card). */
   radius?: "surface" | "sheet";
+  /** `paper`: opaque, for a card in the page or a sheet in the middle of
+   * the window. `glass`: the material of Books' popovers - paper at 74%
+   * over a blurred page (HIG 3.9d, owner 17/09) - for a layer that floats
+   * OVER the page: popovers, menus, the chapter tooltip. */
+  material?: "paper" | "glass";
 }) {
   return (
     <div
       ref={ref}
-      className={`border bg-paper ${radius === "sheet" ? "rounded-3xl" : "rounded-2xl"} ${
+      className={`border ${material === "glass" ? "glass-panel" : "bg-paper"} ${radius === "sheet" ? "rounded-3xl" : "rounded-2xl"} ${
         edge === "strong" ? "border-edge-strong" : "border-edge-field"
       } ${className}`}
     >

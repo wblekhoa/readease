@@ -152,6 +152,7 @@ export function SettingsPanel({
        pinned, list moving, scrollbar owned by the list. */
     <Surface
       edge="strong"
+      material="glass"
       /* Sheet tier, not card: this floats over the book and stands on its
          own, which is what the guideline's 24 is for (owner, 03/09). */
       radius="sheet"
