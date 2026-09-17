@@ -457,7 +457,7 @@ export function VoicesPanel({
                       )}
                     </span>
                     {voice.id === voiceId && (
-                      <span className="text-xs font-normal text-ink-faint">{text("voices.in_use")}</span>
+                      <span className="text-xs font-normal text-ink-mute">{text("voices.in_use")}</span>
                     )}
                   </div>
                   <div className="mt-0.5 text-xs text-ink-mute">{voiceDescriptionShown(voice.label)}</div>

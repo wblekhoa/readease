@@ -1861,7 +1861,7 @@ export default function App() {
                             className="-mx-1 mt-1 block w-full rounded-lg px-1 py-1 text-left text-sm leading-relaxed hover-wash"
                           >
                             <span className="line-clamp-3">{pageInfo.resumeExcerpt}</span>
-                            <span className="mt-1 block text-xs text-ink-faint">
+                            <span className="mt-1 block text-xs text-ink-mute">
                               {text("player.resume_goto")}
                             </span>
                           </button>

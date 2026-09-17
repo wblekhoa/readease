@@ -44,7 +44,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 | hover | phủ `wash` = neutral-alpha **na10** (chủ 06/09: na05 "hơi nhạt"; **đảo lại** quyết định 01/09 — xem ghi chú dưới) |
 | focus-visible | **một chỗ duy nhất**: outline 2px `--color-focus` (info b60) trong `index.css` — KHÔNG bao giờ brand |
 | pressed | control trung tính: phủ `press` = neutral-alpha **na20** (cùng thang hover, **luôn** nặng hơn một bậc — hover đổi thì press đổi theo) · nút primary đã có nền brand thì đậm xuống `brand-700` — phủ xám lên nền đỏ chỉ làm bẩn màu |
-| disabled | chữ luôn `ink-faint`, **không bao giờ opacity**; control có viền giữ nguyên viền `edge-strong`, control không viền vẫn không viền |
+| disabled | chữ luôn `ink-faint`, **không bao giờ opacity**; control có viền giữ nguyên viền `edge-strong`, control không viền vẫn không viền. Ngược lại: **chữ có nghĩa thì không bao giờ `ink-faint`** — gợi ý trong menu ("Đang mở", "⌃⌘S"), "Đang dùng" cạnh giọng, dòng dữ kiện của hàng, nhắc "bấm để tới" đều `ink-mute` (17/09, chủ: "status mờ quá"; faint đo 1,76:1 trên nền tối). Faint chỉ còn cho glyph trang trí, dấu "+" giữa phím, lựa chọn chưa chọn |
 | loading | chữ đổi sang trạng thái ("Đang nhập sách…", "Đang chuẩn bị giọng đọc…") — không spinner mồ côi |
 | error | `Notice tone=error` màu **danger**, nói-gì-sai + làm-gì-tiếp |
 
