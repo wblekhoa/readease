@@ -240,11 +240,20 @@ export function InlineIconButton({
 export function Select({
   className = "",
   pill = false,
+  ghost = false,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & { pill?: boolean }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  pill?: boolean;
+  /** No stroke and no fill until hovered - the select as chrome, beside
+   * the icon buttons it stands with (owner, 16/09: the language in the
+   * column's foot "theo style transparent"). */
+  ghost?: boolean;
+}) {
   return (
     <select
-      className={`${pill ? "h-8 rounded-full px-3" : "h-[30px] rounded-[var(--ctl-radius)] px-2"} border border-edge-strong bg-paper text-sm text-ink hover:bg-wash disabled:text-ink-faint ${className}`}
+      className={`${pill ? "h-8 rounded-full px-3" : "h-[30px] rounded-[var(--ctl-radius)] px-2"} border ${
+        ghost ? "border-transparent bg-transparent text-ink-mute hover:text-ink" : "border-edge-strong bg-paper text-ink"
+      } text-sm hover:bg-wash disabled:text-ink-faint ${className}`}
       {...rest}
     />
   );
@@ -566,12 +575,16 @@ export function SegmentedControl<T extends string | number>({
   onChange,
   label,
   size = "md",
+  compact = false,
   className = "",
 }: {
   value: T;
   options: readonly {
     value: T;
     label: ReactNode;
+    /** A glyph for the option. With `compact`, an option not chosen shows
+     * only this, and the chosen one shows it with its label. */
+    icon?: ReactNode;
     ariaLabel?: string;
     /** Hover words for an option that carries a mark whose meaning is not
      * in its own label - a suggestion dot, say. The accessibility tree gets
@@ -583,6 +596,11 @@ export function SegmentedControl<T extends string | number>({
   label: string;
   /** `lg` is the Books row: taller, meant to run the full width of a panel. */
   size?: "md" | "lg";
+  /** The chosen option carries icon and label and takes the room; the
+   * others fold to their icon (owner, 16/09: "khi active thì mới có label,
+   * còn bình thường sẽ là dạng icon only") - for a track narrower than its
+   * labels, like the side column's. */
+  compact?: boolean;
   className?: string;
 }) {
   return (
@@ -618,11 +636,12 @@ export function SegmentedControl<T extends string | number>({
             title={option.title}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
-              size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""
-            } ${chosen}`}
+            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
+              compact && !on ? "flex-none px-2.5" : "flex-1 px-3"
+            } ${size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""} ${chosen}`}
           >
-            {option.label}
+            {option.icon}
+            {(!compact || on) && option.label}
             {on && option.disabled && <LockIcon />}
           </button>
         );

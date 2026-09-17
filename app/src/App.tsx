@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSS
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { AppTabs } from "./ui/AppTabs";
 import { readingFault, faultKey } from "./ui/voiceFault";
-import { GradientBlur, MenuButton, Toolbar } from "./ui/patterns";
+import { GradientBlur, MenuButton, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
+import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
+import { orderShelf } from "./ui/libraryOrder";
+import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { External, type ExternalEntry } from "./screens/External";
-import { Button, IconButton, Notice, SectionTitle, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
+import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
 import { languageName, SettingsPanel } from "./ui/SettingsPanel";
 import { VoicesPanel } from "./ui/VoicesPanel";
 import {
@@ -54,6 +56,8 @@ import {
   CursorTextIcon,
   TransferIcon,
   SpeakerIcon,
+  ArrowSwapIcon,
+  SidebarIcon,
 } from "./ui/icons";
 import { IDLE, playback } from "./ui/playback";
 import {
@@ -273,13 +277,45 @@ export default function App() {
   >(null);
   const [gate, setGate] = useState<ModelGate>("checking");
   const [language, setLanguageState] = useState<Language>(currentLanguage());
-  // The reader's chrome lives in the toolbar, so its state lives here.
-  // The contents are a popover in both modes and start closed - open, they
-  // would cover the book they point into (owner, 02/09).
-  const [showToc, setShowToc] = useState(false);
-  /* The notes panel and which note it should land on, when it was opened by
-   * pressing a note's own icon in the text. */
-  const [notes, setNotes] = useState<{ open: boolean; focus: string | null }>({ open: false, focus: null });
+  /* The side column (HIG 3.16): whether it shows, and which of a book's
+     lists it shows, under the rules in ui/sidebarState.ts. The remembered
+     choice and the window's width at start are its starting point. */
+  const [side, dispatchSide] = useReducer(sidebar, undefined, () => {
+    let remembered: string | null = null;
+    try { remembered = localStorage.getItem(SIDEBAR_KEY); } catch { /* private window */ }
+    return initialSidebar(remembered, window.innerWidth < NARROW);
+  });
+  const sideOpen = sidebarOpen(side);
+  /* The column's width, the person's to drag; remembered when the hand
+     lets go, not per move. */
+  const [sideWidth, setSideWidth] = useState(() => {
+    try { return storedWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY)); } catch { return storedWidth(null); }
+  });
+  const resizeSide = useCallback((width: number | null) => {
+    if (width === null) {
+      setSideWidth((current) => {
+        try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(current)); } catch { /* private window */ }
+        return current;
+      });
+      return;
+    }
+    setSideWidth(clampWidth(width));
+  }, []);
+  /** The list on show in a book, or null: folded, or not in a book. */
+  const sideTab: SidebarTab | null = sideOpen && side.book ? side.tab : null;
+  /* Which note the notes tab should land on, when it was opened from the
+     note's own editor. */
+  const [notesFocus, setNotesFocus] = useState<string | null>(null);
+  /* Where the column's body is, for the reader to render a book's lists
+     into (a portal). A callback ref, so the reader re-renders when the
+     column comes and goes. */
+  const [sideSlot, setSideSlot] = useState<HTMLElement | null>(null);
+  /* And where a home screen's actions stand: the toolbar's trailing
+     cluster, the way a book's stand beside its title. */
+  const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
+  /* The books being read, for the column's "Đang đọc" - asked for at start
+     and whenever a book is left, since leaving is when progress moves. */
+  const [shelf, setShelf] = useState<LibraryBook[]>([]);
   /** "Take me to where reading would resume" - the stamp lets the same place
    * be asked for twice. */
   const [reveal, setReveal] = useState<{ segmentId: string; at: number } | null>(null);
@@ -314,7 +350,6 @@ export default function App() {
     setPrefs(next);
   }, []);
   const [readingSettingsOpen, setReadingSettingsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const paidVoice = isPaidVoice(voiceId);
   /* Whether there is anything to put a price ON. An empty paste box is not
@@ -983,6 +1018,63 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [reading, togglePause]);
 
+  /* The side column's keys (HIG §4): ⌃⌘S folds and unfolds it - the Mac's
+     own "Toggle Sidebar" chord - and ⌘F in a book opens the search tab. */
+  const inBook = tab === "library" && openBook !== null;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (event.metaKey && event.ctrlKey && !event.altKey && key === "s") {
+        event.preventDefault();
+        dispatchSide({ type: "toggle" });
+      } else if (event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && key === "f" && inBook) {
+        event.preventDefault();
+        dispatchSide({ type: "show", tab: "search" });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [inBook]);
+
+  /* A choice made by hand is remembered; the automation's answer is not
+     (it is recomputed from the window each launch). */
+  useEffect(() => {
+    if (side.choice === "auto") return;
+    try { localStorage.setItem(SIDEBAR_KEY, side.choice); } catch { /* private window */ }
+  }, [side.choice]);
+
+  /* The width, live: `change` is the precise signal, `resize` the backstop
+     for a host that resizes without a media-query event (useShortWindow
+     learned that from the preview harness, 07/09). */
+  useEffect(() => {
+    const media = window.matchMedia(`(max-width: ${NARROW - 1}px)`);
+    const follow = () => dispatchSide({ type: "width", narrow: media.matches });
+    follow();
+    media.addEventListener("change", follow);
+    window.addEventListener("resize", follow);
+    return () => {
+      media.removeEventListener("change", follow);
+      window.removeEventListener("resize", follow);
+    };
+  }, []);
+
+  /* A book puts its lists in the column; leaving it puts the navigation
+     back - and refreshes "Đang đọc", since leaving is when progress moved. */
+  useEffect(() => {
+    dispatchSide({ type: "book", open: inBook });
+    if (!inBook) setNotesFocus(null);
+  }, [inBook]);
+  const loadShelf = useCallback(() => {
+    invoke<{ result: { books: LibraryBook[] } }>("engine_request", { method: "library.list", params: {} })
+      .then((reply) => setShelf(reply.result.books))
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => { if (!inBook) loadShelf(); }, [inBook, loadShelf]);
+  const readingNow = useMemo(
+    () => orderShelf(shelf.filter((book) => book.segment_id)).slice(0, 5),
+    [shelf],
+  );
+
   /* Two tiers of feature (owner, 02/09: "phân chia rõ tính năng phụ và
      tính năng chính"). PRIMARY = the ways to get something read: a book
      from the library, or pasted text - they live in the rail with a glyph
@@ -1067,28 +1159,186 @@ export default function App() {
     );
   }
 
+  /* The column's foot: what the app carries everywhere - the hub, the
+     appearance, the language (owner, 02/09, moved here 16/09). */
+  const themeSwitch = (
+    <IconButton
+      onClick={toggleTheme}
+      aria-label={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
+      title={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
+    >
+      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+    </IconButton>
+  );
+  const chrome = (
+    <>
+      <IconButton
+        onClick={() => { setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true); }}
+        aria-label={text("hub.title")}
+        title={text("hub.title")}
+        className={hubOpen ? "text-ink" : ""}
+        data-popover-trigger
+      >
+        <ReadingSettingsIcon />
+      </IconButton>
+      {themeSwitch}
+      <Select
+        pill
+        ghost
+        aria-label={text("aria.language")}
+        value={language}
+        onChange={(event) => applyLanguage(event.target.value as Language)}
+      >
+        <option value="vi">🇻🇳 VI</option>
+        <option value="en">🇬🇧 EN</option>
+      </Select>
+    </>
+  );
+
   return (
-    /* The DOL premium-blur shell (owner, 02/09): header and footer are
+    <div key={language} className="flex h-screen overflow-hidden">
+      {/* The side column (HIG 3.16): navigation at home, a book's lists
+          inside one. A real column - the content beside it is pushed, not
+          covered (owner, 16/09). */}
+      <SideColumn
+        open={sideOpen}
+        width={sideWidth}
+        onResize={resizeSide}
+        onToggle={() => dispatchSide({ type: "toggle" })}
+        toggleLabel={text(sideOpen ? "sidebar.close" : "sidebar.open")}
+        resizeLabel={text("sidebar.resize")}
+        foot={chrome}
+      >
+        {inBook ? (
+          <>
+            {/* Compact (owner, 16/09): the list on show carries its name, the
+                other two fold to their glyph - the same glyphs their
+                toolbar switches wear. */}
+            <SegmentedControl
+              compact
+              className="mx-4 mb-4 shrink-0"
+              label={text("sidebar.lists")}
+              value={side.tab}
+              onChange={(next) => dispatchSide({ type: "show", tab: next })}
+              options={[
+                {
+                  value: "contents" as SidebarTab,
+                  icon: <BookClosedIcon />,
+                  label: text("reader.toc_title"),
+                  ariaLabel: text("reader.toc_title"),
+                },
+                {
+                  value: "notes" as SidebarTab,
+                  icon: <NoteIcon />,
+                  label: (pageInfo?.annotations ?? 0) > 0
+                    ? `${text("sidebar.notes_tab")} · ${pageInfo?.annotations}`
+                    : text("sidebar.notes_tab"),
+                  ariaLabel: text("notes.count", { count: pageInfo?.annotations ?? 0 }),
+                },
+                {
+                  value: "search" as SidebarTab,
+                  icon: <SearchIcon />,
+                  label: text("sidebar.search_tab"),
+                  ariaLabel: text("reader.search"),
+                },
+              ]}
+            />
+            {/* The reader fills this through a portal; the slot is handed
+                over as an element so the reader re-renders when it appears. */}
+            <div ref={setSideSlot} className="flex min-h-0 flex-1 flex-col" />
+          </>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+            <nav aria-label={text("aria.workspace")} className="flex flex-col gap-1">
+              {[...tabs, ...tools].map((item) => (
+                <RailItem
+                  key={item.value}
+                  icon={item.icon}
+                  label={item.label}
+                  active={tab === item.value}
+                  onPress={() => setTab(item.value)}
+                />
+              ))}
+            </nav>
+            {readingNow.length > 0 && (
+              <RailGroup title={text("sidebar.reading")}>
+                {readingNow.map((book) => (
+                  <RailItem
+                    key={book.id}
+                    label={book.title}
+                    onPress={() => { setTab("library"); setPosition(null); setOpenBook(book); }}
+                  />
+                ))}
+              </RailGroup>
+            )}
+          </div>
+        )}
+      </SideColumn>
+    {/* The DOL premium-blur shell (owner, 02/09): header and footer are
        overlays and the page scrolls UNDER them, which is the only way a
        backdrop blur has anything to blur. Screens learn the bars' heights
        from two named insets and pad themselves - nothing is coupled to a
-       padding value written twice. */
+       padding value written twice. Since 16/09 this is the content column
+       beside the side column; the insets are measured inside it. */}
     <div
-      key={language}
       ref={shell}
-      className="relative h-screen overflow-hidden"
+      className="relative min-w-0 flex-1 overflow-hidden"
       style={{ "--shell-top-h": "76px", "--shell-bottom-h": showFooter ? "76px" : "0px" } as CSSProperties}
     >
-      <div ref={headerBar} className="absolute inset-x-0 top-0 z-20">
+      {/* The window's title bar is an overlay, so this strip is what a
+          person drags the window by (data-tauri-drag-region: a mousedown
+          on the strip itself, never on a control inside it). */}
+      <div ref={headerBar} data-tauri-drag-region className="absolute inset-x-0 top-0 z-20">
         <GradientBlur edge="top" />
-        <div ref={headerRow} className="relative z-10 px-6 pb-6 pt-4">
+        <div ref={headerRow} data-tauri-drag-region className="relative z-10 px-6 pb-6 pt-4">
       <Toolbar
         leading={
-          /* A book pushes its own chrome into the one row the window has: the
-             tabs step aside and back returns to them. Two stacked rows of
-             chrome above a page of text is what this buys back. */
-          screen === "reader" && openBook ? (
-            <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
+          {/* Folded, the column's head is gone and the Mac's window buttons
+              sit over this corner instead: room for them, then - on the home
+              screens - the switch that brings the column back, Codex's own
+              arrangement. A book's toolbar has no such switch (owner, 16/09:
+              "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
+              search buttons each unfold the column on their own list. */}
+          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[52px] shrink-0" />}
+          {/* A home screen's title, where a book's stands, with the mode
+              switch before it (owner, 16/09: "trên title thì nút ở đây là
+              nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of
+              the four screens - and, while the column is folded, the way to
+              unfold it, so the column stays one click away without a
+              button of its own. Each feature brings its own buttons here;
+              a book brings ▤, the notes and the search instead. */}
+          {!(screen === "reader" && openBook) && (
+            <>
+              <MenuButton
+                icon={<ArrowSwapIcon />}
+                label={text("sidebar.switch")}
+                align="left"
+                items={[
+                  ...[...tabs, ...tools].map((item) => ({
+                    icon: item.icon,
+                    label: item.label,
+                    hint: item.value === tab ? text("sidebar.current") : undefined,
+                    onSelect: () => setTab(item.value),
+                  })),
+                  ...(sideOpen ? [] : [{
+                    icon: <SidebarIcon />,
+                    label: text("sidebar.label"),
+                    hint: "⌃⌘S",
+                    onSelect: () => dispatchSide({ type: "toggle" }),
+                  }]),
+                ]}
+              />
+              <h2 className="m-0 min-w-0 truncate px-1 text-base font-bold">
+                {[...tabs, ...tools].find((item) => item.value === tab)?.label}
+              </h2>
+            </>
+          )}
+          {/* A book pushes its own chrome into the one row the window has;
+             back returns to the shelf. Two stacked rows of chrome above a
+             page of text is what this buys back. */}
+          {screen === "reader" && openBook && (
+            <>
               <IconButton
                 onClick={() => { setOpenBook(null); setSegments([]); }}
                 aria-label={text("reader.back")}
@@ -1096,36 +1346,32 @@ export default function App() {
               >
                 <ArrowLeftIcon />
               </IconButton>
-              {/* The switches for the two left sidebars (HIG 3.15) are
-                  popover triggers: the sidebar closes on any click outside
-                  itself, and without the mark a press on its own button
-                  would close it and then open it again. */}
+              {/* The lists' switches (HIG 3.16): each opens the column on
+                  its tab, and pressing the one already showing folds the
+                  column - a real switch, decided in sidebarState. */}
               <IconButton
-                data-popover-trigger
                 onClick={(event) => {
                   event.currentTarget.blur();
-                  setNotes({ open: false, focus: null });
-                  setShowToc((value) => !value);
+                  dispatchSide({ type: "show", tab: "contents" });
                 }}
-                aria-label={showToc ? text("reader.toc_hide") : text("reader.toc_show")}
-                title={showToc ? text("reader.toc_hide") : text("reader.toc_show")}
-                className={showToc ? "text-ink" : ""}
+                aria-label={sideTab === "contents" ? text("reader.toc_hide") : text("reader.toc_show")}
+                title={sideTab === "contents" ? text("reader.toc_hide") : text("reader.toc_show")}
+                className={sideTab === "contents" ? "text-ink" : ""}
               >
                 <BookClosedIcon />
               </IconButton>
               {/* Only when the book carries something: a button that opens
-                  an empty panel is a button that lies about the book. */}
+                  an empty list is a button that lies about the book. */}
               {(pageInfo?.annotations ?? 0) > 0 && (
                 <IconButton
-                  data-popover-trigger
                   onClick={(event) => {
                     event.currentTarget.blur();
-                    setShowToc(false);
-                    setNotes((value) => ({ open: !value.open, focus: null }));
+                    setNotesFocus(null);
+                    dispatchSide({ type: "show", tab: "notes" });
                   }}
                   aria-label={text("notes.open")}
                   title={text("notes.count", { count: pageInfo?.annotations ?? 0 })}
-                  className={notes.open ? "text-ink" : ""}
+                  className={sideTab === "notes" ? "text-ink" : ""}
                 >
                   <NoteIcon />
                 </IconButton>
@@ -1177,15 +1423,9 @@ export default function App() {
                   <InfoIcon />
                 </IconButton>
               )}
-            </div>
-          ) : (
-            <AppTabs
-              ariaLabel={text("aria.workspace")}
-              items={tabs}
-              value={tab}
-              onChange={setTab}
-            />
-          )
+            </>
+          )}
+          </div>
         }
         trailing={
           <>
@@ -1193,8 +1433,9 @@ export default function App() {
               <>
                 {/* Books' pair: "AA" for how the page is set, a lens for
                     finding words in it. Size, pages/scroll and the finer
-                    choices live behind AA; the appearance switch stays
-                    beside them (owner, 06/09). */}
+                    choices live behind AA; the appearance switch stands
+                    beside them while the column is folded (owner, 06/09;
+                    the column's foot carries it otherwise). */}
                 <IconButton
                   data-popover-trigger
                   /* The tooltip follows focus, and a mouse click leaves the
@@ -1202,7 +1443,6 @@ export default function App() {
                      just opened (owner's screenshot, 06/09). Let it go. */
                   onClick={(event) => {
                     event.currentTarget.blur();
-                    setSearchOpen(false);
                     setReadingSettingsOpen((value) => !value);
                   }}
                   aria-label={text("reader.settings")}
@@ -1212,74 +1452,31 @@ export default function App() {
                   <ReadingSettingsIcon />
                 </IconButton>
                 <IconButton
-                  data-popover-trigger
                   onClick={(event) => {
                     event.currentTarget.blur();
                     setReadingSettingsOpen(false);
-                    setShowToc(false);
-                    setSearchOpen((value) => !value);
+                    dispatchSide({ type: "show", tab: "search" });
                   }}
                   aria-label={text("reader.search")}
                   title={text("reader.search")}
-                  className={searchOpen ? "text-ink" : ""}
+                  className={sideTab === "search" ? "text-ink" : ""}
                 >
                   <SearchIcon />
                 </IconButton>
               </>
             )}
-          {!(screen === "reader" && openBook) && (
-            <>
-              {tools.map((tool) => (
-                <Button
-                  key={tool.value}
-                  variant="ghost"
-                  onClick={() => setTab(tool.value)}
-                  aria-pressed={tab === tool.value}
-                  className={`rounded-full ${tab === tool.value ? "bg-wash text-ink" : ""}`}
-                >
-                  {tool.icon}
-                  {tool.label}
-                </Button>
-              ))}
-              <span aria-hidden="true" className="mx-1 h-5 w-px bg-edge" />
-            </>
+          {/* A home screen's own actions (the shelf's import and Apple Books
+              buttons) land here through a portal, beside the screen's title
+              the way a book's actions stand beside its. */}
+          {tab === "library" && !openBook && (
+            <span ref={setActionsSlot} className="contents" />
           )}
-          {/* The hub: what this Mac reads and how to add to it, from the
-              home screens (owner, 15/09: "ở ngoài trang chủ sẽ có một nút
-              setting"). A book's toolbar carries only what serves the book;
-              the settings panel reaches the hub from there. The gear is the
-              glyph the reader's own settings wear - never both on screen. */}
-          {!(screen === "reader" && openBook) && (
-            <IconButton
-              onClick={() => { setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true); }}
-              aria-label={text("hub.title")}
-              title={text("hub.title")}
-              className={hubOpen ? "text-ink" : ""}
-              data-popover-trigger
-            >
-              <ReadingSettingsIcon />
-            </IconButton>
-          )}
-          <IconButton
-            onClick={toggleTheme}
-            aria-label={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
-            title={text(theme === "dark" ? "aria.theme_to_light" : "aria.theme_to_dark")}
-          >
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-          </IconButton>
-          {/* The UI language belongs to the home screens (owner, 02/09): a
-              book's toolbar carries only what serves the book. */}
-          {!(screen === "reader" && openBook) && (
-            <Select
-              pill
-              aria-label={text("aria.language")}
-              value={language}
-              onChange={(event) => applyLanguage(event.target.value as Language)}
-            >
-              <option value="vi">🇻🇳 VI</option>
-              <option value="en">🇬🇧 EN</option>
-            </Select>
-          )}
+          {/* What the column's foot carries - the hub, the appearance, the
+              language - is here only while the column is folded: one place
+              at a time (HIG 3.16). A book's toolbar takes the appearance
+              switch alone (owner, 06/09: beside AA; 16/09: "tối ưu UI tuỳ
+              layout") - the hub and the language are one unfold away. */}
+          {!sideOpen && (screen === "reader" && openBook ? themeSwitch : chrome)}
           </>
         }
       />
@@ -1299,16 +1496,13 @@ export default function App() {
               reading={reading !== "idle"}
               mode={readingMode}
               prefs={prefs}
-              showToc={showToc}
-              onHideToc={() => setShowToc(false)}
-              showSearch={searchOpen}
-              onHideSearch={() => setSearchOpen(false)}
+              sidebarTab={sideOpen ? side.tab : null}
+              sidebarSlot={sideOpen ? sideSlot : null}
               reveal={reveal}
-              showNotes={notes.open}
-              notesFocus={notes.focus}
-              onNotes={(open, focus = null) => {
-                if (open) setShowToc(false);
-                setNotes({ open, focus });
+              notesFocus={notesFocus}
+              onShowNotes={(focus) => {
+                setNotesFocus(focus);
+                dispatchSide({ type: "show", tab: "notes" });
               }}
               size={readingSize}
               onSegments={setSegments}
@@ -1317,7 +1511,11 @@ export default function App() {
               onSelection={setSelection}
             />
           ) : (
-            <Library onOpen={(book) => { setPosition(null); setOpenBook(book); }} onPaste={() => setTab("paste")} />
+            <Library
+              onOpen={(book) => { setPosition(null); setOpenBook(book); }}
+              onPaste={() => setTab("paste")}
+              actionsSlot={actionsSlot}
+            />
           )
         ) : tab === "external" ? (
           <External
@@ -1363,8 +1561,7 @@ export default function App() {
           <Transfer />
         ) : tab === "paste" ? (
           <section className="shell-inset flex min-h-0 flex-1 flex-col">
-            <SectionTitle>{text("paste.title")}</SectionTitle>
-            <p className="m-0 mt-0.5 text-sm text-ink-mute">
+            <p className="m-0 text-sm text-ink-mute">
               {text("paste.description")}
             </p>
             <Textarea
@@ -1859,6 +2056,7 @@ export default function App() {
           }}
         />
       )}
+    </div>
     </div>
   );
 }

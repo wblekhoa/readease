@@ -68,7 +68,7 @@ const STYLE_SAMPLER: Array<{ text: string; kind: string; joint?: string }> = [
   { text: "1. Hãy bắt đầu từ đầu nguồn, tức nơi các ý tưởng xuất hiện.", kind: "list_item" },
   { text: "2. Tìm một người trong tổ chức có thể làm dự án của bạn đổ bể, và nói chuyện với họ trước.", kind: "list_item" },
   { text: "3. Viết ra điều bạn học được, ngắn thôi.", kind: "list_item" },
-  { text: "Một danh sách sạch không mang dấu nào trong chữ, như Universal Principles viết.", kind: "list_item" },
+  { text: "Một danh sách sạch không mang dấu nào trong chữ, như tài liệu đào tạo viết.", kind: "list_item" },
   { text: "Một mình làm UX giới thiệu những cách tiếp cận tạo tác động lớn nhưng không đòi hỏi một đội ngũ đông người.", kind: "quote" },
   // Ba mẫu cho MỘT luật, đủ cả hai phía của ranh giới (`quoteRole`): trích
   // dẫn ngắn mà không có dấu kết câu thì là NHÃN, còn lại là trích dẫn. Hai
@@ -161,7 +161,7 @@ const FIGURE_DATA: Record<string, string> = {
 
 const BOOK = {
   id: "book-ux",
-  title: "Universal Principles of UX",
+  title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo",
   chapters: CHAPTER_NAMES.map((title, chapterIndex) => ({
     id: `ch-${chapterIndex}`,
     title,
@@ -211,7 +211,7 @@ type ShelfRow = {
 const LIBRARY: ShelfRow[] = [
   {
     id: "book-ux",
-    title: "Universal Principles of UX",
+    title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo",
     source_format: "epub",
     segment_id: "ch-2-seg-1",
     progress_ratio: 0.42,
@@ -244,7 +244,7 @@ const LIBRARY: ShelfRow[] = [
   },
   {
     id: "book-three",
-    title: "Đừng bắt tôi phải suy nghĩ! — Tái bản: Một cách tiếp cận bằng lẽ thường đối với usability trên Web",
+    title: "Cẩm nang usability cho đội sản phẩm — bản nháp thứ ba, có ghi chú của cả nhóm",
     source_format: "epub",
     segment_id: "ch-0-seg-1",
     progress_ratio: 0.08,
@@ -259,7 +259,7 @@ const LIBRARY: ShelfRow[] = [
   },
   {
     id: "book-four",
-    title: "The User Experience Team of One",
+    title: "Quy trình làm việc của nhóm thiết kế 2024",
     source_format: "epub",
     segment_id: null,
     progress_ratio: null,
@@ -295,8 +295,8 @@ function coverSvg(top: string, bottom: string, fill: string, ink: string): strin
   return btoa(unescape(encodeURIComponent(svg)));
 }
 const COVERS: Record<string, string> = {
-  "book-ux": coverSvg("Universal", "Principles", "#E8DCC8", "#2B2118"),
-  "book-four": coverSvg("Team", "of One", "#1F3A5F", "#F4F1EA"),
+  "book-ux": coverSvg("Nguyên tắc", "trải nghiệm", "#E8DCC8", "#2B2118"),
+  "book-four": coverSvg("Quy trình", "nhóm thiết kế", "#1F3A5F", "#F4F1EA"),
 };
 
 /* The real catalogue, names and all: a panel that lists twenty voices cannot
@@ -340,6 +340,17 @@ const EMPTY = new Set(
 );
 const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
 
+/* The side column's remembered choice - `?sidebar=open` or `closed`. At the
+   audit's 960px floor the column folds itself, so without this no cell
+   would ever show it open; the app reads the choice from localStorage the
+   way it reads the reader's own settings, so that is where it is planted. */
+const SIDEBAR = new URLSearchParams(window.location.search).get("sidebar");
+if (SIDEBAR === "open" || SIDEBAR === "closed") {
+  try { localStorage.setItem("readease.sidebar", SIDEBAR); } catch { /* private window */ }
+} else {
+  try { localStorage.removeItem("readease.sidebar"); } catch { /* private window */ }
+}
+
 /* One book whose stored data the engine can no longer decode - `?damaged=1`.
    Not in the default shelf: the hero screenshot is the ordinary shelf, and
    this state exists so the card can be looked at, not so it is always
@@ -348,7 +359,7 @@ const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
 if (new URLSearchParams(window.location.search).get("damaged") === "1") {
   LIBRARY.push({
     id: "book-damaged",
-    title: "Sổ tay thiết kế bìa sách",
+    title: "Sổ tay thiết kế bìa",
     source_format: "epub",
     segment_id: null,
     progress_ratio: null,
@@ -657,14 +668,14 @@ if (new URLSearchParams(window.location.search).get("vietnamese") === "missing")
  * pickers. Empty until now, which made that screen look like a person with
  * no annotated books rather than a screen nobody had wired up. */
 const NOTE_BOOKS = [
-  { asset_id: "nb-1", title: "Universal Principles of UX", edition_id: "ed-2019", progress: 0.42 },
-  { asset_id: "nb-2", title: "Universal Principles of UX (bản 2024)", edition_id: "ed-2024", progress: 0.0 },
-  { asset_id: "nb-3", title: "Thiên Nga Đen", edition_id: "ed-swan", progress: 0.13 },
+  { asset_id: "nb-1", title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo", edition_id: "ed-2019", progress: 0.42 },
+  { asset_id: "nb-2", title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo (bản 2024)", edition_id: "ed-2024", progress: 0.0 },
+  { asset_id: "nb-3", title: "Ghi chép đọc hằng tuần", edition_id: "ed-swan", progress: 0.13 },
   /* Shares `ed-2019` with nb-1 on purpose. Without a pair on the same
      edition, `same_edition` was never true here and the "Đã có ở cuốn kia"
      row - one of the three verdicts this screen exists to tell apart - could
      not be looked at at all. */
-  { asset_id: "nb-4", title: "Universal Principles of UX (bản in lại)", edition_id: "ed-2019", progress: 0.05 },
+  { asset_id: "nb-4", title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo (bản in lại)", edition_id: "ed-2019", progress: 0.05 },
 ];
 
 const PLAN_ITEMS = [
@@ -675,11 +686,11 @@ const PLAN_ITEMS = [
 ];
 
 const APPLE_SHELF: Array<{ asset_id: string; title: string; status: string; book_id: string | null; paired_title: string | null; highlights: number }> = [
-  { asset_id: "ab-1", title: "Universal Principles of UX", status: "linked", book_id: "book-ux", paired_title: "Universal Principles of UX", highlights: 3 },
-  { asset_id: "ab-2", title: "Thiên Nga Đen", status: "importable", book_id: null, paired_title: null, highlights: 5 },
+  { asset_id: "ab-1", title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo", status: "linked", book_id: "book-ux", paired_title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo", highlights: 3 },
+  { asset_id: "ab-2", title: "Ghi chép đọc hằng tuần", status: "importable", book_id: null, paired_title: null, highlights: 5 },
   { asset_id: "ab-3", title: "The Daily Stoic", status: "encrypted", book_id: null, paired_title: null, highlights: 1 },
   { asset_id: "ab-4", title: "101 Essays That Will Change The Way You Think", status: "importable", book_id: null, paired_title: null, highlights: 0 },
-  { asset_id: "ab-5", title: "Đừng bắt tôi phải suy nghĩ! Tái bản", status: "linked", book_id: "book-three", paired_title: "Đừng bắt tôi phải suy nghĩ! — Tái bản: Một cách tiếp cận bằng lẽ thường đối với usability trên Web", highlights: 0 },
+  { asset_id: "ab-5", title: "Cẩm nang usability cho đội sản phẩm", status: "linked", book_id: "book-three", paired_title: "Cẩm nang usability cho đội sản phẩm — bản nháp thứ ba, có ghi chú của cả nhóm", highlights: 0 },
   { asset_id: "ab-6", title: "The Ultimate Guide to iPhone Photography", status: "too_large", book_id: null, paired_title: null, highlights: 3 },
   { asset_id: "ab-7", title: "The Designer's Guide to Figma", status: "importable", book_id: null, paired_title: null, highlights: 0 },
 ];
@@ -1171,6 +1182,8 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
 
 const unanswered = new Set<string>();
 
+// The page is in a browser, not the window: no window buttons to make room for (ui/host.ts).
+window.__READEASE_MOCK__ = true;
 window.__TAURI_INTERNALS__ = {
   invoke,
   /* `getCurrentWebview()` reads the window and webview labels from here

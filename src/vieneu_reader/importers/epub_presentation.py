@@ -742,7 +742,7 @@ def _chapter_presentation(
     stored_text = tuple(segment.text for segment in chapter.segments)
     if tuple(generated_text) != stored_text:
         raise CorruptBookError(
-            "Nội dung hình ảnh EPUB không còn khớp với bản sách đã nhập."
+            "Nội dung hình ảnh EPUB không còn khớp với bản đã nhập."
         )
 
     figures: list[FigureRef] = []
@@ -872,7 +872,7 @@ def _verified_archive(
                 for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                     digest.update(chunk)
                 if digest.hexdigest() != expected_hash:
-                    raise CorruptBookError("Nguồn EPUB không khớp bản sách đã nhập.")
+                    raise CorruptBookError("Nguồn EPUB không khớp bản đã nhập.")
                 stream.seek(0)
             with ZipFile(stream) as archive:
                 _validate_archive(archive.infolist())
@@ -1020,7 +1020,7 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
             if not text_exists:
                 continue
             if chapter_index >= len(book.chapters):
-                raise CorruptBookError("Spine EPUB không còn khớp bản sách đã nhập.")
+                raise CorruptBookError("Spine EPUB không còn khớp bản đã nhập.")
             presentation, next_figure_number = _chapter_presentation(
                 book,
                 book.chapters[chapter_index],
@@ -1031,7 +1031,7 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
             presentations.append(presentation)
             chapter_index += 1
         if chapter_index != len(book.chapters):
-            raise CorruptBookError("Spine EPUB không còn khớp bản sách đã nhập.")
+            raise CorruptBookError("Spine EPUB không còn khớp bản đã nhập.")
         return BookPresentation(book.id, book.source_hash, tuple(presentations))
 
 

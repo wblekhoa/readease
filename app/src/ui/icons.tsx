@@ -89,6 +89,21 @@ export function TrashIcon({ className }: { className?: string }) {
   );
 }
 
+/** The mode switch by a home screen's title (HIG 3.4, owner 16/09: "nút
+ * đổi chế độ... icon sẽ ở dạng arrow swap"): the set's horizontal swap
+ * turned upright - the same two arrows, so the weight is the set's - and
+ * upright rather than sideways so it is not the Move-notes glyph. */
+export function ArrowSwapIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <g transform="rotate(90 12 12)">
+        <path opacity={MASS} d="M21.75 6.73c0-.2-.08-.39-.22-.53l-3.72-3.72a.754.754 0 00-1.06 0c-.29.29-.29.77 0 1.06l2.45 2.45H3c-.41 0-.75.34-.75.75s.34.75.75.75h16.19l-2.44 2.44c-.29.29-.29.77 0 1.06.15.15.34.22.53.22s.38-.07.53-.22l3.71-3.71c.07-.07.13-.16.17-.26 0-.01 0-.02.01-.03.03-.09.05-.17.05-.26z" />
+        <path d="M21 16.52H4.81l2.44-2.44c.29-.29.29-.77 0-1.06a.754.754 0 00-1.06 0l-3.71 3.71c-.07.07-.13.16-.17.26 0 .01 0 .02-.01.03-.03.08-.05.17-.05.26 0 .2.08.39.22.53l3.72 3.72c.15.15.34.22.53.22s.38-.07.53-.22c.29-.29.29-.77 0-1.06L4.8 18.02H21c.41 0 .75-.34.75-.75s-.34-.75-.75-.75z" />
+      </g>
+    </svg>
+  );
+}
+
 /** Going BACK: an arrowhead on a shaft. Distinct from `ChevronLeftIcon`,
  * which is a bare mark and stays where it belongs - turning a page, where
  * the pair of them point along the text. An arrow leaves; a chevron steps
@@ -246,6 +261,21 @@ export function BookClosedIcon({ className }: { className?: string }) {
     <svg {...bulk} className={className}>
       <path opacity={MASS} d="M16.19 2H7.82C4.18 2 2.01 4.17 2.01 7.81v8.37c0 3.64 2.17 5.81 5.81 5.81h8.37c3.64 0 5.81-2.17 5.81-5.81V7.81C22 4.17 19.83 2 16.19 2Z" />
       <path d="M11.5 8.089v9.16c0 .36-.36.6-.69.46-1.21-.52-2.79-1-3.89-1.14l-.19-.02c-.61-.08-1.11-.65-1.11-1.27v-7.7c0-.76.62-1.33 1.38-1.27 1.25.1 3.1.7 4.26 1.36.15.07.24.24.24.42ZM18.38 7.7v7.57c0 .62-.5 1.19-1.11 1.27l-.21.02c-1.09.15-2.66.62-3.87 1.13-.33.14-.69-.1-.69-.46V8.08a.5.5 0 0 1 .25-.44c1.16-.65 2.97-1.23 4.2-1.34h.04c.77.01 1.39.63 1.39 1.4Z" />
+    </svg>
+  );
+}
+
+/** The side column's switch (HIG 3.16): the set's card at the mass layer
+ * with a solid rail down its left and two short rows inside it - the shape
+ * every sidebar toggle shares. Drawn here in the set's own grammar (the
+ * closed book's outline, the same 40% layer) because the source's glyph
+ * could not be copied in this session; replace it with the copied one when
+ * it can. */
+export function SidebarIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M16.19 2H7.82C4.18 2 2.01 4.17 2.01 7.81v8.37c0 3.64 2.17 5.81 5.81 5.81h8.37c3.64 0 5.81-2.17 5.81-5.81V7.81C22 4.17 19.83 2 16.19 2Z" />
+      <path d="M9.25 2.05v19.9c-.4-.02-.79-.05-1.15-.11V2.16c.36-.06.75-.09 1.15-.11ZM7.25 7.25c0 .41-.34.75-.75.75h-1c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h1c.41 0 .75.34.75.75Zm0 3c0 .41-.34.75-.75.75h-1c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h1c.41 0 .75.34.75.75Z" />
     </svg>
   );
 }

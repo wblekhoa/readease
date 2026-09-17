@@ -17,11 +17,11 @@ diệt mơ hồ "token này áp vào đâu") · **Behavior** (trạng thái + b�
 | Người dùng cần… | Pattern | Ở đâu trong app |
 |---|---|---|
 | Duyệt danh sách mục, mỗi mục có hành động | `ListRow` | Lịch sử Quét đọc, mục lục sách |
-| Một danh sách ĐỨNG CẠNH trang sách, mở khi cần rồi biến đi (mục lục · ghi chú · tìm) | `Sidebar` (§3.15) — lớp kính mờ suốt chiều cao giữa hai thanh chrome | Reader: ▤ mục lục, ghi chú (trái) · tìm trong sách (phải) |
+| Điều hướng cấp app + danh sách nơi chốn trong sách (mục lục · ghi chú · tìm) | `SideColumn` (§3.16) — cột trái 240 thật trong layout, thu/mở, nội dung theo ngữ cảnh | Mọi màn: Thư viện · Dán · Quét · Chuyển ghi chú · Đang đọc; trong sách: Mục lục / Ghi chú / Tìm |
 | Chọn một CUỐN SÁCH trong nhiều cuốn | `BookGrid` + `BookCard` + `BookCover` | Thư viện (kệ bìa) |
 | Xem/chọn trong một nhóm thiết lập | `GroupedSection`+`GroupedRow` | Panel Chất lượng, danh sách xem-trước ghi chú |
 | Bắt đầu khi chưa có gì | `EmptyState` | Thư viện rỗng |
-| Định hướng vùng làm việc | `AppTabs` trong `Toolbar` | Header |
+| Định hướng vùng làm việc | `RailItem` trong `SideColumn` (§3.16; trước 16/09: `AppTabs` trong `Toolbar`) | Cột bên |
 | Điều khiển việc đang chạy | PlayerBar | Footer đọc |
 | Xác nhận huỷ tại chỗ | ConfirmInline | Xoá sách (trailing của ListRow) |
 | Kéo dữ liệu từ app khác, một chiều | Sheet `Surface radius="sheet"` + `BookTile` (§3.12) | Từ Apple Books |
@@ -94,7 +94,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 - **Anatomy**: cụm lối-vào đứng GIỮA chỗ nội dung sẽ nằm · ràng buộc (nếu có) đứng DƯỚI lựa chọn nó ràng buộc.
 - **Don't sống**: ✗ hộp trống + nút parked dưới đáy (bản Qt cũ) · ✗ câu cảnh báo trước khi người dùng làm gì.
 
-### 3.4 `Toolbar` + `AppTabs`
+### 3.4 `Toolbar` (+ `AppTabs`, đã rời sang cột bên 16/09)
 - **Usage**: hàng đầu cửa sổ, một hàng duy nhất cao h-9. Điều hướng dẫn trái, hành động/ngôn ngữ theo phải.
 - **Vỏ (shell) = DOL `premium-blur`, chủ opt-in 02/09** (guideline Apps `plugin-shell.md` §2/§6 +
   `plugin-footer-shell.md` §1; trước đó là `utility-flat`). Header và footer là LỚP PHỦ, trang cuộn
@@ -109,7 +109,8 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   thư viện và mép bìa); bar chừa padding mép trong (header pb-6, footer pt-4) cho dải tan hết trước mép.
   Inset không khai hai lần: ResizeObserver đo chiều cao thật của bar rồi ghi `--shell-*-h`. Bán kính/dải là hình học nên được literal
   (guideline §3.1); màu chỉ token.
-- **Anatomy (AppTabs = ToggleButtonGroup *style 2*, chủ chốt 01/09)**: rãnh `rail` có viền,
+- **Anatomy (AppTabs = ToggleButtonGroup *style 2*, chủ chốt 01/09 — lịch sử: component gỡ 16/09 khi điều
+  hướng dọn sang `RailItem` của cột bên, §3.16)**: rãnh `rail` có viền,
   **không đệm trong** → mục đang chọn **tràn sát viền** rãnh, góc do chính rãnh cắt
   (`overflow-hidden`). Rãnh 34 nằm trong toolbar 36; mục 32 = đúng chiều cao select ngôn ngữ
   bên phải. Style 1 (viên pill nhỏ trôi trong rãnh có đệm) là bản cũ, đã thay.
@@ -129,11 +130,29 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 - **Footer = lưới 3 cột** (trái: hint · giữa: CTA+chip hoặc transport · phải: trạng thái/lỗi), cao
   76 px như header; KHÔNG dùng absolute cho cụm giữa — nó không tạo chiều cao, footer từng bị ép còn
   40 px (chủ bắt 02/09).
-- **Nút sáng/tối** (chủ, 02/09): IconButton mặt trời/mặt trăng ở cụm phải trên MỌI màn; bấm = sang phía
-  ngược lại của cái đang hiện, nhớ trong localStorage (`ui/theme.ts`); chưa chọn thì theo macOS live.
-  Đây là nơi DUY NHẤT ghi `[data-theme]`.
-- **Chọn ngôn ngữ UI chỉ ở trang chủ** (chủ, 02/09): toolbar của một cuốn sách chỉ mang thứ phục vụ cuốn
-  sách (quay lại · mục lục · ⓘ · cỡ chữ · chế độ).
+- **Nút sáng/tối** (chủ, 02/09): IconButton mặt trời/mặt trăng; bấm = sang phía ngược lại của cái đang hiện,
+  nhớ trong localStorage (`ui/theme.ts`); chưa chọn thì theo macOS live. Đây là nơi DUY NHẤT ghi `[data-theme]`.
+  Từ 16/09 nút sống ở **chân cột bên** (§3.16) cùng bánh răng và ngôn ngữ; toolbar chỉ mang chúng khi cột thu.
+- **Chọn ngôn ngữ UI** (chủ, 02/09: chỉ ở trang chủ; 16/09: ở chân cột bên, mọi màn): toolbar của một cuốn
+  sách chỉ mang thứ phục vụ cuốn sách (quay lại · mục lục · ⓘ · cỡ chữ · chế độ).
+- **Tiêu đề màn tính năng đứng ở toolbar, nút đổi chế độ đứng trước nó (chủ, 16/09: "title của trang tính năng… bên
+  trái sẽ là nút sidebar" → rồi "trên title thì nút ở đây là nút đổi chế độ. icon sẽ ở dạng arrow swap. tuỳ vào tính
+  năng và sẽ có nút khác nhau")**: ở trang chủ, cụm dẫn = [chỗ đèn 52 px khi cột thu — chỉ trong cửa sổ Tauri, trình
+  duyệt không có đèn nên không chừa (`ui/host.ts`)] + **nút đổi chế độ** (`MenuButton`, icon `ArrowSwapIcon` = mũi
+  tên swap dựng đứng, khác glyph ngang của Chuyển ghi chú; menu = bốn màn, màn đang mở ghi "Đang mở"; khi cột thu có
+  thêm hàng "Cột bên ⌃⌘S" để mở cột — không còn nút mở cột riêng) + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
+  "Dán nội dung", "Quét đọc", "Chuyển ghi chú") — cùng chỗ và cùng cỡ với tên sách khi đang đọc. **Mỗi tính năng mang
+  nút riêng ở chỗ này**: sách mang ← ▤ ghi chú ⓘ; trang chủ mang nút đổi chế độ. **Một tiêu đề cho một
+  màn**: trang không lặp lại tên dưới toolbar (Thư viện bỏ "Thư viện sách", Dán bỏ "Dán nội dung để đọc", Quét bỏ
+  "Quét đọc"; sheet Chuyển ghi chú giữ câu tiêu đề riêng của nó vì đó là một câu khác). Hành động của trang (Từ Apple
+  Books · Mở PDF hoặc EPUB) đứng ở cụm phải của toolbar qua một slot/portal — như AA · tìm của sách — trang giữ state
+  của nút, toolbar giữ chỗ.
+- **Chrome ở chân cột / toolbar là ghost** (chủ 16/09: nút ngôn ngữ "theo style transparent"): `Select ghost` — không
+  viền, không nền cho tới khi hover (`wash`), chữ `ink-mute` → `ink`, đứng cùng hàng với `IconButton` nên cùng độ nhẹ;
+  select trong bảng cài đặt vẫn có viền + nền giấy (ở đó nó là một ô của form, không phải chrome).
+- **Tab và công cụ rời toolbar (16/09)**: bốn mục (Thư viện · Dán · Quét · Chuyển ghi chú) là `RailItem` trong cột bên (§3.16), `AppTabs.tsx` gỡ; dải
+  trên của cột nội dung còn lại là vùng kéo cửa sổ 52 px, mang nút mở cột + (khi cột thu) bánh răng/theme/ngôn
+  ngữ, và chrome của sách khi đang đọc.
 - **ⓘ cạnh tên sách (02/09, chủ)**: thông tin vị trí ("Trang 3/12" · tên chương · "Đã đọc 11%") là
   thông tin PHỤ → tooltip `Surface edge="strong"` MỘT DÒNG ("Trang 1/3 · 04 · Đã đọc 29%", không xuống
   dòng — chủ chỉnh 02/09) hiện khi hover/focus icon, KHÔNG là dòng chữ dưới trang. Lớp nổi trên nội dung
@@ -593,7 +612,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 |---|---|---|
 | ⌥⌘R (đổi được) | toàn hệ thống | đọc vùng chọn; đang đọc → dừng |
 | Space | trong app, ngoài ô nhập | tạm dừng/tiếp tục |
-| ←/→/Home/End | AppTabs | chuyển tab (roving focus) |
+| ⌃⌘S | mọi màn (trừ Setup) | thu/mở cột bên — là lựa chọn tay, được nhớ |
+| ⌘F | trong sách | mở cột bên ở tab Tìm, focus ô nhập |
+| ↑/↓ · Tab | cột bên | đi qua các mục (nút thường, thứ tự DOM; roving focus của AppTabs cũ không còn) |
 | Esc | recorder phím tắt | giữ phím cũ |
 | Esc | panel Chất lượng | đóng panel — trừ khi đang tải bản giọng (đóng lúc đó = giấu việc đang chạy) |
 | Tab | mọi nơi | focus ring **info blue**, không bao giờ brand |
@@ -631,7 +652,9 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
 Control 30px `rounded-xl` · nhỏ 28px `rounded-lg` (phím tắt `Kbd` cùng bậc) · icon-button 32
 tròn · pill cho nav/ngôn ngữ · surface + ô nhập nhiều dòng `rounded-2xl` · chữ 16 bold (tiêu đề)
 / **14 base** / 12 micro (+18 màn chào) · trong-cặp 8 / giữa-cặp 16 / khối 24 · cột đọc 65ch ·
-hover na10 · pressed na20 · hairline `edge`.
+hover na10 · pressed na20 · hairline `edge` · cột bên **240** (kéo được 200–400; đầu 52 = vùng kéo, đèn {20,20}; thu = 0;
+dải trên chừa 76 khi thu; **lót trong 16**, hàng rail 36, khối cách 24 — chủ 16/09 "tăng spacing tổng thể… thoáng") ·
+ngưỡng tự thu **1100** px.
 
 **Ngoài thang là lỗi**: `rounded-md` (6px) không thuộc thang nào — cổng `audit:ui` chặn. Bốn
 biến thể nút: `primary` (CTA brand) · `secondary` (viền) · `ghost` (không viền, việc phụ như
@@ -718,6 +741,9 @@ màu: **1 lục · 2 lam · 3 vàng · 4 hồng · 5 tím**; 0 hoặc không có
 - **Đều dùng bậc `haze`** (~30% alpha): highlight là mực phủ LÊN chữ, phải để chữ đọc được. Đo tương phản
   chữ trên nền tô: **6,5–8,6 ở nền sáng · 7,7–7,8 ở nền tối** — đều trên AA. (Lần đo đầu ra 1,4–8,6 lệch
   nhau vô lý vì ghép nền của các mark nằm sau lớp mờ của panel; đo lại theo đúng nền của từng mark.)
+- **Mẫu highlight trong danh sách ghi chú = đúng độ của trang, riêng nền tối tô hai lớp** (04/09 chủ: trên giấy tối
+  mẫu "hơi nhạt, khó nhìn" → `.mark-sample` tô alpha hai lần; 16/09, danh sách đứng trên cột trắng, chủ: "đậm quá so
+  với highlight trong nội dung" → lớp thứ hai chỉ còn ở `[data-theme="dark"]`, nền sáng một lớp như trang).
 - **Cột màu là TUỲ CHỌN, không bắt buộc**: schema của Books đi theo phiên bản đã ghi nó, nên reader hỏi
   `PRAGMA table_info` rồi mới thêm cột vào `SELECT`. Thiếu cột thì mất *màu*, không mất *ghi chú* — một
   `SELECT` cột không tồn tại làm hỏng cả lượt đọc. Có test cho cả hai hình dạng schema.
@@ -730,7 +756,11 @@ ghi annotation về sau đều phải tuân. Giao thức `annotations.delete {bo
 để phân biệt "vừa xoá" với "vốn không có"; nằm trong nhóm trả lời ngay giữa lúc đang đọc, vì người ta dọn
 ghi chú trong khi nghe. Nút thùng rác **im lặng cho tới khi rê chuột vào hàng** (vẫn tới được bằng bàn
 phím) và **hỏi lại ngay trong hàng** — cùng mẫu với xoá sách khỏi thư viện, câu hỏi nói thẳng hậu quả:
-"Xoá hẳn, đồng bộ lại cũng không quay về?".
+"Xoá hẳn, đồng bộ lại cũng không quay về?". Từ 16/09 nút **không giữ chỗ trong hàng** nữa (chủ: "bỏ đi
+phần space chứa nút xoá… khi hover thì cho nút xoá overlay kèm background gradient-blur"): chữ chạy hết
+bề rộng, nút nằm `absolute` ở đuôi hàng trên một lớp `tail-reveal` (`index.css`): gradient trong suốt →
+màu cột 90 % từ 60 %, `backdrop-filter: blur(6px)` che bằng mask gradient để đuôi chữ mờ dần dưới nút —
+một lớp blur, không phải ramp 8 lớp của thanh chrome (24 px không cần). `focus-visible` vẫn hiện.
 
 **Và nếu engine từ chối thì ghi chú QUAY LẠI trang, kèm lý do** (04/09). Trước đó hàng biến mất khỏi màn
 hình ngay rồi lời gọi engine đi kèm `.catch(console.error)`: engine hỏng là ghi chú **trông như đã xoá mà
@@ -804,7 +834,11 @@ xanh lá), `p.textContent` không đổi một ký tự.
 **Giới hạn còn lại (chưa sửa, cố ý)**: sửa nội dung ghi chú chưa có — ghi chú vẫn là dữ liệu một chiều từ
 Apple Books.
 
-### 3.15 Sidebar — danh sách đứng cạnh trang, trên nền kính mờ (15/09)
+### 3.15 Sidebar — danh sách đứng cạnh trang, trên nền kính mờ (15/09) — **ĐÃ THAY bằng §3.16 (16/09)**
+
+> Ship trong 0.1.5 sáng 16/09; cùng ngày chủ xem và nói rõ ý là **một cột thật trong layout** ("giống như
+> cách codex làm"), không phải lớp nổi. Mục này giữ lại làm hồ sơ của một lần hiểu sai: lớp nổi kính đã gỡ,
+> `glass` utility gỡ theo. Luật hiện hành ở §3.16.
 
 Chủ 15/09: "một sidebar trái được mở ra cho một vài tính năng, style có background blur, ví dụ khi bấm nút mở
 chương". Thay cho ba thẻ đục rời (mục lục 288, ghi chú 368, tìm 352) — mỗi thẻ một vỏ, cao tối đa
@@ -837,6 +871,60 @@ chương". Thay cho ba thẻ đục rời (mục lục 288, ghi chú 368, tìm 3
   editor (z-40), peek và lightbox (z-30) vẫn ở trên. Không có hoạt cảnh đóng: unmount tức thì như mọi lớp.
 - **Content**: tiêu đề là tên danh sách ("Mục lục", "Highlight và ghi chú", "Tìm trong sách"); không dòng mô
   tả; hàng hai dòng cho tiêu đề chương (`line-clamp-2`); rỗng thì `EmptyState` của nơi dùng.
+
+### 3.16 `SideColumn` — cột trái thật trong layout, thu/mở như Codex (16/09)
+
+Chủ 16/09, sau khi xem 0.1.5: "tôi muốn nó là một sidebar riêng nằm một bên của layout luôn chứ không phải là
+popover như hiện tại. giống như cách codex làm" + "cột trái sẽ có thể ẩn hiện thông minh tuỳ vào nhu cầu. User
+có thể tắt/mở giống codex. màu đèn giao thông là các nút của app macOS có sẵn". Điều này **đảo** lựa chọn 02/09
+(lớp nổi vì "cột cố định ăn mất bề rộng trang"): cột thu được, và tự thu khi cửa sổ hẹp, là câu trả lời cho lo
+ngại đó.
+
+- **Usage**: nơi ở của ĐIỀU HƯỚNG cấp app (Thư viện · Dán nội dung · Quét đọc · Chuyển ghi chú) và của mọi
+  DANH SÁCH NƠI CHỐN trong sách (mục lục · ghi chú · tìm). Cột là một phần của layout: nội dung đứng bên phải và
+  bị ĐẨY, không có gì đè lên gì. Không dùng cho bảng thiết lập (vẫn popover neo nút, §3.9d); màn đầu tiên
+  (Setup) không có cột.
+- **Anatomy** (`patterns.tsx::SideColumn`): gốc app = `flex` hàng `[aside][content]`; *aside* rộng **240**, nền
+  **màu nền trang** (`--app-column` = `--app-ground`: trắng ở sáng — chủ 16/09 "background sidebar là màu
+  trắng" — n00 ở tối; bản n05 xám chỉ sống một giờ), viền phải hairline `edge` là thứ duy nhất ngăn cột với
+  trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
+  đo 16/09); ba tầng — *đầu* 52 px là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
+  đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` {20, 20}) và
+  nút thu/mở ở mép phải; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
+  `ink`, luật state layer §2) rồi nhóm **Đang đọc** (tối đa 5 sách có tiến độ, thứ tự `orderShelf`, bìa nhỏ +
+  tên + chương; engine chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ); trong sách: `SegmentedControl compact`
+  — mỗi tab mang glyph của nút toolbar tương ứng (▤ · ghi chú · kính lúp), **tab đang mở mới có nhãn** ("Ghi chú · 6"),
+  hai tab kia chỉ còn icon (chủ 16/09: "khi active thì mới có label, còn bình thường sẽ là dạng icon only" — rãnh 216
+  px không đủ cho ba nhãn, "Tìm" từng bị cắt) rồi danh sách của tab đó — Reader vẫn là CHỦ ba danh sách và render chúng
+  vào slot của cột bằng portal (state chương, scroll-spy, xoá ghi chú không rời Reader); *chân* — bánh răng
+  Giọng đọc & mô hình · sáng/tối · ngôn ngữ, cùng một hàng. *content* = cột nội dung `relative flex-1 min-w-0`,
+  header/main/footer vẫn là overlay bên trong nó, inset đo như cũ; dải trên 52 px cũng là vùng kéo. Cột thu
+  = `width: 0` (transition width 200 ms `ease-out`, `motion-reduce` tắt; KHÔNG dùng `@starting-style` — trong
+  một WKWebView bị ẩn, timeline đứng và phần tử kẹt ở trạng thái đầu, đo 16/09), thân giữ bề rộng 240 để chữ
+  không gãy trong lúc thu; khi thu, đèn nằm trên góc trái của cột nội dung → dải trên chừa **76 px**, nút mở
+  đứng ngay cạnh đèn (Codex làm đúng thế).
+  **Kéo mép phải để đổi bề rộng** (chủ 16/09: "sidebar có thể nắm kéo để resize"): tay nắm là dải 6 px đè lên hairline
+  (`role=separator`, con trỏ `col-resize`, pointer capture nên kéo ra ngoài dải vẫn ăn), bề rộng **200–400**, mặc định
+  240, nhớ trong `localStorage["readease.sidebar-width"]` lúc thả tay (không ghi từng pixel); bấm đúp về 240; trong lúc
+  kéo tắt transition (cột chạy đuổi theo con trỏ thì lag). Thu/mở vẫn là 0 ↔ bề rộng đã chọn.
+- **Behavior** (luật kiểm được, reducer thuần `ui/sidebarState.ts`): (1) **tay thắng tự động** — bấm nút hoặc
+  ⌃⌘S là lựa chọn, nhớ trong `localStorage["readease.sidebar"]`; (2) chưa từng chọn → **tự động theo bề rộng**:
+  cửa sổ < 1100 px thu, ≥ 1100 mở, đổi live khi kéo cửa sổ (kể cả cửa sổ mặc định 1060 → thu, để trang được
+  rộng; chủ 02/09); (3) **ngữ cảnh đổi nội dung, không đổi hiển thị**: mở sách → tab Mục lục (chương đang đọc
+  đánh dấu và cuộn tới), quay lại thư viện → điều hướng; (4) `show(tab)` — ▤ · nút ghi chú · nút tìm · ⌘F · icon
+  ghi chú trong đoạn — MỞ cột và chọn tab; bấm lại đúng tab đang hiện = thu (công tắc thật, không cần
+  `data-popover-trigger` nữa); (5) chọn chương / ghi chú / kết quả tìm → nhảy, cột GIỮ NGUYÊN (một cột không
+  biến mất khi được dùng); (6) không Escape, không bấm-ngoài; (7) toolbar mang bánh răng / theme / ngôn ngữ
+  CHỈ khi cột thu — cột mang gì thì toolbar bỏ nấy; tab và công cụ rời hẳn toolbar; Reader giữ back · ▤ ·
+  ghi chú · tên · ⓘ · AA · tìm; (8) **tối ưu theo layout** (chủ 16/09: "UI đọc sách thì sẽ không cần icon
+  sidebar"): nút mở cột chỉ có ở toolbar TRANG CHỦ khi cột thu — trong sách, ▤ / ghi chú / tìm đã là ba nút
+  mở cột đúng danh sách, thêm một nút mở chung là thừa; và toolbar sách khi cột thu chỉ nhận lại nút
+  sáng/tối (luật 06/09: cạnh AA), không nhận bánh răng lẫn ngôn ngữ — chúng cách một lần mở cột.
+- **Content**: nhãn điều hướng = nhãn tab cũ (`nav.*`); nhóm "Đang đọc" (`sidebar.reading`); tab sách "Mục lục"
+  · "Ghi chú" · "Tìm"; nút thu/mở `aria-label` "Thu cột bên" / "Mở cột bên", tooltip kèm ⌃⌘S.
+- **Don't**: cột trên màn Setup · cột che thanh player (player nằm trong cột nội dung) · hai nơi cùng mang
+  theme/ngôn ngữ khi cột đang mở · kính/blur (cột đứng cạnh nội dung, không có gì sau nó để mờ; vibrancy
+  của macOS là việc sau).
 
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
@@ -942,7 +1030,7 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 | desk (nền) | n00 trắng | n00 | `body` |
 | panel (nhóm lõm) | n10 | n05 | `GroupedSection` |
 | paper (mặt nổi) | n00 trắng | n10 | control, `Surface`, cột đọc |
-| rail (rãnh tab) | n10 | n05 | `AppTabs` |
+| rail (rãnh tab) | n10 | n05 | (`AppTabs`, gỡ 16/09 — token giữ cho rãnh sau này) |
 | band (dòng đang đọc) | n10 | n20 | highlight ở Reader |
 
 **Viền là PHƯƠNG ÁN DỰ PHÒNG, không phải trang trí** (chủ chốt 01/09: "case đã phân cấp bằng bg

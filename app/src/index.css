@@ -44,6 +44,15 @@
      has no room to lighten further without meeting the desk. */
   --app-rail: var(--neutral-n10);
   --app-panel: var(--neutral-n10);
+  /* The side column (HIG 3.16): the desk's own colour - white in light
+     (owner, 16/09: "background sidebar là màu trắng"), near-black in dark -
+     with the hairline between it and the page doing the separating, the
+     way the white desk and its paper already separate by lines alone. The
+     rows' own states read on it: `band` (a chapter's "you are here") is
+     n10/n20, a step above; `wash` is an alpha and reads on anything. On
+     `band` itself the active row vanished (measured 16/09), and the n05
+     grey the column had for an hour was what the owner asked to lose. */
+  --app-column: var(--app-ground);
   /* A field/card stroke is a FALLBACK, not decoration: it exists only where
      the fill cannot separate the surface by itself. On the white desk, paper
      IS the desk colour, so the line is all a text box has. In dark the ladder
@@ -104,6 +113,7 @@
   /* A grouped panel: one step off the desk, so settings rows read as an inset
      group instead of an outlined white box lost on a white page. */
   --color-panel: var(--app-panel);
+  --color-column: var(--app-column);
   /* The DS's own layered lift, which flips with the theme: a wide soft pass
      plus a tight contact pass. Tailwind's shadow-sm is a single hard offset -
      next to this it reads as a printed line under the element. */
@@ -240,20 +250,6 @@
  * A viewport query rather than a container query because the cap IS a
  * viewport expression (`layer-capped` above): 100vh minus the two bars.
  */
-/* The material of a Sidebar (HIG 3.15): the page stays visible under a
- * list that stands beside it. Paper's own colour at 76% - white in light, n10
- * in dark, so the layer reads as paper that lets the page through - over a
- * 24px blur with a touch of saturation so the blurred page keeps its colour
- * instead of going grey. Whole-window material was retired 01/09 for
- * diluting the ramp; this is the bounded region §7 allows. Applied to a
- * child layer, not the frame: a filter makes its element the containing
- * block for anything `fixed` inside. */
-@utility glass {
-  background: color-mix(in srgb, var(--fill-neutral-base) 76%, transparent);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  backdrop-filter: blur(24px) saturate(140%);
-}
-
 @utility short-hidden {
   @media (max-height: 640px) {
     display: none;
@@ -295,6 +291,30 @@
   & > :is(button, a):focus-visible + *::before {
     opacity: 0;
   }
+}
+
+/* A control that lives over a row's TAIL and shows only under the cursor:
+   the row keeps no column for it, so the text runs the full width, and
+   when the row is hovered the control comes up on a short gradient blur -
+   the tail of the text softens under it so the glyph has ground of its own
+   (owner, 16/09: "bỏ đi phần space chứa nút xoá... khi hover thì cho nút
+   xoá overlay kèm background gradient-blur"). One blur layer under a
+   gradient mask: at this size the shell's eight-layer ramp would be spent
+   on 24 pixels. Also reachable by keyboard: `focus-visible` shows it. */
+@utility tail-reveal {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  padding: 0.625rem 0.5rem 0 2.25rem;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--color-column) 90%, transparent) 60%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 55%);
+  mask-image: linear-gradient(to right, transparent, black 55%);
 }
 
 @utility hover-wash {
@@ -577,15 +597,21 @@ mark {
    up to a solid tier would have, because these ramps are not one colour at
    two strengths - success haze is rgb(60,202,73) and success primary is
    rgb(0,137,54), a different green. The reading page is deliberately left
-   alone: there a mark really is ink over text that has to stay readable. */
-.mark-sample mark {
+   alone: there a mark really is ink over text that has to stay readable.
+
+   DARK ONLY, since 16/09. The list stands on the white column now, and there
+   the doubled alpha read heavier than the same highlight on the page beside
+   it (owner: "đậm quá so với highlight trong nội dung"); on the white paper
+   the single alpha is what the page shows, so the list shows the same. The
+   04/09 complaint was about the dark paper, and the doubling stays there. */
+[data-theme="dark"] .mark-sample mark {
   background-image: linear-gradient(var(--color-highlight), var(--color-highlight));
 }
-.mark-sample mark[data-style="1"] { background-image: linear-gradient(var(--color-highlight-green), var(--color-highlight-green)); }
-.mark-sample mark[data-style="2"] { background-image: linear-gradient(var(--color-highlight-blue), var(--color-highlight-blue)); }
-.mark-sample mark[data-style="3"] { background-image: linear-gradient(var(--color-highlight-yellow), var(--color-highlight-yellow)); }
-.mark-sample mark[data-style="4"] { background-image: linear-gradient(var(--color-highlight-pink), var(--color-highlight-pink)); }
-.mark-sample mark[data-style="5"] { background-image: linear-gradient(var(--color-highlight-purple), var(--color-highlight-purple)); }
+[data-theme="dark"] .mark-sample mark[data-style="1"] { background-image: linear-gradient(var(--color-highlight-green), var(--color-highlight-green)); }
+[data-theme="dark"] .mark-sample mark[data-style="2"] { background-image: linear-gradient(var(--color-highlight-blue), var(--color-highlight-blue)); }
+[data-theme="dark"] .mark-sample mark[data-style="3"] { background-image: linear-gradient(var(--color-highlight-yellow), var(--color-highlight-yellow)); }
+[data-theme="dark"] .mark-sample mark[data-style="4"] { background-image: linear-gradient(var(--color-highlight-pink), var(--color-highlight-pink)); }
+[data-theme="dark"] .mark-sample mark[data-style="5"] { background-image: linear-gradient(var(--color-highlight-purple), var(--color-highlight-purple)); }
 
 /* The reading form's sliders, in the manner of the Books settings sheet
    (owner, 06/09): a thin rounded track, the part behind the knob filled, and

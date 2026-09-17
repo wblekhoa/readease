@@ -37,26 +37,37 @@ const I18N = readFileSync(join(HERE, "src/i18n.ts"), "utf8");
 const KEYS = new Set([...I18N.matchAll(/^  "([a-z_]+\.[a-z_0-9]+)"/gm)].map((m) => m[1]));
 
 // The matrix. Screens are reached by clicking; states by query string.
+//
+// Navigation lives in the side column (HIG 3.16), which folds itself at
+// this window's 960px - so every path starts by unfolding it, the way a
+// person would: through the mode switch by the title, whose menu carries
+// "Cột bên" while the column is folded. "click?" is a click that is allowed
+// to find nothing (in the `sidebar` state the column is already open and
+// the menu has no such row; the menu itself then closes on the next click).
+const UNFOLD = [["click?", /^Đổi chế độ$|^Switch mode$/], ["click?", /^Cột bên|^Side column/]];
+const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
 const SCREENS = {
-  shelf:  [["click", /^Thư viện$|^Library$/]],
-  paste:  [["click", /^Dán nội dung$|^Paste text$/]],
-  scan:   [["click", /^Quét đọc$|^Read a selection$/]],
-  notes:  [["click", /^Chuyển ghi chú$|^Move notes$/]],
-  reader: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
-  voices: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
+  shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
+  paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
+  scan:   [...UNFOLD, ["click", /^Quét đọc$|^Read a selection$/]],
+  notes:  [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/]],
+  reader: OPEN_BOOK,
+  voices: [...OPEN_BOOK,
            ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["click", /^Quản lý giọng|^Manage voices/], ["wait", /^Danh sách giọng đọc$|^Voices$/]],
-  // The hub, from the gear on the home screens: the sheet's title is what
-  // the wait looks for, and the gear is found by its accessible name.
-  hub: [["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
-  // The three sidebars over the page (HIG 3.15). The contents is awaited by
-  // its title; the notes and the search share their title with the button
-  // that opens them, so their close button is the sign they are up.
-  contents: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
-             ["click", /^Hiện mục lục$|^Show contents$/], ["wait", /^Mục lục$|^Contents$/]],
-  notes: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
-          ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^Đóng$|^Close$/]],
-  search: [["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/],
-           ["click", /^Tìm trong sách$|^Search in book$/], ["wait", /^Đóng$|^Close$/]],
+  // The hub, from the gear in the column's foot (or the toolbar while the
+  // column is folded): the sheet's title is what the wait looks for.
+  hub: [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
+  // A book's three lists, as tabs of the side column (HIG 3.16): each
+  // toolbar switch opens the column on its tab, and the tab's own label is
+  // the sign it is up.
+  // A book opens on its contents when the column is up, so the switch may
+  // already read "Ẩn mục lục": pressing it then would fold the column.
+  contents: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["wait", /^Mục lục$|^Contents$/]],
+  // The notes tab is named by its count ("3 highlight") and the search tab
+  // like the toolbar's search button, so each is proven by what only the
+  // open tab has: the checked radio for notes, the search box for search.
+  book_notes: [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/]],
+  search: [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]],
 };
 const STATES = {
   default: "",
@@ -74,6 +85,9 @@ const STATES = {
   english_missing: "english=missing",
   english_partial: "english=partial",
   vietnamese_missing: "vietnamese=missing",
+  // The side column unfolded at the 960px floor, where it folds itself:
+  // the "không tràn ngang" that matters most (HIG 3.16, C9).
+  sidebar: "sidebar=open",
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -89,7 +103,7 @@ async function main() {
   // took 14m34s+ on 15/09 once the mock's bridge answered a tick later, a
   // minute under the old 15, so the next state added would have turned a
   // green run red for taking too long.
-  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 25 * 60 * 1000);
+  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 60 * 60 * 1000); // 620 cells took 31 min run screen by screen (16/09); 35 was cut twice
   try {
     const wsUrl = await (async () => {
       for (let i = 0; i < 60; i++) {
@@ -116,22 +130,32 @@ async function main() {
     // reached nothing - one cell in 216 read as unreachable on the second
     // full run, and three re-probes with a wait in front reached it every
     // time.
-    const findAndClick = async (re) => {
-      await waitFor(re, 4000);
+    const findAndClick = async (re, patience = 4000) => {
+      await waitFor(re, patience);
+      // The first VISIBLE match, as a hand would find it: the folded column
+      // keeps its tabs in the DOM at zero width behind \`inert\`, and a tab
+      // named like the toolbar button ("Tìm trong tài liệu") used to be
+      // found first and clicked at the fold (16/09, search unreachable).
       const box = await evalJs(`(() => {
         const re = ${re.toString()};
         const el = [...document.querySelectorAll("button,[role=button],[role=radio],[role=tab],a,summary")]
-          .find((e) => re.test((e.getAttribute("aria-label") || e.textContent || "").trim()));
+          .find((e) => re.test((e.getAttribute("aria-label") || e.textContent || "").trim())
+            && !e.closest("[inert]") && e.getBoundingClientRect().width > 0);
         if (!el) return null; el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
       if (!box) return false;
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
       await sleep(350); return true;
     };
-    async function waitFor(re, ms = 6000) {
+    // A name is an aria-label, a placeholder (an input's name) or the text;
+    // a radio counts only while CHECKED, so waiting on a tab's name proves
+    // the tab is the one showing, not merely that the row of tabs exists.
+    async function waitFor(re, ms = 6000, within = "button,[role=button],[role=radio],a,h1,h2,h3,input,textarea") {
       const until = Date.now() + ms;
       while (Date.now() < until) {
-        if (await evalJs(`!![...document.querySelectorAll("button,[role=button],a,h1,h2,h3")].find((e) => ${re.toString()}.test((e.getAttribute("aria-label") || e.textContent || "").trim()))`)) return true;
+        if (await evalJs(`!![...document.querySelectorAll(${JSON.stringify(within)})]
+          .find((e) => ${re.toString()}.test((e.getAttribute("aria-label") || e.getAttribute("placeholder") || e.textContent || "").trim())
+            && (e.getAttribute("role") !== "radio" || e.getAttribute("aria-checked") === "true"))`)) return true;
         await sleep(150);
       }
       return false;
@@ -159,15 +183,20 @@ async function main() {
             const steps = stateName === "model_missing" ? [["wait", /Chọn cách đọc để bắt đầu|Choose how to read/]] : SCREENS[screen];
             // An empty shelf has no book to open: the reader and the voice
             // panel do not exist in that state, so neither does the cell.
-            if (stateName === "empty" && ["reader", "voices", "contents", "notes", "search"].includes(screen)) { cells--; continue; }
+            if (stateName === "empty" && ["reader", "voices", "contents", "book_notes", "search"].includes(screen)) { cells--; continue; }
             events.length = 0;
             await send("Page.navigate", { url: `http://localhost:${PORT}/?${query}` });
             await sleep(900);
             await evalJs(`localStorage.removeItem("readease.theme")`);
             if (lang === "en") await setLanguage("en");
             let reached = true;
-            for (const [kind, re] of steps) {
-              const ok = kind === "click" ? await findAndClick(re) : await waitFor(re);
+            // A wait may name WHERE to look (a third element, a selector):
+            // the search tab, its box and the toolbar's search button all
+            // carry one name, and only the checked tab proves the panel.
+            for (const [kind, re, within] of steps) {
+              const ok = kind === "click" ? await findAndClick(re)
+                : kind === "click?" ? (await findAndClick(re, 600), true)
+                : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
             if (!reached) continue;

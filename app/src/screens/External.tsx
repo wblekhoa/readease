@@ -229,7 +229,6 @@ export function External({
 
   const setup = (
     <>
-      <SectionTitle>{text("external.title")}</SectionTitle>
       <span className="text-sm text-ink-mute">{text("external.shortcut")}</span>
       {recording ? (
         <span className="text-sm text-ink-mute">

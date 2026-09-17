@@ -883,7 +883,7 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.assertEqual(self.coordinator.snapshot.state, PlaybackState.ERROR)
         self.assertEqual(
             self.coordinator.snapshot.error,
-            "Không thể lưu vị trí đọc. Sách vẫn có thể mở lại.",
+            "Không thể lưu vị trí đọc. Tài liệu vẫn có thể mở lại.",
         )
 
     def test_stop_can_release_a_backpressured_append_without_deadlock(self):

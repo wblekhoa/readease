@@ -47,7 +47,7 @@ def _copy_bounded(
     while chunk := source.read(_COPY_CHUNK_BYTES):
         copied += len(chunk)
         if copied > max_bytes:
-            raise CorruptBookError("Tệp sách vượt giới hạn dung lượng 200 MiB.")
+            raise CorruptBookError("Tệp vượt giới hạn dung lượng 200 MiB.")
         destination.write(chunk)
     return copied
 
@@ -151,7 +151,7 @@ class LibraryService:
                     return self._import_book_locked(source)
             except OSError as error:
                 raise LibraryStorageError(
-                    "Không thể khóa thư viện cục bộ để nhập sách."
+                    "Không thể khóa thư viện cục bộ để nhập tài liệu."
                 ) from error
 
     def remove_book(self, book_id: str) -> bool:
@@ -370,13 +370,13 @@ class LibraryService:
         if parser is None:
             raise UnsupportedBookError("Vui lòng chọn tệp PDF hoặc EPUB.")
         if not source_path.is_file():
-            raise CorruptBookError("Không tìm thấy tệp sách đã chọn.")
+            raise CorruptBookError("Không tìm thấy tệp đã chọn.")
         try:
             source_size = source_path.stat().st_size
         except OSError as error:
-            raise CorruptBookError("Không thể kiểm tra tệp sách đã chọn.") from error
+            raise CorruptBookError("Không thể kiểm tra tệp đã chọn.") from error
         if source_size > MAX_MANAGED_SOURCE_BYTES:
-            raise CorruptBookError("Tệp sách vượt giới hạn dung lượng 200 MiB.")
+            raise CorruptBookError("Tệp vượt giới hạn dung lượng 200 MiB.")
 
         self._scavenge_import_scratch()
 
@@ -387,7 +387,7 @@ class LibraryService:
                 dir=self._paths.books,
             )
         except OSError as error:
-            raise CorruptBookError("Không thể chuẩn bị thư viện để sao chép sách.") from error
+            raise CorruptBookError("Không thể chuẩn bị thư viện để sao chép tài liệu.") from error
         os.close(descriptor)
         temporary_path = Path(temporary_name)
         try:
@@ -409,11 +409,11 @@ class LibraryService:
                 result = self._finalize_book(book, temporary_path, suffix)
             except (RepositoryError, sqlite3.Error) as error:
                 raise LibraryStorageError(
-                    "Không thể cập nhật thư viện cục bộ; sách chưa được thêm."
+                    "Không thể cập nhật thư viện cục bộ; tài liệu chưa được thêm."
                 ) from error
             except OSError as error:
                 raise CorruptBookError(
-                    "Không thể sao chép sách vào thư viện cục bộ."
+                    "Không thể sao chép tài liệu vào thư viện cục bộ."
                 ) from error
         except BaseException as primary_error:
             cleanup_error = self._try_remove_temporary_copy(temporary_path)

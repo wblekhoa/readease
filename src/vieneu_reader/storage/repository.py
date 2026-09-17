@@ -301,7 +301,7 @@ def _document_from_payload(payload: str) -> BookDocument:
         )
     except (KeyError, OverflowError, TypeError, ValueError) as error:
         raise RepositoryCorruptionError(
-            "Dữ liệu sách trong thư viện cục bộ bị hỏng."
+            "Dữ liệu tài liệu trong thư viện cục bộ bị hỏng."
         ) from error
 
 
@@ -344,7 +344,7 @@ def _stored_book_from_row(row: sqlite3.Row) -> StoredBook:
         return StoredBook(book=book, managed_path=managed_path)
     except (TypeError, ValueError) as error:
         raise RepositoryCorruptionError(
-            "Dữ liệu sách trong thư viện cục bộ bị hỏng."
+            "Dữ liệu tài liệu trong thư viện cục bộ bị hỏng."
         ) from error
 
 
@@ -726,14 +726,14 @@ class LibraryRepository:
 
     def save_active_book_id(self, book_id: str) -> None:
         if not _is_sha256(book_id):
-            raise RepositoryError("Không thể lưu cuốn sách đang mở.")
+            raise RepositoryError("Không thể lưu tài liệu đang mở.")
         with _database_errors(), self._lock, self._connection:
             row = self._connection.execute(
                 "SELECT 1 FROM books WHERE id = ?",
                 (book_id,),
             ).fetchone()
             if row is None:
-                raise RepositoryError("Không thể lưu cuốn sách đang mở.")
+                raise RepositoryError("Không thể lưu tài liệu đang mở.")
             self._connection.execute(
                 """
                 INSERT INTO app_meta(key, value) VALUES('active_book_id', ?)
@@ -753,11 +753,11 @@ class LibraryRepository:
                 book_id = _required_text(row, "value")
             except (KeyError, TypeError, ValueError) as error:
                 raise RepositoryCorruptionError(
-                    "Dữ liệu cuốn sách đang mở trong thư viện cục bộ bị hỏng."
+                    "Dữ liệu tài liệu đang mở trong thư viện cục bộ bị hỏng."
                 ) from error
             if not _is_sha256(book_id):
                 raise RepositoryCorruptionError(
-                    "Dữ liệu cuốn sách đang mở trong thư viện cục bộ bị hỏng."
+                    "Dữ liệu tài liệu đang mở trong thư viện cục bộ bị hỏng."
                 )
             exists = self._connection.execute(
                 "SELECT 1 FROM books WHERE id = ?",
@@ -765,7 +765,7 @@ class LibraryRepository:
             ).fetchone()
             if exists is None:
                 raise RepositoryCorruptionError(
-                    "Dữ liệu cuốn sách đang mở trong thư viện cục bộ bị hỏng."
+                    "Dữ liệu tài liệu đang mở trong thư viện cục bộ bị hỏng."
                 )
             return book_id
 

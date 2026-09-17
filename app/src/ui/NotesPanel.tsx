@@ -16,23 +16,20 @@
 import { useEffect, useRef, useState } from "react";
 import { text } from "../i18n";
 import { Button, Notice } from "./controls";
-import { EmptyState, GroupedSection, Sidebar } from "./patterns";
+import { EmptyState, GroupedSection } from "./patterns";
 import { HighlightIcon, NoteIcon, TrashIcon } from "./icons";
 import { groupAnnotations, type Annotation } from "./annotationsList";
 
 export function NotesPanel({
   chapters,
   annotations,
-  paged,
   focusId,
   error,
   onNavigate,
   onDelete,
-  onClose,
 }: {
   chapters: { id: string; title: string; segments: { id: string }[] }[];
   annotations: Annotation[];
-  paged: boolean;
   /** The note whose icon was pressed: brought into view and marked. */
   focusId: string | null;
   /** Why a note that was asked to go is still here. */
@@ -41,7 +38,6 @@ export function NotesPanel({
   /** Remove one for good - a tombstone in the engine keeps the next Apple
    * Books sync from handing it back. */
   onDelete: (annotationId: string) => void;
-  onClose: () => void;
 }) {
   const groups = groupAnnotations(chapters, annotations);
   const focused = useRef<HTMLButtonElement>(null);
@@ -53,24 +49,18 @@ export function NotesPanel({
     focused.current?.scrollIntoView({ block: "center" });
   }, [focusId]);
 
-  /* A Sidebar since 15/09 (HIG 3.15), beside the contents on the same
-     glass: the title stays put and only the list moves, so the scrollbar
-     belongs to the list; Escape and a click outside are the sidebar's own
-     (this panel used to answer Escape by itself and nothing else). */
+  /* The Ghi chú tab of the side column (HIG 3.16): the column owns the
+     frame and the tab strip, this is the body - an error stays put above,
+     only the list scrolls, so the scrollbar belongs to the list. Nothing
+     closes it: a column is left by choosing another tab or folding it. */
   return (
-    <Sidebar
-      title={text("notes.title")}
-      onClose={onClose}
-      paged={paged}
-      width="w-[23rem]"
-      className="mark-sample"
-      header={error && (
-        <Notice tone="error" className="shrink-0 px-6 pb-2">
+    <div className="mark-sample flex min-h-0 flex-1 flex-col">
+      {error && (
+        <Notice tone="error" className="mx-4 mb-3 shrink-0">
           {text("notes.remove_failed")} ({error})
         </Notice>
       )}
-    >
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
       {groups.length === 0 ? (
         <EmptyState
           icon={<HighlightIcon className="h-8 w-8" />}
@@ -104,7 +94,7 @@ export function NotesPanel({
                 type="button"
                 ref={item.id === focusId ? focused : undefined}
                 onClick={() => onNavigate(item.segment_id)}
-                className={`group -mx-2 flex gap-2.5 rounded-[var(--ctl-radius)] px-2 py-3 text-left hover-wash ${
+                className={`group relative -mx-2 flex gap-2.5 overflow-hidden rounded-[var(--ctl-radius)] px-2 py-3 text-left hover-wash ${
                   item.id === focusId ? "bg-wash" : ""
                 }`}
               >
@@ -131,13 +121,15 @@ export function NotesPanel({
                 </span>
                 {/* Quiet until the row is under the cursor, but always
                     reachable by keyboard - a destructive action should not
-                    be the first thing the eye lands on. */}
+                    be the first thing the eye lands on. Over the row's
+                    tail, not beside it (owner, 16/09): the text keeps the
+                    whole width, and the glyph comes up on a gradient blur. */}
                 <span
                   role="button"
                   tabIndex={0}
                   aria-label={text("notes.remove")}
                   title={text("notes.remove")}
-                  className="mt-0.5 shrink-0 rounded p-0.5 text-ink-faint opacity-0 transition-opacity hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+                  className="tail-reveal text-ink-faint hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
                   onClick={(event) => { event.stopPropagation(); setConfirming(item.id); }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter" && event.key !== " ") return;
@@ -155,6 +147,6 @@ export function NotesPanel({
         ))
       )}
       </div>
-    </Sidebar>
+    </div>
   );
 }

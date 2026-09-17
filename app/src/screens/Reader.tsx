@@ -19,13 +19,15 @@
  * the pill. A plain click on a paragraph still moves the voice.
  */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
 import { SearchPanel } from "../ui/SearchPanel";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
-import { ListRow, Sidebar } from "../ui/patterns";
+import { ListRow } from "../ui/patterns";
+import type { SidebarTab } from "../ui/sidebarState";
 import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
 import { noteCount } from "../ui/annotationsList";
@@ -206,14 +208,11 @@ export function Reader({
   currentFigure,
   reading,
   mode,
-  showToc,
-  onHideToc,
-  showSearch,
-  onHideSearch,
+  sidebarTab,
+  sidebarSlot,
   prefs,
-  showNotes,
   notesFocus,
-  onNotes,
+  onShowNotes,
   reveal,
   size,
   onSegments,
@@ -227,20 +226,20 @@ export function Reader({
   currentFigure: string | null;
   reading: boolean;
   mode: ReadingMode;
-  /** Both live in App: the window has ONE chrome row, and it is the toolbar,
-   * so the controls that drive this screen are rendered up there. */
-  showToc: boolean;
-  onHideToc: () => void;
-  showSearch: boolean;
-  onHideSearch: () => void;
+  /** Which of this book's lists the side column shows, or null when the
+   * column is folded or showing something else. The column is App's: the
+   * chrome has one place for the switches (the toolbar) and one for the
+   * lists (the column); this screen owns the lists' state and renders
+   * them into the column's slot through a portal (HIG 3.16). */
+  sidebarTab: SidebarTab | null;
+  sidebarSlot: HTMLElement | null;
   /** Line spacing, margins, columns, justification, weight - the reader's
    * own setting of the page (ui/readingPrefs). */
   prefs: ReadingPrefs;
-  showNotes: boolean;
-  /** The annotation whose icon opened the panel, if it was opened that way. */
+  /** The annotation whose icon opened the notes, if they were opened that way. */
   notesFocus: string | null;
-  /** Open (with an optional annotation to focus) or close the notes panel. */
-  onNotes: (open: boolean, focusId?: string | null) => void;
+  /** Show the notes tab with one annotation brought into view. */
+  onShowNotes: (focusId: string) => void;
   /** Bring a place into view without speaking it. The `at` stamp is what
    * makes asking twice for the SAME place work - a plain id would look
    * unchanged to an effect and do nothing the second time. */
@@ -308,10 +307,12 @@ export function Reader({
   }, []);
   useEffect(() => cancelPendingRead, [cancelPendingRead]);
 
-  /* A failed delete explains itself only while the panel it happened in is
-   * open. Clearing it in the panel's own onClose was not enough: the toolbar
-   * button closes the panel without going through it, so reopening later
-   * showed a complaint about something the person had not just done. */
+  /* A failed delete explains itself only while the notes are on show.
+   * Clearing it on a close callback was not enough: the toolbar folds the
+   * column without going through the panel, so reopening later showed a
+   * complaint about something the person had not just done. */
+  const showNotes = sidebarTab === "notes";
+  const showToc = sidebarTab === "contents";
   useEffect(() => {
     if (!showNotes) setNoteError(null);
   }, [showNotes]);
@@ -834,16 +835,13 @@ export function Reader({
       </div>
     ));
 
-  /* The contents float over the book in BOTH modes (owner, 02/09: the
-   * overlay "quá tối ưu"): closed until asked for, a chapter jumps and
-   * closes it. A fixed column would eat the page's own width. Since 15/09 a
-   * Sidebar (HIG 3.15): the whole height between the bars, on glass, with
-   * Escape and a click outside to leave - it used to be the one panel in
-   * the app with neither. 288 rather than 256, because a chapter title is a
-   * sentence and this is the panel whose whole job is to show them. */
+  /* The contents, in the side column (HIG 3.16; owner, 16/09: a real
+   * column of the layout, "giống như cách codex làm" - reversing 02/09's
+   * floating layer, since a column that folds itself when the window is
+   * narrow no longer eats the page's width). A chapter jumps; the column
+   * stays, because a column is not a thing that disappears when used. */
   const contents = showToc && (
-    <Sidebar title={text("reader.toc_title")} onClose={onHideToc} paged={paged} width="w-72">
-      <nav className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4">
+    <nav aria-label={text("reader.toc_title")} className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         {opened.book.chapters.map((chapter, index) => (
           <ListRow
             key={chapter.id}
@@ -861,7 +859,6 @@ export function Reader({
               } else {
                 jumpTo(chapter.segments[0].id);
               }
-              onHideToc();
               if (reading) onReadFrom(chapter.segments[0].id);
             }}
             /* Two lines, not one truncated to nothing: a title long enough to
@@ -870,19 +867,16 @@ export function Reader({
             title={<span className="line-clamp-2 text-sm">{chapter.title}</span>}
           />
         ))}
-      </nav>
-    </Sidebar>
+    </nav>
   );
 
-  /* Search, on the other side of the page from the contents. A hit shows
-   * its place the way a contents row does; the panel stays open so the next
-   * hit is one click away, and the reading is not disturbed - looking
-   * something up mid-listen is the whole point of having it here. */
-  const search = showSearch && (
+  /* Search, the column's third tab. A hit shows its place the way a
+   * contents row does; the column stays so the next hit is one click away,
+   * and the reading is not disturbed - looking something up mid-listen is
+   * the whole point of having it here. */
+  const search = sidebarTab === "search" && (
     <SearchPanel
       chapters={opened.book.chapters}
-      paged={paged}
-      onClose={onHideSearch}
       onJump={(hit) => {
         if (paged) {
           setChapterIndex(hit.chapterIndex);
@@ -900,11 +894,9 @@ export function Reader({
     <NotesPanel
       chapters={opened.book.chapters}
       annotations={opened.annotations ?? []}
-      paged={paged}
       focusId={notesFocus}
       onNavigate={(segmentId) => {
         showSegment(segmentId, "contents");
-        onNotes(false);
       }}
       error={noteError}
       onDelete={(annotationId) => {
@@ -937,9 +929,14 @@ export function Reader({
           setNoteError(engineMessage(error));
         });
       }}
-      onClose={() => onNotes(false)}
     />
   );
+
+  /* Into the column's slot, not beside the page: the lists are this
+   * screen's (their state lives here) but their place is App's column. */
+  const lists = sidebarSlot
+    ? createPortal(<>{contents}{search}{notes}</>, sidebarSlot)
+    : null;
 
   /* Wrapped rather than styled through `Surface`: the kit's card takes a
      className, not a style, and a measured position is not a class. */
@@ -1012,7 +1009,7 @@ export function Reader({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setEditing(null); onNotes(true, editing.id); }}
+              onClick={() => { setEditing(null); onShowNotes(editing.id); }}
             >
               {text("notes.open")}
             </Button>
@@ -1074,9 +1071,7 @@ export function Reader({
           >
             {opened.book.chapters[chapterIndex] && chapterBody(opened.book.chapters[chapterIndex])}
           </PageFlow>
-          {contents}
-          {search}
-          {notes}
+          {lists}
           {notePeek}
           {noteEditor}
           {pills}
@@ -1101,9 +1096,7 @@ export function Reader({
                 ))}
               </div>
             </div>
-            {contents}
-            {search}
-            {notes}
+            {lists}
             {notePeek}
             {noteEditor}
             {pills}

@@ -6,7 +6,7 @@ whole book lives. Measured 10/09 on a temporary data root: add one required
 field to `_document_payload` and to `_document_from_payload` together - the
 ordinary way a format grows - and all 748 Python tests stay green while a
 library written by the previous build answers
-`RepositoryCorruptionError: Dữ liệu sách trong thư viện cục bộ bị hỏng.`
+`RepositoryCorruptionError: Dữ liệu tài liệu trong thư viện cục bộ bị hỏng.`
 for EVERY book on the shelf. `SCHEMA_VERSION` never moves, so `_migrate()`
 never runs.
 

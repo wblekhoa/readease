@@ -6,6 +6,24 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- ReadEase describes itself as what it is: a reader of your EPUB and PDF
+  files. Every sentence the app shows - in both languages, from the shell
+  and from the engine - now says document, file or copy where it used to
+  say book; the sample shelf in the developer preview names invented
+  documents rather than real titles. Apple Books keeps its name, being
+  a product, and the feature that moves notes between two copies of the
+  same document is unchanged.
+- A side column, the way Codex has one: a real column of the layout on the
+  left, from the window's own buttons down, with the content beside it -
+  not a layer over the page. It carries the navigation (Library, Paste,
+  Read a selection, Move notes) and the documents being read; inside a
+  document it turns into its contents, notes and search, which were
+  floating sidebars in 0.1.5 and are tabs of the column now. Fold and unfold it with
+  the switch at its top or ⌃⌘S; it remembers your choice, folds itself
+  when the window is narrower than 1100 px until you say otherwise, and
+  opens on the right tab when you ask for a list (▤, the notes button, ⌘F).
+  The appearance switch, the language and Voices & models live at its
+  foot, and move to the toolbar while it is folded.
 - The app opens on the Library. An empty shelf still offers the paste
   screen with one button.
 
