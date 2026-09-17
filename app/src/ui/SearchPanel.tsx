@@ -90,7 +90,12 @@ export function SearchPanel({
                 : text("reader.search_count", { n: hits.length })}
         </p>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+      {/* The track is narrower than the box above it by exactly the row's
+          own inset (dense = 10 px), so a hit's TEXT starts where the search
+          box and the tab pill start - 16 px in - and only the hover wash
+          reaches out past it (HIG 3.9d; owner, 17/09: "align với các thành
+          phần khác"). */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-6">
         {hits.map((hit, index) => (
           <ListRow
             key={`${hit.segmentId}:${index}`}

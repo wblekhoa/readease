@@ -481,6 +481,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   chương); sheet giữa màn (Giọng đọc & mô hình, Danh sách giọng) và cột bên vẫn đặc — Books cũng thế, và chủ 16/09 đã
   chọn cột trắng. Kính thật của hệ (NSVisualEffectView qua `windows[].effects` của Tauri) cần cửa sổ trong suốt +
   `macOSPrivateApi` — để dành, chưa cần. Đo chữ trên kính: 74 % paper trên trang chữ mờ vẫn ≥ 4,5:1 cho `ink`.
+- **Trong cột bên cũng thế, với inset 16** (17/09, chủ: "align với các thành phần khác"): ô tìm, dòng đếm, pill tab
+  đều `px-4`; track của Mục lục và Tìm (`ListRow dense`, inset 10) là `px-1.5`, hàng ghi chú (inset 8) outdent `-mx-2`
+  — đo: ô tìm 16 · dòng đếm 16 · chữ hàng đầu 16 · pill 16. Trước đó hai danh sách để track `px-4` nên chữ đứng ở 26.
 - **Panel là DANH SÁCH DÒNG** (mục lục, tìm trong sách, ghi chú) theo cùng luật, chỉ khác cách đạt tới 24: header và ô
   nhập `px-6`, còn track của danh sách hẹp hơn đúng phần inset của hàng (`ListRow dense` = 10 px ⇒ `px-3.5`; hàng ghi chú
   = 8 px ⇒ `px-5`), để CHỮ của hàng thẳng hàng với tiêu đề. Cùng `radius="sheet"` (chủ, 06/09: "đồng bộ").
