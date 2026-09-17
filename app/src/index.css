@@ -328,6 +328,14 @@
   backdrop-filter: blur(28px) saturate(1.5);
 }
 
+/* In the Tauri window the body is clear and the side column shows macOS's
+   own sidebar material (the window is transparent and asks for the
+   `sidebar` effect); the content column and the first-run screen paint
+   the ground themselves, so the material lives in the column and nowhere
+   else. A browser has no material: the column keeps its solid `column`. */
+html[data-host="window"] body { background: transparent; }
+html[data-host="window"] aside.bg-column { background: transparent; }
+
 @utility hover-wash {
   &:hover {
     background-image: linear-gradient(var(--color-wash), var(--color-wash));
@@ -416,7 +424,10 @@ body {
   font-size: 14px;
   /* The desk is the DS neutral, exactly - the whole-window material
      diluted the ramp's tone however low the bleed, so it was retired (owner's call, 2026-09-01). Any future material lives in a bounded
-     region, never under the entire page. */
+     region, never under the entire page: since 17/09 that region is the
+     side column (below), and in the window the body is clear so the
+     column can show the Mac's sidebar material while every other region
+     paints `ground` itself. */
   background: var(--app-ground, #FFFFFF);
   color: var(--text-color-neutral-primary, #21262D);
   -webkit-font-smoothing: antialiased;

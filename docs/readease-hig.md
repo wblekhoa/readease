@@ -918,9 +918,13 @@ ngại đó.
   DANH SÁCH NƠI CHỐN trong sách (mục lục · ghi chú · tìm). Cột là một phần của layout: nội dung đứng bên phải và
   bị ĐẨY, không có gì đè lên gì. Không dùng cho bảng thiết lập (vẫn popover neo nút, §3.9d); màn đầu tiên
   (Setup) không có cột.
-- **Anatomy** (`patterns.tsx::SideColumn`): gốc app = `flex` hàng `[aside][content]`; *aside* rộng **240**, nền
-  **màu nền trang** (`--app-column` = `--app-ground`: trắng ở sáng — chủ 16/09 "background sidebar là màu
-  trắng" — n00 ở tối; bản n05 xám chỉ sống một giờ), viền phải hairline `edge` là thứ duy nhất ngăn cột với
+- **Anatomy** (`patterns.tsx::SideColumn`): gốc app = `flex` hàng `[aside][content]`; *aside* rộng **240**, nền = **vật liệu sidebar của macOS**
+  (17/09, chủ: "sidebar sẽ có background blur" — `NSVisualEffectView` material `sidebar` qua `windows[].windowEffects`
+  của Tauri, cửa sổ `transparent: true` + `app.macOSPrivateApi: true`; cột trong suốt để vật liệu lộ ra, phần còn lại
+  của trang tự sơn `ground` — vật liệu chỉ sống trong VÙNG cột, không dưới cả trang: đó là lý do bản material toàn cửa
+  sổ bị bỏ 01/09 "làm loãng tông của desk"); cửa sổ đổi appearance theo theme của app (`setTheme`) để vật liệu sáng/tối
+  đúng theme kể cả khi khác hệ. Trong trình duyệt (mock, audit) không có vật liệu → cột lại là `--app-column`
+  (= `--app-ground`: trắng ở sáng — chủ 16/09 — n00 ở tối). Viền phải hairline `edge` là thứ duy nhất ngăn cột với
   trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
   đo 16/09); ba tầng — *đầu* **60 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
   đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 29}** → tâm

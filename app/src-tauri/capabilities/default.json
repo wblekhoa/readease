@@ -11,6 +11,7 @@
     "macos-permissions:default",
     "dialog:allow-open",
     "core:window:allow-start-dragging",
-    "core:window:allow-internal-toggle-maximize"
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-set-theme"
   ]
 }

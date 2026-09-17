@@ -7,7 +7,8 @@ import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn
 import { useCover } from "./ui/useCover";
 import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
-import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
+import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
 import {
@@ -113,6 +114,14 @@ function useAppearance(): [Theme, () => void, ThemePreference, (preference: Them
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  // The window's own appearance follows the choice too: the sidebar
+  // material behind the column is the Mac's, and painted for the window's
+  // appearance, not the page's - an app in dark over a light desktop would
+  // otherwise get a light frosted column. "System" hands the choice back.
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    void getCurrentWindow().setTheme(preference === "system" ? null : preference).catch(() => undefined);
+  }, [preference]);
   const toggle = useCallback(() => {
     const next = nextTheme(theme);
     rememberThemePreference(next);
@@ -1339,7 +1348,7 @@ export default function App() {
        beside the side column; the insets are measured inside it. */}
     <div
       ref={shell}
-      className="relative min-w-0 flex-1 overflow-hidden"
+      className="relative min-w-0 flex-1 overflow-hidden bg-ground"
       style={{ "--shell-top-h": "72px", "--shell-bottom-h": showFooter ? "72px" : "0px" } as CSSProperties}
     >
       {/* The window's title bar is an overlay, so this strip is what a
