@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
-import { GradientBlur, MenuButton, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
+import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
+import { useCover } from "./ui/useCover";
 import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
 import { WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
@@ -131,6 +132,22 @@ function useAppearance(): [Theme, () => void, ThemePreference, (preference: Them
 function anchor(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
   return { centre: rect.left + rect.width / 2, top: rect.top };
+}
+
+/** A row of the column's "Đang đọc" group. The cover is fetched here, per
+ * row, through the same cache the shelf fills - so a document already seen
+ * on the shelf costs nothing to draw again. */
+function ReadingNowRow({ book, onPress }: { book: LibraryBook; onPress: () => void }) {
+  const cover = useCover(book.id);
+  return (
+    <RailDocument
+      title={book.title}
+      cover={cover}
+      progress={book.progress_ratio}
+      chapter={book.progress_chapter}
+      onPress={onPress}
+    />
+  );
 }
 
 export default function App() {
@@ -1303,9 +1320,9 @@ export default function App() {
             {readingNow.length > 0 && (
               <RailGroup title={text("sidebar.reading")}>
                 {readingNow.map((book) => (
-                  <RailItem
+                  <ReadingNowRow
                     key={book.id}
-                    label={book.title}
+                    book={book}
                     onPress={() => { setTab("library"); setPosition(null); setOpenBook(book); }}
                   />
                 ))}

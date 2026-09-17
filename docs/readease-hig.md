@@ -913,8 +913,14 @@ ngại đó.
   đo 16/09); ba tầng — *đầu* 52 px là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
   đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` {20, 20}) và
   nút thu/mở ở mép phải; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
-  `ink`, luật state layer §2) rồi nhóm **Đang đọc** (tối đa 5 sách có tiến độ, thứ tự `orderShelf`, bìa nhỏ +
-  tên + chương; engine chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ); trong sách: `SegmentedControl compact`
+  `ink`, luật state layer §2) rồi nhóm **Đang đọc** (tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
+  chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ). Mục đích của nhóm là **cầm lại đúng chỗ**, nên mỗi hàng
+  là `RailDocument` (17/09; trước đó chỉ là tên bị cắt một dòng): *bìa nhỏ* 24×36 (2:3, bo 3 px, `MiniCover`-lite:
+  ảnh thật hoặc panel `band` có gáy) mang **dải tiến độ 2 px** ở mép dưới (`brand` trên `wash`) — cùng ngôn ngữ với
+  vạch dưới bìa ở kệ; *tên* tối đa **hai dòng** (`line-clamp-2`, tên tài liệu tiếng Việt dài, một dòng cắt mất phần
+  phân biệt "— bản nháp thứ ba"), `title=` tên đầy đủ; *dòng dữ kiện* xs `ink-mute`: "42% · Chương 3" (phần trăm
+  rồi chương, chương cắt một dòng; thiếu cả hai thì bỏ dòng; `ink-faint` đo 1,76:1 trên nền tối — không đọc được — nên dòng này cũng `ink-mute`, phân cấp bằng cỡ chữ). Màu như `RailItem`: `ink-mute` → `ink` khi hover,
+  nền `wash`; không có trạng thái "đang chọn" vì mở tài liệu là cột đổi sang danh sách của nó; trong sách: `SegmentedControl compact`
   — mỗi tab mang glyph của nút toolbar tương ứng (▤ · ghi chú · kính lúp), **tab đang mở mới có nhãn** ("Ghi chú · 6"),
   hai tab kia chỉ còn icon (chủ 16/09: "khi active thì mới có label, còn bình thường sẽ là dạng icon only" — rãnh 216
   px không đủ cho ba nhãn, "Tìm" từng bị cắt) rồi danh sách của tab đó — Reader vẫn là CHỦ ba danh sách và render chúng

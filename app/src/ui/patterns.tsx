@@ -870,6 +870,59 @@ export function RailItem({
   );
 }
 
+/** One document in the column's "Đang đọc" group: the row you pick a
+ * document back up from (HIG 3.16, 17/09).
+ *
+ * What the purpose asks for and a truncated name alone did not give: the
+ * cover, which is how a document is recognised before its name is read;
+ * two lines of the name, because the part that tells two copies apart
+ * ("— bản nháp thứ ba") is the part a single line cut; and where you got
+ * to - a 2 px strip along the cover's foot, the same language as the bar
+ * under a shelf cover, with the figure and the chapter as one quiet line.
+ * No "chosen" state: opening a document turns the column into its lists.
+ */
+export function RailDocument({
+  title,
+  cover,
+  progress = null,
+  chapter = null,
+  onPress,
+}: {
+  title: string;
+  /** undefined = still loading, null = the document has none. */
+  cover: string | null | undefined;
+  progress?: number | null;
+  chapter?: string | null;
+  onPress: () => void;
+}) {
+  const percent = progress === null ? null : Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  const meta = [percent !== null && `${percent}%`, chapter].filter(Boolean).join(" · ");
+  return (
+    <button
+      onClick={onPress}
+      title={title}
+      className="flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-3 py-2 text-left text-ink-mute transition-colors hover:bg-wash hover:text-ink"
+    >
+      <span className="relative h-9 w-6 shrink-0 overflow-hidden rounded-[3px] bg-band shadow-edge">
+        {cover ? (
+          <img src={cover} alt="" className="h-full w-full object-cover" draggable={false} />
+        ) : (
+          <span className="absolute inset-y-0 left-0 w-[3px] bg-wash" />
+        )}
+        {percent !== null && (
+          <span className="absolute inset-x-0 bottom-0 h-[2px] bg-wash">
+            <span className="block h-full bg-progress" style={{ width: `${percent}%` }} />
+          </span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-sm leading-snug">{title}</span>
+        {meta && <span className="mt-0.5 block truncate text-xs text-ink-mute">{meta}</span>}
+      </span>
+    </button>
+  );
+}
+
 /** A named group of rail items - "Đang đọc" - with the heading Codex gives
  * its Pinned and Recents: small, quiet, above the rows. */
 export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
