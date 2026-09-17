@@ -9,7 +9,7 @@
  */
 import { useMemo, useState } from "react";
 import { text } from "../i18n";
-import { Input } from "./controls";
+import { SearchField } from "./controls";
 import { ListRow } from "./patterns";
 import { MAX_HITS, MIN_QUERY, foldQuery, searchBook, type SearchChapter, type SearchHit } from "./textSearch";
 
@@ -38,15 +38,20 @@ export function SearchPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pb-4">
-        <Input
+        {/* The search box that says it is one (controls.tsx::SearchField):
+            36 tall with the lens inside, the same field the voices list
+            searches with - the plain 30 px Input it replaced read as a row
+            in a form (owner, 17/09: "input size lớn hơn xíu"). Escape clears
+            the query here, before anything around the column sees it. */}
+        <SearchField
           autoFocus
-          type="search"
           value={query}
+          label={text("reader.search")}
           placeholder={text("reader.search_placeholder")}
-          aria-label={text("reader.search")}
           onChange={(event) => { setQuery(event.target.value); setChosen(null); }}
           onKeyDown={(event) => {
             if (event.key === "Enter") pick(chosen === null ? 0 : Math.min(hits.length - 1, chosen + 1));
+            if (event.key === "Escape" && query) { event.stopPropagation(); setQuery(""); setChosen(null); }
           }}
           className="w-full"
         />
