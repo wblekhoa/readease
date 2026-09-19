@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.8
+
+Voice samples that play without a stutter, a reading of a selection that
+says so only while it reads and offers the way back, and a permission
+card that goes the moment the grant is seen. Installs over 0.1.7.
 
 - Read a selection: "Reading your selection…" now ends when the reading
   ends - it used to stay on the screen after the voice fell silent - and
