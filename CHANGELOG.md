@@ -4,6 +4,19 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- Read a selection: "Reading your selection…" now ends when the reading
+  ends - it used to stay on the screen after the voice fell silent - and
+  carries a **Back to reading position** button that opens the passage
+  being read and brings the part the voice is at to the middle. The page
+  follows the voice until you scroll by hand; the button starts the
+  following again.
+- Accessibility: the permission card disappears the moment the grant is
+  seen - the app asks again whenever its window comes back and every
+  1.5 s while the card is up - instead of staying until you left the
+  screen. No relaunch is needed.
+
 ## 0.1.7
 
 The side column on the Mac's own sidebar material, glass panels, search

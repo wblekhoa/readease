@@ -234,7 +234,19 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 ### 3.6 ConfirmInline · 3.7 PermissionCard · 3.8 Màn đầu tiên (từng là Setup gate)
 ConfirmInline: thay chỗ trailing, hành động huỷ = **danger** + "Giữ lại" trung tính; không modal
 cho việc một hàng. PermissionCard: Surface + note + hành động chính brand + đường "Cài đặt hệ
-thống"; nói rõ phải thoát-mở-lại (luật TCC).
+thống". **Quyền được dò SỐNG, thẻ biến ngay khi có quyền** (19/09, chủ: "user đã cấp quyền rồi thì ẩn khung
+đó đi nhanh chóng chứ đừng giữ lại"): trước đó chỉ hỏi `AXIsProcessTrusted` một lần lúc mount, nên người
+bật quyền trong Cài đặt hệ thống quay lại vẫn thấy thẻ cho tới khi rời màn. Nay hỏi lại khi cửa sổ focus /
+hiện lại, và cứ 1,5 s một lần trong lúc thẻ đang hiện; có quyền → thẻ và ba bước hướng dẫn biến ngay, một
+dòng "Đã có quyền Trợ năng." hiện 3 s rồi tắt. Câu "thoát rồi mở lại" chỉ còn là lối thoát *nếu phím tắt
+vẫn không đọc* (AX trust được macOS đánh giá lại mỗi lần gọi; phím tắt toàn cục qua Carbon không cần AX),
+không phải bước bắt buộc.
+
+**Trạng thái "Đang đọc phần bạn vừa chọn…" trên màn Quét đọc** (19/09): là callout `info` **kèm nút "Tới đoạn
+đang đọc"** (mở đoạn đang đọc nếu đang gập, cuộn phần giọng đang ở vào giữa) — không còn là dòng `error`; và
+nó **tắt khi đọc xong**: hiển thị suy ra từ máy trạng thái phát (`reading ≠ idle` và nguồn là quét đọc), không
+từ sự kiện `external:status` "reading" của host — sự kiện ấy không bao giờ được xoá nên dòng "Đang đọc…"
+từng đứng lại mãi sau khi giọng đã im (chủ: "đọc hết thì tự động stop").
 
 Màn đầu tiên (đổi 15/09): hiện khi máy **chưa đọc được gì** (không mô hình nào, không khoá API) —
 và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới khi tải xong VieNeu. Chủ bỏ gate

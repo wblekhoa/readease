@@ -1623,7 +1623,18 @@ export default function App() {
           <External
             history={externalHistory}
             onClearHistory={() => setExternalHistory([])}
-            status={externalStatus}
+            /* "reading" is a fact of the playback state - the voice IS
+               reading a scanned passage, however it was started - not the
+               host's capture event, which says a capture started and never
+               says it ended: left to it, the screen kept announcing a
+               reading long after the voice fell silent (owner, 19/09). The
+               other statuses are the host's failures and stay until the
+               next capture. */
+            status={
+              reading !== "idle" && origin?.kind === "external"
+                ? "reading"
+                : externalStatus === "reading" ? null : externalStatus
+            }
             shortcut={accelerator}
             onChangeShortcut={changeShortcut}
             /* `position` is app-wide; it only names a part of a SCANNED

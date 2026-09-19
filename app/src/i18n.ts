@@ -493,8 +493,8 @@ export const TEXT = {
     "Accessibility permission granted.",
   ],
   "external.permission_restart": [
-    "Sau khi bật quyền, hãy thoát ReadEase rồi mở lại để phím tắt hoạt động.",
-    "After granting, quit ReadEase and reopen it so the shortcut can work.",
+    "Bật xong là dùng được ngay. Nếu phím tắt vẫn không đọc, thoát ReadEase rồi mở lại.",
+    "It works as soon as it is granted. If the shortcut still does not read, quit ReadEase and reopen it.",
   ],
   "external.open_system_settings": ["Cài đặt hệ thống", "System Settings"],
   "external.open_settings": ["Mở Cài đặt quyền", "Open permission settings"],
