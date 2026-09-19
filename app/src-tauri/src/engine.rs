@@ -80,7 +80,24 @@ const AUDIO_QUEUE_FRAMES: usize = 48;
 /// queue is unbounded - so without this the whole book races ahead, the
 /// "backpressure" this module claims never engages, and the highlight (which
 /// the engine emits as it SYNTHESISES) runs minutes ahead of the voice.
-const PLAYER_LOOKAHEAD: usize = 2;
+///
+/// Four frames, not two (19/09): at two the device held 0.4-1 s, and a
+/// model that stumbles for longer than that - the fp32 build on a busy
+/// Mac - left the speakers with nothing to say for a moment, which the
+/// owner heard as a stutter in the voice samples. Positions are announced
+/// by frames finished, not by this number, so the highlight keeps time.
+const PLAYER_LOOKAHEAD: usize = 4;
+/// How much audio a reading gathers before its first sound.
+///
+/// The model's first chunks arrive at about the speed they play (measured
+/// 19/09 on the shipped fp32 build: 0.23 s of audio, then 0.24 s until the
+/// next; 0.28 s, then 0.32 s) - so a device that starts on the first chunk
+/// runs dry twice in the first second. Holding this much first costs the
+/// first sound that long and buys an unbroken one. A reading shorter than
+/// this plays as soon as its last frame is in; a slow engine is not waited
+/// for past `PREBUFFER_MAX_WAIT`, and a full lookahead ends the hold too.
+const PREBUFFER_SECS: f32 = 0.6;
+const PREBUFFER_MAX_WAIT: Duration = Duration::from_millis(1500);
 /// How many frames the engine may have in flight before it must wait for
 /// credits: one less than the queue, so the reading's own `Done` frame can
 /// always be enqueued behind a full window without blocking the reader.
@@ -306,6 +323,14 @@ fn drain(
     // the device still holds, that is how many it has finished.
     let mut appended: u64 = 0;
     let mut due: VecDeque<DuePosition> = VecDeque::new();
+    // The prebuffer: which reading (by epoch) is being held back from the
+    // speakers, how much of it has been gathered, and since when.
+    let mut hold: Option<(u64, f32, Instant)> = None;
+    let release = |hold: &mut Option<(u64, f32, Instant)>| {
+        if hold.take().is_some() && !paused.load(Ordering::SeqCst) {
+            sink.play();
+        }
+    };
     let announce = |due: &mut VecDeque<DuePosition>, appended: u64| {
         let played = appended.saturating_sub(sink.queued() as u64);
         while due.front().is_some_and(|next| next.at <= played) {
@@ -328,6 +353,11 @@ fn drain(
             Ok(frame) => frame,
             Err(RecvTimeoutError::Timeout) => {
                 announce(&mut due, appended);
+                // An engine too slow to fill the prebuffer is not waited
+                // for: what has been gathered plays.
+                if hold.is_some_and(|(_, _, since)| since.elapsed() >= PREBUFFER_MAX_WAIT) {
+                    release(&mut hold);
+                }
                 continue;
             }
             Err(RecvTimeoutError::Disconnected) => break,
@@ -340,9 +370,21 @@ fn drain(
                 // Room on the queue, handed back the moment it is free: the
                 // engine may now write one more frame.
                 feedback.credit(read_id);
+                // A reading's first frame: hold the device until enough of
+                // the reading is in it to play without running dry. The
+                // device is paused for it explicitly - after a `Done` it is
+                // still playing, and would speak this frame on its own.
+                if hold.as_ref().is_none_or(|(held, _, _)| *held != stamped) {
+                    hold = Some((stamped, 0.0, Instant::now()));
+                    sink.pause();
+                }
                 // Keep only a little audio ahead of the ear. This is what
                 // finally makes the queue fill, the engine's writes block,
-                // and synthesis walk in step with playback.
+                // and synthesis walk in step with playback. A held device
+                // cannot drain, so the hold ends before this could wait.
+                if sink.queued() > PLAYER_LOOKAHEAD {
+                    release(&mut hold);
+                }
                 while sink.queued() > PLAYER_LOOKAHEAD && current(stamped) {
                     announce(&mut due, appended);
                     std::thread::sleep(POSITION_POLL);
@@ -350,10 +392,16 @@ fn drain(
                 if !current(stamped) {
                     continue;
                 }
+                let seconds = samples.len() as f32 / SAMPLE_RATE as f32;
                 sink.append(samples);
                 appended += 1;
-                // Only the person may un-pause. Appending must not.
-                if !paused.load(Ordering::SeqCst) {
+                if let Some((_, gathered, _)) = hold.as_mut() {
+                    *gathered += seconds;
+                    if *gathered >= PREBUFFER_SECS {
+                        release(&mut hold);
+                    }
+                } else if !paused.load(Ordering::SeqCst) {
+                    // Only the person may un-pause. Appending must not.
                     sink.play();
                 }
                 announce(&mut due, appended);
@@ -367,6 +415,11 @@ fn drain(
                 announce(&mut due, appended);
             }
             Frame::Done { epoch: stamped, message } => {
+                // A reading shorter than the prebuffer - a voice sample, one
+                // line - is whole now: play it.
+                if hold.is_some_and(|(held, _, _)| held == stamped) {
+                    release(&mut hold);
+                }
                 // Wait for the speakers, not the model. A stop meanwhile
                 // (epoch moved) makes this reading nobody's business: the
                 // stop path has already told the shell what it needs.
@@ -775,6 +828,9 @@ mod tests {
     struct FakeSink {
         queued: AtomicUsize,
         appended: Mutex<Vec<usize>>,
+        /// Times the drain loop told the device to play: the prebuffer's
+        /// receipt is that this stays at zero until enough is gathered.
+        plays: AtomicUsize,
     }
 
     impl FakeSink {
@@ -798,7 +854,9 @@ mod tests {
             self.appended.lock().unwrap().push(samples.len());
             self.queued.fetch_add(1, Ordering::SeqCst);
         }
-        fn play(&self) {}
+        fn play(&self) {
+            self.plays.fetch_add(1, Ordering::SeqCst);
+        }
         fn pause(&self) {}
         fn clear(&self) {
             self.queued.store(0, Ordering::SeqCst);
@@ -872,6 +930,7 @@ mod tests {
         let sink = Arc::new(FakeSink {
             queued: AtomicUsize::new(queued),
             appended: Mutex::new(Vec::new()),
+            plays: AtomicUsize::new(0),
         });
         let recorder = Arc::new(RecordingShell { events: Mutex::new(Vec::new()) });
         let shell: Arc<dyn Shell> = recorder.clone();
@@ -967,6 +1026,75 @@ mod tests {
 
     fn chunk_line() -> String {
         json!({"event": "chunk", "id": 1, "pcm": BASE64.encode([0u8; 4])}).to_string()
+    }
+
+    /// A chunk of `seconds` of silence at the pipe's rate.
+    fn chunk_line_of(seconds: f32) -> String {
+        let bytes = vec![0u8; (seconds * SAMPLE_RATE as f32) as usize * 4];
+        json!({"event": "chunk", "id": 1, "pcm": BASE64.encode(bytes)}).to_string()
+    }
+
+    /// The voice samples stuttered (owner, 19/09): the model's first chunks
+    /// arrive about as fast as they play, and a device that starts on the
+    /// first one runs dry between them. The first frames of a reading are
+    /// held until `PREBUFFER_SECS` of it is in the device.
+    #[test]
+    fn a_reading_holds_its_first_frames_until_the_prebuffer_is_full() {
+        let h = harness(0, false);
+        h.lines.send(chunk_line_of(0.2)).unwrap();
+        h.lines.send(chunk_line_of(0.2)).unwrap();
+        assert!(wait_until(|| h.sink.appended.lock().unwrap().len() == 2, Duration::from_secs(2)));
+        std::thread::sleep(Duration::from_millis(60));
+        assert_eq!(h.sink.plays.load(Ordering::SeqCst), 0, "the device was started on 0.4 s of audio");
+        h.lines.send(chunk_line_of(0.3)).unwrap();
+        assert!(
+            wait_until(|| h.sink.plays.load(Ordering::SeqCst) == 1, Duration::from_secs(2)),
+            "0.7 s gathered and the device still held"
+        );
+        // Once released, a reading is not held again: the next frame plays on.
+        h.lines.send(chunk_line_of(0.1)).unwrap();
+        assert!(wait_until(|| h.sink.plays.load(Ordering::SeqCst) == 2, Duration::from_secs(2)));
+    }
+
+    /// A voice sample is shorter than the prebuffer: it plays the moment
+    /// its last frame is in, not after a wait for audio that never comes.
+    #[test]
+    fn a_reading_shorter_than_the_prebuffer_plays_when_it_is_whole() {
+        let h = harness(0, false);
+        h.lines.send(chunk_line_of(0.1)).unwrap();
+        assert!(wait_until(|| h.sink.appended.lock().unwrap().len() == 1, Duration::from_secs(2)));
+        std::thread::sleep(Duration::from_millis(60));
+        assert_eq!(h.sink.plays.load(Ordering::SeqCst), 0);
+        h.lines.send(final_reply_line()).unwrap();
+        assert!(
+            wait_until(|| h.sink.plays.load(Ordering::SeqCst) == 1, Duration::from_secs(2)),
+            "the whole reading was in the device and it stayed held"
+        );
+    }
+
+    /// A slow engine is not waited for past `PREBUFFER_MAX_WAIT`: what has
+    /// been gathered plays rather than the speakers staying silent.
+    #[test]
+    fn the_hold_never_outwaits_a_slow_engine() {
+        let h = harness(0, false);
+        h.lines.send(chunk_line_of(0.1)).unwrap();
+        assert!(wait_until(|| h.sink.appended.lock().unwrap().len() == 1, Duration::from_secs(2)));
+        assert_eq!(h.sink.plays.load(Ordering::SeqCst), 0);
+        assert!(
+            wait_until(|| h.sink.plays.load(Ordering::SeqCst) == 1, PREBUFFER_MAX_WAIT + Duration::from_millis(500)),
+            "a reading was held for ever behind a slow engine"
+        );
+    }
+
+    /// The person's pause outranks the hold's release: gathering enough
+    /// audio while paused must not start the device.
+    #[test]
+    fn a_full_prebuffer_does_not_unpause_the_person() {
+        let h = harness(0, true);
+        h.lines.send(chunk_line_of(0.7)).unwrap();
+        assert!(wait_until(|| h.sink.appended.lock().unwrap().len() == 1, Duration::from_secs(2)));
+        std::thread::sleep(Duration::from_millis(60));
+        assert_eq!(h.sink.plays.load(Ordering::SeqCst), 0, "appending un-paused the person");
     }
 
     fn position_line(segment: &str) -> String {

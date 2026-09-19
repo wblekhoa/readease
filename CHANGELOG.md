@@ -12,6 +12,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   being read and brings the part the voice is at to the middle. The page
   follows the voice until you scroll by hand; the button starts the
   following again.
+- The voice samples no longer stutter: a reading's first sound waits
+  until 0.6 s of it is in the speakers (the model's first chunks arrive
+  about as fast as they play, and a device that started on the first one
+  ran dry between them), a short sample plays the moment it is whole,
+  and the player keeps twice as much audio ahead of the ear.
 - Accessibility: the permission card disappears the moment the grant is
   seen - the app asks again whenever its window comes back and every
   1.5 s while the card is up - instead of staying until you left the
