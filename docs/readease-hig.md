@@ -1147,7 +1147,8 @@ trang · đổi tab cột · pill của segmented KHÔNG trượt (bản `compac
 **Cơ chế** (`ui/motion.tsx` + `index.css`):
 - `Presence open={…}`: giữ con đã render thêm `--dur-exit` sau khi `open` tắt (con cuối cùng được nhớ, vì props của nó
   có thể đã mất — `speechSettings` null), đóng dấu `data-state="open|closed"` lên một wrapper `display: contents`,
-  `pointer-events: none` trong lúc ra. Con mount ở trạng thái `closed` rồi lật sang `open` ở frame kế — KHÔNG
+  `pointer-events: none` cho MỌI thứ bên trong trong lúc ra (kể cả lớp bắt click sau editor ghi chú, nếu không nó nuốt cú
+  bấm kế tiếp suốt 150 ms). Con mount ở trạng thái `closed` rồi lật sang `open` ở frame kế — KHÔNG
   `@starting-style` (WKWebView ẩn làm timeline đứng, phần tử kẹt ở trạng thái đầu, đo 16/09 §3.16).
 - `Surface layer="popover | sheet | menu"`: class `.layer-*` mang transition trên **`opacity` + `scale`** (thuộc tính
   riêng, không đụng `translate` đang định vị `-translate-x-1/2` của Chi phí và Apple Books); gốc scale qua class

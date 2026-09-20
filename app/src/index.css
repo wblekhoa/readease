@@ -302,9 +302,15 @@ html[data-hidden] *::after {
 [data-state="closed"] .layer-menu,
 [data-state="closed"] .scrim {
   opacity: 0;
-  pointer-events: none;
   transition-duration: var(--dur-exit);
   transition-timing-function: var(--ease-in);
+}
+/* Everything inside a leaving layer is dead, not only the surface: the
+   note editor's click-catcher behind it would otherwise swallow the next
+   click for the length of the fade. Nesting still resolves - an open sheet
+   with a closing menu inside kills only the menu's subtree. */
+[data-state="closed"] * {
+  pointer-events: none;
 }
 /* A popover grows out of the control that opened it (its `origin-*` class
    says which corner) and shrinks back a little less than it grew - the
