@@ -1342,6 +1342,13 @@ trong product** có cùng lúc, không màn nào phải nhớ tự thêm. Vẽ q
 một mình KHÔNG sống sót qua một tổ tiên có transform. Đo trước rồi mới kẹp, nếu không nút ở sát mép sẽ
 canh giữa tooltip ra nửa ngoài màn hình (đo: nút nền tối ở x=1004, tooltip 912-1048 trong cửa sổ 1060).
 **Chữ tooltip là HÀNH ĐỘNG, ngắn**: "Chuyển sang lật trang", không phải "Đang cuộn · bấm để lật trang".
+**Tooltip đợi một nhịp như help tag của macOS** (20/09, chủ duyệt sau khi được hỏi): rê vào **600 ms** mới hiện —
+help tag của Apple cũng chờ, và tooltip hiện ngay từng làm cả toolbar nhấp nháy tên khi con trỏ lướt qua một hàng
+nút. **Chuỗi nóng**: một tooltip vừa hiện thì nút kế bên hiện *ngay* nếu tới trong 400 ms (đúng cách macOS làm khi
+đã "mở" help tag, người đang dò tên từng nút không phải chờ lại từng cái). Focus bàn phím hiện ngay (không ai gõ Tab
+để rồi chờ). Rời nút trước hạn thì không hiện gì và không nợ gì (timer bị huỷ). Ghi chú 03/09 phía trên chê tooltip
+trình duyệt "đợi cả giây" — cái bị chê là KIỂU VẼ của hệ và việc không hiện trên cảm ứng, không phải độ trễ; độ trễ
+là đúng.
 *Còn thiếu*: nút **đang bị vô hiệu** không hiện tooltip — trình duyệt không phát sự kiện chuột trên control
 bị disable; muốn có phải bọc thêm một thẻ ngoài.
 

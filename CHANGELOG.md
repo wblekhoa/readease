@@ -35,6 +35,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   it.)
 - Releases now ship a disk image (`.dmg`, drag to Applications) beside
   the zip, both notarized.
+- Tooltips wait a beat before appearing, like the Mac's own help tags,
+  and then follow the pointer along a row at once; sweeping the toolbar
+  no longer flashes a name under every button.
 
 ## 0.1.9
 

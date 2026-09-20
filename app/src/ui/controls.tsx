@@ -12,7 +12,7 @@
  * `npm run audit:ui` fails the build if a raw control signature appears
  * outside this folder - the gate that keeps this the single source.
  */
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LockIcon, SearchIcon } from "./icons";
 import { createPortal } from "react-dom";
 import type {
@@ -109,6 +109,14 @@ export function Button({
  * ancestor. Measured, then clamped, because a button at the edge of the
  * window would otherwise centre its tooltip half off the screen.
  */
+/** The Mac's help-tag beat before a pointer tooltip appears. */
+const TOOLTIP_DELAY = 600;
+/** Within this long of a tooltip closing, the next one appears at once. */
+const TOOLTIP_CHAIN = 400;
+/** When any icon button's tooltip last showed or closed - shared, because
+ * the chain belongs to the pointer moving along a row, not to one button. */
+let lastShown = -Infinity;
+
 export function IconButton({
   className = "",
   title,
@@ -130,6 +138,16 @@ export function IconButton({
   >(null);
   const [box, setBox] = useState<{ left: number; top: number } | null>(null);
   const bubble = useRef<HTMLDivElement>(null);
+  /* The pointer's tooltip waits a beat, like the Mac's own help tags (HIG
+     3.9c, 20/09): TOOLTIP_DELAY after the pointer arrives, at once when a
+     tooltip was showing a moment ago (the person is reading the row), at
+     once on keyboard focus. Leaving early cancels the timer and shows
+     nothing. */
+  const timer = useRef<number | null>(null);
+  const cancel = () => {
+    if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
+  };
+  useEffect(() => cancel, []);
 
   useLayoutEffect(() => {
     if (!tip || !bubble.current) { setBox(null); return; }
@@ -167,17 +185,25 @@ export function IconButton({
       above: mark.top - LAYER_GAP,
       below: mark.bottom + LAYER_GAP,
     });
+    lastShown = performance.now();
   };
+  const hover = (element: HTMLElement) => {
+    if (!title) return;
+    cancel();
+    if (performance.now() - lastShown < TOOLTIP_CHAIN) { open(element); return; }
+    timer.current = window.setTimeout(() => { timer.current = null; open(element); }, TOOLTIP_DELAY);
+  };
+  const close = () => { cancel(); setTip(null); if (tip) lastShown = performance.now(); };
 
   return (
     <>
       <button
         type="button"
         className={`flex h-8 w-8 items-center justify-center rounded-full text-ink-mute transition-colors hover-wash disabled:text-ink-faint ${className}`}
-        onMouseEnter={(event) => { open(event.currentTarget); onMouseEnter?.(event); }}
-        onMouseLeave={(event) => { setTip(null); onMouseLeave?.(event); }}
-        onFocus={(event) => { open(event.currentTarget); onFocus?.(event); }}
-        onBlur={(event) => { setTip(null); onBlur?.(event); }}
+        onMouseEnter={(event) => { hover(event.currentTarget); onMouseEnter?.(event); }}
+        onMouseLeave={(event) => { close(); onMouseLeave?.(event); }}
+        onFocus={(event) => { cancel(); open(event.currentTarget); onFocus?.(event); }}
+        onBlur={(event) => { close(); onBlur?.(event); }}
         {...rest}
       />
       {tip && title && createPortal(
