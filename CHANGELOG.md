@@ -13,7 +13,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   one in the light theme instead of opaque blocks; the tab track and the
   search box are recessed wells; the column's hairlines are alpha too;
   the chosen tab no longer carries a drop shadow. Hover stays one step
-  under "chosen", so pointing at the open entry now shows something.
+  under "chosen", so the open entry and a hovered neighbour are no
+  longer the same colour.
 
 ## 0.1.8
 

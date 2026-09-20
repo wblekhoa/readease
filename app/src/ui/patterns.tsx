@@ -877,8 +877,8 @@ export function Scrim() {
 
 /** One entry of the column's navigation: a glyph and a name, painted `tint`
  * + `ink` when it is the screen on show - the column's "you are here", one
- * rung over the hover wash (HIG 3.16; it was `wash`, and a pointer over the
- * open entry then changed nothing). */
+ * rung over the hover wash (HIG 3.16; it was `wash`, so the open entry and
+ * a hovered neighbour were the same colour). */
 export function RailItem({
   icon,
   label,

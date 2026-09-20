@@ -66,7 +66,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   thể là na10. *Bài học: đừng chép lại một con số cũ như thể nó là chân lý — chép cả lý do, rồi đo lại
   trên nền hiện tại.*
 - **Trên vật liệu (cột bên, 20/09) "đang chọn" = phủ `tint` na20, một bậc trên hover** — không phải `band` đục:
-  fill đục trên kính là tấm che, và hover/chọn cùng na10 thì rê chuột lên mục đang chọn không thấy gì (§3.16).
+  fill đục trên kính là tấm che, và chọn = hover cùng na10 thì mục đang chọn và mục bên cạnh đang rê chuột trùng màu (§3.16).
 - **Press luôn là một bậc TRÊN hover, dù hover là bao nhiêu**: ngón tay đang nhấn phải nặng hơn con trỏ
   lướt qua, và chỉ nặng trong lúc giữ. Nâng hover mà quên nâng press là lặng lẽ xoá mất trạng thái nhấn.
 - **Ô nhập chữ và select đeo vòng focus cả khi bấm chuột** (nút thì không) — đó là hành vi của
@@ -986,16 +986,16 @@ ngại đó.
   sổ bị bỏ 01/09 "làm loãng tông của desk"); cửa sổ đổi appearance theo theme của app (`setTheme`) để vật liệu sáng/tối
   đúng theme kể cả khi khác hệ. Trong trình duyệt (mock, audit) không có vật liệu → cột lại là `--app-column`
   (= `--app-ground`: trắng ở sáng — chủ 16/09 — n00 ở tối). Viền phải hairline `edge` là thứ duy nhất ngăn cột với
-  trang; hàng đang chọn `band`/`wash` vẫn đọc được trên nền đó (trên `band` thì hàng chương đang đọc biến mất,
-  đo 16/09); ba tầng — *đầu* **60 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
+  trang; hàng đang chọn đọc được trên nền đó (đo 16/09 trên cột đục: `band`/`wash` đọc, còn cột màu `band` thì hàng chương
+  đang đọc biến mất — từ 20/09 cột trên vật liệu dùng thang alpha `veil`/`wash`/`tint`, xem mục bên dưới); ba tầng — *đầu* **60 px** là vùng kéo cửa sổ (`data-tauri-drag-region`) chứa
   đèn giao thông của macOS (cửa sổ `titleBarStyle: Overlay`, `hiddenTitle`, `trafficLightPosition` **{20, 29}** → tâm
   đèn y ≈ 30 = tâm hàng toolbar của cột nội dung (pt-3 + 36/2; hàng từng ở 34 với pt-4 — chủ 17/09 "đưa navbar lên
   trên một xíu", đầu cột theo đó **60 px**). **`y` của tao ≈ TÂM đèn, không phải mép trên**: tao
   đặt chiều cao khung title bar = cao nút + y và giữ nguyên origin của nút trong khung, nên tâm ≈ y + 1 (đo trên bản
   cài 17/09: y 28 → tâm 28,5, vẫn cao hơn hàng 6 px). Trước là {20, 20} và đầu cột 52 px: khi cột thu, đèn cao hơn
   hàng "⇅ Thư viện" ~13 px và nút đầu tiên đứng sát đèn 4 px — chủ 17/09 "vị trí các nút window… chưa đẹp") và
-  nút thu/mở ở mép phải; **một đường ngang duy nhất** cho đèn · nút thu/mở · toolbar; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `wash` +
-  `ink`, luật state layer §2) rồi nhóm **Đang đọc** (nhãn nhóm = kiểu nhãn của `GroupedSection`: xs semibold IN HOA
+  nút thu/mở ở mép phải; **một đường ngang duy nhất** cho đèn · nút thu/mở · toolbar; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `tint` +
+  `ink` — 20/09, trước là `wash`; luật state layer §2) rồi nhóm **Đang đọc** (nhãn nhóm = kiểu nhãn của `GroupedSection`: xs semibold IN HOA
   `tracking-wide` `ink-mute` — chủ 17/09 "thử style khác" cho nhãn thường; tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
   chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ). Mục đích của nhóm là **cầm lại đúng chỗ**, nên mỗi hàng
   là `RailDocument` (17/09; trước đó chỉ là tên bị cắt một dòng): *bìa nhỏ* 24×36 (2:3, bo 3 px, `MiniCover`-lite:
@@ -1047,7 +1047,7 @@ ngại đó.
   và tên chương hai dòng dùng leading mặc định. Sửa: danh sách `flex-col gap-1` (4 px, cùng nhịp với nhóm điều hướng ở
   trang chủ), hàng `ListRow dense` cao hơn một nấc (`py-2`; 36 px với tên một dòng), tên chương `leading-snug`. Không
   thêm số trang/phần trăm cạnh chương (EPUB không có trang; Books cũng chỉ tô hàng đang đọc), không đổi màu chữ theo
-  chương — hàng đang đọc nói bằng `band` là đủ.
+  chương — hàng đang đọc nói bằng fill "đang chọn" của cột (`tint` từ 20/09, `band` trước đó) là đủ.
 - **Hàng kết quả tìm** (17/09, chủ: "phân tích và tối ưu design của item"): mục đích của hàng là *nhận ra đúng chỗ
   khớp trong một giây* — nên (1) chỗ khớp mang **đúng màu vàng của trang** (`mark[data-search]`, không phải chip `band`
   xám semibold như trước: cùng một thứ thì cùng một màu ở danh sách và trên trang); (2) lời quanh chỗ khớp là phụ →
@@ -1055,7 +1055,7 @@ ngại đó.
   heading="name"`), tên chương đứng một lần trên nhóm thay vì lặp "Chương 3 · Bộ mẫu trình bày" dưới từng hàng — Books
   cũng gom thế, và một màn chứa nhiều kết quả hơn; (4) dấu đầu dòng của đoạn danh sách ("• ", "1. ") bị cắt khỏi trích
   đoạn khi trích bắt đầu từ đầu đoạn — nó là dấu cho mắt trên trang, trong hàng kết quả chỉ là rác; (5) hàng `py-2`
-  thay `py-1.5` cho hai dòng trích thở. Hàng đang chọn vẫn `band`.
+  thay `py-1.5` cho hai dòng trích thở. Hàng đang chọn vẫn là fill "đang chọn" của cột (`tint` từ 20/09).
 - **Cột trên vật liệu: mọi fill là alpha của mực** (20/09, chủ: "update UI của sidebar theo hướng dùng các màu
   alpha neutral sáng, để phù hợp với background blur"): trên `NSVisualEffectView` vật liệu CHÍNH LÀ nền, nên một fill
   đục là một tấm che — nhìn bản 0.1.8: rãnh tab và hàng chương đang đọc là hai khối n20 đục nằm trên cột mờ, ô tìm là
@@ -1082,7 +1082,7 @@ ngại đó.
   cài trước khi duyệt. Hệ quả cho "một màu cho vị trí hiện tại": trên GIẤY vẫn là `band` đục (dòng đang đọc ở Reader);
   trên VẬT LIỆU là `tint` — cùng một nấc của thang, khác chất liệu; hai thứ không bao giờ đứng cạnh nhau trên cùng
   một nền. Mục điều hướng đang mở ở trang chủ đi từ `wash` lên `tint` cho cùng luật với chương đang đọc (trước đây
-  hover và đang mở cùng na10, rê chuột lên mục đang mở không thấy gì). Cơ chế: ba token vai trò `veil` · `tint` ·
+  mục đang mở và mục bên cạnh đang được rê chuột cùng một màu na10; nay cách nhau một bậc). Cơ chế: ba token vai trò `veil` · `tint` ·
   `edge-alpha` trong `index.css`, dùng TƯỜNG MINH ở từng chỗ — KHÔNG override token theo scope `aside`: tooltip của
   các nút trong cột là con DOM của `aside`, một override `paper` trong scope làm tooltip trong suốt (index.css ~205
   từng dính đúng lớp lỗi này); `SegmentedControl material` và `SearchField material` là biến thể có tên, ba chỗ dùng
