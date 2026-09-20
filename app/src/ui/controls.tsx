@@ -288,9 +288,17 @@ export function Input({
 export function SearchField({
   label,
   onEscape,
+  material = false,
   className = "",
   ...rest
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; onEscape?: () => void }) {
+}: InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  onEscape?: () => void;
+  /** On the side column's material (HIG 3.16): a recessed `veil` well with
+   * an alpha hairline, instead of a paper box - an opaque field on the
+   * blur reads as a hole in it. The sheets keep paper. */
+  material?: boolean;
+}) {
   return (
     <div className={`relative flex items-center ${className}`}>
       <SearchIcon className="pointer-events-none absolute left-3 h-4 w-4 text-ink-mute" />
@@ -305,7 +313,9 @@ export function SearchField({
             onEscape();
           }
         }}
-        className="h-9 w-full rounded-[var(--ctl-radius)] border border-edge-strong bg-paper pl-9 pr-3 text-sm text-ink placeholder:text-ink-mute"
+        className={`h-9 w-full rounded-[var(--ctl-radius)] border pl-9 pr-3 text-sm text-ink placeholder:text-ink-mute ${
+          material ? "border-edge-alpha bg-veil" : "border-edge-strong bg-paper"
+        }`}
         {...rest}
       />
     </div>
@@ -586,6 +596,7 @@ export function SegmentedControl<T extends string | number>({
   label,
   size = "md",
   compact = false,
+  material = false,
   className = "",
 }: {
   value: T;
@@ -611,6 +622,12 @@ export function SegmentedControl<T extends string | number>({
    * còn bình thường sẽ là dạng icon only") - for a track narrower than its
    * labels, like the side column's. */
   compact?: boolean;
+  /** On the side column's material (HIG 3.16, 20/09): the track is a
+   * recessed `veil` and the chosen option a flat `tint`, no shadow - a
+   * white pill with a drop shadow is a control in the body of a window;
+   * on Apple's blurred chrome the chosen segment is a tint, and a shadow
+   * under a translucent fill is a smudge on the glass. */
+  material?: boolean;
   className?: string;
 }) {
   return (
@@ -622,7 +639,7 @@ export function SegmentedControl<T extends string | number>({
       // opens to 60), instead of `rounded-full` turning into a bigger
       // stadium; the option's 18 is the 22 less the 4 px inset (owner,
       // 17-18/09; HIG 3.9d). A 36 px group clamps 22 to a pill by itself.
-      className={`flex items-stretch rounded-[22px] bg-band p-1 ${size === "lg" ? "h-11" : "h-9"} ${className}`}
+      className={`flex items-stretch rounded-[22px] p-1 ${material ? "bg-veil" : "bg-band"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -637,7 +654,7 @@ export function SegmentedControl<T extends string | number>({
            they are written, so a locked choice could not be told to be
            darker than a locked non-choice. */
         const chosen = on
-          ? `bg-paper font-semibold shadow-raised ${option.disabled ? "text-ink-mute" : "text-ink"}`
+          ? `${material ? "bg-tint" : "bg-paper shadow-raised"} font-semibold ${option.disabled ? "text-ink-mute" : "text-ink"}`
           : option.disabled
             ? "text-ink-faint"
             : "text-ink-mute hover:text-ink";
