@@ -28,6 +28,7 @@ import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
 import { matchRanges } from "../ui/textSearch";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
+import { Presence, scrollBehavior } from "../ui/motion";
 import type { SidebarTab } from "../ui/sidebarState";
 import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
@@ -147,7 +148,7 @@ function Figure({
   }, [bookId, figure.id, paged]);
 
   useEffect(() => {
-    if (cued && !paged) holder.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (cued && !paged) holder.current?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   }, [cued, paged]);
 
   // A caption on the page says it all; an alt that repeats it under the
@@ -382,7 +383,7 @@ export function Reader({
   const jumpTo = useCallback((segmentId: string, smooth = true) => {
     column.current
       ?.querySelector(`[data-segment="${segmentId}"]`)
-      ?.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
+      ?.scrollIntoView({ block: "center", behavior: smooth ? scrollBehavior() : "auto" });
   }, []);
 
   /** Put the bubble beside an icon: as wide as the note needs, never wider
@@ -1019,7 +1020,7 @@ export function Reader({
       {/* Three lines and no more: this is a glance, not the note. A long
           note that unrolled here covered the paragraph it belongs to, and
           the whole of it is one click away in the box that opens. */}
-      <Surface edge="strong" className="px-3 py-2 text-sm leading-relaxed shadow-lifted">
+      <Surface edge="strong" className="peek-in px-3 py-2 text-sm leading-relaxed shadow-lifted">
         {/* On a span of its own: `line-clamp` works by switching the
             element to -webkit-box, and the card has a display of its own
             that wins - on the card the rule was set and did nothing. */}
@@ -1035,7 +1036,9 @@ export function Reader({
    * click outside - it paints nothing, so the page underneath is entirely
    * visible.
    */
-  const noteEditor = editing && (
+  const noteEditor = (
+    <Presence open={editing !== null}>
+      {editing && (
     <>
       <div
         className="fixed inset-0 z-40"
@@ -1050,7 +1053,7 @@ export function Reader({
           maxWidth: editing.maxWidth,
         }}
       >
-        <Surface edge="strong" className="flex w-[22rem] max-w-full flex-col gap-2 p-3 shadow-lifted">
+        <Surface edge="strong" layer="popover" className="flex w-[22rem] max-w-full flex-col gap-2 p-3 shadow-lifted">
           <Textarea
             autoFocus
             rows={3}
@@ -1097,6 +1100,8 @@ export function Reader({
         </Surface>
       </div>
     </>
+      )}
+    </Presence>
   );
 
   const pills = (

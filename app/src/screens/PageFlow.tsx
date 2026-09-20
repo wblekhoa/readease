@@ -283,7 +283,7 @@ export function PageFlow({
                 textAlign: justify ? "justify" : undefined,
                 fontWeight: bold ? 600 : undefined,
                 transform: `translateX(${-view * layout.cols * layout.step}px)`,
-                transition: animate ? "transform 220ms ease-out" : "none",
+                transition: animate ? "transform var(--dur-move) var(--ease-out)" : "none",
                 ["--page-h" as string]: `${pageHeight}px`,
               }}
             >

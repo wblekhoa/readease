@@ -225,6 +225,125 @@
      that says "nothing here yet" without calling it a fault. */
   --color-ok: var(--fill-success-primary);
 }
+/* ── Motion (HIG 3.17, 20/09) ─────────────────────────────────────────────
+   One scale for everything that moves, borrowed from Apple's own habits: a
+   layer comes in over 200 ms and leaves faster than it came (150), because
+   what is leaving is not worth looking at; anything that changes PLACE -
+   the column, a fold, a page - takes 240 with a symmetric curve; a colour
+   under the pointer changes in 120. A separate (non-inline) block so the
+   variables reach `:root`: Tailwind's own `transition-*` utilities read
+   `--default-transition-duration` at runtime, and an inlined redefinition
+   would have left them with nothing. Overriding `--ease-out`/`--ease-in`
+   here replaces Tailwind's stock curves for the whole app, on purpose. */
+@theme {
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  /* Entering: decelerate into rest. */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  /* Leaving: accelerate away. */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  /* Moving between two places: symmetric. */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+:root {
+  --dur-quick: 120ms;
+  --dur-enter: 200ms;
+  --dur-exit: 150ms;
+  --dur-move: 240ms;
+}
+/* Reduce Motion (System Settings › Accessibility): movement goes, feedback
+   stays. Scale and rise are zeroed below on the layers themselves; the
+   fades shorten; the column and the fold snap. Apple's own rule for it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-quick: 80ms;
+    --dur-enter: 100ms;
+    --dur-exit: 100ms;
+    --dur-move: 0ms;
+  }
+}
+/* A window that is off screen has no running timeline (WKWebView, measured
+   16/09): a layer opened there must land in its final state at once, or it
+   sits at opacity 0 until the window returns. `Presence` cannot know; the
+   root marks the document and every transition collapses. */
+html[data-hidden] *,
+html[data-hidden] *::before,
+html[data-hidden] *::after {
+  transition-duration: 0ms !important;
+  animation-duration: 0ms !important;
+}
+
+/* The floating layers. Each `.layer-*` is the resting state; `Presence`
+   paints the first frame and the leaving frames under `[data-state=closed]`,
+   and the transition runs between them. Only `opacity` and `scale` move -
+   `scale` is its own property, so the `-translate-x-1/2` that centres a
+   sheet is never touched, and both stay on the compositor under a 28 px
+   backdrop blur. */
+.layer-popover,
+.layer-sheet,
+.layer-menu {
+  transition-property: opacity, scale;
+  transition-duration: var(--dur-enter);
+  transition-timing-function: var(--ease-out);
+}
+.layer-sheet {
+  transition-duration: var(--dur-move);
+}
+/* A menu appears at once - NSMenu has no opening animation - and fades
+   on the way out. The duration is set below, in the closed state. */
+.layer-menu {
+  transition-duration: 0ms;
+}
+.scrim {
+  transition: opacity var(--dur-enter) var(--ease-out);
+}
+[data-state="closed"] .layer-popover,
+[data-state="closed"] .layer-sheet,
+[data-state="closed"] .layer-menu,
+[data-state="closed"] .scrim {
+  opacity: 0;
+  transition-duration: var(--dur-exit);
+  transition-timing-function: var(--ease-in);
+}
+/* Everything inside a leaving layer is dead, not only the surface: the
+   note editor's click-catcher behind it would otherwise swallow the next
+   click for the length of the fade. Nesting still resolves - an open sheet
+   with a closing menu inside kills only the menu's subtree. */
+[data-state="closed"] * {
+  pointer-events: none;
+}
+/* A popover grows out of the control that opened it (its `origin-*` class
+   says which corner) and shrinks back a little less than it grew - the
+   leaving layer is already out of mind. A sheet grows in place. */
+[data-state="closed"] .layer-popover { scale: 0.96; }
+[data-state="closed"] .layer-sheet { scale: 0.96; }
+@media (prefers-reduced-motion: reduce) {
+  [data-state="closed"] .layer-popover,
+  [data-state="closed"] .layer-sheet { scale: 1; }
+}
+
+/* Enter-only fades for the layers that never need a way out: a tooltip and
+   a peek take no pointer, a callout is text that just arrived. */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes rise-in {
+  from { opacity: 0; translate: 0 4px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.fade-in {
+  animation: fade-in var(--dur-quick) var(--ease-out) both;
+}
+.peek-in {
+  animation: fade-in var(--dur-enter) var(--ease-out) both;
+}
+.notice-in {
+  animation: rise-in var(--dur-enter) var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-in { animation-name: fade-in; }
+}
 
 /* Hover and press are a wash LAYERED OVER a control's own fill, never a
    replacement for it. `hover:bg-wash` swapped the opaque paper for a 5%

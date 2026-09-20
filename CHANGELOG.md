@@ -13,9 +13,18 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   one in the light theme instead of opaque blocks; the tab track and the
   search box are recessed wells; the column's hairlines are alpha too;
   the chosen tab no longer carries a drop shadow and runs to the edge of
-  its track. Hover stays one step
-  under "chosen", so the open entry and a hovered neighbour are no
-  longer the same colour.
+  its track. Hover stays one step under "chosen", so the open entry and a
+  hovered neighbour are no longer the same colour.
+- Motion, on one scale and in Apple's manner: a popover grows out of the
+  control that opened it (200 ms) and shrinks back faster than it came
+  (150 ms); a sheet and the dimmed window under it fade in together and
+  out together; a menu appears at once and fades on the way out; tooltips,
+  peeks and callouts fade in; the side column, the text-size fold and a
+  page turn share one 240 ms move; a hover changes colour in 120 ms. A
+  jump the reader asks for - a chapter, a search hit, a note, "Back to
+  reading position" - scrolls instead of cutting. With the Mac's Reduce
+  Motion on, movement goes and only the fades stay; nothing waits on a
+  window that is off screen.
 
 ## 0.1.8
 
