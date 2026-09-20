@@ -790,6 +790,22 @@ export const TEXT = {
   /* What Control Center shows under the name while a selection is read
    * (HIG 3.19). */
   "now_playing.selection": ["Phần đã chọn", "Selected text"],
+  /* In-app updates (HIG 3.20). */
+  "menu.check_updates": ["Kiểm tra bản mới…", "Check for Updates…"],
+  "update.title": ["Bản mới", "Software Update"],
+  "update.checking": ["Đang kiểm tra…", "Checking…"],
+  "update.latest": ["Bạn đang dùng bản mới nhất ({version}).", "You are on the latest version ({version})."],
+  "update.available": ["Có ReadEase {version}.", "ReadEase {version} is available."],
+  "update.install": ["Tải và cài", "Download and Install"],
+  "update.later": ["Để sau", "Later"],
+  "update.downloading_start": ["Đang tải bản {version}…", "Downloading {version}…"],
+  "update.downloading": ["Đang tải bản {version}… {percent}%", "Downloading {version}… {percent}%"],
+  "update.installed": ["Đã cài bản {version}. Khởi động lại để dùng.", "Version {version} is installed. Relaunch to use it."],
+  "update.relaunch": ["Khởi động lại", "Relaunch"],
+  "update.failed": ["Không kiểm tra được: {error}", "Could not check: {error}"],
+  "update.open_releases": ["Mở trang phát hành", "Open the releases page"],
+  "update.found": ["Có ReadEase {version}", "ReadEase {version} is available"],
+  "update.view": ["Xem", "View"],
 } as const;
 
 export type TextKey = keyof typeof TEXT;

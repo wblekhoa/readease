@@ -33,7 +33,8 @@ export type MenuCommand =
   | "read-selection"
   | "voice-settings"
   | "hub"
-  | "help-guide" | "help-feedback" | "help-releases";
+  | "help-guide" | "help-feedback" | "help-releases"
+  | "check-updates";
 
 export interface MenuState {
   /** A document is open: the ⌘1-⌘3 items name its lists, ⌘W and ⌘F and
@@ -81,6 +82,8 @@ export async function installAppMenu(
           },
         },
       }),
+      // Apple's slot for it: right under About (HIG 3.20).
+      await item("check-updates", text("menu.check_updates")),
       await separator(),
       await PredefinedMenuItem.new({ text: text("menu.services"), item: "Services" }),
       await separator(),

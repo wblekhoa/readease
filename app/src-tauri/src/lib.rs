@@ -254,6 +254,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // In-app updates (HIG 3.20): the page asks, downloads and relaunches;
+        // the manifest and the archive live with the GitHub release.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         // The window comes back where and how big it was left (HIG 3.16):
         // size and position only. Not fullscreen or visibility - restoring
         // a fullscreen flag onto a transparent, overlay-title-bar window is

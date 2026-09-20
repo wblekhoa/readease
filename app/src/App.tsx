@@ -9,6 +9,9 @@ import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, cla
 import { orderShelf } from "./ui/libraryOrder";
 import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
+import { useUpdater } from "./ui/updates";
+import { UpdatePanel } from "./ui/UpdatePanel";
+import { getVersion } from "@tauri-apps/api/app";
 import { bookPaths } from "./ui/bookPaths";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -196,6 +199,13 @@ export default function App() {
    * Books sheet live in `Library`, which may not even be on screen when the
    * command arrives - so the command waits here until the shelf mounts. */
   const [shelfRequest, setShelfRequest] = useState<"add" | "apple-books" | null>(null);
+  /** The running version, for "you are on the latest" (HIG 3.20). */
+  const [appVersion, setAppVersion] = useState("");
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    getVersion().then(setAppVersion).catch(() => undefined);
+  }, []);
+  const updater = useUpdater(appVersion);
   /** The voice whose sample is speaking, so the row can offer Stop. */
   const [previewing, setPreviewing] = useState<string | null>(null);
   // One reducer owns every transition of the transport. Five hand-written
@@ -1207,8 +1217,11 @@ export default function App() {
       case "help-guide": case "help-feedback": case "help-releases":
         void openUrl(HELP_URLS[command]).catch(console.error);
         return;
+      case "check-updates":
+        void updater.checkNow();
+        return;
     }
-  }, [inBook, sideOpen, side.tab, sideSlot, changeReadingSize, chooseAppearance, togglePause, stopReading, readSelection]);
+  }, [inBook, sideOpen, side.tab, sideSlot, changeReadingSize, chooseAppearance, togglePause, stopReading, readSelection, updater.checkNow]);
 
   /* The menu bar itself, rebuilt when what it says or allows changes; a
      rebuild replaces the previous one. Window only - the browser has no
@@ -2319,6 +2332,25 @@ export default function App() {
           onSaveKey={saveKey}
           reading={reading !== "idle"}
           onClose={() => setHubOpen(false)}
+        />
+      </Presence>
+      {/* A newer ReadEase, found quietly after launch (HIG 3.20): a small
+          notice at the top of the page, not a dialog; the sheet opens on
+          request. */}
+      <Presence open={updater.found !== null && !updater.open && updater.phase.kind === "available"}>
+        <div className="pointer-events-none fixed inset-x-0 top-[calc(var(--shell-top-h)+var(--layer-gap))] z-20 flex justify-center">
+          <Surface edge="strong" material="glass" radius="menu" layer="popover" className="pointer-events-auto flex items-center gap-3 py-1.5 pl-4 pr-1.5 shadow-lifted">
+            <span className="text-sm text-ink">{text("update.found", { version: updater.found?.version ?? "" })}</span>
+            <Button size="sm" onClick={updater.show}>{text("update.view")}</Button>
+          </Surface>
+        </div>
+      </Presence>
+      <Presence open={updater.open}>
+        <UpdatePanel
+          phase={updater.phase}
+          onInstall={() => void updater.install()}
+          onRestart={updater.restart}
+          onClose={updater.dismiss}
         />
       </Presence>
       <Presence open={voicesOpen}>

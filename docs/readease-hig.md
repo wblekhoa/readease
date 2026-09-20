@@ -1257,6 +1257,36 @@ thành tiếng phải đứng vào chỗ đó.
 - **Don't**: giữ Now Playing sau khi đọc xong · đăng ký handler nhiều lần (mỗi lần dựng lại = một handler nữa) · gọi
   MediaPlayer ngoài main thread · bật lệnh mà app không làm được.
 
+### 3.20 Cập nhật trong app — "Kiểm tra bản mới…" (20/09)
+
+Kiểm kê 20/09: bản mới chỉ đến với người dùng nếu họ tự quay lại GitHub. Một app Mac tự nói khi có bản mới và tự thay
+mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plugin-process` 2.3.1 để khởi động lại).
+
+- **Chỗ đứng**: mục **Kiểm tra bản mới…** ngay dưới *Giới thiệu* trong menu ReadEase — đúng ô Apple dành cho nó. Khi mở
+  app, **5 s sau** app hỏi lặng lẽ một lần; CÓ bản mới thì một viên nhỏ nổi giữa mép trên trang ("Có ReadEase 0.1.10 ·
+  Xem"), KHÔNG có thì im, hỏi không được (mất mạng, GitHub lỗi) cũng im — lỗi chỉ hiện khi chính người dùng bấm kiểm tra.
+- **Sheet "Bản mới"** (`ui/UpdatePanel.tsx`, `Surface layer="sheet"` + `Scrim`, §3.17): các trạng thái *đang kiểm tra* →
+  *đang dùng bản mới nhất (x.y.z)* / *có bản x.y.z* (ngày, ghi chú phát hành rút gọn, **Tải và cài** · Để sau) → *đang
+  tải… n %* → *đã cài, khởi động lại để dùng* (**Khởi động lại**) / *không kiểm tra được* (câu lỗi + **Mở trang phát
+  hành** làm lối thoát thủ công). Đang tải thì Escape/bấm ngoài không đóng (giấu việc đang chạy = luật panel Chất lượng).
+- **Cơ chế**: `useUpdater()` gói `check()` / `downloadAndInstall(onEvent)` / `relaunch()`; endpoint cố định
+  `https://github.com/wblekhoa/readease/releases/latest/download/latest.json`; chữ ký minisign kiểm bằng khoá công khai
+  nhúng trong `tauri.conf.json › plugins.updater.pubkey`. Không cấu hình `requireSignedVersion` (CLI 2.11 chưa chắc ghi
+  version vào trusted comment) và không `allowDowngrades`.
+- **Phía phát hành** (`scripts/build-release-app.sh`, SAU khi staple — thứ tự là cái bẫy: bundler tạo artifact cập nhật
+  lúc `tauri build`, TRƯỚC khi ta ký lại/notarize, nên KHÔNG bật `createUpdaterArtifacts`): `tar -czf ReadEase.app.tar.gz`
+  từ app đã staple → `tauri signer sign` bằng khoá riêng ở `~/.tauri/readease.key` (mật khẩu trong `Apps/.env`
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE`, không bao giờ in) → `.sig` → `latest.json` { version, notes, pub_date
+  RFC 3339, platforms."darwin-aarch64".{signature, url} } với url = asset của release. Release phải upload **zip + dmg +
+  tar.gz + latest.json**. Thiếu khoá thì script bỏ qua bước này và nói rõ.
+- **Sự thật về bằng chứng**: 0.1.9 chưa có updater. Bản đầu tiên mang nó (0.1.10) chỉ chứng minh được *đường kiểm tra*
+  (thấy "đang dùng bản mới nhất"); đường tải-cài-khởi động lại chỉ chạy thật khi **0.1.11 cập nhật 0.1.10**. Dry-run tại
+  chỗ: tar + ký + dựng `latest.json` từ bản build ký, kiểm chữ ký bằng khoá công khai.
+- **Mất khoá = hết cập nhật tại chỗ**: khoá công khai nằm trong mọi app đã phát; đổi khoá là người dùng cũ phải tải tay
+  một lần. Chủ tự sao lưu `~/.tauri/readease.key` + mật khẩu.
+- **Don't**: dialog khi kiểm tra lặng lẽ thất bại · tự tải khi chưa bấm (người dùng quyết) · ghi mật khẩu vào log/commit
+  · bật `createUpdaterArtifacts`.
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
