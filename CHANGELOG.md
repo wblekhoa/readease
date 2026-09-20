@@ -15,6 +15,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   (guide, feedback, latest release on GitHub). Every shortcut the app
   had is now found where a Mac shows them; items disable rather than
   disappear, and the words follow the language switch.
+- ReadEase opens EPUB and PDF files from the Mac: double-click a file
+  and choose it under "Open With", drop one on its Dock icon, or launch
+  the app with a file - it is added to the library (a file already there
+  is recognised, not duplicated) and opened. The app does not take the
+  place of Books or Preview as the default; that stays your choice.
 
 ## 0.1.9
 

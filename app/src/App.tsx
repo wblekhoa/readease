@@ -9,6 +9,7 @@ import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, cla
 import { orderShelf } from "./ui/libraryOrder";
 import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
+import { bookPaths } from "./ui/bookPaths";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
@@ -1259,6 +1260,45 @@ export default function App() {
     dispatchSide({ type: "book", open: inBook });
     if (!inBook) setNotesFocus(null);
   }, [inBook]);
+  /* Documents the system asked the app to open (HIG 3.18): import each -
+     the engine returns the book it already had for a file it has seen -
+     reload the shelf, and open the last one, the way Preview opens the
+     file you double-clicked. Drained on mount and on every nudge, so a
+     file that launched the app is not lost and none is opened twice. */
+  const openFiles = useCallback(async () => {
+    const paths = bookPaths(await invoke<string[]>("take_opened_files").catch(() => [] as string[]));
+    if (!paths.length) return;
+    let last: string | null = null;
+    for (const path of paths) {
+      try {
+        const reply = await invoke<{ result: { book_id: string } }>(
+          "engine_request",
+          { method: "library.import", params: { path } },
+        );
+        last = reply.result.book_id;
+      } catch (error) {
+        console.error("[open] import failed:", path, error);
+      }
+    }
+    const listed = await invoke<{ result: { books: LibraryBook[] } }>(
+      "engine_request",
+      { method: "library.list", params: {} },
+    ).catch(() => null);
+    if (!listed) return;
+    setShelf(listed.result.books);
+    const book = listed.result.books.find((entry) => entry.id === last);
+    if (!book) return;
+    setTab("library");
+    setPosition(null);
+    setOpenBook(book);
+  }, []);
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    void openFiles();
+    const nudged = listen("files:opened", () => { void openFiles(); });
+    return () => { nudged.then((unlisten) => unlisten()).catch(() => undefined); };
+  }, [openFiles]);
+
   const loadShelf = useCallback(() => {
     invoke<{ result: { books: LibraryBook[] } }>("engine_request", { method: "library.list", params: {} })
       .then((reply) => setShelf(reply.result.books))

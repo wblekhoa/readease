@@ -1206,6 +1206,27 @@ trang · đổi tab cột · pill của segmented KHÔNG trượt (bản `compac
 số ms viết tay trong màn (mọi thời lượng đi qua token) · hoạt cảnh cho thứ người dùng không nhìn (đổi theme, danh
 sách đang gõ) · trượt-vào cho popover (Apple: popover *lớn ra* từ neo, sheet *lớn ra* tại chỗ; trượt là của banner).
 
+### 3.18 Mở tài liệu từ Finder, Dock và "Open With" (20/09)
+
+Kiểm kê 20/09: app không khai loại tệp nào (`bundle.fileAssociations` trống) — bấm đúp một EPUB trong Finder mở Books,
+kéo tệp lên icon Dock của ReadEase bị từ chối, menu "Open With" không có ReadEase. Một app tài liệu chuyên nghiệp phải
+là một *người mở* của loại tệp nó đọc.
+
+- **Khai báo** (`tauri.conf.json` › `bundle.fileAssociations`): EPUB (`org.idpf.epub-container`, `application/epub+zip`)
+  và PDF (`com.adobe.pdf`) với vai **Viewer**, hạng **Alternate** — app đọc được, có mặt trong "Open With" và nhận drop
+  trên Dock, nhưng KHÔNG tự chiếm chỗ mặc định của Books/Preview (đó là lựa chọn của người dùng, không phải của bản cài).
+- **Đường đi**: macOS gọi `RunEvent::Opened { urls }` (bấm đúp · Dock · Open With · `open -a`). Host xếp đường dẫn vào
+  hàng `OpenedFiles` rồi nhắc trang bằng `files:opened` (không mang payload); trang **rút hàng** (`take_opened_files`)
+  khi vừa dựng xong VÀ mỗi lần được nhắc — vì tệp mở app thì đến TRƯỚC khi webview tồn tại, còn tệp mở khi app đang chạy
+  thì đến sau; rút hàng là idempotent nên không tệp nào mở hai lần hay rơi mất.
+- **Trang làm gì**: lọc đúng đuôi (`bookPaths`), nhập từng tệp qua `library.import` (idempotent — engine băm nội dung,
+  tệp đã có thì trả về đúng bản đã có, không nhân đôi kệ), nạp lại kệ, rồi **mở tệp cuối** trong danh sách — đúng như
+  Preview mở tệp vừa bấm; các tệp còn lại nằm trên kệ. Đang đọc dở một tài liệu khác thì cũng chuyển sang tài liệu vừa
+  mở (cùng hành vi với bấm một bìa trên kệ). Tệp hỏng → ghi `stderr`, không cửa sổ lỗi: người dùng đã ở trên kệ và thấy
+  tệp không xuất hiện; báo lỗi có tên tệp là việc sau, chung với thông báo của kệ.
+- **Don't**: khai `Owner`/`Default` (cướp mặc định của hệ) · nhận tệp bằng `argv` (macOS không đưa tệp qua argv, chỉ qua
+  Apple Event `odoc`) · mở bằng event mang payload rồi bỏ hàng (mất tệp mở-lúc-khởi-động).
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
