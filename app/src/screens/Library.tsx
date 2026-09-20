@@ -176,6 +176,8 @@ export function Library({
   onOpen,
   onPaste,
   actionsSlot,
+  request = null,
+  onRequestDone,
 }: {
   onOpen: (book: LibraryBook) => void;
   onPaste: () => void;
@@ -183,6 +185,11 @@ export function Library({
    * way a book's actions stand beside its title (16/09). The shelf owns
    * the buttons and their state; the toolbar owns the place. */
   actionsSlot: HTMLElement | null;
+  /** A command from the menu bar (HIG 4.1) that only the shelf can carry
+   * out: the file picker, or the Apple Books sheet. Taken once, on mount
+   * or on arrival, and handed back as done. */
+  request?: "add" | "apple-books" | null;
+  onRequestDone?: () => void;
 }) {
   const [books, setBooks] = useState<LibraryBook[] | null>(null);
   /** Why the shelf could not be listed - kept apart from `books`, because
@@ -315,6 +322,15 @@ export function Library({
     }).catch(() => null);
     if (picked) void importPaths(bookPaths(picked));
   };
+
+  // The menu's request, once the shelf is here to answer it.
+  useEffect(() => {
+    if (!request) return;
+    onRequestDone?.();
+    if (request === "add") void openPicker();
+    else setApplePanel(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request]);
 
   const importButton = (
     <Button onClick={() => void openPicker()} disabled={importing} title={text("library.drop_invite")}>
