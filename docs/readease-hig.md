@@ -1073,7 +1073,10 @@ ngại đó.
   | hairline `edge-alpha` | sáng na20 · tối na10 | mép phải cột, đường trên chân cột, viền ô tìm |
 
   Hover và chọn cách nhau đúng một nấc (na10 → na20), cùng luật press-trên-hover của §2; `tint` trùng giá trị `press`
-  nhưng là vai trò khác. Tab đang mở **không còn shadow**: bóng dưới một fill trong suốt là vết bẩn trên kính; pill
+  nhưng là vai trò khác. Segmented trên vật liệu **không lót** (`p-0`; chủ 20/09: "không có padding, các item sẽ tràn
+  viền"): tab đang mở chạy sát mép rãnh và lấy đúng góc 22 của rãnh — kiểu segmented trên toolbar của Apple; segmented
+  trên giấy giữ lót 4 px (góc 18 = 22 − 4, §3.9d) vì pill giấy nổi cần rãnh quanh nó mới đọc ra là đang cưỡi trên rãnh.
+  Tab đang mở **không còn shadow**: bóng dưới một fill trong suốt là vết bẩn trên kính; pill
   trắng + bóng là kiểu control trong THÂN cửa sổ (System Settings), còn control trên chrome mờ của Apple là tint phẳng
   (segmented của Finder). Hairline lệch bậc theo theme vì cùng lý do với `--app-dot`: na10 ở tối ≈ trắng 12 % (đúng
   `separatorColor`), nhưng na10 ở sáng chỉ ≈ đen 6 % — na20 mới ngang đường n20 đang có. Trong trình duyệt (mock/audit)

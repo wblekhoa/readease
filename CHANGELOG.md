@@ -12,7 +12,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   navigation entry on show are a light tint in the dark theme and a grey
   one in the light theme instead of opaque blocks; the tab track and the
   search box are recessed wells; the column's hairlines are alpha too;
-  the chosen tab no longer carries a drop shadow. Hover stays one step
+  the chosen tab no longer carries a drop shadow and runs to the edge of
+  its track. Hover stays one step
   under "chosen", so the open entry and a hovered neighbour are no
   longer the same colour.
 

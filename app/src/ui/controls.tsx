@@ -639,7 +639,11 @@ export function SegmentedControl<T extends string | number>({
       // opens to 60), instead of `rounded-full` turning into a bigger
       // stadium; the option's 18 is the 22 less the 4 px inset (owner,
       // 17-18/09; HIG 3.9d). A 36 px group clamps 22 to a pill by itself.
-      className={`flex items-stretch rounded-[22px] p-1 ${material ? "bg-veil" : "bg-band"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
+      // On the material there is no inset (owner, 20/09: "không có padding,
+      // các item sẽ tràn viền"): the chosen tint runs to the track's edge,
+      // like a segmented control on Apple's toolbar; a raised paper pill
+      // needs the 4 px of track around it to read as riding on the track.
+      className={`flex items-stretch rounded-[22px] ${material ? "bg-veil" : "bg-band p-1"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -668,7 +672,11 @@ export function SegmentedControl<T extends string | number>({
             title={option.title}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[18px] text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
+            className={`flex items-center justify-center gap-1.5 whitespace-nowrap text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
+              // No inset on the material, so the option's corner IS the
+              // track's; on paper it is the 22 less the 4 px inset.
+              material ? "rounded-[22px]" : "rounded-[18px]"
+            } ${
               compact && !on ? "flex-none px-2.5" : "flex-1 px-3"
             } ${size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""} ${chosen}`}
           >
