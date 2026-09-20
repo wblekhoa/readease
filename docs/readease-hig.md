@@ -1231,6 +1231,32 @@ là một *người mở* của loại tệp nó đọc.
 - **Don't**: khai `Owner`/`Default` (cướp mặc định của hệ) · nhận tệp bằng `argv` (macOS không đưa tệp qua argv, chỉ qua
   Apple Event `odoc`) · mở bằng event mang payload rồi bỏ hàng (mất tệp mở-lúc-khởi-động).
 
+### 3.19 Now Playing và phím media — app đọc là một app âm thanh của hệ (20/09)
+
+Kiểm kê 20/09: giọng đang đọc mà bấm F8 (⏯) trên bàn phím, bóp cuống AirPods, hay mở Control Center › Now Playing —
+không có gì. Với macOS, ReadEase không phải một thứ đang phát; Music, Podcasts, Books (đọc to) đều là. Một app đọc
+thành tiếng phải đứng vào chỗ đó.
+
+- **Hợp đồng**: khi một bài đọc bắt đầu, app trở thành *now-playing app* của hệ — Control Center và thanh menu Now
+  Playing hiện tên tài liệu (chương ở dòng dưới), nút ⏯ / ⏹ điều khiển ĐÚNG bài đọc đó; **F7/F8/F9 và tai nghe** (bóp
+  cuống AirPods = toggle) đi tới app kể cả khi cửa sổ không ở trước hay đang ẩn. Tạm dừng thì hệ hiện "paused"; đọc xong
+  hay dừng thì **rút khỏi** Now Playing (không để một ReadEase "đã dừng" đứng mãi trong Control Center).
+- **Tên hiện**: tài liệu → tên tài liệu / chương đang đọc; Dán nội dung → "Dán nội dung" / "ReadEase"; Quét đọc → "Quét
+  đọc" / "Phần đã chọn". Không ảnh bìa ở bước này (cần đưa NSImage qua host — việc sau).
+- **Cơ chế** (`src-tauri/src/media.rs`, `objc2-media-player` 0.3.2 — API đọc từ mã nguồn crate, không từ trí nhớ): host
+  đăng ký ở `setup` (main thread) bốn lệnh của `MPRemoteCommandCenter` — togglePlayPause · play · pause · stop — mỗi lệnh
+  bắn `media:command` về trang, giữ target trả về để handler sống suốt đời app; **tắt** nextTrack/previousTrack để Control
+  Center không vẽ nút vô dụng. Trang gọi lệnh `now_playing { title, subtitle, state }` mỗi khi trạng thái đọc hay nguồn
+  đọc đổi; host đặt `MPNowPlayingInfoCenter.nowPlayingInfo` (title · artist · mediaType audio · playbackRate 1/0) và
+  `playbackState` **trên main thread** (`run_on_main_thread`); `stopped` = xoá info + `Stopped`.
+- **Trang trả lời** `media:command` qua CÙNG bộ điều phối của menu (§4.1): toggle → `play-pause`; play chỉ khi đang tạm
+  dừng, pause chỉ khi đang đọc (lệnh trái trạng thái bị bỏ qua, không bật/tắt ngược); stop → `stop`. Vì thế mục này xếp
+  trên menu bar: một chỗ cho mọi lệnh, dù đến từ menu, phím hay tai nghe.
+- **Mock**: `now_playing` trả `null`; không có gì để chứng minh ngoài cửa sổ — phím media chỉ tới app khi app đã là
+  now-playing app, nên bằng chứng duy nhất là F8/AirPods trên bản cài.
+- **Don't**: giữ Now Playing sau khi đọc xong · đăng ký handler nhiều lần (mỗi lần dựng lại = một handler nữa) · gọi
+  MediaPlayer ngoài main thread · bật lệnh mà app không làm được.
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:

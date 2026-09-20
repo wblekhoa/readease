@@ -28,4 +28,9 @@ tauri-plugin-global-shortcut = "2.3.2"
 tauri-plugin-macos-permissions = "2.3.0"
 tauri-plugin-dialog = "2.7.3"
 tauri-plugin-window-state = "2.4.1"
+# Now Playing + the media keys (HIG 3.19): the MediaPlayer framework.
+objc2-media-player = { version = "0.3.2", features = ["MPNowPlayingInfoCenter", "MPRemoteCommandCenter", "MPRemoteCommand", "MPRemoteCommandEvent", "MPMediaItem", "block2"] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSDictionary", "NSString", "NSValue"] }
+block2 = "0.6"
 

@@ -1055,6 +1055,9 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   // Nothing asked the mock to open a document (HIG 3.18): the window's
   // queue is empty, as it is for an app opened by its icon.
   if (command === "take_opened_files") return Promise.resolve([]);
+  // Now Playing (HIG 3.19) is the window's; the browser has no Control
+  // Center to tell.
+  if (command === "now_playing") return Promise.resolve(null);
   if (command === "restart_engine") return Promise.resolve(null);
   /* The system open panel, answered with a canned path: the harness has
      no Finder, and the point is the shelf after an import, not the panel.

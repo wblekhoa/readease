@@ -3,6 +3,8 @@ mod engine;
 use std::sync::Arc;
 
 use engine::EngineClient;
+
+mod media;
 use serde::Serialize;
 use tauri::Manager;
 
@@ -272,6 +274,9 @@ pub fn run() {
             app.manage(EngineSlot(std::sync::Mutex::new(client.clone())));
             app.manage(TraySlot(tray_slot.clone()));
             app.manage(OpenedFiles(std::sync::Mutex::new(Vec::new())));
+            // Now Playing's remote commands (HIG 3.19), once, on the main
+            // thread that `setup` runs on.
+            app.manage(media::register(app.handle()));
 
             // Menu bar indicator: exists for the whole app life, visible only
             // while reading; one click stops without surfacing the window.
@@ -328,7 +333,8 @@ pub fn run() {
             stop_reading,
             pause_audio,
             resume_audio,
-            take_opened_files
+            take_opened_files,
+            media::now_playing
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

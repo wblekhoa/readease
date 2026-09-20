@@ -21,6 +21,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   is recognised, not duplicated) and opened. The app does not take the
   place of Books or Preview as the default; that stays your choice.
 - The window opens where you left it, at the size you left it.
+- A reading is a Now Playing item of the Mac: Control Center and the
+  menu bar's Now Playing show the document and chapter, and F8, an
+  AirPod's stem and Control Center's play/pause/stop control the reading
+  - even with the window behind others. It withdraws when the reading
+  ends.
 
 ## 0.1.9
 

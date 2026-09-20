@@ -1232,6 +1232,34 @@ export default function App() {
     };
   }, [language, inBook, reading, sideOpen, appearance, selection.length > 0]);
 
+  /* Now Playing (HIG 3.19): what the system shows for the reading, and the
+     media keys, AirPods and Control Center answering through the same
+     dispatcher as the menu. Withdrawn the moment the reading is idle. */
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    const info = reading === "idle"
+      ? { title: "", subtitle: "", state: "stopped" }
+      : origin?.kind === "book"
+        ? { title: origin.book.title, subtitle: pageInfo?.chapterTitle ?? "", state: reading }
+        : origin?.kind === "external"
+          ? { title: text("nav.external"), subtitle: text("now_playing.selection"), state: reading }
+          : { title: text("nav.paste"), subtitle: "", state: reading };
+    invoke("now_playing", { info }).catch((error: unknown) => console.error("[now playing]", error));
+  }, [reading, origin, pageInfo?.chapterTitle, language]);
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    const heard = listen<string>("media:command", (event) => {
+      const command = event.payload;
+      // A command against the state is ignored, never inverted: "play"
+      // while playing must not pause.
+      if (command === "toggle") performRef.current("play-pause");
+      else if (command === "play" && reading === "paused") performRef.current("play-pause");
+      else if (command === "pause" && reading === "reading") performRef.current("play-pause");
+      else if (command === "stop" && reading !== "idle") performRef.current("stop");
+    });
+    return () => { heard.then((unlisten) => unlisten()).catch(() => undefined); };
+  }, [reading]);
+
   /* A choice made by hand is remembered; the automation's answer is not
      (it is recomputed from the window each launch). */
   useEffect(() => {
