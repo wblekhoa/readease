@@ -252,6 +252,18 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // The window comes back where and how big it was left (HIG 3.16):
+        // size and position only. Not fullscreen or visibility - restoring
+        // a fullscreen flag onto a transparent, overlay-title-bar window is
+        // the classic vibrancy glitch, and the window is always shown.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION,
+                )
+                .build(),
+        )
         .setup(|app| {
             let tray_slot: Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>> =
                 Arc::new(std::sync::Mutex::new(None));

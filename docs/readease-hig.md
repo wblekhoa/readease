@@ -1061,6 +1061,10 @@ ngại đó.
   hairline đậm lên — mực 35 % thay `edge`, qua `aside:has(.rail-grip:hover)`, chủ 17/09), bề rộng **200–400**, mặc định
   240, nhớ trong `localStorage["readease.sidebar-width"]` lúc thả tay (không ghi từng pixel); bấm đúp về 240; trong lúc
   kéo tắt transition (cột chạy đuổi theo con trỏ thì lag). Thu/mở vẫn là 0 ↔ bề rộng đã chọn.
+- **Cửa sổ nhớ khung** (20/09, `tauri-plugin-window-state` 2.4.1): kích thước + vị trí được lưu khi thoát và trả lại
+  khi mở (chỉ khi màn hình đã lưu còn đó — plugin tự kiểm; không lưu fullscreen/visible: trả cờ fullscreen lên cửa sổ
+  trong suốt có title bar overlay là lỗi vibrancy kinh điển). Cửa sổ mới lần đầu vẫn 1060×720 của `tauri.conf.json`.
+  Cột bên tự thu/mở theo bề rộng đã trả lại, đúng luật (2) dưới đây.
 - **Behavior** (luật kiểm được, reducer thuần `ui/sidebarState.ts`): (1) **tay thắng tự động** — bấm nút hoặc
   ⌥⌘S là lựa chọn, nhớ trong `localStorage["readease.sidebar"]`; (2) chưa từng chọn → **tự động theo bề rộng**:
   cửa sổ < 1100 px thu, ≥ 1100 mở, đổi live khi kéo cửa sổ (kể cả cửa sổ mặc định 1060 → thu, để trang được
