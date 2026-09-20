@@ -8,6 +8,7 @@ import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { formatSize, hoverText } from "../ui/format";
 import { Button, IconButton, Notice } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, DropZone, EmptyState } from "../ui/patterns";
+import { Presence } from "../ui/motion";
 import { dropHeadline, importNotice, type ImportTally } from "../ui/importFeedback";
 import { orderShelf } from "../ui/libraryOrder";
 import { forgetCover, useCover } from "../ui/useCover";
@@ -356,9 +357,9 @@ export function Library({
           : "-mx-6 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable]"
       }
     >
-      {applePanel && (
+      <Presence open={applePanel}>
         <AppleBooksPanel onClose={() => setApplePanel(false)} onLibraryChanged={refresh} />
-      )}
+      </Presence>
       {dragging !== null && (
         <DropZone
           icon={<ImportIcon className="h-10 w-10" />}

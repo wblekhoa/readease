@@ -192,7 +192,10 @@ export function IconButton({
              a Surface. This one had been left on an 8px corner and a 4px
              inset, tighter than anything else that floats (owner, 04/09:
              "radius còn tròn hơn và padding cần thoáng hơn"). */
-          className="pointer-events-none fixed z-50 w-max max-w-[16rem] rounded-2xl border border-edge-strong bg-paper px-3 py-2 text-xs leading-snug text-ink shadow-lifted"
+          /* `fade-in` only once placed: the class arrives with the box, so
+             the fade starts from the right spot and not a frame early
+             (HIG 3.17 - a tooltip fades in, and needs no way out). */
+          className={`pointer-events-none fixed z-50 w-max max-w-[16rem] rounded-2xl border border-edge-strong bg-paper px-3 py-2 text-xs leading-snug text-ink shadow-lifted ${box ? "fade-in" : ""}`}
           /* Hidden for the one frame before it has been measured, so it
              never appears in the wrong place first. */
           style={{ left: box?.left ?? 0, top: box?.top ?? 0, visibility: box ? "visible" : "hidden" }}
@@ -375,12 +378,19 @@ export function Surface({
   edge = "field",
   radius = "surface",
   material = "paper",
+  layer,
   ref,
 }: {
   children: ReactNode;
   className?: string;
   /** For a floating layer that has to know whether a click landed inside it. */
   ref?: Ref<HTMLDivElement>;
+  /** How this surface comes and goes when it floats (HIG 3.17): a `popover`
+   * grows out of its control (pass an `origin-*` class in `className` for
+   * which corner), a `sheet` grows in place over a scrim, a `menu` appears
+   * at once and only fades out. Needs a `Presence` around the mount site
+   * for the way out; a surface in the flow of a page has none. */
+  layer?: "popover" | "sheet" | "menu";
   /** `field`: the fallback hairline that disappears where the fill already
    * separates (dark). `strong`: a real stroke for a layer that floats over
    * content and must read as an object on both papers - a tooltip (owner
@@ -405,7 +415,7 @@ export function Surface({
         radius === "sheet" ? "rounded-3xl" : radius === "menu" ? "rounded-[20px]" : "rounded-2xl"
       } ${
         edge === "strong" ? "border-edge-strong" : "border-edge-field"
-      } ${className}`}
+      } ${layer ? `layer-${layer}` : ""} ${className}`}
     >
       {children}
     </div>
@@ -451,7 +461,10 @@ export function Notice({
     tone === "error"
       ? "font-medium text-danger"
       : tone === "info"
-        ? "rounded-2xl border border-info-edge bg-info-wash px-3.5 py-2.5 text-ink"
+        // A callout arrives: it rises 4 px and fades in (HIG 3.17). The
+        // lines under a control do not - they answer an action already
+        // taken and should read as part of it, not as news.
+        ? "notice-in rounded-2xl border border-info-edge bg-info-wash px-3.5 py-2.5 text-ink"
         : "text-ink-mute";
   const size = fine ? "text-xs italic" : "text-sm";
   if (action && tone === "info") {

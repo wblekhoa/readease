@@ -63,7 +63,8 @@ export function ReadingSettingsPanel({
          (SettingsPanel, owner 03/09; restated 06/09 for this one, which had
          shipped at 16 and the card radius: "tăng padding và tăng radius"). */
       radius="sheet"
-      className="absolute right-6 top-[calc(var(--shell-top-inner)+var(--layer-gap))] z-20 flex layer-capped w-[25rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden shadow-lifted"
+      layer="popover"
+      className="absolute right-6 top-[calc(var(--shell-top-inner)+var(--layer-gap))] z-20 flex layer-capped w-[25rem] max-w-[calc(100vw-3rem)] origin-top-right flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center px-6 pb-2 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("reader.settings")}</h3>
@@ -122,7 +123,7 @@ export function ReadingSettingsPanel({
                 travels in the group's own name. */}
             <div
               aria-hidden
-              className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
+              className={`grid transition-[grid-template-rows,opacity] duration-(--dur-move) ease-standard ${
                 size === DEFAULT_READING_SIZE ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
               }`}
             >

@@ -11,6 +11,7 @@ import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
 import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SidebarIcon } from "./icons";
 import { WINDOW_BUTTONS_IN_PAGE } from "./host";
+import { Presence } from "./motion";
 
 /** A row of controls that must share one corner.
  *
@@ -706,11 +707,12 @@ export function MenuButton({
       >
         {icon}
       </IconButton>
-      {open && (
+      <Presence open={open}>
         <Surface
           edge="strong"
           material="glass"
           radius="menu"
+          layer="menu"
           className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div role="menu" className="flex flex-col">
@@ -742,7 +744,7 @@ export function MenuButton({
             ))}
           </div>
         </Surface>
-      )}
+      </Presence>
     </span>
   );
 }
@@ -823,7 +825,7 @@ export function SideColumn({
       inert={!open || undefined}
       style={{ width: open ? width : 0 }}
       className={`relative shrink-0 overflow-hidden bg-column ${
-        dragging ? "" : "transition-[width] duration-200 ease-out motion-reduce:transition-none"
+        dragging ? "" : "transition-[width] duration-(--dur-move) ease-standard"
       } ${open ? "border-r border-edge-alpha" : ""}`}
     >
       {open && (
@@ -872,7 +874,10 @@ export function SideColumn({
 export function Scrim() {
   // A strong blur: the window behind is a backdrop, not a page seen through
   // gauze (owner, 17/09: "blur mạnh hơn, để nó như là một nền background").
-  return <div aria-hidden="true" className="fixed inset-0 z-20 bg-black/25 backdrop-blur-2xl" />;
+  // `scrim`: fades with the sheet it sits under (HIG 3.17), through the
+  // same `Presence` - it is a sibling of the sheet, so the one state covers
+  // both.
+  return <div aria-hidden="true" className="scrim fixed inset-0 z-20 bg-black/25 backdrop-blur-2xl" />;
 }
 
 /** One entry of the column's navigation: a glyph and a name, painted `tint`

@@ -558,7 +558,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Chỉ báo bậc thì im khi đang ở mặc định** (hàng chấm dưới cụm cỡ chữ, chủ 06/09): người chưa đụng tới cỡ chữ không
   cần được chỉ chỗ trên một thang họ chưa dùng. Mức vẫn nằm trong `aria-label` của cả cụm. **17/09 (chủ: "ở size mặc
   định không cần space bên dưới")**: hàng chấm không còn chỉ mờ đi mà **xếp lại** — viên thuốc cao **44** ở mặc định
-  (bằng hai pill hàng dưới), mở ra 60 khi rời mặc định; xếp/mở bằng `grid-template-rows 0fr → 1fr` chuyển 200 ms +
+  (bằng hai pill hàng dưới), mở ra 60 khi rời mặc định; xếp/mở bằng `grid-template-rows 0fr → 1fr` chuyển `--dur-move` (240 ms, §3.17; trước 200) +
   opacity, nên chữ A không nhảy như khi tháo hàng khỏi DOM (lý do của bản 06/09 giữ hàng cố định), `motion-reduce`
   tắt chuyển động.
 
@@ -748,7 +748,7 @@ tròn · pill cho nav/ngôn ngữ · surface + ô nhập nhiều dòng `rounded-
 / **14 base** / 12 micro (+18 màn chào) · trong-cặp 8 / giữa-cặp 16 / khối 24 · cột đọc 65ch ·
 hover na10 · pressed na20 · hairline `edge` · cột bên **240** (kéo được 200–400; đầu 52 = vùng kéo, đèn {20,20}; thu = 0;
 dải trên chừa 76 khi thu; **lót trong 16**, hàng rail 36, khối cách 24 — chủ 16/09 "tăng spacing tổng thể… thoáng") ·
-ngưỡng tự thu **1100** px.
+ngưỡng tự thu **1100** px · chuyển động: quick **120** / vào **200** / ra **150** / dời chỗ **240** ms (§3.17).
 
 **Ngoài thang là lỗi**: `rounded-md` (6px) không thuộc thang nào — cổng `audit:ui` chặn. Bốn
 biến thể nút: `primary` (CTA brand) · `secondary` (viền) · `ghost` (không viền, việc phụ như
@@ -1012,7 +1012,7 @@ ngại đó.
   vào slot của cột bằng portal (state chương, scroll-spy, xoá ghi chú không rời Reader); *chân* — bánh răng
   Giọng đọc & mô hình · sáng/tối · ngôn ngữ, cùng một hàng. *content* = cột nội dung `relative flex-1 min-w-0`,
   header/main/footer vẫn là overlay bên trong nó, inset đo như cũ; dải trên 52 px cũng là vùng kéo. Cột thu
-  = `width: 0` (transition width 200 ms `ease-out`, `motion-reduce` tắt; KHÔNG dùng `@starting-style` — trong
+  = `width: 0` (transition width `--dur-move` 240 ms `--ease-standard` — 20/09, §3.17; trước là 200 ms `ease-out`; `motion-reduce` tắt; KHÔNG dùng `@starting-style` — trong
   một WKWebView bị ẩn, timeline đứng và phần tử kẹt ở trạng thái đầu, đo 16/09), thân giữ bề rộng 240 để chữ
   không gãy trong lúc thu; khi thu, đèn nằm trên góc trái của cột nội dung → dải trên chừa **88 px** (đèn
   chiếm x 20–72, rồi 16 px thở), nút mở đứng ngay cạnh đèn (Codex làm đúng thế).
@@ -1095,6 +1095,75 @@ ngại đó.
 - **Don't**: cột trên màn Setup · cột che thanh player (player nằm trong cột nội dung) · hai nơi cùng mang
   theme/ngôn ngữ khi cột đang mở · kính/blur TỰ VẼ trong cột (`backdrop-filter`) — vật liệu là của macOS (`windowEffects`), cột chỉ
   để trong suốt cho nó lộ ra · fill ĐỤC (`band`, `paper`) hay shadow trên vật liệu — xem thang alpha ở trên.
+
+### 3.17 Chuyển động — luật motion theo Apple (20/09)
+
+Chủ 20/09: "xây dựng animation mượt mà cho app theo tiêu chuẩn của Apple design". Trước đó app có bốn chuyển động rời
+nhau — cột bên (width 200 ms `ease-out`), xếp/mở hàng dấu cỡ chữ (200 ms), lật trang (220 ms `ease-out`), màu chữ
+hover (150 ms mặc định Tailwind) — còn MỌI lớp nổi (popover · menu · sheet · tooltip) hiện và biến tức thì (quyết định
+15/09 ở §3.15: "không có hoạt cảnh đóng: unmount tức thì như mọi lớp" — **đảo** hôm nay: một lớp biến mất trong một
+frame đọc như lỗi render, và Apple không có lớp nào rời màn kiểu đó).
+
+**Ba nguyên tắc** (vay HIG › Motion của Apple):
+1. Chuyển động để *nói* — thứ này từ đâu ra, đi về đâu, còn hay mất — không để trang trí. Mỗi lớp nổi mọc từ nút mở nó
+   (`transform-origin` ở cạnh neo) và rút về đó; sheet giữa cửa sổ lớn dần tại chỗ.
+2. Ngắn và chính xác: không lớp nào bắt người dùng chờ. Vào **200 ms**, ra **150 ms** — thứ đang rời đi không đáng
+   nhìn bằng thứ đang tới; ra chậm ngang vào là app "dính tay".
+3. Tuỳ chọn: **Reduce Motion** của hệ (`prefers-reduced-motion`) thay mọi *di chuyển* (scale, trượt, cuộn mượt) bằng
+   mờ dần ngắn — giữ phản hồi, bỏ chuyển động (đúng cách Apple làm với chính họ).
+
+**Token** (`index.css` `@theme`; ngoài thang là lỗi, như radius §6):
+
+| Token | Giá trị | Dùng cho |
+|---|---|---|
+| `--dur-quick` | 120 ms | màu chữ/viền khi hover, tooltip, chip xoá, dấu chấm |
+| `--dur-enter` | 200 ms | một lớp nổi hiện |
+| `--dur-exit` | 150 ms | một lớp nổi biến |
+| `--dur-move` | 240 ms | thứ *dời chỗ*: cột bên, hàng dấu cỡ chữ, lật trang, sheet |
+| `--ease-out` | `cubic-bezier(0.2, 0, 0, 1)` | vào — giảm tốc về chỗ nghỉ |
+| `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` | ra — tăng tốc rời đi |
+| `--ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | dời chỗ có hai đầu (cột thu/mở) |
+
+**Bản đồ lớp** (cái gì động thế nào — và cái gì ĐỨNG YÊN có chủ ý):
+
+| Lớp | Vào | Ra |
+|---|---|---|
+| popover neo nút (Cài đặt giọng · Cài đặt đọc · Chi phí · Giọng đọc & mô hình · tip "về chỗ đang đọc") | `opacity 0→1` + `scale .96→1`, `--dur-enter` `--ease-out`, gốc ở cạnh neo (`origin-top-right`, `origin-bottom-right`, `origin-bottom`) | `opacity→0` + `scale→.98`, `--dur-exit` `--ease-in` |
+| sheet giữa cửa sổ (Nguồn giọng · Apple Books) + `Scrim` | sheet `scale .96→1` + mờ vào `--dur-move` `--ease-out`; scrim mờ vào `--dur-enter` | cả hai mờ ra `--dur-exit` |
+| menu (`MenuButton`) | **hiện ngay** — NSMenu không có hoạt cảnh mở | mờ ra `--dur-exit` |
+| tooltip (`IconButton`), peek chương / ghi chú, callout `Notice` | mờ vào `--dur-quick` (peek/Notice: `--dur-enter`, Notice trồi 4 px) | tức thì (lớp không nhận chuột, không có gì để "rút") |
+| cột bên | width `--dur-move` `--ease-standard` (từ 200 `ease-out`: thu/mở có hai đầu như nhau, ease-out là cho thứ *xuất hiện*) | như vào |
+| hàng dấu cỡ chữ (§3.9d) | `grid-template-rows` + opacity `--dur-move` `--ease-standard` | như vào |
+| lật trang (`PageFlow`) | `transform` `--dur-move` `--ease-out` (giảm tốc về trang mới; 220 → 240 cho cùng một thang) | — |
+| cuộn tới chỗ NGƯỜI DÙNG chọn (chương, kết quả tìm, ghi chú, "Về chỗ đang đọc") | `scrollIntoView({behavior: "smooth"})` — Books cũng cuộn tới, không nhảy | — |
+| màu chữ/viền hover | `--dur-quick` `--ease-out` (`--default-transition-duration` của Tailwind = 120) | như vào |
+
+Đứng yên có chủ ý: **nền hover/press của `hover-wash`** (macOS tô hover tức thì; nền là `background-image` nên cũng
+không mờ dần được — đúng ý) · **theo giọng** ở Quét đọc và Reader (`block: "nearest"` tức thì: trang nhích theo từng
+câu, cuộn mượt liên tục thành trang trôi) · đổi theme · hàng danh sách xuất hiện (kết quả tìm khi gõ) · mark tìm trên
+trang · đổi tab cột · pill của segmented KHÔNG trượt (bản `compact` đổi bề rộng khi đổi tab, trượt sẽ méo; đổi màu
+`--dur-quick` là đủ, macOS cũng không trượt).
+
+**Cơ chế** (`ui/motion.tsx` + `index.css`):
+- `Presence open={…}`: giữ con đã render thêm `--dur-exit` sau khi `open` tắt (con cuối cùng được nhớ, vì props của nó
+  có thể đã mất — `speechSettings` null), đóng dấu `data-state="open|closed"` lên một wrapper `display: contents`,
+  `pointer-events: none` trong lúc ra. Con mount ở trạng thái `closed` rồi lật sang `open` ở frame kế — KHÔNG
+  `@starting-style` (WKWebView ẩn làm timeline đứng, phần tử kẹt ở trạng thái đầu, đo 16/09 §3.16).
+- `Surface layer="popover | sheet | menu"`: class `.layer-*` mang transition trên **`opacity` + `scale`** (thuộc tính
+  riêng, không đụng `translate` đang định vị `-translate-x-1/2` của Chi phí và Apple Books); gốc scale qua class
+  `origin-*` của Tailwind do chỗ gọi đưa vào.
+- Guard cửa sổ khuất: `visibilitychange` → `html[data-hidden]` → mọi transition 0 ms, để một lớp mở lúc cửa sổ khuất
+  không kẹt ở opacity 0.
+- Reduce Motion: `@media (prefers-reduced-motion: reduce)` đặt `--dur-move: 0ms`, scale = 1 và trồi = 0 ngay từ đầu,
+  giữ mờ dần ≤ 100 ms; JS hỏi `matchMedia` (`ui/motion.ts::scrollBehavior()`) cho `scrollIntoView`.
+- Chỉ animate `opacity` · `scale` · `translate` (compositor, 60 fps trên `glass-panel` có blur 28 px). Ngoại lệ có chủ
+  ý và đã có: width cột bên, `grid-template-rows` hàng dấu (layout, ngắn, một phần tử).
+- Đo (mock, Chromium — WebKit thật chỉ trên bản cài): sau khi mở, `opacity` tại 0 / 100 / 250 ms tăng dần tới 1; sau
+  khi đóng, phần tử còn đó với `pointer-events: none` ở 50 ms, biến khỏi DOM trước 300 ms.
+
+**Don't**: `transition: all` · animate `width/height/top/left` cho lớp nổi · hoạt cảnh ra dài bằng hoạt cảnh vào · một
+số ms viết tay trong màn (mọi thời lượng đi qua token) · hoạt cảnh cho thứ người dùng không nhìn (đổi theme, danh
+sách đang gõ) · trượt-vào cho popover (Apple: popover *lớn ra* từ neo, sheet *lớn ra* tại chỗ; trượt là của banner).
 
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 

@@ -126,6 +126,7 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
       ref={sheet}
       /* The Apple Books sheet's frame: a layer that stands on its own in the
          middle of the window, capped so a short window scrolls the body. */
+      layer="sheet"
       className="fixed left-1/2 top-1/2 z-30 flex max-h-[84%] w-[36rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-start gap-3 px-6 pb-2 pt-5">

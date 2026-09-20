@@ -188,7 +188,8 @@ export function VoicesPanel({
          with nothing behind it (owner's screenshot, 07/09). Clipped, the
          panel is at worst cut short at the bottom - which is what a panel
          with a cap should look like. */
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden shadow-lifted"
+      layer="popover"
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex items-start gap-3 px-6 pb-4 pt-5">
         <div className="min-w-0 flex-1">

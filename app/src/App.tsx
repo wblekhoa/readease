@@ -11,6 +11,7 @@ import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
+import { Presence, useHiddenGuard } from "./ui/motion";
 import {
   CHIMES, DEFAULT_CHIME, DEFAULT_NOTE_READING, NOTE_READINGS, languageName, SettingsPanel,
   type Chime, type NoteReading,
@@ -160,6 +161,7 @@ function ReadingNowRow({ book, onPress }: { book: LibraryBook; onPress: () => vo
 }
 
 export default function App() {
+  useHiddenGuard();
   const [theme, toggleTheme, appearance, chooseAppearance] = useAppearance();
   // The library first (owner, 16/09): the first tab of the rail is the
   // first screen. An empty shelf offers the paste screen itself.
@@ -1890,7 +1892,7 @@ export default function App() {
                         <Surface
                           edge="strong"
                           material="glass"
-                          className="w-[24rem] max-w-[calc(100vw-3rem)] p-3 shadow-lifted"
+                          className="peek-in w-[24rem] max-w-[calc(100vw-3rem)] p-3 shadow-lifted"
                         >
                           <span className="block text-xs text-ink-mute">
                             {pageInfo.resumeChapterTitle}
@@ -2072,8 +2074,8 @@ export default function App() {
         </div>
       </footer>
       )}
-      {readingSettingsOpen && screen === "reader" && openBook && (
-        <ReadingSettingsPanel
+      <Presence open={readingSettingsOpen && screen === "reader" && openBook !== null}>
+        {openBook && <ReadingSettingsPanel
           size={readingSize}
           sizes={READING_SIZES}
           onSize={changeReadingSize}
@@ -2084,10 +2086,10 @@ export default function App() {
           prefs={prefs}
           onPrefs={choosePrefs}
           onClose={() => setReadingSettingsOpen(false)}
-        />
-      )}
-      {costOpen && pricing && (
-        <CostPanel
+        />}
+      </Presence>
+      <Presence open={costOpen && pricing}>
+        {pricing && <CostPanel
           estimate={estimate}
           failed={estimateFailed}
           /* Pasted text has no chapters, so there is no scope to choose -
@@ -2100,10 +2102,10 @@ export default function App() {
           onScope={changeScope}
           onBudget={changeBudget}
           onClose={() => setCostOpen(false)}
-        />
-      )}
-      {settingsOpen && speechSettings && (
-        <SettingsPanel
+        />}
+      </Presence>
+      <Presence open={settingsOpen && speechSettings}>
+        {speechSettings && <SettingsPanel
           /* The whole catalogue and the shortlist: the panel narrows to the
              language's voices itself - the marked ones plus the one in use,
              the same list the mid-reading switcher shows (owner, 03/09: one
@@ -2144,9 +2146,9 @@ export default function App() {
              would be a request to their servers every time somebody
              dismissed it. */
           onClose={() => setSettingsOpen(false)}
-        />
-      )}
-      {hubOpen && (
+        />}
+      </Presence>
+      <Presence open={hubOpen}>
         <SourcesHub
           models={models}
           voices={voices}
@@ -2155,8 +2157,8 @@ export default function App() {
           reading={reading !== "idle"}
           onClose={() => setHubOpen(false)}
         />
-      )}
-      {voicesOpen && (
+      </Presence>
+      <Presence open={voicesOpen}>
         <VoicesPanel
           error={voicesError}
           voices={voices}
@@ -2175,7 +2177,7 @@ export default function App() {
             setVoicesOpen(false);
           }}
         />
-      )}
+      </Presence>
     </div>
     </div>
   );

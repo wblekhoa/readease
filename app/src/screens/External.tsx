@@ -9,6 +9,7 @@ import { text, type TextKey } from "../i18n";
 import { Button, IconButton, Kbd, Notice, SectionTitle, Surface } from "../ui/controls";
 import { ArrowLeftIcon, ChevronDownIcon, CursorTextIcon, InfoIcon, PlayIcon, ScrollIcon } from "../ui/icons";
 import { EmptyState } from "../ui/patterns";
+import { scrollBehavior } from "../ui/motion";
 import { currentPart, isOpen, summarise } from "../ui/scanHistory";
 import { comboFromEvent, displayShortcut } from "../ui/useShortcut";
 
@@ -84,7 +85,9 @@ function ScanEntry({
     if (current && following) here.current?.scrollIntoView({ block: "nearest" });
   }, [current, following]);
   useEffect(() => {
-    if (jump > 0) here.current?.scrollIntoView({ block: "center" });
+    // The person asked to be taken there: a scroll, not a cut (HIG 3.17).
+    // Following the voice, above, stays a cut - it moves by the sentence.
+    if (jump > 0) here.current?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
     // Only the button bumps `jump`; the part it lands on is whichever is
     // current at that moment, so `current` is read, not depended on.
     // eslint-disable-next-line react-hooks/exhaustive-deps

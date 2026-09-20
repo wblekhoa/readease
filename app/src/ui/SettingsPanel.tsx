@@ -162,7 +162,8 @@ export function SettingsPanel({
          right edge sits at the same 24px inset the row is padded by and the
          two line up without measuring anything (owner, 05/09: it used to
          open across the screen from the button that opened it). */
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden shadow-lifted"
+      layer="popover"
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("player.settings")}</h3>
