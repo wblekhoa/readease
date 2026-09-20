@@ -4,6 +4,19 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The side column paints its states as alphas of the ink, the way the
+  Mac's own sidebar does, so its material shows through them: the open
+  list's tab, the chapter you are at, the chosen search hit and the
+  navigation entry on show are a light tint in the dark theme and a grey
+  one in the light theme instead of opaque blocks; the tab track and the
+  search box are recessed wells; the column's hairlines are alpha too;
+  the chosen tab no longer carries a drop shadow and runs to the edge of
+  its track. Hover stays one step
+  under "chosen", so the open entry and a hovered neighbour are no
+  longer the same colour.
+
 ## 0.1.8
 
 Voice samples that play without a stutter, a reading of a selection that

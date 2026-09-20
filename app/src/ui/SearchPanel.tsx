@@ -81,6 +81,7 @@ export function SearchPanel({
             the query here, before anything around the column sees it. */}
         <SearchField
           autoFocus
+          material
           value={query}
           label={text("reader.search")}
           placeholder={text("reader.search_placeholder")}

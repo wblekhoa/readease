@@ -1316,6 +1316,7 @@ export default function App() {
                 toolbar switches wear. */}
             <SegmentedControl
               compact
+              material
               className="mx-4 mb-4 shrink-0"
               label={text("sidebar.lists")}
               value={side.tab}

@@ -99,8 +99,9 @@ export function ListRow({
   /** A handle on the row itself, for a list that has to bring one of its rows
    * into view. */
   rowRef?: RefObject<HTMLDivElement | null>;
-  /** "You are here" - painted in `band`, the same token the reading line
-   * uses, so the app only ever has one colour for current position. */
+  /** "You are here" - painted in `tint`, the column's alpha of the reading
+   * line's `band` (HIG 3.16): the same rung of the ladder, on a material
+   * that an opaque band would hide. */
   active?: boolean;
   /** Navigation lists (a book's contents) trade padding for how many rows
    * fit on screen; content lists keep the roomier default. */
@@ -117,7 +118,7 @@ export function ListRow({
       ref={rowRef}
       className={`group flex items-center ${
         dense ? "rounded-[var(--ctl-radius)]" : "rounded-2xl pr-1.5"
-      } transition-colors ${active ? "bg-band" : "hover:bg-wash"}`}
+      } transition-colors ${active ? "bg-tint" : "hover:bg-wash"}`}
     >
       <button
         onClick={onPress}
@@ -823,7 +824,7 @@ export function SideColumn({
       style={{ width: open ? width : 0 }}
       className={`relative shrink-0 overflow-hidden bg-column ${
         dragging ? "" : "transition-[width] duration-200 ease-out motion-reduce:transition-none"
-      } ${open ? "border-r border-edge" : ""}`}
+      } ${open ? "border-r border-edge-alpha" : ""}`}
     >
       {open && (
         <div
@@ -856,7 +857,7 @@ export function SideColumn({
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         {foot && (
-          <div className="flex shrink-0 items-center gap-2 border-t border-edge px-4 py-3">{foot}</div>
+          <div className="flex shrink-0 items-center gap-2 border-t border-edge-alpha px-4 py-3">{foot}</div>
         )}
       </div>
     </aside>
@@ -874,8 +875,10 @@ export function Scrim() {
   return <div aria-hidden="true" className="fixed inset-0 z-20 bg-black/25 backdrop-blur-2xl" />;
 }
 
-/** One entry of the column's navigation: a glyph and a name, painted `wash`
- * + `ink` when it is the screen on show (the state layer of HIG §2). */
+/** One entry of the column's navigation: a glyph and a name, painted `tint`
+ * + `ink` when it is the screen on show - the column's "you are here", one
+ * rung over the hover wash (HIG 3.16; it was `wash`, so the open entry and
+ * a hovered neighbour were the same colour). */
 export function RailItem({
   icon,
   label,
@@ -894,7 +897,7 @@ export function RailItem({
       onClick={onPress}
       aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-3 py-2 text-left text-sm transition-colors ${
-        active ? "bg-wash text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"
+        active ? "bg-tint text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"
       }`}
     >
       {icon && <span className="shrink-0">{icon}</span>}
@@ -937,7 +940,7 @@ export function RailDocument({
       title={title}
       className="flex w-full items-center gap-3 rounded-[var(--ctl-radius)] px-3 py-2 text-left transition-colors hover:bg-wash"
     >
-      <span className="relative h-9 w-6 shrink-0 overflow-hidden rounded-[3px] bg-band shadow-edge">
+      <span className="relative h-9 w-6 shrink-0 overflow-hidden rounded-[3px] bg-tint shadow-edge">
         {cover ? (
           <img src={cover} alt="" className="h-full w-full object-cover" draggable={false} />
         ) : (

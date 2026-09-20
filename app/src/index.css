@@ -81,9 +81,17 @@
      that vanishes. Dark keeps `edge-strong`, which against its own ground is
      no heavier than `edge` is against the light one. */
   --app-dot: var(--border-color-neutral-primary);
+  /* The hairline on the side column's MATERIAL (HIG 3.16, 20/09): an alpha
+     of the ink, like macOS's own separatorColor, so it reads over whatever
+     the vibrancy lets through. Per theme for the same reason as `dot`:
+     na10 in dark is about white 12 % - the system's line - but na10 in
+     light is barely black 6 %, and only na20 matches the n20 line the
+     column had. */
+  --app-edge-alpha: var(--border-color-neutral-tint);
 }
 [data-theme="dark"] {
   --app-dot: var(--border-color-neutral-soft);
+  --app-edge-alpha: var(--border-color-neutral-wash);
   --app-band: var(--neutral-n20);
   --app-rail: var(--neutral-n05);
   --app-edge-field: transparent;
@@ -108,6 +116,23 @@
      hover rather than being left at na10, which would have made the two the
      same and quietly deleted the press. */
   --color-press: var(--neutral-alpha-na20);
+  /* The side column's fills on the Mac's sidebar material (HIG 3.16,
+     20/09; owner: "màu alpha neutral sáng, để phù hợp với background
+     blur"). On vibrancy the material IS the ground, so an opaque `band` or
+     `paper` is a slab that hides it - the 0.1.8 column showed two n20
+     blocks and an n10 box on the blur. These are the DS's own ink-side
+     alphas, light in dark and dark in light: `veil` (na05) for what is
+     recessed - a segmented track, the search well; `tint` (na20) for what
+     is chosen - the chapter you are at, the open list, the tab on show -
+     one rung over the hover `wash`, the same distance press keeps. `tint`
+     shares press's value and is its own role: press is a finger held down,
+     tint is where you are. Used by name where the column needs them, never
+     by re-pointing `band`/`paper` inside `aside`: the tooltips of the
+     column's buttons are DOM children of the aside, and a scoped paper
+     would have made them see-through (the "Về chỗ đang đọc" pill went that
+     way once - the wash note below). */
+  --color-veil: var(--neutral-alpha-na05);
+  --color-tint: var(--neutral-alpha-na20);
   --color-band: var(--app-band);
   --color-rail: var(--app-rail);
   /* A grouped panel: one step off the desk, so settings rows read as an inset
@@ -131,6 +156,7 @@
      Same accepted decision as the Qt theme round. */
   --color-edge-strong: var(--border-color-neutral-soft);
   --color-edge-field: var(--app-edge-field);
+  --color-edge-alpha: var(--app-edge-alpha);
   --color-dot: var(--app-dot);
   /* Destructive is its own hue: DOL's hard rule keeps brand red for identity
      and the red ramp's semantic tokens for danger, and both flip with theme.
