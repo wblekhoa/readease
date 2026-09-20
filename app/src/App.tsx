@@ -206,6 +206,15 @@ export default function App() {
     getVersion().then(setAppVersion).catch(() => undefined);
   }, []);
   const updater = useUpdater(appVersion);
+  /** Where the voice goes (HIG 3.21): asked once the page is up, then
+   * followed by the host's `audio:device` whenever it changes. */
+  const [audioOutput, setAudioOutput] = useState<{ name: string; default: boolean } | null>(null);
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    invoke<{ name: string; default: boolean }>("audio_output").then(setAudioOutput).catch(() => undefined);
+    const heard = listen<{ name: string; default: boolean }>("audio:device", (event) => setAudioOutput(event.payload));
+    return () => { heard.then((unlisten) => unlisten()).catch(() => undefined); };
+  }, []);
   /** The voice whose sample is speaking, so the row can offer Stop. */
   const [previewing, setPreviewing] = useState<string | null>(null);
   // One reducer owns every transition of the transport. Five hand-written
@@ -2314,6 +2323,7 @@ export default function App() {
           onNoteReading={rememberNoteReading}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
           onOpenHub={() => { setSettingsOpen(false); setHubOpen(true); }}
+          output={audioOutput}
           /* Just close. This used to re-list the catalogue on the way out,
              in case a key had been added while the panel was open - but
              `saveKey` already re-lists the moment a key is accepted, and

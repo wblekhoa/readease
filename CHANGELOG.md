@@ -38,6 +38,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - Tooltips wait a beat before appearing, like the Mac's own help tags,
   and then follow the pointer along a row at once; sweeping the toolbar
   no longer flashes a name under every button.
+- The voice plays through the Mac's default output, opened by name; if
+  that device will not open, the app says so instead of quietly picking
+  another. Voice settings now shows which output the voice goes to, and
+  whether it is the system's default - the line that makes a
+  Multi-Output setup diagnosable.
 
 ## 0.1.9
 

@@ -806,6 +806,11 @@ export const TEXT = {
   "update.open_releases": ["Mở trang phát hành", "Open the releases page"],
   "update.found": ["Có ReadEase {version}", "ReadEase {version} is available"],
   "update.view": ["Xem", "View"],
+  /* Which output the voice goes to (HIG 3.21). */
+  "settings.output": ["Loa", "Output"],
+  "settings.output_default": ["Thiết bị ra âm mặc định của hệ", "The system's default output"],
+  "settings.output_fallback": ["Không phải thiết bị mặc định của hệ - mặc định không mở được", "Not the system's default output - the default would not open"],
+  "settings.output_unknown": ["Chưa biết", "Not known yet"],
 } as const;
 
 export type TextKey = keyof typeof TEXT;

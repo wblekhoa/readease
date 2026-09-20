@@ -1287,6 +1287,26 @@ mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plu
 - **Don't**: dialog khi kiểm tra lặng lẽ thất bại · tự tải khi chưa bấm (người dùng quyết) · ghi mật khẩu vào log/commit
   · bật `createUpdaterArtifacts`.
 
+### 3.21 Loa nào đang phát — thiết bị ra âm nói tên (20/09)
+
+Ghi chú của chủ 20/09: "app chưa nghe được Multi-Output device" + "tối ưu theo hệ thống". Đo (probe `audio-probe`, cùng
+cpal 0.17.3 + rodio 0.22.2 với app): một Multi-Output (aggregate stacked) mở được và phát real-time — thiết bị không
+phải chỗ hỏng. Chỗ hỏng thật là **không ai biết app đang phát ra đâu**: host mở sink một lần lúc khởi động bằng
+`open_default_sink()` của rodio — thứ này khi mặc định không mở được sẽ *lặng lẽ* lấy thiết bị khác đầu tiên (trên máy
+chủ: một màn hình), không log, không báo trang, không error-callback.
+
+- **Host** (`engine.rs::open_output`): mở đúng **thiết bị mặc định của hệ theo tên**; chỉ khi nó không mở được mới
+  thử thiết bị khác, và **nói to** ở cả hai phía — `stderr` `[audio] opened "…"` (kèm "NOT the system's default
+  output" khi phải rơi) và sự kiện `audio:device {name, default}`; stream lỗi giữa chừng → `[audio] stream error`.
+  Lệnh `audio_output` để trang hỏi sau khi đã dựng (sự kiện lúc khởi động bắn trước khi có trang).
+- **Trang**: *Cài đặt giọng đọc* có hàng **Loa** ghi tên thiết bị đang phát; khi không phải mặc định, hàng nói thẳng
+  "không phải thiết bị mặc định của hệ" — người dùng Multi-Output thấy ngay giọng đi đâu, và phép thử A/B (đổi output
+  khi app đang chạy / chọn trước rồi mở app) trả lời bằng một dòng chữ thay vì bằng tai.
+- **Chưa làm, có điều kiện**: đi theo thiết bị mặc định KHI NÓ ĐỔI lúc app đang chạy (listener
+  `kAudioHardwarePropertyDefaultOutputDevice` → mở lại sink, bài đọc dở đọc lại từ vị trí vừa báo). cpal mở thiết bị
+  mặc định bằng unit `DefaultOutput` nhưng ghim `CurrentDevice`; Apple không nói unit có còn theo mặc định không — chỉ
+  phép thử A trên bản cài trả lời được (đổi output mặc định của máy là cài đặt hệ thống, AI không đụng). A hỏng → làm.
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:

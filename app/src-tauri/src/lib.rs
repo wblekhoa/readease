@@ -36,6 +36,13 @@ struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
 /// nudge, so nothing is opened twice and nothing is lost.
 struct OpenedFiles(std::sync::Mutex<Vec<String>>);
 
+/// Which output the voice goes to (HIG 3.21) - asked once the page is up,
+/// since the audio thread's own event fired before there was a page.
+#[tauri::command]
+fn audio_output(slot: tauri::State<EngineSlot>) -> engine::AudioOutput {
+    client_of(&slot).output.clone()
+}
+
 #[tauri::command]
 fn take_opened_files(queue: tauri::State<OpenedFiles>) -> Vec<String> {
     std::mem::take(&mut *queue.0.lock().unwrap())
@@ -338,6 +345,7 @@ pub fn run() {
             pause_audio,
             resume_audio,
             take_opened_files,
+            audio_output,
             media::now_playing
         ])
         .build(tauri::generate_context!())
