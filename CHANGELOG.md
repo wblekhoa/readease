@@ -4,7 +4,12 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.9
+
+The side column's states become alphas of the ink on the Mac's sidebar
+material, and the whole app moves on one scale, in Apple's manner - layers
+that grow out of their control and fade away instead of popping. Installs
+over 0.1.8.
 
 - The side column paints its states as alphas of the ink, the way the
   Mac's own sidebar does, so its material shows through them: the open
