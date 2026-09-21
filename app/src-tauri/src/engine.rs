@@ -334,13 +334,26 @@ struct Shadow {
     /// Absolute index (frames handed to the device before it) of `frames[0]`.
     base: u64,
     frames: VecDeque<(bool, Vec<f32>)>,
+    /// Samples held in `frames`, so the bound below is cheap to keep.
+    samples: usize,
     /// Absolute indexes where a sentence begins, oldest first.
     starts: VecDeque<u64>,
 }
 
+/// The most a shadow may hold, whatever the engine sends: a minute. Two
+/// sentences never come near it; a reading with no rests in it would.
+const SHADOW_MAX_SAMPLES: usize = 60 * SAMPLE_RATE as usize;
+
 impl Shadow {
     fn new() -> Self {
-        Shadow { epoch: 0, base: 0, frames: VecDeque::new(), starts: VecDeque::new() }
+        Shadow { epoch: 0, base: 0, frames: VecDeque::new(), samples: 0, starts: VecDeque::new() }
+    }
+
+    fn drop_front(&mut self) {
+        if let Some((_, samples)) = self.frames.pop_front() {
+            self.samples -= samples.len();
+            self.base += 1;
+        }
     }
 
     /// Remember a frame as it goes to the device. `index` is how many went
@@ -350,12 +363,14 @@ impl Shadow {
             self.epoch = epoch;
             self.base = index;
             self.frames.clear();
+            self.samples = 0;
             self.starts.clear();
         }
         let after_silence = self.frames.back().is_none_or(|(voiced, _)| !voiced);
         if voiced && after_silence {
             self.starts.push_back(index);
         }
+        self.samples += samples.len();
         self.frames.push_back((voiced, samples.to_vec()));
     }
 
@@ -372,8 +387,15 @@ impl Shadow {
             None => ear,
         };
         while self.base < keep_from && !self.frames.is_empty() {
-            self.frames.pop_front();
-            self.base += 1;
+            self.drop_front();
+        }
+        // The bound: what is already behind the ear goes first, and a
+        // sentence start that fell off with it is no longer a target.
+        while self.samples > SHADOW_MAX_SAMPLES && self.base < ear {
+            self.drop_front();
+        }
+        while self.starts.front().is_some_and(|start| *start < self.base) {
+            self.starts.pop_front();
         }
     }
 
@@ -1422,6 +1444,24 @@ mod tests {
         assert!(!should_rewind(Some(now - Duration::from_secs(29)), now));
         assert!(should_rewind(Some(now - REWIND_AFTER), now));
         assert!(should_rewind(Some(now - Duration::from_secs(3600)), now));
+    }
+
+    /// A sentence with no rest in it for minutes on end - not a book, but
+    /// an engine could send one - must not grow the shadow with it: what
+    /// is behind the ear goes once a minute is held.
+    #[test]
+    fn the_shadow_never_holds_more_than_a_minute() {
+        let mut shadow = Shadow::new();
+        let second = vec![0.0f32; SAMPLE_RATE as usize];
+        for index in 0..90u64 {
+            shadow.push(1, index, true, &second);
+            shadow.trim(index); // the ear keeps up with the device
+        }
+        assert!(shadow.samples <= SHADOW_MAX_SAMPLES);
+        assert!(shadow.base > 0);
+        // The one start fell off with the frames before the bound: no
+        // sentence to go back to, so a resume after a break plays on.
+        assert_eq!(shadow.target(89), None);
     }
 
     /// The shadow forgets what the ear has left behind: two begun

@@ -1357,7 +1357,8 @@ nghỉ; ReadEase làm cùng một việc, theo CÂU thay vì theo giây, vì câ
   chỉ host giữ đúng phần âm thanh tai đã nghe. Vòng `drain` giữ **bóng** của các khung đã đưa vào thiết bị kể từ đầu
   câu trước đó (mỗi khung mang cờ `from_voice` của engine — khoảng lặng giữa câu, nghỉ đoạn, chuông chương, báo hình
   đều là `false`, nên "đầu câu" = khung có tiếng đứng sau một khung không tiếng — một luật cho mọi mối nối). Bóng được
-  cắt bớt khi tai đi qua: chỉ giữ hai câu gần nhất đã bắt đầu phát + phần còn trong thiết bị (giới hạn bộ nhớ vài MB).
+  cắt bớt khi tai đi qua: chỉ giữ hai câu gần nhất đã bắt đầu phát + phần còn trong thiết bị; trần cứng **một phút**
+  âm thanh (`SHADOW_MAX_SAMPLES`) phòng engine gửi một mạch không nghỉ — quá trần thì phần sau lưng tai đi trước.
 - **Cơ chế**: `pause()` ghi thời điểm; `resume()` sau ≥ 30 s ghi **yêu cầu lùi** vào một ô chung (như cờ `paused`)
   rồi hạ `paused` — KHÔNG tự `play()`; luồng audio xử lý yêu cầu ở mọi chỗ nó chờ (vòng lookahead, vòng chờ `Done`,
   nhánh timeout, và trước khi phát khung mới): `clear()` thiết bị, đưa lại các khung từ đầu câu đích tới hết bóng,
