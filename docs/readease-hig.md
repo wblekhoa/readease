@@ -1242,7 +1242,15 @@ thành tiếng phải đứng vào chỗ đó.
   cuống AirPods = toggle) đi tới app kể cả khi cửa sổ không ở trước hay đang ẩn. Tạm dừng thì hệ hiện "paused"; đọc xong
   hay dừng thì **rút khỏi** Now Playing (không để một ReadEase "đã dừng" đứng mãi trong Control Center).
 - **Tên hiện**: tài liệu → tên tài liệu / chương đang đọc; Dán nội dung → "Dán nội dung" / "ReadEase"; Quét đọc → "Quét
-  đọc" / "Phần đã chọn". Không ảnh bìa ở bước này (cần đưa NSImage qua host — việc sau).
+  đọc" / "Phần đã chọn".
+- **Ảnh bìa** (21/09): tài liệu có bìa thì Control Center / thanh menu Now Playing hiện bìa (như Music hiện album).
+  Trang đã có bìa dưới dạng data-URL (`useCover`, cache theo id) nên trang gửi; host nhận `artwork { key,
+  data? }` — `key` là id tài liệu, `data` (base64) chỉ đi kèm **lần đầu** cho key ấy (trang nhớ key đã gửi), các lần
+  sau (tạm dừng/tiếp tục, đổi chương) chỉ gửi key: `now_playing` bắn ở mọi đổi trạng thái, không gửi 100–200 KB mỗi
+  lần. Host giữ bytes theo key (`ArtworkCache`, một ảnh), dựng `NSImage` từ `NSData` rồi `MPMediaItemArtwork`
+  (`initWithBoundsSize:requestHandler:` — block giữ `Retained<NSImage>` và trả `NonNull` vào nó, MediaPlayer giữ
+  block) trên main thread cùng `apply`. Không bìa hay ảnh hỏng → dict không có `MPMediaItemPropertyArtwork`, hệ hiện
+  icon app như trước. Dán nội dung / Quét đọc: không ảnh.
 - **Cơ chế** (`src-tauri/src/media.rs`, `objc2-media-player` 0.3.2 — API đọc từ mã nguồn crate, không từ trí nhớ): host
   đăng ký ở `setup` (main thread) bốn lệnh của `MPRemoteCommandCenter` — togglePlayPause · play · pause · stop — mỗi lệnh
   bắn `media:command` về trang, giữ target trả về để handler sống suốt đời app; **tắt** nextTrack/previousTrack để Control

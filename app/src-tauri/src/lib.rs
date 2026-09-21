@@ -335,8 +335,9 @@ pub fn run() {
                 busy: std::sync::atomic::AtomicBool::new(false),
             });
             // Now Playing's remote commands (HIG 3.19), once, on the main
-            // thread that `setup` runs on.
+            // thread that `setup` runs on - and the one cover it shows.
             app.manage(media::register(app.handle()));
+            app.manage(media::ArtworkCache::default());
 
             // Menu bar indicator: exists for the whole app life, visible only
             // while reading; one click stops without surfacing the window.
