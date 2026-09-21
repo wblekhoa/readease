@@ -20,6 +20,7 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   the app with a file - it is added to the library (a file already there
   is recognised, not duplicated) and opened. The app does not take the
   place of Books or Preview as the default; that stays your choice.
+- The window opens where you left it, at the size you left it.
 
 ## 0.1.9
 

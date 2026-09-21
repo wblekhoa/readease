@@ -27,4 +27,5 @@ base64 = "0.23.1"
 tauri-plugin-global-shortcut = "2.3.2"
 tauri-plugin-macos-permissions = "2.3.0"
 tauri-plugin-dialog = "2.7.3"
+tauri-plugin-window-state = "2.4.1"
 
