@@ -4,6 +4,14 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- A log file: with the app opened from Finder, what the host and the
+  engine report goes to `~/Library/Logs/ReadEase/readease.log` (kept to
+  one previous generation) instead of nowhere. Help › Show Log File
+  reveals it, and the bug-report form asks for its last lines. The app
+  writes no document names or text there.
+
 ## 0.1.10
 
 A Mac app of its own: a menu bar with every command, documents that open

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use engine::EngineClient;
 
+mod log;
 mod media;
 use serde::Serialize;
 use tauri::Manager;
@@ -256,6 +257,10 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // First, before anything prints: the log file takes stderr when no
+    // terminal is reading it (HIG 3.22).
+    let context = tauri::generate_context!();
+    log::capture_stderr(&log::bundle_version(&context.package_info().version.to_string()));
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -346,9 +351,10 @@ pub fn run() {
             resume_audio,
             take_opened_files,
             audio_output,
-            media::now_playing
+            media::now_playing,
+            log::log_path
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app, event| {
             // The system's "open these documents" (HIG 3.18): queue the
