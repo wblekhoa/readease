@@ -10,6 +10,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   beginning of the sentence the voice was in - and from the sentence
   before it when the pause fell mid-sentence - so the ear picks the
   thread back up. A short pause resumes exactly where it stopped.
+- How long is left: while a document is read, the corner of the bar
+  says "Chương này · còn ~52 phút" (or the hours and minutes to the end
+  of the document, when that is how far the reading goes), and the ⓘ
+  tooltip says it before the reading starts. The engine forecasts it
+  from what it still has to say and the pace it has actually been heard
+  at, so the number settles as the reading goes on.
 
 ## 0.1.12
 

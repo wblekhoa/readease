@@ -87,6 +87,7 @@ from vieneu_reader.speech.chimes import chime_choice, load_chime
 
 #: The language the second local model reads.
 ENGLISH = "en"
+from vieneu_reader.playback.pace import Pace
 from vieneu_reader.playback.time_stretch import SAMPLE_RATE, TimeStretcher
 from vieneu_reader.speech.contracts import SynthesisSettings
 from vieneu_reader.importers.errors import BookImportError
@@ -528,6 +529,10 @@ class _Session:
         # which may land after its reply - can be written with the right
         # rate and voice. Bounded: only the last few readings matter.
         self._listening: dict[Any, tuple[str, float, str]] = {}
+        # How fast each voice has been heard to read (HIG 3.24), measured
+        # from the readings of this process: what "còn ~N phút" rests on
+        # once a voice has said ten seconds' worth.
+        self._paces: dict[str, Pace] = {}
         # What each paid provider offered, remembered for this process and
         # keyed by the credential it was asked with - a new key is a new
         # question. ElevenLabs' catalogue is a network round trip (1-1.8 s
@@ -1214,6 +1219,18 @@ class _Session:
         if asked:
             self._send({"event": "voices", "providers": asked})
 
+    def _remaining_s(self, voice_id: str, chars: int, rate: Any, language: str) -> int:
+        """How long `chars` will take this voice to say, as the ear hears it
+        (HIG 3.24): the pace measured in this process when it has one,
+        the language's default until then."""
+
+        try:
+            speed = float(rate or 1.0)
+        except (TypeError, ValueError):
+            speed = 1.0
+        pace = self._paces.get(voice_id) or Pace()
+        return pace.seconds_for(chars, rate=speed, language=language)
+
     def _estimate(self, request_id: Any, params: dict[str, Any]) -> None:
         """What one press of the read button would cost, before it is pressed.
 
@@ -1248,11 +1265,13 @@ class _Session:
             language = language_of_text(pasted, self._reading_language())
             utterances = _text_utterances(pasted, SynthesisSettings(), language, note_reading_of(self._settings_document()))
             chars = sum(len(utterance.text) for utterance in utterances)
+            remaining_s = self._remaining_s(voice_id, chars, params.get("rate"), language)
             if price is None:
                 self._reply(request_id, {
                     "paid": False, "chars": chars,
                     "utterances": len(utterances), "chapters": 0,
                     "language": language,
+                    "remaining_s": remaining_s,
                     "spent_usd": self._spend.snapshot().usd,
                 })
                 return
@@ -1264,6 +1283,7 @@ class _Session:
                 "utterances": len(utterances),
                 "chapters": 0,
                 "language": language,
+                "remaining_s": remaining_s,
                 "usd": round(price.usd_for(chars), 4),
                 "units": price.units_for(chars),
                 "unit": price.unit,
@@ -1294,6 +1314,14 @@ class _Session:
         # so a figure measured from the resume point is a figure that only
         # one of the ways to start a reading actually pays.
         start = scope_start(chapter_of, resume, chapters)
+        # Time is forecast from where the voice would actually resume - the
+        # ceiling the money is quoted from would overstate it by however
+        # much of the chapter has already been heard (HIG 3.24).
+        remaining_s = self._remaining_s(
+            voice_id,
+            sum(len(u.text) for u in utterances[resume:scope_end(chapter_of, resume, chapters)]),
+            params.get("rate"), language,
+        )
 
         if price is None:
             # The local model. Saying "free" beats saying nothing: the button
@@ -1305,6 +1333,7 @@ class _Session:
                 "utterances": end - start,
                 "chapters": len(set(chapter_of[start:end])),
                 "language": language,
+                "remaining_s": remaining_s,
                 "spent_usd": self._spend.snapshot().usd,
             })
             return
@@ -1325,6 +1354,7 @@ class _Session:
             "unit": result.unit,
             "billing": result.billing,
             "price_dated": result.price_dated,
+            "remaining_s": remaining_s,
             # What this session has already run up. It rides here rather than
             # on an event of its own because the Rust host forwards only the
             # events it knows about, and the button re-prices whenever
@@ -2693,6 +2723,21 @@ class _Session:
         seq = 0
         voiced = 0
         stopped = False
+        # Everything that leaves for the speakers, silences included and
+        # after the stretcher: with the characters said, the pace of this
+        # very reading (HIG 3.24).
+        samples_out = 0
+        pace = self._paces.setdefault(voice_id, Pace())
+        pace_language = language or DEFAULT_SPEECH_LANGUAGE
+        # Characters still to say from each utterance to the end of this
+        # reading - the reading's scope, exactly as `_read_book` cut it.
+        left_from: list[int] = [0] * (len(utterances) + 1)
+        for index in range(len(utterances) - 1, -1, -1):
+            left_from[index] = left_from[index + 1] + len(utterances[index].text)
+        # The pace is measured between positions: what went out for the
+        # utterances before this one, over their characters.
+        measured_upto = 0
+        measured_samples = 0
         # The shell's window for this reading, if it asked for one. Credits
         # from a previous reading die with it.
         self._credits = None if window is None else int(window)
@@ -2720,7 +2765,7 @@ class _Session:
                 del self._listening[next(iter(self._listening))]
 
         def emit(pcm: bytes, *, from_voice: bool) -> None:
-            nonlocal seq, voiced
+            nonlocal seq, voiced, samples_out
             if not self._await_credit():
                 return
             self._send({
@@ -2732,14 +2777,25 @@ class _Session:
                 "sample_rate": SAMPLE_RATE,
             })
             seq += 1
+            samples_out += len(pcm) // 4
             if from_voice:
                 voiced += 1
+
+        def learn_pace(upto: int) -> None:
+            """Count what has gone out for the utterances before `upto`."""
+            nonlocal measured_upto, measured_samples
+            said = sum(len(u.text) for u in utterances[measured_upto:upto])
+            pace.add(said, (samples_out - measured_samples) / SAMPLE_RATE, rate)
+            measured_upto = upto
+            measured_samples = samples_out
 
         try:
             for position, utterance in enumerate(utterances):
                 if self._stop_requested():
                     stopped = True
                     break
+                if position:
+                    learn_pace(position)
                 if utterance.segment_id is not None:
                     # Not `position`: that name is the loop index just above,
                     # and shadowing it broke the is_last arithmetic once.
@@ -2747,6 +2803,12 @@ class _Session:
                         "id": request_id,
                         "event": "position",
                         "segment_id": utterance.segment_id,
+                        # From here to the end of this reading, as the ear
+                        # will hear it - the shell shows it when the ear
+                        # gets here (HIG 3.24).
+                        "remaining_s": pace.seconds_for(
+                            left_from[position], rate=rate, language=pace_language,
+                        ),
                     }
                     if utterance.figure_id is not None:
                         where["figure_id"] = utterance.figure_id
@@ -2859,6 +2921,8 @@ class _Session:
         except Exception as error:  # noqa: BLE001 - the pipe must survive
             self._fail(request_id, f"read failed: {error}")
             return
+        if not stopped:
+            learn_pace(len(utterances))
         # A stop that arrived on the last frame was answered; nothing is left
         # for it to cut short, and it must not cut the next reading instead.
         self._stop_pending = False

@@ -557,7 +557,12 @@ function stepReading(delay: number) {
       emit("reading:done", { ok: true });
       return;
     }
-    emit("reading:position", { segment_id: live.steps[live.index] });
+    emit("reading:position", {
+      segment_id: live.steps[live.index],
+      // The engine's forecast for the rest of the reading (HIG 3.24): the
+      // mock reads a paragraph a second, so the count of steps left is it.
+      remaining_s: (live.steps.length - live.index) * 52,
+    });
     chargeStep();
     live.index += 1;
     stepReading(1200);
@@ -930,8 +935,12 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       const language = pasted !== null
         ? (/[ăâđêôơưàáảãạèéẻẽẹìíỉĩịòóỏõọùúủũụỳýỷỹỵ]/i.test(pasted) ? "vi" : "en")
         : LIBRARY.find((book) => book.id === params.book_id)?.language ?? "vi";
+      // The engine's own default pace (14.5 chars/s for Vietnamese, 16 for
+      // English), at the reader's rate - the number the ⓘ tooltip carries.
+      const rate = typeof params.rate === "number" && params.rate > 0 ? params.rate : 1;
+      const remaining_s = Math.round(chars / ((language === "en" ? 16 : 14.5) * rate));
       if (!paid) {
-        return { paid: false, chars, utterances: chapters * 9, chapters, language, spent_usd: 0 };
+        return { paid: false, chars, utterances: chapters * 9, chapters, language, remaining_s, spent_usd: 0 };
       }
       const elevenlabs = voice.startsWith("elevenlabs");
       const perThousand = elevenlabs ? 0.1 : 0.02;
@@ -943,6 +952,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         utterances: chapters * 9,
         chapters,
         language,
+        remaining_s,
         usd: Math.round(chars * perThousand) / 1000,
         // OpenAI bills tokens of generated audio, which cannot be counted
         // off the text - the engine sends 0 and the panel drops the line.
