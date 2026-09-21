@@ -300,7 +300,12 @@ if [[ -n "$developer_id" && -r "$updater_key" && -n "$updater_password" \
   manifest="$out_dir/latest.json"
   # The release's asset carries the plain name (no build id); the release
   # step copies the tarball to it. Notes = this version's CHANGELOG entry.
-  notes="$(awk -v v="## $version" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md | sed '/^$/d' | head -40)"
+  # This version's CHANGELOG entry, with its 72-column wraps undone: a line
+  # that is not a bullet continues the one before it, so the updater's
+  # sheet (and anything else reading the manifest) gets paragraphs.
+  notes="$(awk -v v="## $version" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md \
+    | awk 'NF==0{if(p!="")print p; p=""; next} /^- /{if(p!="")print p; p=$0; next} {sub(/^[ \t]+/, ""); p=(p==""?$0:p" "$0)} END{if(p!="")print p}' \
+    | head -40)"
   python3 - "$version" "$tarball.sig" "$manifest" "$notes" <<'PY'
 import json, sys, datetime
 version, sig_path, manifest, notes = sys.argv[1:5]

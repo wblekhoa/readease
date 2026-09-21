@@ -4,6 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The update sheet shows the release notes as paragraphs, not as the
+  CHANGELOG's wrapped lines; the manifest is written that way too.
+
 ## 0.1.11
 
 The first release the app fetches by itself: a log file for bug reports,
