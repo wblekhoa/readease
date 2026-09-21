@@ -78,7 +78,11 @@
         "role": "Viewer",
         "rank": "Alternate"
       }
-    ]
+    ],
+    "category": "Education",
+    "copyright": "© 2026 Khoa Le. PolyForm Noncommercial 1.0.0.",
+    "shortDescription": "Đọc EPUB và PDF thành tiếng — tiếng Việt và tiếng Anh, giọng chạy trên máy.",
+    "longDescription": "ReadEase — Thư Âm reads your EPUB and PDF files aloud in Vietnamese and English with voices that run on your Mac. Highlights follow the voice; notes, contents and search sit in a side column; documents open from Finder and the Dock."
   },
   "plugins": {
     "updater": {
