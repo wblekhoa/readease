@@ -2,7 +2,10 @@
 
 What ships, per release, all built by `scripts/build-release-app.sh` and
 published by `scripts/release.sh`: **a `.zip` of `ReadEase.app`**, **a `.dmg`**
-(the app beside an Applications link), **`ReadEase-<v>-arm64.app.tar.gz`** with
+(the app beside an Applications link on a backdrop that says to drag - laid
+out by `dmgbuild` from `scripts/dmg-settings.py` and
+`assets/branding/dmg-background*.png`, fetched through `uvx`; without `uvx`
+the image is the plain pair), **`ReadEase-<v>-arm64.app.tar.gz`** with
 its minisign signature for the in-app updater, and **`latest.json`**, the
 manifest the running app fetches. Everything is Developer ID-signed and
 notarized (since 0.1.2); the dmg is notarized in its own right.
