@@ -1342,6 +1342,35 @@ kèm ngoài lời kể.
   bước, và ô dán vài dòng cuối nhật ký (tuỳ chọn) — để một báo cáo có đủ ba thứ người sửa cần.
 - **Don't**: `dup2` khi stderr là terminal (mất log dev) · ghi nội dung tài liệu · giữ nhật ký không giới hạn.
 
+### 3.23 Tiếp tục sau khi tạm dừng lâu — lùi về đầu câu (21/09)
+
+Đề xuất 02/09 (`docs/reading-flow-proposal.md` §A), chủ nêu lại trong kế hoạch 21/09: tạm dừng rồi tiếp tục là nhảy
+THẲNG vào giữa câu — tai mất mạch. Audible, Apple Books (đọc to), Voice Dream đều lùi một nhịp khi tiếp tục sau một quãng
+nghỉ; ReadEase làm cùng một việc, theo CÂU thay vì theo giây, vì câu là đơn vị của giọng.
+
+- **Hợp đồng**: bấm tiếp tục sau khi đã tạm dừng **từ 30 giây trở lên** (đo bằng đồng hồ tường, `SystemTime` — máy
+  ngủ qua đêm vẫn tính; `Instant` trên macOS đứng yên khi máy ngủ nên không dùng) → giọng đọc lại **từ đầu câu đang
+  dở**; nếu điểm dừng rơi vào khoảng lặng giữa hai câu (chỗ người ta hay bấm dừng — cuối một hơi), câu vừa xong được
+  đọc lại. Tạm dừng ngắn hơn 30 s → tiếp tục đúng chỗ, không lùi. Highlight KHÔNG nhảy lùi (mốc vị trí đã báo thì đã
+  báo), chỉ giọng lùi; tiến độ lưu không đổi.
+- **Vì sao ở host, không ở engine**: engine đi trước tai tới ~47 khung (`ENGINE_WINDOW`) và không "gỡ tổng hợp" được;
+  chỉ host giữ đúng phần âm thanh tai đã nghe. Vòng `drain` giữ **bóng** của các khung đã đưa vào thiết bị kể từ đầu
+  câu trước đó (mỗi khung mang cờ `from_voice` của engine — khoảng lặng giữa câu, nghỉ đoạn, chuông chương, báo hình
+  đều là `false`, nên "đầu câu" = khung có tiếng đứng sau một khung không tiếng — một luật cho mọi mối nối). Bóng được
+  cắt bớt khi tai đi qua: chỉ giữ hai câu gần nhất đã bắt đầu phát + phần còn trong thiết bị (giới hạn bộ nhớ vài MB).
+- **Cơ chế**: `pause()` ghi thời điểm; `resume()` sau ≥ 30 s ghi **yêu cầu lùi** vào một ô chung (như cờ `paused`)
+  rồi hạ `paused` — KHÔNG tự `play()`; luồng audio xử lý yêu cầu ở mọi chỗ nó chờ (vòng lookahead, vòng chờ `Done`,
+  nhánh timeout, và trước khi phát khung mới): `clear()` thiết bị, đưa lại các khung từ đầu câu đích tới hết bóng,
+  **không tăng `appended`** — nhờ vậy `appended − queued` vẫn là chỉ số khung đang ở tai và các mốc vị trí đang chờ
+  (`due`) tự bắn đúng chỗ khi tai đi qua lần nữa (lỗi highlight-sớm 15/09 không quay lại); rồi `play()` nếu người
+  dùng chưa bấm tạm dừng lại trong 20 ms đó. Bóng và thời điểm dừng bị bỏ khi epoch đổi (`stop`/`fire`).
+- **Chỉnh được** (chưa làm): luật "nghe > 80 % câu thì lùi thêm câu trước" của đề xuất; ngưỡng 30 s.
+- **Bằng chứng**: test trên harness `FakeSink` — dừng ngắn: không `clear`; dừng dài: một `clear` rồi đúng các khung
+  của câu đích trở đi, số `reading:position` không đổi qua lần lùi; nghe thử trên bản cài.
+- **Don't**: lùi khi dừng ngắn · gọi `play()` từ `resume()` khi có yêu cầu lùi (phát 20 ms chỗ cũ rồi mới lùi) · tăng
+  `appended` khi đưa lại khung · lùi bằng một `read.book` mới từ đầu ĐOẠN (đoạn dài = lùi cả phút, và mất cả phần đã
+  tổng hợp phía trước).
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:

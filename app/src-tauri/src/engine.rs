@@ -110,6 +110,17 @@ const PREBUFFER_MAX_WAIT: Duration = Duration::from_millis(1500);
 /// now writes only as many frames as it has been given room for; the drain
 /// loop hands room back one credit at a time (`Feedback::credit`).
 const ENGINE_WINDOW: usize = AUDIO_QUEUE_FRAMES - 1;
+/// A pause this long is a break, not a breath: resuming after it goes back
+/// to the start of the sentence in the ear (HIG 3.23). Measured on the wall
+/// clock so a Mac that slept through the pause counts it too.
+const REWIND_AFTER: Duration = Duration::from_secs(30);
+
+/// Whether resuming now should replay the sentence: only after a real break.
+fn should_rewind(paused_since: Option<std::time::SystemTime>, now: std::time::SystemTime) -> bool {
+    paused_since
+        .and_then(|since| now.duration_since(since).ok())
+        .is_some_and(|paused| paused >= REWIND_AFTER)
+}
 
 /// What a reader is told when the engine process disappears underneath a
 /// reading. Written in Vietnamese, like the engine's own sentences, so the
@@ -123,7 +134,10 @@ const ENGINE_GONE: &str = "Bộ máy đọc đã dừng đột ngột. Hãy kh�
 /// frame names the reading it belongs to, so the room it frees goes back to
 /// that reading and not to whichever one is running by then.
 enum Frame {
-    Chunk { epoch: u64, read_id: u64, samples: Vec<f32> },
+    /// `voiced` is the engine's `from_voice`: a rest between sentences, a
+    /// paragraph pause, a chime or a figure cue is `false`. It is how the
+    /// audio thread knows where a sentence begins (HIG 3.23).
+    Chunk { epoch: u64, read_id: u64, samples: Vec<f32>, voiced: bool },
     Position { epoch: u64, read_id: u64, message: Value },
     /// The engine's final reply. Announced as `reading:done` only once the
     /// device has played everything before it - a "done" that arrived while
@@ -147,6 +161,12 @@ pub struct EngineClient {
     /// Pause is a state, not an event: the audio thread must not un-pause the
     /// player just because another chunk arrived.
     paused: Arc<AtomicBool>,
+    /// When the pause began, on the wall clock - a resume after `REWIND_AFTER`
+    /// replays the sentence (HIG 3.23).
+    paused_since: Mutex<Option<std::time::SystemTime>>,
+    /// The audio thread's order to replay the sentence in the ear, served
+    /// wherever that thread next looks up.
+    rewind: Arc<AtomicBool>,
     tray: Arc<Mutex<Option<tauri::tray::TrayIcon>>>,
     voice_started: Arc<std::sync::atomic::AtomicBool>,
     /// Where the voice goes (HIG 3.21), for the page to ask after it has
@@ -298,6 +318,94 @@ struct DuePosition {
 /// the ceiling on how late a position can be announced.
 const POSITION_POLL: Duration = Duration::from_millis(20);
 
+/// The frames handed to the device since the start of the sentence before
+/// the one in the ear - what a resume after a long pause replays (HIG
+/// 3.23). The engine cannot help here: it is up to `ENGINE_WINDOW` frames
+/// ahead and does not un-synthesise; only this thread ever held exactly
+/// what was heard.
+///
+/// A sentence starts at a voiced frame that follows a silent one: the
+/// engine marks rests between sentences, paragraph pauses, chimes and figure
+/// cues all `from_voice: false`, so one rule finds every joint. Trimmed as
+/// the ear moves on, so it never holds more than two begun sentences plus
+/// whatever is still in the device.
+struct Shadow {
+    epoch: u64,
+    /// Absolute index (frames handed to the device before it) of `frames[0]`.
+    base: u64,
+    frames: VecDeque<(bool, Vec<f32>)>,
+    /// Absolute indexes where a sentence begins, oldest first.
+    starts: VecDeque<u64>,
+}
+
+impl Shadow {
+    fn new() -> Self {
+        Shadow { epoch: 0, base: 0, frames: VecDeque::new(), starts: VecDeque::new() }
+    }
+
+    /// Remember a frame as it goes to the device. `index` is how many went
+    /// before it; a new epoch (a stop, a new reading) forgets the old ones.
+    fn push(&mut self, epoch: u64, index: u64, voiced: bool, samples: &[f32]) {
+        if epoch != self.epoch || self.frames.is_empty() {
+            self.epoch = epoch;
+            self.base = index;
+            self.frames.clear();
+            self.starts.clear();
+        }
+        let after_silence = self.frames.back().is_none_or(|(voiced, _)| !voiced);
+        if voiced && after_silence {
+            self.starts.push_back(index);
+        }
+        self.frames.push_back((voiced, samples.to_vec()));
+    }
+
+    /// Let go of what a rewind could no longer want: `ear` is the index of
+    /// the frame the device is playing (`appended - queued`). Two begun
+    /// sentences are kept - the one in the ear and the one before it.
+    fn trim(&mut self, ear: u64) {
+        while self.starts.len() >= 3 && self.starts[2] <= ear {
+            self.starts.pop_front();
+        }
+        let keep_from = match self.starts.front() {
+            Some(start) => *start,
+            // Nothing voiced yet: nothing to rewind to, hold only the device's own.
+            None => ear,
+        };
+        while self.base < keep_from && !self.frames.is_empty() {
+            self.frames.pop_front();
+            self.base += 1;
+        }
+    }
+
+    /// Where a resume after a break should start again from: the sentence
+    /// before the one in the ear, or - when the ear is in the silence after
+    /// a sentence, the common place to have pressed pause - that sentence.
+    fn target(&self, ear: u64) -> Option<u64> {
+        let in_voice = ear
+            .checked_sub(self.base)
+            .and_then(|offset| self.frames.get(offset as usize))
+            .is_some_and(|(voiced, _)| *voiced);
+        let mut begun = self.starts.iter().copied().filter(|start| *start <= ear);
+        let current = begun.next_back()?;
+        if in_voice {
+            Some(begun.next_back().unwrap_or(current))
+        } else {
+            Some(current)
+        }
+    }
+
+    /// Hand the device everything from `target` on, again, in order.
+    fn replay(&self, target: u64, sink: &dyn AudioSink) -> usize {
+        let skip = target.saturating_sub(self.base) as usize;
+        let mut count = 0;
+        for (_, samples) in self.frames.iter().skip(skip) {
+            sink.append(samples.clone());
+            count += 1;
+        }
+        count
+    }
+}
+
 /// The audio thread's whole life: take frames off the bounded queue, keep
 /// only a little ahead of the ear, announce positions as the ear reaches
 /// them, hand the engine back the room each frame frees, and say "done"
@@ -318,6 +426,7 @@ fn drain(
     sink: Arc<dyn AudioSink>,
     epoch: Arc<AtomicU64>,
     paused: Arc<AtomicBool>,
+    rewind: Arc<AtomicBool>,
     shell: Arc<dyn Shell>,
     feedback: Arc<dyn Feedback>,
 ) {
@@ -326,6 +435,31 @@ fn drain(
     // the device still holds, that is how many it has finished.
     let mut appended: u64 = 0;
     let mut due: VecDeque<DuePosition> = VecDeque::new();
+    let mut shadow = Shadow::new();
+    // A resume after a break (HIG 3.23): the device is cleared and handed
+    // the sentence again from its start. `appended` is deliberately NOT
+    // moved - the frames are the same frames - so `appended - queued` is
+    // still the index of the frame in the ear and every position still
+    // waiting in `due` fires when the ear passes it the second time. The
+    // page only ever calls `play()` itself for a SHORT pause; here the
+    // device starts again only once the sentence is back in it, and only
+    // if nobody pressed pause again meanwhile.
+    let rewind_if_asked = |shadow: &mut Shadow, appended: u64| {
+        if !rewind.swap(false, Ordering::SeqCst) {
+            return;
+        }
+        if current(shadow.epoch) {
+            let ear = appended.saturating_sub(sink.queued() as u64);
+            if let Some(target) = shadow.target(ear) {
+                sink.clear();
+                let replayed = shadow.replay(target, &*sink);
+                eprintln!("[audio] resumed after a break: {} frame(s) again", replayed);
+            }
+        }
+        if !paused.load(Ordering::SeqCst) {
+            sink.play();
+        }
+    };
     // The prebuffer: which reading (by epoch) is being held back from the
     // speakers, how much of it has been gathered, and since when.
     let mut hold: Option<(u64, f32, Instant)> = None;
@@ -356,6 +490,8 @@ fn drain(
             Ok(frame) => frame,
             Err(RecvTimeoutError::Timeout) => {
                 announce(&mut due, appended);
+                rewind_if_asked(&mut shadow, appended);
+                shadow.trim(appended.saturating_sub(sink.queued() as u64));
                 // An engine too slow to fill the prebuffer is not waited
                 // for: what has been gathered plays.
                 if hold.is_some_and(|(_, _, since)| since.elapsed() >= PREBUFFER_MAX_WAIT) {
@@ -366,13 +502,15 @@ fn drain(
             Err(RecvTimeoutError::Disconnected) => break,
         };
         match frame {
-            Frame::Chunk { epoch: stamped, read_id, samples } => {
+            Frame::Chunk { epoch: stamped, read_id, samples, voiced } => {
                 if !current(stamped) {
                     continue; // a stop outran this frame; play nothing stale
                 }
                 // Room on the queue, handed back the moment it is free: the
                 // engine may now write one more frame.
                 feedback.credit(read_id);
+                // Before this frame could start the device on its own.
+                rewind_if_asked(&mut shadow, appended);
                 // A reading's first frame: hold the device until enough of
                 // the reading is in it to play without running dry. The
                 // device is paused for it explicitly - after a `Done` it is
@@ -390,12 +528,15 @@ fn drain(
                 }
                 while sink.queued() > PLAYER_LOOKAHEAD && current(stamped) {
                     announce(&mut due, appended);
+                    rewind_if_asked(&mut shadow, appended);
+                    shadow.trim(appended.saturating_sub(sink.queued() as u64));
                     std::thread::sleep(POSITION_POLL);
                 }
                 if !current(stamped) {
                     continue;
                 }
                 let seconds = samples.len() as f32 / SAMPLE_RATE as f32;
+                shadow.push(stamped, appended, voiced, &samples);
                 sink.append(samples);
                 appended += 1;
                 if let Some((_, gathered, _)) = hold.as_mut() {
@@ -428,6 +569,7 @@ fn drain(
                 // stop path has already told the shell what it needs.
                 while sink.queued() > 0 && current(stamped) {
                     announce(&mut due, appended);
+                    rewind_if_asked(&mut shadow, appended);
                     std::thread::sleep(POSITION_POLL);
                 }
                 if !current(stamped) {
@@ -444,6 +586,7 @@ fn drain(
 fn spawn_audio(
     epoch: Arc<AtomicU64>,
     paused: Arc<AtomicBool>,
+    rewind: Arc<AtomicBool>,
     shell: Arc<dyn Shell>,
     feedback: Arc<dyn Feedback>,
 ) -> Result<(SyncSender<Frame>, Arc<dyn AudioSink>, AudioOutput), String> {
@@ -472,7 +615,7 @@ fn spawn_audio(
         let player: Arc<dyn AudioSink> =
             Arc::new(rodio::Player::connect_new(device.mixer()));
         let _ = ready_tx.send(Ok((player.clone(), output)));
-        drain(chunk_rx, player, epoch, paused, shell, feedback);
+        drain(chunk_rx, player, epoch, paused, rewind, shell, feedback);
     });
     let (player, output) = ready_rx
         .recv()
@@ -610,10 +753,15 @@ impl Pump {
                     // queue holds one more. An engine that ignored the
                     // window would block here - bounded memory is the
                     // property a wrong fix would trade away.
+                    let voiced = message
+                        .get("from_voice")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(true);
                     let _ = self.audio.send(Frame::Chunk {
                         epoch: stamped,
                         read_id,
                         samples,
+                        voiced,
                     });
                 }
                 Some("position") => {
@@ -692,6 +840,7 @@ impl EngineClient {
 
         let epoch = Arc::new(AtomicU64::new(0));
         let paused = Arc::new(AtomicBool::new(false));
+        let rewind = Arc::new(AtomicBool::new(false));
         let shell: Arc<dyn Shell> = Arc::new(TauriShell {
             app: app.clone(),
             tray: tray.clone(),
@@ -699,7 +848,7 @@ impl EngineClient {
         let feedback: Arc<dyn Feedback> =
             Arc::new(StdinFeedback { stdin: stdin.clone() });
         let (audio, player, output) =
-            spawn_audio(epoch.clone(), paused.clone(), shell.clone(), feedback)?;
+            spawn_audio(epoch.clone(), paused.clone(), rewind.clone(), shell.clone(), feedback)?;
 
         let client = Arc::new(Self {
             stdin,
@@ -711,6 +860,8 @@ impl EngineClient {
             player,
             epoch,
             paused,
+            paused_since: Mutex::new(None),
+            rewind,
             start: Mutex::new(()),
             notified: Arc::new(Mutex::new(HashSet::new())),
             tray,
@@ -797,6 +948,7 @@ impl EngineClient {
         // `clear()` leaves the player paused (rodio does that deliberately),
         // and a person who pressed pause stays paused until they say so.
         self.paused.store(false, Ordering::SeqCst);
+        self.forget_pause();
         self.player.play();
         if was_reading {
             // Tell the engine to abandon the old reading. It answers this
@@ -848,6 +1000,7 @@ impl EngineClient {
         self.player.clear();
         // Stopping releases the pause too: the next reading starts audible.
         self.paused.store(false, Ordering::SeqCst);
+        self.forget_pause();
         self.show_tray(false);
         let reply = self.request("stop", json!({}));
         eprintln!("[stop] audio+engine in {:?}", began.elapsed());
@@ -856,12 +1009,30 @@ impl EngineClient {
 
     pub fn pause(&self) {
         self.paused.store(true, Ordering::SeqCst);
+        *self.paused_since.lock().unwrap() = Some(std::time::SystemTime::now());
         self.player.pause();
     }
 
+    /// Carry on - from where the device stopped after a breath, from the
+    /// start of the sentence after a break (HIG 3.23). In the second case
+    /// the device is NOT started here: the audio thread starts it once the
+    /// sentence is back in it, or 20 ms of the old place would play first.
     pub fn resume(&self) {
+        let since = self.paused_since.lock().unwrap().take();
+        if should_rewind(since, std::time::SystemTime::now()) {
+            self.rewind.store(true, Ordering::SeqCst);
+            self.paused.store(false, Ordering::SeqCst);
+            return;
+        }
         self.paused.store(false, Ordering::SeqCst);
         self.player.play();
+    }
+
+    /// A stop or a new reading: whatever pause there was is over, and an
+    /// order to replay left over from it must not reach the next reading.
+    fn forget_pause(&self) {
+        *self.paused_since.lock().unwrap() = None;
+        self.rewind.store(false, Ordering::SeqCst);
     }
 
     pub fn shutdown(&self) {
@@ -892,6 +1063,8 @@ mod tests {
         /// Times the drain loop told the device to play: the prebuffer's
         /// receipt is that this stays at zero until enough is gathered.
         plays: AtomicUsize,
+        /// Times the device was emptied: a rewind's receipt is exactly one.
+        clears: AtomicUsize,
     }
 
     impl FakeSink {
@@ -920,6 +1093,7 @@ mod tests {
         }
         fn pause(&self) {}
         fn clear(&self) {
+            self.clears.fetch_add(1, Ordering::SeqCst);
             self.queued.store(0, Ordering::SeqCst);
         }
     }
@@ -967,6 +1141,8 @@ mod tests {
         shell: Arc<RecordingShell>,
         feedback: Arc<RecordingFeedback>,
         epoch: Arc<AtomicU64>,
+        paused: Arc<AtomicBool>,
+        rewind: Arc<AtomicBool>,
         current_read: Arc<Mutex<Option<u64>>>,
         pending: Arc<Mutex<HashMap<u64, Sender<Value>>>>,
         lines: Sender<String>,
@@ -982,6 +1158,19 @@ mod tests {
             self.epoch.fetch_add(1, Ordering::SeqCst);
             self.sink.clear();
         }
+
+        /// What `EngineClient::resume()` does after a break: the order to
+        /// replay goes in, then the pause is lifted - and the device is
+        /// left for the audio thread to start.
+        fn resume_after_break(&self) {
+            self.rewind.store(true, Ordering::SeqCst);
+            self.paused.store(false, Ordering::SeqCst);
+        }
+
+        /// The sample counts the device was handed, in order.
+        fn handed(&self) -> Vec<usize> {
+            self.sink.appended.lock().unwrap().clone()
+        }
     }
 
     /// The two loops wired exactly as `spawn()` wires them, minus the
@@ -992,6 +1181,7 @@ mod tests {
             queued: AtomicUsize::new(queued),
             appended: Mutex::new(Vec::new()),
             plays: AtomicUsize::new(0),
+            clears: AtomicUsize::new(0),
         });
         let recorder = Arc::new(RecordingShell { events: Mutex::new(Vec::new()) });
         let shell: Arc<dyn Shell> = recorder.clone();
@@ -1003,11 +1193,12 @@ mod tests {
         let feedback: Arc<dyn Feedback> = feedback_recorder.clone();
         let epoch = Arc::new(AtomicU64::new(0));
         let paused = Arc::new(AtomicBool::new(paused));
+        let rewind = Arc::new(AtomicBool::new(false));
         let (audio, frames) = sync_channel::<Frame>(AUDIO_QUEUE_FRAMES);
         {
-            let (sink, epoch, paused, shell) =
-                (sink.clone(), epoch.clone(), paused.clone(), shell.clone());
-            std::thread::spawn(move || drain(frames, sink, epoch, paused, shell, feedback));
+            let (sink, epoch, paused, rewind, shell) =
+                (sink.clone(), epoch.clone(), paused.clone(), rewind.clone(), shell.clone());
+            std::thread::spawn(move || drain(frames, sink, epoch, paused, rewind, shell, feedback));
         }
         let pending = Arc::new(Mutex::new(HashMap::new()));
         // A reading is in flight, so chunk lines carrying id 1 are OURS and
@@ -1024,7 +1215,10 @@ mod tests {
         };
         let (lines, feed) = channel::<String>();
         std::thread::spawn(move || pump.run(feed.into_iter()));
-        Harness { sink, shell: recorder, feedback: feedback_recorder, epoch, current_read, pending, lines }
+        Harness {
+            sink, shell: recorder, feedback: feedback_recorder, epoch, paused, rewind,
+            current_read, pending, lines,
+        }
     }
 
     /// Wait until the shell has seen `event` `times` times, or give up.
@@ -1093,6 +1287,162 @@ mod tests {
     fn chunk_line_of(seconds: f32) -> String {
         let bytes = vec![0u8; (seconds * SAMPLE_RATE as f32) as usize * 4];
         json!({"event": "chunk", "id": 1, "pcm": BASE64.encode(bytes)}).to_string()
+    }
+
+    /// A frame of `samples` samples the engine marked as voice - or, with
+    /// `voiced` false, as a rest between sentences.
+    fn frame_line(samples: usize, voiced: bool) -> String {
+        json!({
+            "event": "chunk", "id": 1, "from_voice": voiced,
+            "pcm": BASE64.encode(vec![0u8; samples * 4]),
+        })
+        .to_string()
+    }
+
+    /// Three one-frame sentences with a rest between each: `a r b r c`, as
+    /// the cache hands them over (one frame per sentence). Lengths differ
+    /// so the receipts can tell the frames apart.
+    const A: usize = 100;
+    const B: usize = 200;
+    const C: usize = 300;
+    const REST: usize = 10;
+
+    fn three_sentences(h: &Harness) {
+        for line in [
+            frame_line(A, true),
+            frame_line(REST, false),
+            frame_line(B, true),
+            frame_line(REST, false),
+            frame_line(C, true),
+        ] {
+            h.lines.send(line).unwrap();
+        }
+        assert!(wait_until(|| h.sink.queued() == 5, Duration::from_secs(2)), "five frames in the device");
+    }
+
+    /// The pause landed mid-sentence: the resume replays the sentence
+    /// BEFORE it as well, so the ear gets a whole sentence of context
+    /// (HIG 3.23). Nothing else moves - `appended` stays, so the device
+    /// count and the frame index agree again once the sentence has played.
+    #[test]
+    fn a_break_mid_sentence_resumes_from_the_sentence_before() {
+        let h = harness(0, false);
+        three_sentences(&h);
+        h.sink.played(2); // the ear is in `b`
+        h.paused.store(true, Ordering::SeqCst);
+        h.resume_after_break();
+        assert!(wait_until(|| h.sink.clears.load(Ordering::SeqCst) == 1, Duration::from_secs(2)));
+        assert!(wait_until(|| h.handed().len() == 10, Duration::from_secs(2)), "{:?}", h.handed());
+        assert_eq!(h.handed()[5..], [A, REST, B, REST, C], "from the start of `a`");
+        assert_eq!(h.sink.queued(), 5);
+        assert!(wait_until(|| h.sink.plays.load(Ordering::SeqCst) >= 1, Duration::from_secs(1)), "the device restarts");
+    }
+
+    /// The pause landed in the rest after `b` - the usual place, the end of
+    /// a breath: `b` itself is the context, and it is what plays again.
+    #[test]
+    fn a_break_in_the_silence_after_a_sentence_replays_that_sentence() {
+        let h = harness(0, false);
+        three_sentences(&h);
+        h.sink.played(3); // the ear is in the rest after `b`
+        h.paused.store(true, Ordering::SeqCst);
+        h.resume_after_break();
+        assert!(wait_until(|| h.handed().len() == 8, Duration::from_secs(2)), "{:?}", h.handed());
+        assert_eq!(h.handed()[5..], [B, REST, C]);
+        assert_eq!(h.sink.clears.load(Ordering::SeqCst), 1);
+    }
+
+    /// Positions still waiting fire where they always did: a rewind moves
+    /// the ear back, not the marks, so the highlight lands on the second
+    /// pass exactly where it would have on the first (the 15/09 bug must
+    /// not come back through this door).
+    #[test]
+    fn positions_waiting_across_a_rewind_fire_on_the_second_pass() {
+        let h = harness(0, false);
+        h.lines.send(position_line("s1")).unwrap();
+        h.lines.send(frame_line(A, true)).unwrap();
+        h.lines.send(frame_line(REST, false)).unwrap();
+        h.lines.send(frame_line(B, true)).unwrap();
+        h.lines.send(position_line("s2")).unwrap(); // due once 3 frames are done
+        h.lines.send(frame_line(REST, false)).unwrap();
+        h.lines.send(frame_line(C, true)).unwrap();
+        assert!(settle(&h.shell, "reading:position", 1));
+        assert!(wait_until(|| h.sink.queued() == 5, Duration::from_secs(2)));
+
+        h.sink.played(2); // in `b`, one frame short of s2
+        h.paused.store(true, Ordering::SeqCst);
+        h.resume_after_break();
+        assert!(wait_until(|| h.sink.clears.load(Ordering::SeqCst) == 1, Duration::from_secs(2)));
+        std::thread::sleep(Duration::from_millis(60));
+        assert_eq!(h.shell.count("reading:position"), 1, "s2 báo sớm vì lùi");
+
+        // The second pass: a, rest, b play out again - now s2 is due.
+        h.sink.played(3);
+        assert!(settle(&h.shell, "reading:position", 2), "s2 không báo sau khi tai tới lần hai");
+        assert_eq!(h.sink.queued(), 2);
+    }
+
+    /// The person pressed pause again in the moment between resuming and
+    /// the audio thread getting there: the sentence is put back, and the
+    /// device stays quiet for them.
+    #[test]
+    fn a_pause_pressed_again_keeps_the_device_quiet_after_the_rewind() {
+        let h = harness(0, false);
+        three_sentences(&h);
+        h.sink.played(2);
+        let plays_before = h.sink.plays.load(Ordering::SeqCst);
+        h.rewind.store(true, Ordering::SeqCst);
+        h.paused.store(true, Ordering::SeqCst);
+        assert!(wait_until(|| h.sink.clears.load(Ordering::SeqCst) == 1, Duration::from_secs(2)));
+        std::thread::sleep(Duration::from_millis(60));
+        assert_eq!(h.sink.plays.load(Ordering::SeqCst), plays_before, "un-paused the person");
+    }
+
+    /// A stop moved the epoch: the shadow belongs to a reading that is
+    /// over, and an order left over from it replays nothing.
+    #[test]
+    fn a_rewind_after_a_stop_replays_nothing() {
+        let h = harness(0, false);
+        three_sentences(&h);
+        h.stop();
+        let handed = h.handed().len();
+        h.resume_after_break();
+        std::thread::sleep(Duration::from_millis(80));
+        assert_eq!(h.handed().len(), handed);
+        assert_eq!(h.sink.clears.load(Ordering::SeqCst), 1, "only the stop's own clear");
+    }
+
+    /// Only a break earns a rewind; a breath resumes in place. And the
+    /// clock is the wall clock, so a Mac asleep through the pause counts.
+    #[test]
+    fn only_a_break_of_thirty_seconds_earns_a_rewind() {
+        use std::time::SystemTime;
+        let now = SystemTime::now();
+        assert!(!should_rewind(None, now));
+        assert!(!should_rewind(Some(now - Duration::from_secs(29)), now));
+        assert!(should_rewind(Some(now - REWIND_AFTER), now));
+        assert!(should_rewind(Some(now - Duration::from_secs(3600)), now));
+    }
+
+    /// The shadow forgets what the ear has left behind: two begun
+    /// sentences and the device's own frames, never the whole reading.
+    #[test]
+    fn the_shadow_keeps_two_sentences_and_no_more() {
+        let mut shadow = Shadow::new();
+        let mut index = 0;
+        for _ in 0..6 {
+            shadow.push(1, index, true, &[0.0; 4]);
+            index += 1;
+            shadow.push(1, index, false, &[0.0; 1]);
+            index += 1;
+        }
+        // The ear is in the sixth sentence (index 10): keep the fifth and sixth.
+        shadow.trim(10);
+        assert_eq!(shadow.starts, [8, 10]);
+        assert_eq!(shadow.base, 8);
+        assert_eq!(shadow.frames.len(), 4);
+        assert_eq!(shadow.target(10), Some(8));
+        assert_eq!(shadow.target(11), Some(10), "in the rest after the sixth");
     }
 
     /// The voice samples stuttered (owner, 19/09): the model's first chunks

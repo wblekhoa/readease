@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- Resuming after a break of 30 seconds or more starts again from the
+  beginning of the sentence the voice was in - and from the sentence
+  before it when the pause fell mid-sentence - so the ear picks the
+  thread back up. A short pause resumes exactly where it stopped.
+
 ## 0.1.12
 
 Updates with a Mac's manners - skip this version, later, install when
