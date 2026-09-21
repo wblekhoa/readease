@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.11
+
+The first release the app fetches by itself: a log file for bug reports,
+and the bundle's own category and copyright. Installs over 0.1.10 - or
+lets 0.1.10 install it (ReadEase › Kiểm tra bản mới…).
 
 - A log file: with the app opened from Finder, what the host and the
   engine report goes to `~/Library/Logs/ReadEase/readease.log` (kept to
