@@ -5,14 +5,14 @@ import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
 import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
 import { useCover } from "./ui/useCover";
-import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
-import { orderShelf } from "./ui/libraryOrder";
+import { useSideColumn } from "./ui/useSideColumn";
+import type { SidebarTab } from "./ui/sidebarState";
+import { useShelf } from "./ui/useShelf";
 import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
 import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
 import { useUpdater } from "./ui/updates";
 import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
-import { bookPaths } from "./ui/bookPaths";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
@@ -345,35 +345,11 @@ export default function App() {
   >(null);
   const [gate, setGate] = useState<ModelGate>("checking");
   const [language, setLanguageState] = useState<Language>(currentLanguage());
-  /* The side column (HIG 3.16): whether it shows, and which of a book's
-     lists it shows, under the rules in ui/sidebarState.ts. The remembered
-     choice and the window's width at start are its starting point. */
-  const [side, dispatchSide] = useReducer(sidebar, undefined, () => {
-    let remembered: string | null = null;
-    try { remembered = localStorage.getItem(SIDEBAR_KEY); } catch { /* private window */ }
-    return initialSidebar(remembered, window.innerWidth < NARROW);
-  });
-  const sideOpen = sidebarOpen(side);
-  /* The column's width, the person's to drag; remembered when the hand
-     lets go, not per move. */
-  const [sideWidth, setSideWidth] = useState(() => {
-    try { return storedWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY)); } catch { return storedWidth(null); }
-  });
-  const resizeSide = useCallback((width: number | null) => {
-    if (width === null) {
-      setSideWidth((current) => {
-        try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(current)); } catch { /* private window */ }
-        return current;
-      });
-      return;
-    }
-    setSideWidth(clampWidth(width));
-  }, []);
-  /** The list on show in a book, or null: folded, or not in a book. */
-  const sideTab: SidebarTab | null = sideOpen && side.book ? side.tab : null;
-  /* Which note the notes tab should land on, when it was opened from the
-     note's own editor. */
-  const [notesFocus, setNotesFocus] = useState<string | null>(null);
+  /* The side column (HIG 3.16): whether it shows, which of a document's
+     lists it shows, its width and the note to land on - all in
+     `useSideColumn`, under the rules in ui/sidebarState.ts. */
+  const inBook = tab === "library" && openBook !== null;
+  const { side, dispatchSide, sideOpen, sideWidth, resizeSide, sideTab, notesFocus, setNotesFocus } = useSideColumn(inBook);
   /* Where the column's body is, for the reader to render a book's lists
      into (a portal). A callback ref, so the reader re-renders when the
      column comes and goes. */
@@ -381,9 +357,6 @@ export default function App() {
   /* And where a home screen's actions stand: the toolbar's trailing
      cluster, the way a book's stand beside its title. */
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
-  /* The books being read, for the column's "Đang đọc" - asked for at start
-     and whenever a book is left, since leaving is when progress moves. */
-  const [shelf, setShelf] = useState<LibraryBook[]>([]);
   /** "Take me to where reading would resume" - the stamp lets the same place
    * be asked for twice. */
   const [reveal, setReveal] = useState<{ segmentId: string; at: number } | null>(null);
@@ -1139,7 +1112,6 @@ export default function App() {
      already showing it selects the query for typing over, where the
      switch semantics of `show` would have folded the column. Keys are
      read by `code`, not `key`: with ⌥ held the Mac reports "ß" for S. */
-  const inBook = tab === "library" && openBook !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!event.metaKey || event.ctrlKey) return;
@@ -1313,83 +1285,15 @@ export default function App() {
     return () => { heard.then((unlisten) => unlisten()).catch(() => undefined); };
   }, [reading]);
 
-  /* A choice made by hand is remembered; the automation's answer is not
-     (it is recomputed from the window each launch). */
-  useEffect(() => {
-    if (side.choice === "auto") return;
-    try { localStorage.setItem(SIDEBAR_KEY, side.choice); } catch { /* private window */ }
-  }, [side.choice]);
-
-  /* The width, live: `change` is the precise signal, `resize` the backstop
-     for a host that resizes without a media-query event (useShortWindow
-     learned that from the preview harness, 07/09). */
-  useEffect(() => {
-    const media = window.matchMedia(`(max-width: ${NARROW - 1}px)`);
-    const follow = () => dispatchSide({ type: "width", narrow: media.matches });
-    follow();
-    media.addEventListener("change", follow);
-    window.addEventListener("resize", follow);
-    return () => {
-      media.removeEventListener("change", follow);
-      window.removeEventListener("resize", follow);
-    };
-  }, []);
-
-  /* A book puts its lists in the column; leaving it puts the navigation
-     back - and refreshes "Đang đọc", since leaving is when progress moved. */
-  useEffect(() => {
-    dispatchSide({ type: "book", open: inBook });
-    if (!inBook) setNotesFocus(null);
-  }, [inBook]);
-  /* Documents the system asked the app to open (HIG 3.18): import each -
-     the engine returns the book it already had for a file it has seen -
-     reload the shelf, and open the last one, the way Preview opens the
-     file you double-clicked. Drained on mount and on every nudge, so a
-     file that launched the app is not lost and none is opened twice. */
-  const openFiles = useCallback(async () => {
-    const paths = bookPaths(await invoke<string[]>("take_opened_files").catch(() => [] as string[]));
-    if (!paths.length) return;
-    let last: string | null = null;
-    for (const path of paths) {
-      try {
-        const reply = await invoke<{ result: { book_id: string } }>(
-          "engine_request",
-          { method: "library.import", params: { path } },
-        );
-        last = reply.result.book_id;
-      } catch (error) {
-        console.error("[open] import failed:", path, error);
-      }
-    }
-    const listed = await invoke<{ result: { books: LibraryBook[] } }>(
-      "engine_request",
-      { method: "library.list", params: {} },
-    ).catch(() => null);
-    if (!listed) return;
-    setShelf(listed.result.books);
-    const book = listed.result.books.find((entry) => entry.id === last);
-    if (!book) return;
+  /* The shelf's frame-side life - "Đang đọc" for the column, and the
+     documents the system asks the app to open (HIG 3.18) - in `useShelf`;
+     a document it hands over opens the way a click on the shelf does. */
+  const openFromSystem = useCallback((book: LibraryBook) => {
     setTab("library");
     setPosition(null);
     setOpenBook(book);
   }, []);
-  useEffect(() => {
-    if (!IN_WINDOW) return;
-    void openFiles();
-    const nudged = listen("files:opened", () => { void openFiles(); });
-    return () => { nudged.then((unlisten) => unlisten()).catch(() => undefined); };
-  }, [openFiles]);
-
-  const loadShelf = useCallback(() => {
-    invoke<{ result: { books: LibraryBook[] } }>("engine_request", { method: "library.list", params: {} })
-      .then((reply) => setShelf(reply.result.books))
-      .catch(() => undefined);
-  }, []);
-  useEffect(() => { if (!inBook) loadShelf(); }, [inBook, loadShelf]);
-  const readingNow = useMemo(
-    () => orderShelf(shelf.filter((book) => book.segment_id)).slice(0, 5),
-    [shelf],
-  );
+  const { readingNow } = useShelf({ inBook, inWindow: IN_WINDOW, onOpen: openFromSystem });
 
   /* Two tiers of feature (owner, 02/09: "phân chia rõ tính năng phụ và
      tính năng chính"). PRIMARY = the ways to get something read: a book

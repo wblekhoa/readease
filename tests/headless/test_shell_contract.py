@@ -1,6 +1,6 @@
 """The playback protocol, pinned from BOTH sources at once.
 
-The Rust shell (`app/src-tauri/src/engine.rs`) and the Python engine
+The Rust shell (`app/src-tauri/src/engine.rs` + `audio.rs`) and the Python engine
 (`vieneu_reader/headless/server.py`) each have their own unit receipts for
 the flow control and the listening-progress ack added on 2026-09-05. Neither
 can see the other. These tests read the two source files and check that the
@@ -15,7 +15,13 @@ import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-RUST = (ROOT / "app" / "src-tauri" / "src" / "engine.rs").read_text(encoding="utf-8")
+# The shell's half is two files since 22/09: the engine process and its
+# protocol (`engine.rs`), and the audio thread with the queue the window
+# is sized from (`audio.rs`). The contract spans both.
+RUST = "\n".join(
+    (ROOT / "app" / "src-tauri" / "src" / name).read_text(encoding="utf-8")
+    for name in ("engine.rs", "audio.rs")
+)
 PYTHON = (ROOT / "src" / "vieneu_reader" / "headless" / "server.py").read_text(encoding="utf-8")
 
 
