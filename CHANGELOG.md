@@ -11,6 +11,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   one previous generation) instead of nowhere. Help › Show Log File
   reveals it, and the bug-report form asks for its last lines. The app
   writes no document names or text there.
+- The bundle names its category (Education), its copyright and a short
+  description, the way the Finder's Get Info and the App Store's tools
+  expect.
 
 ## 0.1.10
 
