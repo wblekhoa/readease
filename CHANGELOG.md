@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.12
+
+Updates with a Mac's manners - skip this version, later, install when
+quitting, automatic download if you want it - and release notes that read
+as paragraphs. Installs over 0.1.11, or lets 0.1.11 install it.
 
 - The update sheet shows the release notes as paragraphs, not as the
   CHANGELOG's wrapped lines; the manifest is written that way too.
