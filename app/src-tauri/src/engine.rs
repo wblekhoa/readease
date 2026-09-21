@@ -475,6 +475,15 @@ fn drain(
             if let Some(target) = shadow.target(ear) {
                 sink.clear();
                 let replayed = shadow.replay(target, &*sink);
+                // A stop that landed while the sentence was being put back
+                // has cleared the device once already; what was appended
+                // after that is a sentence audible after Stop unless it
+                // goes too. The single-frame path accepts this window; ten
+                // frames wide, it is not accepted.
+                if !current(shadow.epoch) {
+                    sink.clear();
+                    return;
+                }
                 eprintln!("[audio] resumed after a break: {} frame(s) again", replayed);
             }
         }
