@@ -66,7 +66,9 @@ failing somewhere confusing).
 
 - Bump the version in the seven files (`app/package.json`, `tauri.conf.json`,
   `Cargo.toml`, `Cargo.lock`, `pyproject.toml`, `uv.lock`, CHANGELOG head) and
-  the README download links; commit "Release <v>" on `main`.
+  the README download links; commit "Release <v>" on a `release/<v>` branch and
+  merge it through a pull request - `main` requires the CI checks (`app`,
+  `engine`) on every commit, so a direct push is refused.
 - Build with the updater key in the environment (`READEASE_UPDATER_KEY_PATH`,
   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE`, kept in `Apps/.env`): without
   them the build skips the updater archive and the release is invisible to
