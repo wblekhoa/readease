@@ -787,6 +787,9 @@ export const TEXT = {
   "menu.guide": ["Hướng dẫn sử dụng ReadEase", "ReadEase User Guide"],
   "menu.feedback": ["Báo lỗi hoặc góp ý…", "Report a Problem or Suggest…"],
   "menu.releases": ["Phiên bản mới nhất…", "Latest Release…"],
+  /* What Control Center shows under the name while a selection is read
+   * (HIG 3.19). */
+  "now_playing.selection": ["Phần đã chọn", "Selected text"],
 } as const;
 
 export type TextKey = keyof typeof TEXT;
