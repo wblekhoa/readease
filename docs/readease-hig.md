@@ -213,8 +213,8 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 - **Nút Dừng là ngoại lệ có nhãn + tone danger** (chủ chốt 01/09): ba nút kia là icon trần, riêng
   Dừng mang cả icon lẫn chữ và màu `danger`, vì nó là hành động duy nhất KẾT THÚC lượt đọc — cái
   không quay lại được bằng một cú bấm như tạm dừng. Đo: 5.14:1 trên desk ở cả hai theme.
-  Không đụng brand: brand đỏ là CTA "Đọc", mà CTA không hiện lúc đang đọc nên hai sắc đỏ không
-  bao giờ đứng cạnh nhau.
+  Không đụng brand: brand là CTA "Đọc", mà CTA không hiện lúc đang đọc nên hai màu không bao giờ đứng
+  cạnh nhau (và từ 21/09 brand là xanh — §7 — nên chúng khác hẳn nhau ngay cả khi đứng cạnh).
 - **Dòng trạng thái không được xuống dòng**: "Đang chuẩn bị giọng đọc…" từng vỡ thành 5 dòng dựng
   đứng giữa thanh (chủ bắt 01/09) → `whitespace-nowrap` + truncate.
 - **Thanh transport trả lời NGÓN TAY, không trả lời engine** (02/09): bấm Dừng/Tạm dừng thì
@@ -590,7 +590,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   bám đáy thẻ kể cả khi thẻ bên cạnh cao hơn (xảy ra ngay khi một tiêu đề xuống hai dòng). Cả hàng vì thế
   cho **một đường tiến độ thẳng**, thay vì mỗi bìa bị một vạch chen giữa nó và tiêu đề của chính nó.
   Màu: **`--color-progress` = `--fill-progress-primary`** (ramp xanh) — DS có hẳn vai `progress` cho đúng
-  việc này; brand đỏ là *bản sắc* của app, không phải *trạng thái*, và nó làm mọi cuốn đang đọc gào lên.
+  việc này; brand (đỏ lúc đó) là *bản sắc* của app, không phải *trạng thái*, và nó làm mọi cuốn đang đọc gào
+  lên. Từ 21/09 brand là xanh b100 — cùng ramp với `progress` — nên dải tiến độ và brand cùng họ; vẫn giữ token
+  `progress` riêng vì hai vai khác nhau có thể tách lại bất cứ lúc nào.
 - **Hai dấu ở góc bìa, và cả hai neo theo BÌA chứ không theo thẻ**: accessory (thùng rác) góc trên-phải,
   lộ khi hover/focus; **tag nguồn** (`tag`) góc dưới-trái, **hiện thường trực** — nó là một *dữ kiện* về
   cuốn sách, mà dữ kiện chỉ xuất hiện dưới con trỏ thì không ai tìm ra. Tag hiện tại: **icon app Apple Books** 20px
@@ -1519,6 +1521,15 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 | paper (mặt nổi) | n00 trắng | n10 | control, `Surface`, cột đọc |
 | rail (rãnh tab) | n10 | n05 | (`AppTabs`, gỡ 16/09 — token giữ cho rãnh sau này) |
 | band (dòng đang đọc) | n10 | n20 | highlight ở Reader |
+
+**Màu brand = XANH DƯƠNG** (chủ, 21/09: "update màu brand của app thành màu xanh dương"): `--color-brand-600` =
+`--blue-b100`, `--color-brand-700` = `--blue-b120` — ramp xanh của DS, lật theo theme (sáng #2B52D4 / #2446B4, tối
+#486AF2 / #6988F0; ở tối bậc 120 sáng hơn bậc 100 nên hover *sáng lên*, đúng cách control tối phản hồi). Trước đó là đỏ
+DOL `#D42525`/`#B31F1F` viết cứng, không lật theme. Đo: chữ trắng trên b100 6,6:1 (sáng) / 4,9:1 (tối); chấm đầu dòng
+trên desk 6,6 / 4,4. Hệ quả: brand và `danger` là hai sắc khác hẳn (không còn phải giữ luật "hai sắc đỏ không đứng cạnh
+nhau"); vòng focus (info b60) là họ hàng của brand — Apple cũng dùng một màu xanh cho cả accent lẫn focus ring, đó là
+điều mong muốn. Icon app đổi theo: mark sóng âm trên nền xanh (xoay hue nguồn 1024 px sang 224°, `tauri icon` sinh lại
+cả bộ). Ảnh chụp trong README còn màu đỏ — chụp lại ở Phase 3.
 
 **Trên vật liệu** (cột bên trên `NSVisualEffectView`, 20/09) thang đục nhường cho thang alpha của DS — cùng một
 token lật theo theme: `veil` na05 (lõm) · `wash` na10 (hover) · `tint` na20 (chọn) · `edge-alpha` (sáng na20 / tối
