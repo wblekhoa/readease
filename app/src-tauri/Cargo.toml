@@ -35,4 +35,5 @@ objc2-foundation = { version = "0.3", features = ["NSDictionary", "NSString", "N
 block2 = "0.6"
 tauri-plugin-updater = "2.12.0"
 tauri-plugin-process = "2.3.1"
+libc = "0.2"
 

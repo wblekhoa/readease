@@ -13,7 +13,7 @@ import { useUpdater } from "./ui/updates";
 import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { bookPaths } from "./ui/bookPaths";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
@@ -1228,6 +1228,11 @@ export default function App() {
         return;
       case "check-updates":
         void updater.checkNow();
+        return;
+      case "help-logs":
+        invoke<string | null>("log_path")
+          .then((path) => (path ? revealItemInDir(path) : undefined))
+          .catch(console.error);
         return;
     }
   }, [inBook, sideOpen, side.tab, sideSlot, changeReadingSize, chooseAppearance, togglePause, stopReading, readSelection, updater.checkNow]);

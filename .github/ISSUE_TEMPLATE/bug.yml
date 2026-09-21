@@ -1,0 +1,40 @@
+name: Báo lỗi · Bug report
+description: Có gì không chạy đúng? Kể ngắn gọn, kèm phiên bản và vài dòng nhật ký nếu có.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Phiên bản ReadEase · Version
+      description: Menu ReadEase › Giới thiệu ReadEase (ví dụ 0.1.10+9c85738)
+      placeholder: 0.1.10+9c85738
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS
+      description: Menu  › Giới thiệu máy Mac này (ví dụ macOS 15.6, MacBook Pro M2)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Chuyện gì xảy ra · What happened
+      description: Bạn mong gì, và thấy gì.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước để lặp lại · Steps
+      placeholder: |
+        1. Mở tài liệu…
+        2. Bấm…
+        3. Thấy…
+  - type: textarea
+    id: log
+    attributes:
+      label: Vài dòng cuối nhật ký (tuỳ chọn) · Log tail
+      description: Menu Trợ giúp › Mở thư mục nhật ký → readease.log. Chỉ dán những dòng quanh lúc lỗi; đừng dán nội dung tài liệu.
+      render: text

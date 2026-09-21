@@ -1307,6 +1307,27 @@ chủ: một màn hình), không log, không báo trang, không error-callback.
   mặc định bằng unit `DefaultOutput` nhưng ghim `CurrentDevice`; Apple không nói unit có còn theo mặc định không — chỉ
   phép thử A trên bản cài trả lời được (đổi output mặc định của máy là cài đặt hệ thống, AI không đụng). A hỏng → làm.
 
+### 3.22 Nhật ký — "Báo lỗi" có gì để gửi (21/09)
+
+Kiểm kê 21/09: host và sidecar viết chẩn đoán ra `stderr` (`[audio] opened …`, `[shortcut] …`, lỗi engine) — khi app
+mở từ Finder, `stderr` không đi đâu cả. Trợ giúp › *Báo lỗi hoặc góp ý* mở một issue mà người dùng không có gì để đính
+kèm ngoài lời kể.
+
+- **Tệp**: `~/Library/Logs/ReadEase/readease.log` — đúng chỗ Console.app và mọi app Mac ghi. Host làm một việc ở đầu
+  `run()`: nếu `stderr` KHÔNG phải terminal (tức mở từ Finder/Dock), mở tệp ở chế độ ghi thêm rồi `dup2` lên fd 2 —
+  mọi `eprintln!` của host, `stderr` thừa kế của sidecar Python và của các dylib đều rơi vào tệp mà không phải sửa
+  một dòng gọi nào. Chạy `tauri dev` (stderr là terminal) thì giữ nguyên ra terminal.
+- **Xoay vòng**: lúc mở, tệp > 2 MB thì đổi tên thành `readease.log.1` (giữ một thế hệ) rồi bắt đầu tệp mới; mỗi lần
+  mở ghi một dòng đầu `=== ReadEase <version>+<build> · <thời điểm> ===` để một tệp chứa nhiều phiên vẫn đọc được.
+- **Vào tệp**: Trợ giúp › **Mở thư mục nhật ký** (`revealItemInDir` của opener — Finder hiện tệp được chọn). Lệnh
+  `log_path` cho trang biết tệp ở đâu.
+- **Riêng tư** (chủ chốt 21/09: chỉ dòng kỹ thuật): host không ghi tên tài liệu, nội dung, đường dẫn tệp của người
+  dùng vào nhật ký (lỗi nhập tài liệu ghi ở console của trang, không ra stderr). Sidecar ghi gì thì sidecar chịu — cần
+  rà một lượt riêng; tệp nằm ở máy người dùng, họ tự quyết định có đính kèm không.
+- **Mẫu issue** (`.github/ISSUE_TEMPLATE/bug.yml`): phiên bản (từ Giới thiệu ReadEase), macOS, chuyện gì xảy ra, các
+  bước, và ô dán vài dòng cuối nhật ký (tuỳ chọn) — để một báo cáo có đủ ba thứ người sửa cần.
+- **Don't**: `dup2` khi stderr là terminal (mất log dev) · ghi nội dung tài liệu · giữ nhật ký không giới hạn.
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:

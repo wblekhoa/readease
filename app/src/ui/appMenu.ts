@@ -33,7 +33,7 @@ export type MenuCommand =
   | "read-selection"
   | "voice-settings"
   | "hub"
-  | "help-guide" | "help-feedback" | "help-releases"
+  | "help-guide" | "help-feedback" | "help-releases" | "help-logs"
   | "check-updates";
 
 export interface MenuState {
@@ -197,6 +197,8 @@ export async function installAppMenu(
       await item("help-feedback", text("menu.feedback")),
       await separator(),
       await item("help-releases", text("menu.releases")),
+      // The file "Báo lỗi" can attach (HIG 3.22): Finder, with it selected.
+      await item("help-logs", text("menu.logs")),
     ],
   });
 
