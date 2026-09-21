@@ -15,13 +15,13 @@
 
 <p align="center">
   <img src="assets/screenshots/shelf.png" width="400" alt="Thư viện: bìa sách, tiến độ đã đọc, nút Từ Apple Books và Mở PDF hoặc EPUB">
-  <img src="assets/screenshots/voices.png" width="400" alt="Danh sách giọng đọc: 20 giọng trên máy, lọc nam/nữ, nghe thử và bật giọng để đổi nhanh">
+  <img src="assets/screenshots/voices.png" width="400" alt="Danh sách giọng đọc: 20 giọng Việt và 6 giọng Anh trên máy, lọc theo ngôn ngữ và giới tính, nghe thử và bật giọng để đổi nhanh">
 </p>
 <p align="center"><sub>Thư viện với tiến độ từng tài liệu · Danh sách 20 giọng trên máy, nghe thử trước khi chọn.</sub></p>
 
 ## Tải và cài ngay
 
-### [⬇️ Tải ReadEase 0.1.13 cho Mac Apple Silicon — 131 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.13/ReadEase-0.1.13-arm64.dmg)
+### [⬇️ Tải ReadEase 0.1.13 cho Mac Apple Silicon — 132 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.13/ReadEase-0.1.13-arm64.dmg)
 
 Bấm là tải ngay file `.dmg`. Mở nó, rồi **kéo `ReadEase.app` vào thư mục Applications** ngay trong cửa sổ đó. Không cần Terminal, không cần cài công cụ gì. Thích file `.zip` hơn thì có [bản zip](https://github.com/wblekhoa/readease/releases/download/v0.1.13/ReadEase-0.1.13-arm64.zip) (115 MB) — giải nén rồi kéo tương tự. Từ bản này app tự báo khi có bản mới (menu ReadEase › Kiểm tra bản mới…). Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
 

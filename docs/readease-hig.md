@@ -1289,6 +1289,12 @@ mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plu
   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE`, không bao giờ in) → `.sig` → `latest.json` { version, notes, pub_date
   RFC 3339, platforms."darwin-aarch64".{signature, url} } với url = asset của release. Release phải upload **zip + dmg +
   tar.gz + latest.json**. Thiếu khoá thì script bỏ qua bước này và nói rõ.
+- **Cửa sổ `.dmg` có nền** (22/09, Phase 3): app bên trái, Applications bên phải, mũi tên xanh brand ở giữa và một dòng
+  "Kéo ReadEase vào Applications để cài" (VI + EN) — `assets/branding/dmg-background.png` + `@2x` (vẽ bằng
+  `scripts/build-dmg-background.py`, chữ SF của hệ vì cửa sổ Finder là của Mac, không phải của app), bố cục
+  `scripts/dmg-settings.py` cho `dmgbuild` (qua `uvx`, ghim 1.6.7): nó tự viết `.DS_Store`, gộp TIFF HiDPI bằng
+  `tiffutil`, gắn icon volume, mount `-nobrowse` — không mở cửa sổ Finder nào lúc build. Không có `uvx` thì về ảnh
+  trơn như trước. Vị trí icon (165,175)/(495,175) trong khung 660×400 là hợp đồng giữa ảnh và settings.
 - **Hành vi kiểu Sparkle** (22/09, chủ hỏi khi thấy LidRun; chốt "theo đề xuất tối ưu nhất"): bộ cập nhật giữ nguyên
   (plugin đã chứng minh 0.1.10 → 0.1.11), thêm đúng những hành vi người dùng Mac chờ ở Sparkle — và bỏ viên nổi:
   - **Bỏ qua phiên bản này**: nhớ `readease.update.skipped`; kiểm tra lặng bỏ qua đúng phiên bản đó, kiểm tra bằng tay

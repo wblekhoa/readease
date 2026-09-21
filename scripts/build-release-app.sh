@@ -252,12 +252,23 @@ dmg=""
 if [[ -n "$developer_id" ]]; then
   dmg="${artifact%.zip}.dmg"
   echo "==> disk image"
-  staging="$(mktemp -d)"
-  ditto "$app" "$staging/ReadEase.app"
-  ln -s /Applications "$staging/Applications"
   rm -f "$dmg"
-  hdiutil create -volname "ReadEase" -srcfolder "$staging" -ov -format UDZO -quiet "$dmg"
-  rm -rf "$staging"
+  # With a backdrop and the two icons in place (scripts/dmg-settings.py,
+  # assets/branding/dmg-background*.png) when dmgbuild can be fetched -
+  # it writes the Finder layout itself, no Finder window opens. Without
+  # uvx the image is the plain pair it always was.
+  if command -v uvx >/dev/null 2>&1; then
+    uvx --from "dmgbuild==1.6.7" dmgbuild -s "$project_root/scripts/dmg-settings.py" \
+      -D "app=$app" -D "background=$project_root/assets/branding/dmg-background.png" \
+      -D "icon=$project_root/app/src-tauri/icons/icon.icns" "ReadEase" "$dmg" | sed 's/^/    /'
+  else
+    echo "    uvx not found: a plain disk image, no backdrop" >&2
+    staging="$(mktemp -d)"
+    ditto "$app" "$staging/ReadEase.app"
+    ln -s /Applications "$staging/Applications"
+    hdiutil create -volname "ReadEase" -srcfolder "$staging" -ov -format UDZO -quiet "$dmg"
+    rm -rf "$staging"
+  fi
   codesign --sign "$developer_id" --timestamp "$dmg"
   if [[ "${READEASE_SKIP_NOTARY:-0}" != "1" ]]; then
     echo "==> notarizing the disk image"
