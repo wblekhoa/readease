@@ -36,6 +36,13 @@ struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
 /// nudge, so nothing is opened twice and nothing is lost.
 struct OpenedFiles(std::sync::Mutex<Vec<String>>);
 
+/// Which output the voice goes to (HIG 3.21) - asked once the page is up,
+/// since the audio thread's own event fired before there was a page.
+#[tauri::command]
+fn audio_output(slot: tauri::State<EngineSlot>) -> engine::AudioOutput {
+    client_of(&slot).output.clone()
+}
+
 #[tauri::command]
 fn take_opened_files(queue: tauri::State<OpenedFiles>) -> Vec<String> {
     std::mem::take(&mut *queue.0.lock().unwrap())
@@ -254,6 +261,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // In-app updates (HIG 3.20): the page asks, downloads and relaunches;
+        // the manifest and the archive live with the GitHub release.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         // The window comes back where and how big it was left (HIG 3.16):
         // size and position only. Not fullscreen or visibility - restoring
         // a fullscreen flag onto a transparent, overlay-title-bar window is
@@ -334,6 +345,7 @@ pub fn run() {
             pause_audio,
             resume_audio,
             take_opened_files,
+            audio_output,
             media::now_playing
         ])
         .build(tauri::generate_context!())

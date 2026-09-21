@@ -149,6 +149,9 @@ pub struct EngineClient {
     paused: Arc<AtomicBool>,
     tray: Arc<Mutex<Option<tauri::tray::TrayIcon>>>,
     voice_started: Arc<std::sync::atomic::AtomicBool>,
+    /// Where the voice goes (HIG 3.21), for the page to ask after it has
+    /// loaded - the `audio:device` event fires before it exists.
+    pub output: AudioOutput,
     /// Requests whose reply nobody waits for. Only these may surface as
     /// `engine:orphan_reply`; a superseded reading's late reply is dropped
     /// instead of being broadcast at whatever listener happens to be mounted.
@@ -443,29 +446,86 @@ fn spawn_audio(
     paused: Arc<AtomicBool>,
     shell: Arc<dyn Shell>,
     feedback: Arc<dyn Feedback>,
-) -> Result<(SyncSender<Frame>, Arc<dyn AudioSink>), String> {
+) -> Result<(SyncSender<Frame>, Arc<dyn AudioSink>, AudioOutput), String> {
     // The device sink is not Send, so a dedicated thread owns it for life.
     // The Player is all interior mutability, so pause/play/clear are safe
     // to call from command handlers while this thread appends.
     let (ready_tx, ready_rx) = channel();
     let (chunk_tx, chunk_rx) = sync_channel::<Frame>(AUDIO_QUEUE_FRAMES);
     std::thread::spawn(move || {
-        let device = match rodio::DeviceSinkBuilder::open_default_sink() {
-            Ok(device) => device,
+        let (device, output) = match open_output() {
+            Ok(opened) => opened,
             Err(error) => {
                 let _ = ready_tx.send(Err(format!("no output device: {error}")));
                 return;
             }
         };
+        // Said out loud, both ways: the log for whoever debugs a silent Mac,
+        // the page for the person - a voice that went to the wrong device
+        // used to be undiagnosable from either side (owner's note, 20/09).
+        eprintln!(
+            "[audio] opened \"{}\"{}",
+            output.name,
+            if output.default { "" } else { " - NOT the system's default output" }
+        );
+        shell.emit("audio:device", json!({ "name": output.name, "default": output.default }));
         let player: Arc<dyn AudioSink> =
             Arc::new(rodio::Player::connect_new(device.mixer()));
-        let _ = ready_tx.send(Ok(player.clone()));
+        let _ = ready_tx.send(Ok((player.clone(), output)));
         drain(chunk_rx, player, epoch, paused, shell, feedback);
     });
-    let player = ready_rx
+    let (player, output) = ready_rx
         .recv()
         .map_err(|_| "audio thread died".to_string())??;
-    Ok((chunk_tx, player))
+    Ok((chunk_tx, player, output))
+}
+
+/// Which output the voice goes to, as the page and the log see it.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct AudioOutput {
+    pub name: String,
+    /// It is the device the system calls the default output. False means
+    /// the default could not be opened and another one answered instead.
+    pub default: bool,
+}
+
+/// The system's default output device, by name; only when that one will
+/// not open, the first other output that does - never silently. rodio's
+/// own `open_default_sink` does the same search but cannot say which
+/// device won, and on this Mac the first other device is a monitor.
+fn open_output() -> Result<(rodio::MixerDeviceSink, AudioOutput), String> {
+    use rodio::cpal::traits::{DeviceTrait, HostTrait};
+    fn on_stream_error(error: rodio::cpal::StreamError) {
+        eprintln!("[audio] stream error: {error}");
+    }
+    let open = |device: rodio::cpal::Device| -> Result<rodio::MixerDeviceSink, String> {
+        rodio::DeviceSinkBuilder::from_device(device)
+            .and_then(|builder| builder.with_error_callback(on_stream_error).open_stream())
+            .map_err(|error| error.to_string())
+    };
+    let host = rodio::cpal::default_host();
+    let mut first_error = None;
+    let name_of = |device: &rodio::cpal::Device| {
+        device.description().map(|d| d.name().to_string()).unwrap_or_else(|_| "?".to_string())
+    };
+    if let Some(device) = host.default_output_device() {
+        let name = name_of(&device);
+        match open(device) {
+            Ok(sink) => return Ok((sink, AudioOutput { name, default: true })),
+            Err(error) => {
+                eprintln!("[audio] the default output \"{name}\" would not open: {error}");
+                first_error = Some(error);
+            }
+        }
+    }
+    let devices = host.output_devices().map_err(|error| error.to_string())?;
+    for device in devices {
+        let name = name_of(&device);
+        if let Ok(sink) = open(device) {
+            return Ok((sink, AudioOutput { name, default: false }));
+        }
+    }
+    Err(first_error.unwrap_or_else(|| "no output device".to_string()))
 }
 
 /// Everything the reader thread shares with the rest of the client, and the
@@ -638,7 +698,7 @@ impl EngineClient {
         });
         let feedback: Arc<dyn Feedback> =
             Arc::new(StdinFeedback { stdin: stdin.clone() });
-        let (audio, player) =
+        let (audio, player, output) =
             spawn_audio(epoch.clone(), paused.clone(), shell.clone(), feedback)?;
 
         let client = Arc::new(Self {
@@ -655,6 +715,7 @@ impl EngineClient {
             notified: Arc::new(Mutex::new(HashSet::new())),
             tray,
             voice_started: Arc::new(std::sync::atomic::AtomicBool::new(true)),
+            output,
         });
 
         let pump = Pump {

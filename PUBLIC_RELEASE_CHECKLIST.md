@@ -1,8 +1,11 @@
 # Release checklist
 
-What ships: **a `.zip` of `ReadEase.app`**, built by
-`scripts/build-release-app.sh`, ad-hoc signed, published on GitHub Releases,
-installed by dragging into Applications.
+What ships, per release, all built by `scripts/build-release-app.sh` and
+published by `scripts/release.sh`: **a `.zip` of `ReadEase.app`**, **a `.dmg`**
+(the app beside an Applications link), **`ReadEase-<v>-arm64.app.tar.gz`** with
+its minisign signature for the in-app updater, and **`latest.json`**, the
+manifest the running app fetches. Everything is Developer ID-signed and
+notarized (since 0.1.2); the dmg is notarized in its own right.
 
 ## Build the candidate
 
@@ -43,10 +46,12 @@ Then, against the finished bundle:
 
 ## What the recipient does
 
-1. Download the `.zip` from the Release and unzip it.
-2. Drag `ReadEase.app` into Applications.
-3. First launch: Control-click the app → **Open** → **Open**. One prompt, once.
-   This is the ordinary un-notarized dialog, not the "damaged" one.
+1. Download the `.dmg` (open it, drag `ReadEase.app` into Applications) or the
+   `.zip` (unzip, drag).
+2. Double-click. Notarized: no Control-click, no prompt beyond the first-open
+   "downloaded from the internet" notice.
+3. From 0.1.10 on, the app checks for the next release itself (ReadEase menu ›
+   Kiểm tra bản mới…, and once, quietly, after launch).
 4. Their library, progress, notes and downloaded voices live in
    `~/Library/Application Support/VieNeu Reader/`, outside the bundle, so
    dragging a new build over an old one is an upgrade and not a loss. The
@@ -59,15 +64,21 @@ failing somewhere confusing).
 
 ## Publishing
 
-- Tag the commit the bundle was built from; the tag and `CFBundleVersion`
-  must name the same sha.
-- Create the GitHub Release with the `.zip` and the sha256 the build printed.
-- Fast-forward `main` to that commit: the default branch is what a stranger
-  reads.
+- Bump the version in the seven files (`app/package.json`, `tauri.conf.json`,
+  `Cargo.toml`, `Cargo.lock`, `pyproject.toml`, `uv.lock`, CHANGELOG head) and
+  the README download links; commit "Release <v>" on `main`.
+- Build with the updater key in the environment (`READEASE_UPDATER_KEY_PATH`,
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE`, kept in `Apps/.env`): without
+  them the build skips the updater archive and the release is invisible to
+  every installed app.
+- Write `dist/release/notes-<v>.md` (VI + EN, sha256 + build id).
+- `./scripts/release.sh <v>`: tags the commit the bundle was built from (tag
+  and `CFBundleVersion` name the same sha), publishes the four assets under
+  their plain names, and proves each link's byte count.
 
 ## Deliberately not done
 
-- **Developer ID signing and notarization.** The owner accepted one
-  Control-click → Open as the cost. If that ever changes, it is a separate
-  lane with its own gates.
 - **Intel Macs.** The sidecar and the host are built for arm64 only.
+- **Rotating the updater key.** Its public half is in every shipped app; a
+  new key means one manual download for everyone. Back up
+  `~/.tauri/readease.key` and its password instead.

@@ -26,6 +26,23 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   AirPod's stem and Control Center's play/pause/stop control the reading
   - even with the window behind others. It withdraws when the reading
   ends.
+- **Check for Updates…** under the ReadEase menu: the app asks GitHub for
+  a newer release, shows its notes, downloads and installs it, and offers
+  the relaunch. It also looks once, quietly, a few seconds after launch,
+  and only speaks up when there is something new. Updates are signed;
+  the public key ships in the app. (This release is the first with the
+  updater, so the first update it performs will be to the release after
+  it.)
+- Releases now ship a disk image (`.dmg`, drag to Applications) beside
+  the zip, both notarized.
+- Tooltips wait a beat before appearing, like the Mac's own help tags,
+  and then follow the pointer along a row at once; sweeping the toolbar
+  no longer flashes a name under every button.
+- The voice plays through the Mac's default output, opened by name; if
+  that device will not open, the app says so instead of quietly picking
+  another. Voice settings now shows which output the voice goes to, and
+  whether it is the system's default - the line that makes a
+  Multi-Output setup diagnosable.
 
 ## 0.1.9
 

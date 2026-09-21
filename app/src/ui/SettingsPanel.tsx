@@ -92,6 +92,7 @@ export function SettingsPanel({
   onNoteReading,
   onManageVoices,
   onOpenHub,
+  output = null,
   onClose,
 }: {
   /** The whole catalogue; what each tab offers is decided here. */
@@ -131,6 +132,8 @@ export function SettingsPanel({
   onNoteReading: (reading: NoteReading) => void;
   onManageVoices: () => void;
   onOpenHub: () => void;
+  /** The device the voice plays through, from the host (HIG 3.21). */
+  output?: { name: string; default: boolean } | null;
   onClose: () => void;
 }) {
   const downloading = models.job !== null;
@@ -371,6 +374,17 @@ export function SettingsPanel({
                 subtitle={sourcesLine(readingLanguage, models.status, voices, keysSet)}
                 trailing={
                   <Button size="sm" disabled={downloading} onClick={onOpenHub}>{text("hub.manage")}</Button>
+                }
+              />
+              {/* Where the voice goes (HIG 3.21): named, and honest when it
+                  is not the Mac's default - the fact that makes a "silent"
+                  Multi-Output setup diagnosable from the screen. */}
+              <GroupedRow
+                title={text("settings.output")}
+                subtitle={
+                  output === null
+                    ? text("settings.output_unknown")
+                    : `${output.name} · ${text(output.default ? "settings.output_default" : "settings.output_fallback")}`
                 }
               />
             </GroupedSection>

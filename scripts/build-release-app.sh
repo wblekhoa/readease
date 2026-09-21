@@ -133,29 +133,21 @@ if ! codesign --verify --deep --strict "$app"; then
   exit 1
 fi
 
-if [[ -n "$developer_id" && "${READEASE_SKIP_NOTARY:-0}" == "1" ]]; then
-  # A local iteration: Developer ID signature (so the Accessibility grant
-  # keeps its anchor) without the half-hour at Apple. Not for anything that
-  # leaves this machine - the artifact is written under a name that says so.
-  echo "==> READEASE_SKIP_NOTARY=1: signed, NOT notarized - local install only"
-  artifact="${artifact%.zip}-unnotarized.zip"
-elif [[ -n "$developer_id" ]]; then
-  # The notary service wants the bundle as an archive; ditto keeps the seal.
-  # Submitted without `--wait`, then polled once a minute: Apple took over
-  # 30 minutes on the very first submission (15/09) and `--wait`'s timeout
-  # turned a still-pending review into a failed build, while the review
-  # went on to succeed. Only a verdict ends the wait, or the ceiling in
-  # READEASE_NOTARY_MAX_MINUTES (default six hours). A rejection prints
-  # Apple's own log - the file and the reason - and stops here: an app that
-  # failed notarization must not be packaged as if it had passed.
-  echo "==> notarizing through profile \"$notary_profile\""
-  notary_dir="$(mktemp -d)"
-  ditto -c -k --keepParent "$app" "$notary_dir/ReadEase.zip"
-  submit_log="$notary_dir/submit.log"
-  xcrun notarytool submit "$notary_dir/ReadEase.zip" --keychain-profile "$notary_profile" \
+# Submit one file to the notary service and wait for Apple's verdict.
+# Submitted without `--wait`, then polled once a minute: Apple took over
+# 30 minutes on the very first submission (15/09) and `--wait`'s timeout
+# turned a still-pending review into a failed build, while the review went
+# on to succeed. Only a verdict ends the wait, or the ceiling in
+# READEASE_NOTARY_MAX_MINUTES (default six hours). A rejection prints
+# Apple's own log - the file and the reason - and stops the build: a file
+# that failed notarization must not be packaged as if it had passed.
+notarize_wait() {
+  local file="$1" submit_log submission max_minutes status last waited
+  submit_log="$(mktemp)"
+  xcrun notarytool submit "$file" --keychain-profile "$notary_profile" \
     2>&1 | tee "$submit_log" | sed 's/^/    /' || true
   submission="$(sed -n 's/^ *id: //p' "$submit_log" | head -1)"
-  rm -rf "$notary_dir"
+  rm -f "$submit_log"
   if [[ -z "$submission" ]]; then
     echo "NOTARIZE_FAILED: the upload did not produce a submission id" >&2; exit 1
   fi
@@ -174,9 +166,31 @@ elif [[ -n "$developer_id" ]]; then
   done
   if [[ "$status" != "Accepted" ]]; then
     xcrun notarytool log "$submission" --keychain-profile "$notary_profile" 2>&1 | sed 's/^/    /' || true
-    echo "NOTARIZE_FAILED: Apple answered \"$status\"; not packaging" >&2
+    echo "NOTARIZE_FAILED: Apple answered \"$status\" for $(basename "$file"); not packaging" >&2
     exit 1
   fi
+}
+
+if [[ -n "$developer_id" && "${READEASE_SKIP_NOTARY:-0}" == "1" ]]; then
+  # A local iteration: Developer ID signature (so the Accessibility grant
+  # keeps its anchor) without the half-hour at Apple. Not for anything that
+  # leaves this machine - the artifact is written under a name that says so.
+  echo "==> READEASE_SKIP_NOTARY=1: signed, NOT notarized - local install only"
+  artifact="${artifact%.zip}-unnotarized.zip"
+elif [[ -n "$developer_id" ]]; then
+  # The notary service wants the bundle as an archive; ditto keeps the seal.
+  # Submitted without `--wait`, then polled once a minute: Apple took over
+  # 30 minutes on the very first submission (15/09) and `--wait`'s timeout
+  # turned a still-pending review into a failed build, while the review
+  # went on to succeed. Only a verdict ends the wait, or the ceiling in
+  # READEASE_NOTARY_MAX_MINUTES (default six hours). A rejection prints
+  # Apple's own log - the file and the reason - and stops here: an app that
+  # failed notarization must not be packaged as if it had passed.
+  echo "==> notarizing through profile \"$notary_profile\""
+  notary_dir="$(mktemp -d)"
+  ditto -c -k --keepParent "$app" "$notary_dir/ReadEase.zip"
+  notarize_wait "$notary_dir/ReadEase.zip"
+  rm -rf "$notary_dir"
   echo "==> stapling the notarization ticket"
   xcrun stapler staple "$app" | sed 's/^/    /'
   # The gate that used to be only a report: a Developer ID build has to be
@@ -227,13 +241,96 @@ rm -f "$artifact"
 echo "==> packaging"
 ditto -c -k --keepParent "$app" "$artifact"
 
+# The disk image (HIG 3.20 / README): the stapled app beside an Applications
+# link, so installing is one drag. Made HERE, after notarization - the
+# bundler's own dmg is written at `tauri build`, before this script signs
+# and staples the app, and would carry the unstapled one. The image is
+# signed, notarized and stapled in its own right; Gatekeeper judges it as
+# an "open" target. Developer ID builds only: an ad-hoc dmg would be an
+# ad-hoc app in a nicer box.
+dmg=""
+if [[ -n "$developer_id" ]]; then
+  dmg="${artifact%.zip}.dmg"
+  echo "==> disk image"
+  staging="$(mktemp -d)"
+  ditto "$app" "$staging/ReadEase.app"
+  ln -s /Applications "$staging/Applications"
+  rm -f "$dmg"
+  hdiutil create -volname "ReadEase" -srcfolder "$staging" -ov -format UDZO -quiet "$dmg"
+  rm -rf "$staging"
+  codesign --sign "$developer_id" --timestamp "$dmg"
+  if [[ "${READEASE_SKIP_NOTARY:-0}" != "1" ]]; then
+    echo "==> notarizing the disk image"
+    notarize_wait "$dmg"
+    xcrun stapler staple "$dmg" | sed 's/^/    /'
+    dmg_verdict="$(spctl -a -t open --context context:primary-signature -vv "$dmg" 2>&1 || true)"
+    printf '%s\n' "$dmg_verdict" | sed 's/^/    /'
+    if ! grep -q "accepted" <<<"$dmg_verdict"; then
+      echo "GATEKEEPER_FAILED: the notarized disk image should be accepted" >&2
+      exit 1
+    fi
+  fi
+fi
+
+# The in-app updater's archive (HIG 3.20): the STAPLED app as a tar.gz, a
+# minisign signature over it with the updater's private key, and the
+# manifest the running app fetches. Not the bundler's updater artifacts:
+# those are made at `tauri build`, before signing and stapling, which is
+# exactly the wrong bundle to hand an updater. The key lives outside the
+# repository (READEASE_UPDATER_KEY_PATH, default ~/.tauri/readease.key) and
+# its password only in the environment (TAURI_SIGNING_PRIVATE_KEY_PASSWORD_
+# READEASE); neither is ever printed. Without them this step is skipped and
+# says so - a release without a manifest is invisible to the updater.
+updater_key="${READEASE_UPDATER_KEY_PATH:-$HOME/.tauri/readease.key}"
+updater_password="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE:-}"
+manifest=""
+# READEASE_UPDATER_DRYRUN=1 runs the step on a skip-notary build too, to
+# prove the tar/sign/manifest chain locally; the manifest it writes names
+# an -unnotarized archive that release.sh will refuse.
+if [[ -n "$developer_id" && -r "$updater_key" && -n "$updater_password" \
+      && ( "${READEASE_SKIP_NOTARY:-0}" != "1" || "${READEASE_UPDATER_DRYRUN:-0}" == "1" ) ]]; then
+  echo "==> updater archive"
+  tarball="${artifact%.zip}.app.tar.gz"
+  rm -f "$tarball" "$tarball.sig"
+  COPYFILE_DISABLE=1 tar -czf "$tarball" -C "$(dirname "$app")" "$(basename "$app")"
+  ( cd app && TAURI_SIGNING_PRIVATE_KEY_PATH="$updater_key" \
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$updater_password" \
+      npx tauri signer sign "$project_root/$tarball" >/dev/null )
+  [[ -s "$tarball.sig" ]] || { echo "UPDATER_SIGN_FAILED: no signature was written" >&2; exit 1; }
+  manifest="$out_dir/latest.json"
+  # The release's asset carries the plain name (no build id); the release
+  # step copies the tarball to it. Notes = this version's CHANGELOG entry.
+  notes="$(awk -v v="## $version" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md | sed '/^$/d' | head -40)"
+  python3 - "$version" "$tarball.sig" "$manifest" "$notes" <<'PY'
+import json, sys, datetime
+version, sig_path, manifest, notes = sys.argv[1:5]
+signature = open(sig_path, encoding="utf-8").read().strip()
+json.dump({
+    "version": version,
+    "notes": notes,
+    "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "platforms": {
+        "darwin-aarch64": {
+            "signature": signature,
+            "url": f"https://github.com/wblekhoa/readease/releases/download/v{version}/ReadEase-{version}-arm64.app.tar.gz",
+        }
+    },
+}, open(manifest, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+PY
+elif [[ -n "$developer_id" && "${READEASE_SKIP_NOTARY:-0}" != "1" ]]; then
+  echo "==> updater archive SKIPPED: no updater key/password in the environment (READEASE_UPDATER_KEY_PATH, TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE)"
+fi
+
 echo
 echo "READY  $artifact"
 echo "size   $(du -h "$artifact" | cut -f1)"
 echo "sha256 $(shasum -a 256 "$artifact" | cut -d' ' -f1)"
+if [[ -n "$dmg" && -s "$dmg" ]]; then echo "dmg    $dmg ($(du -h "$dmg" | cut -f1))"; fi
+if [[ -n "$manifest" ]]; then echo "update ${artifact%.zip}.app.tar.gz + .sig + $manifest"; fi
 echo
 echo "Which build is installed, at any time:"
 echo "  /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' ~/Applications/ReadEase.app/Contents/Info.plist"
 echo
-echo "Not published by this script - upload it to a GitHub release yourself,"
-echo "then point the download links in README.md and README.en.md at the new asset."
+echo "Not published by this script: ./scripts/release.sh $version publishes the zip,"
+echo "the dmg, the updater archive and latest.json to the GitHub release and checks"
+echo "the README links; write dist/release/notes-$version.md first."

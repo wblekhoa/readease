@@ -1058,6 +1058,8 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   // Now Playing (HIG 3.19) is the window's; the browser has no Control
   // Center to tell.
   if (command === "now_playing") return Promise.resolve(null);
+  // The browser plays through whatever it plays through; the row says so.
+  if (command === "audio_output") return Promise.resolve({ name: "Mock speakers", default: true });
   if (command === "restart_engine") return Promise.resolve(null);
   /* The system open panel, answered with a canned path: the harness has
      no Finder, and the point is the shelf after an import, not the panel.
