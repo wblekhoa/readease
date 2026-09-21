@@ -20,6 +20,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   bar's Now Playing carry the cover beside the title and chapter, as
   Music shows an album. A document without a cover shows the app's icon,
   as before.
+- The brand colour is blue: the Read button, the bullets, the line under
+  the passage being read and the app's icon, in the design system's own
+  blue that follows light and dark. Red now means only "stop" and
+  "danger".
 
 ## 0.1.12
 

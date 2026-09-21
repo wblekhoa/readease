@@ -12,8 +12,21 @@
 @theme {
   --font-display: "Plus Jakarta Sans Variable", system-ui, sans-serif;
   --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
-  --color-brand-600: #D42525;
-  --color-brand-700: #B31F1F;
+}
+
+/* The brand colour: BLUE, the DS's own blue ramp (owner, 21/09: "update
+   màu brand của app thành màu xanh dương" - it had been DOL's red, two
+   hex literals that did not follow the theme). b100 is the fill, b120 the
+   pressed/hover step; in dark the ramp runs the other way, so hover
+   brightens there, which is what a dark control does. Resolved through
+   the DS variables, so it flips with [data-theme] like every other role.
+   Measured: white on b100 6.6:1 (light) / 4.9:1 (dark); the list dot on
+   the desk 6.6 / 4.4. Brand and danger are now different hues outright,
+   and the focus ring (info b60) is a cousin of the brand - Apple's blue
+   is both its accent and its ring, so that reads as intended. */
+@theme inline {
+  --color-brand-600: var(--blue-b100);
+  --color-brand-700: var(--blue-b120);
 }
 
 /* The token bridge: every colour a component may use, named by ROLE and
