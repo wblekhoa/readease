@@ -4,7 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.10
+
+A Mac app of its own: a menu bar with every command, documents that open
+from Finder and the Dock, a window that remembers itself, a reading that
+Control Center and the media keys know about, and an updater that will
+bring the next release by itself. Ships as a disk image beside the zip.
+Installs over 0.1.9.
 
 - A menu bar of the app's own, in the app's language: File (Add to
   Library ⇧⌘O, From Apple Books, Close Document ⌘W), Edit (the system's

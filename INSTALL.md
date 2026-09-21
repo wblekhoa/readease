@@ -17,7 +17,7 @@ Dành cho người muốn cài ReadEase lên máy Mac mà không cần biết l�
 
 ### Bước 1 — Tải app
 
-Vào trang [**Releases**](https://github.com/wblekhoa/readease/releases/latest) và tải file `ReadEase-<phiên bản>-arm64.zip`. Bấm đúp file zip để giải nén — bạn có `ReadEase.app`.
+Vào trang [**Releases**](https://github.com/wblekhoa/readease/releases/latest) và tải file `ReadEase-<phiên bản>-arm64.dmg`. Bấm đúp để mở — cửa sổ hiện `ReadEase.app` cạnh thư mục Applications, kéo app vào đó. (Cũng có `.zip`: bấm đúp để giải nén rồi kéo `ReadEase.app` vào Applications.)
 
 ### Bước 2 — Kéo vào Applications
 
@@ -29,7 +29,7 @@ Bấm đúp `ReadEase.app` và dùng như mọi app khác. Từ bản 0.1.2, app
 
 > **Bản 0.1.0 hoặc 0.1.1 tải trước ngày 15/09/2026** chưa có chứng chỉ, nên macOS chặn với dòng *"Apple could not verify ReadEase is free of malware"*. Cách gọn nhất là tải bản mới ở trang Releases. Nếu vẫn muốn mở bản cũ: bấm **chuột phải** vào `ReadEase.app` → **Open** → **Open**. Lỡ bấm đúp và thấy nút **Move to Trash** thì bấm **Done**, vào **System Settings → Privacy & Security**, kéo xuống phần **Security** và bấm **Open Anyway**. Thao tác này chỉ tạo ngoại lệ cho đúng app đó.
 
-> Nếu hộp thoại nói app **"is damaged and can't be opened"** thì file zip bị đổi sau khi tải (trình duyệt hoặc phần mềm diệt virus can thiệp). Xoá và tải lại từ trang Releases chính thức; đừng dùng lệnh `xattr` hay tắt bảo mật.
+> Nếu hộp thoại nói app **"is damaged and can't be opened"** thì file tải về bị đổi sau khi tải (trình duyệt hoặc phần mềm diệt virus can thiệp). Xoá và tải lại từ trang Releases chính thức; đừng dùng lệnh `xattr` hay tắt bảo mật.
 
 ### Bước 4 — Chuẩn bị giọng đọc
 
@@ -41,7 +41,7 @@ Muốn bôi đen chữ ở trang web, PDF, Apple Books… rồi nhấn phím t�
 
 ## Nâng cấp, gỡ, dữ liệu ở đâu
 
-- **Nâng cấp:** tải zip mới, kéo `ReadEase.app` đè lên bản cũ. Tài liệu, tiến độ, ghi chú và giọng đã tải **không mất** — chúng nằm ngoài app, ở `~/Library/Application Support/VieNeu Reader/`. Nâng cấp từ 0.1.0/0.1.1 lên 0.1.2 thì quyền **Accessibility** phải bật lại một lần (chữ ký app đổi từ ad-hoc sang Developer ID); từ 0.1.2 trở đi quyền giữ nguyên qua các bản.
+- **Nâng cấp:** từ 0.1.10, app tự báo khi có bản mới (menu ReadEase › *Kiểm tra bản mới…*) và tự cài; hoặc tải bản mới, kéo `ReadEase.app` đè lên bản cũ. Tài liệu, tiến độ, ghi chú và giọng đã tải **không mất** — chúng nằm ngoài app, ở `~/Library/Application Support/VieNeu Reader/`. Nâng cấp từ 0.1.0/0.1.1 lên 0.1.2 thì quyền **Accessibility** phải bật lại một lần (chữ ký app đổi từ ad-hoc sang Developer ID); từ 0.1.2 trở đi quyền giữ nguyên qua các bản.
 - **Gỡ:** kéo `ReadEase.app` vào Thùng rác. Muốn xoá cả tài liệu và giọng đã tải thì xoá thêm thư mục ở trên.
 - **Chi phí:** không có. Giọng trên máy miễn phí vĩnh viễn. Chỉ khi **bạn tự** nhập khoá OpenAI/ElevenLabs để dùng giọng AI trả phí thì bạn trả cho nhà cung cấp đó, theo giá hiện sẵn trong nút đọc; app không thu gì.
 
@@ -50,7 +50,7 @@ Muốn bôi đen chữ ở trang web, PDF, Apple Books… rồi nhấn phím t�
 | Bạn thấy | Nghĩa là | Làm gì |
 | --- | --- | --- |
 | "Apple could not verify…" | Bản cũ (trước 0.1.2) chưa có chứng chỉ | Tải bản mới, hoặc xem ghi chú ở Bước 3 |
-| "…is damaged and can't be opened" | File zip bị đổi sau khi tải | Xoá, tải lại từ Releases |
+| "…is damaged and can't be opened" | File tải về bị đổi sau khi tải | Xoá, tải lại từ Releases |
 | App không mở trên máy Intel | Bản này chỉ dựng cho Apple Silicon | Chưa hỗ trợ |
 | "Requires macOS 15" | Máy đang chạy macOS cũ hơn | Cập nhật macOS |
 | Phím tắt Quét đọc không đọc gì | Chưa cấp quyền Accessibility | Bước 5 |
