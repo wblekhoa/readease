@@ -1,5 +1,6 @@
 mod engine;
 
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use engine::EngineClient;
@@ -28,6 +29,45 @@ type Engine = Arc<EngineClient>;
 /// The live engine, swappable when a model switch demands a fresh process.
 struct EngineSlot(std::sync::Mutex<Engine>);
 struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
+
+/// An update downloaded and waiting to be installed when the app quits
+/// (HIG 3.20, "Cài đặt khi thoát"). `armed` is the page's promise; `busy`
+/// means the quit has been intercepted once and the page is installing -
+/// a second close must not intercept again, and the safety net below ends
+/// the wait if the page never answers.
+struct InstallOnQuit {
+    armed: std::sync::atomic::AtomicBool,
+    busy: std::sync::atomic::AtomicBool,
+}
+
+#[tauri::command]
+fn set_install_on_quit(state: tauri::State<InstallOnQuit>, armed: bool) {
+    state.armed.store(armed, Ordering::SeqCst);
+}
+
+/// The page has installed the waiting update: leave now, no relaunch.
+#[tauri::command]
+fn exit_now(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+/// Called on the way out: true when the quit was intercepted for an
+/// install and the page has been told, false to let the quit proceed.
+fn intercept_quit_for_install(app: &tauri::AppHandle) -> bool {
+    use tauri::Emitter;
+    let Some(state) = app.try_state::<InstallOnQuit>() else { return false };
+    if !state.armed.load(Ordering::SeqCst) || state.busy.swap(true, Ordering::SeqCst) {
+        return false;
+    }
+    let _ = app.emit("update:install-now", ());
+    // If the page dies or hangs mid-install, the app still quits.
+    let fallback = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+        fallback.exit(0);
+    });
+    true
+}
 
 /// Documents macOS asked the app to open - a double-click in Finder, a
 /// drop on the Dock icon, "Open With" - waiting for the page to take them.
@@ -290,6 +330,10 @@ pub fn run() {
             app.manage(EngineSlot(std::sync::Mutex::new(client.clone())));
             app.manage(TraySlot(tray_slot.clone()));
             app.manage(OpenedFiles(std::sync::Mutex::new(Vec::new())));
+            app.manage(InstallOnQuit {
+                armed: std::sync::atomic::AtomicBool::new(false),
+                busy: std::sync::atomic::AtomicBool::new(false),
+            });
             // Now Playing's remote commands (HIG 3.19), once, on the main
             // thread that `setup` runs on.
             app.manage(media::register(app.handle()));
@@ -330,12 +374,20 @@ pub fn run() {
             }
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
+        .on_window_event(|window, event| match event {
+            // Closing the one window is quitting; with an update waiting,
+            // the page installs it first (HIG 3.20).
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                if intercept_quit_for_install(window.app_handle()) {
+                    api.prevent_close();
+                }
+            }
+            tauri::WindowEvent::Destroyed => {
                 if let Some(engine) = engine_of(window.app_handle()) {
                     engine.shutdown();
                 }
             }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             engine_voices,
@@ -352,13 +404,22 @@ pub fn run() {
             take_opened_files,
             audio_output,
             media::now_playing,
-            log::log_path
+            log::log_path,
+            set_install_on_quit,
+            exit_now
         ])
         .build(context)
         .expect("error while building tauri application")
         .run(|app, event| {
             // The system's "open these documents" (HIG 3.18): queue the
             // paths and nudge the page; it takes them when it can.
+            // ⌘Q with an update waiting: the page installs, then `exit_now`.
+            if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                if intercept_quit_for_install(app) {
+                    api.prevent_exit();
+                    return;
+                }
+            }
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = event {
                 use tauri::Emitter;
