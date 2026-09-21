@@ -687,11 +687,51 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 | ⌥⌘S | mọi màn (trừ Setup) | thu/mở cột bên — là lựa chọn tay, được nhớ. Là chord "Hide/Show Sidebar" của Finder · Notes · Photos · Reminders; đổi từ ⌃⌘S 17/09 (chủ: "thông minh hơn và tránh các phím tắt thông dụng khác" — ⌃⌘ là tầng chord hệ thống: ⌃⌘Space emoji, ⌃⌘F toàn màn hình, ⌃⌘Q khoá máy, ⌃⌘D tra từ). Bắt bằng `event.code` (KeyS), vì với ⌥ macOS đổi `event.key` thành "ß" |
 | ⌘1 · ⌘2 · ⌘3 · ⌘4 | ngoài tài liệu | về màn Thư viện · Dán nội dung · Quét đọc · Chuyển ghi chú (thứ tự menu Đổi chế độ) — khuôn ⌘1–4 của Finder/Mail |
 | ⌘1 · ⌘2 · ⌘3 | trong tài liệu | Mục lục · Ghi chú · Tìm của cột bên, qua `show(tab)`: cột gập thì mở đúng tab, bấm đúng tab đang hiện thì gập (công tắc) |
+| ⇧⌘O | mọi màn | Thêm vào thư viện… — về kệ rồi mở hộp chọn tệp (Books cũng ⇧⌘O cho "Add to Library"; ⌘O để dành cho "mở một tài liệu" mà app chưa có) — **menu Tệp** (20/09) |
+| ⌘W | trong tài liệu | đóng tài liệu, về kệ — app một cửa sổ, "Close Window" của hệ sẽ để lại một app không cửa sổ — **menu Tệp** |
+| ⌘= · ⌘− · ⌘0 | trong tài liệu | cỡ chữ lớn hơn · nhỏ hơn · về mặc định (5 nấc của Cài đặt đọc) — **menu Xem** |
+| ⌘. | đang đọc | dừng đọc (⌘. là "huỷ" của macOS) — **menu Đọc** |
+| ⌘, | mọi màn | Giọng đọc & mô hình — chỗ gần nhất với "Settings…" của app — **menu Đọc** |
+| ⌃⌘F · ⌘M · ⌘H · ⌥⌘H · ⌘Q | hệ | toàn màn hình · thu nhỏ · ẩn · ẩn app khác · thoát — mục có sẵn của hệ trong menu |
 | ⌘F | trong tài liệu | mở cột bên ở tab Tìm và focus ô nhập; tab Tìm ĐANG hiện thì chỉ focus + chọn sẵn chữ để gõ đè (không gập — ⌘F là "tìm", không phải công tắc; trước 17/09 bấm ⌘F lần hai là gập cột) |
 | ↑/↓ · Tab | cột bên | đi qua các mục (nút thường, thứ tự DOM; roving focus của AppTabs cũ không còn) |
 | Esc | recorder phím tắt | giữ phím cũ |
 | Esc | panel Chất lượng | đóng panel — trừ khi đang tải bản giọng (đóng lúc đó = giấu việc đang chạy) |
 | Tab | mọi nơi | focus ring **info blue**, không bao giờ brand |
+
+### 4.1 Thanh menu — mọi lệnh có chỗ đứng (20/09)
+
+Chủ 20/09: "tiếp tục mục tiêu tạo một app chuyên nghiệp riêng". Kiểm kê: app chỉ có menu MẶC ĐỊNH của Tauri (App · Edit
+· Window · View của hệ), không có lệnh nào của app, và các phím tắt ⌥⌘S · ⌘1–4 · ⌘F chỉ sống trong `App.tsx` — không nơi
+nào để người dùng *tìm thấy* chúng. HIG Apple: **menu bar là bề mặt khám phá** — mọi lệnh của app có một chỗ trong menu,
+phím tắt hiện ngay cạnh lệnh; nút trong cửa sổ là lối tắt, menu là bản đồ.
+
+**Cấu trúc** (`ui/appMenu.ts`, dựng bằng API menu của Tauri từ phía trang — nhãn đi cùng `i18n.ts`, hành động đi cùng
+state của `App.tsx`; mục có sẵn của hệ dùng `PredefinedMenuItem` với nhãn tiếng Việt khi app ở VI):
+
+| Menu | Mục | Ghi chú |
+|---|---|---|
+| **ReadEase** | Giới thiệu ReadEase · Dịch vụ · Ẩn ⌘H · Ẩn ứng dụng khác ⌥⌘H · Hiện tất cả · Thoát ⌘Q | có sẵn của hệ; About mang phiên bản, bản quyền, giấy phép |
+| **Tệp** | Thêm vào thư viện… ⇧⌘O · Từ Apple Books… · — · Đóng tài liệu ⌘W | hai mục đầu về kệ rồi làm; ⌘W chỉ bật trong tài liệu |
+| **Chỉnh sửa** | Hoàn tác ⌘Z · Làm lại ⇧⌘Z · — · Cắt ⌘X · Chép ⌘C · Dán ⌘V · Chọn tất cả ⌘A · — · Tìm trong tài liệu ⌘F | 7 mục đầu có sẵn — bỏ chúng là ⌘C/⌘V chết trong mọi ô nhập; Tìm bật trong tài liệu |
+| **Xem** | Thu/Mở cột bên ⌥⌘S · — · Thư viện ⌘1 · Dán nội dung ⌘2 · Quét đọc ⌘3 · Chuyển ghi chú ⌘4 · — · Cỡ chữ lớn hơn ⌘= · nhỏ hơn ⌘− · mặc định ⌘0 · — · Giao diện: Sáng · Tối · Theo hệ thống · — · Toàn màn hình ⌃⌘F | trong tài liệu bốn mục ⌘1–4 ĐỔI CHỮ thành Mục lục · Ghi chú · Tìm (mục 4 tắt) — cùng bốn mục, không hai nhóm trùng phím; giao diện là mục có dấu ✓ |
+| **Đọc** | Đọc tiếp / Tạm dừng · Dừng đọc ⌘. · — · Đọc phần đã chọn · — · Cài đặt giọng đọc… · Giọng đọc & mô hình… ⌘, | Đọc tiếp/Tạm dừng đổi chữ theo trạng thái, tắt khi rảnh; KHÔNG gán Space cho nó (mục menu có phím Space sẽ cướp Space của mọi ô nhập); Đọc phần đã chọn KHÔNG ghi ⌥⌘R (⌥⌘R là hotkey toàn hệ qua plugin, gán trùng vào menu = bắn hai lần khi app đang ở trước) |
+| **Cửa sổ** | Thu nhỏ ⌘M · Phóng to · — · Đưa tất cả ra trước | có sẵn của hệ; đăng ký làm Windows menu của NSApp |
+| **Trợ giúp** | Hướng dẫn sử dụng · Báo lỗi hoặc góp ý · — · Phiên bản mới nhất | mở GitHub bằng opener; đăng ký làm Help menu của NSApp |
+
+**Luật**:
+- **Một bộ điều phối**: `App.tsx::perform(command)` — menu gọi nó, và bộ xử lý phím của trang cũng gọi nó. Trong CỬA SỔ,
+  menu là chủ các chord nó ghi (⌥⌘S · ⌘1–4 · ⌘F · ⌘= ⌘− ⌘0 · ⌘. · ⌘, · ⇧⌘O · ⌘W): bộ xử lý phím của trang **nhường**
+  (`IN_WINDOW`), vì WebKit trao keydown cho trang TRƯỚC rồi mới tới menu — trang `preventDefault` là menu không bao giờ
+  thấy, trang không chặn thì cả hai cùng bắn. Trong trình duyệt (mock, audit) không có menu → bộ xử lý phím của trang làm.
+- **Nhãn theo ngôn ngữ của app**, không theo locale hệ: đổi VI/EN là dựng lại menu (`Menu.new` + `setAsAppMenu`); mục
+  đổi trạng thái thì `setText`/`setEnabled`/`setChecked` — TẮT chứ không giấu (Apple: mục biến mất là người dùng tưởng
+  lệnh không tồn tại).
+- **Không có menu riêng cho Giới thiệu**: dùng About có sẵn (phiên bản từ `getVersion()`, bản quyền và giấy phép trong
+  metadata) — một cửa sổ About tự vẽ là việc sau, khi có credits đáng kể.
+- Chưa vào menu: "Về chỗ đang đọc" (là hành vi theo màn — Quét đọc có, Reader có tip riêng — chưa có một lệnh toàn app).
+- Mock không có menu bar: điều chứng minh được ở mock là bộ điều phối (gọi `perform` bằng tay) và không lỗi console;
+  menu thật chỉ có ở bản build.
 
 ## 5. Content guidelines (vay Polaris: luật chữ theo component)
 

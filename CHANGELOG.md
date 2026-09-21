@@ -4,6 +4,18 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- A menu bar of the app's own, in the app's language: File (Add to
+  Library ⇧⌘O, From Apple Books, Close Document ⌘W), Edit (the system's
+  seven, then Find in Document ⌘F), View (Show/Hide Side Column ⌥⌘S, the
+  four places ⌘1-⌘4 - the document's three lists inside one - text size
+  ⌘= ⌘− ⌘0, Appearance, Full Screen), Reading (Resume/Pause, Stop ⌘.,
+  Read Selection, Voice Settings, Voices & Models ⌘,), Window and Help
+  (guide, feedback, latest release on GitHub). Every shortcut the app
+  had is now found where a Mac shows them; items disable rather than
+  disappear, and the words follow the language switch.
+
 ## 0.1.9
 
 The side column's states become alphas of the ink on the Mac's sidebar

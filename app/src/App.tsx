@@ -8,6 +8,8 @@ import { useCover } from "./ui/useCover";
 import { NARROW, STORAGE_KEY as SIDEBAR_KEY, WIDTH_KEY as SIDEBAR_WIDTH_KEY, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth, type SidebarTab } from "./ui/sidebarState";
 import { orderShelf } from "./ui/libraryOrder";
 import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
+import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
@@ -67,6 +69,7 @@ import {
 } from "./ui/icons";
 import { IDLE, playback } from "./ui/playback";
 import {
+  DEFAULT_READING_SIZE,
   READING_SIZES,
   rememberReadingSize,
   storedReadingSize,
@@ -188,6 +191,10 @@ export default function App() {
    * twenty is a catalogue, this is the handful they switch between. */
   const [shortlist, setShortlist] = useState<string[]>([]);
   const [voicesOpen, setVoicesOpen] = useState(false);
+  /** What the menu asked the shelf to do (HIG 4.1): the picker or the Apple
+   * Books sheet live in `Library`, which may not even be on screen when the
+   * command arrives - so the command waits here until the shelf mounts. */
+  const [shelfRequest, setShelfRequest] = useState<"add" | "apple-books" | null>(null);
   /** The voice whose sample is speaking, so the row can offer Stop. */
   const [previewing, setPreviewing] = useState<string | null>(null);
   // One reducer owns every transition of the transport. Five hand-written
@@ -1134,9 +1141,95 @@ export default function App() {
         setTab(screens[nth - 1]);
       }
     };
+    // In the window the menu bar owns these chords and issues the same
+    // commands (HIG 4.1): WebKit hands the keydown to the page first, so a
+    // page that also acted would act twice. The browser has no menu.
+    if (IN_WINDOW) return;
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [inBook, sideOpen, side.tab, sideSlot]);
+
+  /* One dispatcher for every command the menu bar can issue (HIG 4.1). The
+     column's key handler above does the same things by hand in the
+     browser; here each name maps to the state it moves. */
+  const perform = useCallback((command: MenuCommand) => {
+    const showList = (list: SidebarTab) => dispatchSide({ type: "show", tab: list });
+    const leaveBook = () => { setOpenBook(null); setSegments([]); };
+    switch (command) {
+      case "add-to-library":
+      case "apple-books":
+        leaveBook();
+        setTab("library");
+        setShelfRequest(command === "add-to-library" ? "add" : "apple-books");
+        return;
+      case "close-document":
+        if (inBook) leaveBook();
+        return;
+      case "find": {
+        if (!inBook) return;
+        const field = sideSlot?.querySelector<HTMLInputElement>('input[type="search"]');
+        if (sideOpen && side.tab === "search" && field) { field.focus(); field.select(); }
+        else showList("search");
+        return;
+      }
+      case "toggle-sidebar":
+        dispatchSide({ type: "toggle" });
+        return;
+      case "go-1": case "go-2": case "go-3": case "go-4": {
+        const nth = Number(command.slice(3));
+        if (inBook) {
+          const lists: SidebarTab[] = ["contents", "notes", "search"];
+          if (nth <= lists.length) showList(lists[nth - 1]);
+        } else {
+          setTab(["library", "paste", "external", "transfer"][nth - 1]);
+        }
+        return;
+      }
+      case "text-larger": changeReadingSize(1); return;
+      case "text-smaller": changeReadingSize(-1); return;
+      case "text-default":
+        setReadingSize(DEFAULT_READING_SIZE);
+        rememberReadingSize(DEFAULT_READING_SIZE);
+        return;
+      case "appearance-light": chooseAppearance("light"); return;
+      case "appearance-dark": chooseAppearance("dark"); return;
+      case "appearance-system": chooseAppearance("system"); return;
+      case "play-pause": void togglePause(); return;
+      case "stop": stopReading(); return;
+      case "read-selection": readSelection(); return;
+      case "voice-settings":
+        setHubOpen(false); setVoicesOpen(false); setSettingsOpen((open) => !open);
+        return;
+      case "hub":
+        setSettingsOpen(false); setVoicesOpen(false); setHubOpen((open) => !open);
+        return;
+      case "help-guide": case "help-feedback": case "help-releases":
+        void openUrl(HELP_URLS[command]).catch(console.error);
+        return;
+    }
+  }, [inBook, sideOpen, side.tab, sideSlot, changeReadingSize, chooseAppearance, togglePause, stopReading, readSelection]);
+
+  /* The menu bar itself, rebuilt when what it says or allows changes; a
+     rebuild replaces the previous one. Window only - the browser has no
+     bar, and the mock proves the dispatcher instead. */
+  const performRef = useRef(perform);
+  performRef.current = perform;
+  useEffect(() => {
+    if (!IN_WINDOW) return;
+    let stale = false;
+    let installed: Awaited<ReturnType<typeof installAppMenu>> | null = null;
+    installAppMenu(
+      { inBook, reading, sideOpen, appearance, hasSelection: selection.length > 0 },
+      (command) => performRef.current(command),
+    ).then((menu) => {
+      if (stale) { void menu.close().catch(() => undefined); return; }
+      installed = menu;
+    }).catch((error: unknown) => console.error("[menu]", error));
+    return () => {
+      stale = true;
+      if (installed) void installed.close().catch(() => undefined);
+    };
+  }, [language, inBook, reading, sideOpen, appearance, selection.length > 0]);
 
   /* A choice made by hand is remembered; the automation's answer is not
      (it is recomputed from the window each launch). */
@@ -1620,6 +1713,8 @@ export default function App() {
               onOpen={(book) => { setPosition(null); setOpenBook(book); }}
               onPaste={() => setTab("paste")}
               actionsSlot={actionsSlot}
+              request={shelfRequest}
+              onRequestDone={() => setShelfRequest(null)}
             />
           )
         ) : tab === "external" ? (
