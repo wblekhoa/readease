@@ -26,6 +26,19 @@ type Engine = Arc<EngineClient>;
 struct EngineSlot(std::sync::Mutex<Engine>);
 struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
 
+/// Documents macOS asked the app to open - a double-click in Finder, a
+/// drop on the Dock icon, "Open With" - waiting for the page to take them.
+/// A queue rather than an event with a payload, because the first of them
+/// arrives BEFORE the webview exists (the app was launched by the file):
+/// the page drains it once it is up, and again on every `files:opened`
+/// nudge, so nothing is opened twice and nothing is lost.
+struct OpenedFiles(std::sync::Mutex<Vec<String>>);
+
+#[tauri::command]
+fn take_opened_files(queue: tauri::State<OpenedFiles>) -> Vec<String> {
+    std::mem::take(&mut *queue.0.lock().unwrap())
+}
+
 fn client_of(slot: &tauri::State<EngineSlot>) -> Engine {
     // Bind, then drop the guard: a temporary guard lives to the end of the
     // whole statement, which would hold the slot locked through a blocking
@@ -246,6 +259,7 @@ pub fn run() {
                 .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
             app.manage(EngineSlot(std::sync::Mutex::new(client.clone())));
             app.manage(TraySlot(tray_slot.clone()));
+            app.manage(OpenedFiles(std::sync::Mutex::new(Vec::new())));
 
             // Menu bar indicator: exists for the whole app life, visible only
             // while reading; one click stops without surfacing the window.
@@ -301,8 +315,31 @@ pub fn run() {
             prepare_model,
             stop_reading,
             pause_audio,
-            resume_audio
+            resume_audio,
+            take_opened_files
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // The system's "open these documents" (HIG 3.18): queue the
+            // paths and nudge the page; it takes them when it can.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = event {
+                use tauri::Emitter;
+                let paths: Vec<String> = urls
+                    .iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect();
+                if paths.is_empty() {
+                    return;
+                }
+                if let Some(queue) = app.try_state::<OpenedFiles>() {
+                    queue.0.lock().unwrap().extend(paths);
+                }
+                let _ = app.emit("files:opened", ());
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
