@@ -7,6 +7,7 @@ import { CloseIcon } from "./icons";
 import { Scrim, useDismiss } from "./patterns";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { UpdatePhase } from "./updates";
+import { excerpt } from "./releaseNotes";
 
 const RELEASES = "https://github.com/wblekhoa/readease/releases/latest";
 
@@ -95,15 +96,4 @@ function headline(phase: UpdatePhase): string {
     case "failed": return text("update.failed", { error: phase.message });
     default: return "";
   }
-}
-
-/** Markdown is what the release notes are written in; on this sheet the
- * headings and bullets are stripped to plain lines, ten at most. */
-function excerpt(notes: string): string {
-  return notes
-    .split("\n")
-    .map((line) => line.replace(/^#+\s*/, "").replace(/^\s*[-*]\s+/, "• ").replace(/\*\*/g, "").trim())
-    .filter((line) => line.length > 0 && line !== "---")
-    .slice(0, 10)
-    .join("\n");
 }
