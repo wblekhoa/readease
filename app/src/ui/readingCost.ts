@@ -14,7 +14,7 @@
 
 /** The engine's answer. `paid: false` is the local model - free, and the
  * button says nothing extra. */
-export type Estimate =
+export type Estimate = (
   | { paid: false; chars: number; utterances: number; chapters: number; language?: string }
   | {
       paid: true;
@@ -35,7 +35,12 @@ export type Estimate =
        * on an assumed reading pace (`estimated`). See `pricing.py`. */
       billing: "counted" | "estimated";
       price_dated: string;
-    };
+    }
+) & {
+  /** How long the reading would take to hear from where it would resume,
+   * at the reader's rate (HIG 3.24). A forecast, not a ceiling. */
+  remaining_s?: number;
+};
 
 /** How far one press reads. `null` chapters is the whole book, which is what
  * every reading did before paid voices existed. */

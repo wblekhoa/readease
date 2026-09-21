@@ -92,6 +92,15 @@ export const TEXT = {
   "player.reading_paste": ["Đang đọc nội dung đã dán", "Reading the pasted text"],
   "player.reading_external": ["Đang đọc phần đã quét", "Reading the scanned selection"],
   "player.return": ["Quay lại", "Go back"],
+  /* "Còn ~N phút" (HIG 3.24): a forecast, never finer than a minute, and
+     always with its "~". The scope phrase in front is the cost panel's own
+     (`cost.scope_*`), so the two never name the same thing two ways. */
+  "remaining.under_minute": ["dưới 1 phút", "under a minute"],
+  "remaining.minutes": ["{minutes} phút", "{minutes} min"],
+  "remaining.hours": ["{hours} giờ {minutes} phút", "{hours} h {minutes} min"],
+  "remaining.hours_even": ["{hours} giờ", "{hours} h"],
+  "remaining.left": ["còn ~{time}", "~{time} left"],
+  "remaining.scoped": ["{scope} · còn ~{time}", "{scope} · ~{time} left"],
   "aria.theme_to_light": ["Chuyển sang nền sáng", "Switch to light"],
   "aria.theme_to_dark": ["Chuyển sang nền tối", "Switch to dark"],
   "notes.title": ["Highlight và ghi chú", "Highlights and notes"],

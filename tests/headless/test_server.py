@@ -3181,6 +3181,151 @@ def _frames(messages) -> int:
     return sum(1 for m in messages if m.get("event") in {"chunk", "position"})
 
 
+class RemainingTimeReceipts(unittest.TestCase):
+    """HIG 3.24: "còn ~N phút" - how long the rest of a reading takes.
+
+    The engine says it, at every position and in the estimate, because the
+    engine alone has both exact numbers: the characters it will SAY (not
+    the ones displayed) and the seconds of audio it has already produced.
+    Until a voice has been heard for ten seconds the language's measured
+    default stands in; after that the reading's own pace does.
+    """
+
+    def _library(self, root):
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
+        # Three one-sentence paragraphs of 146 characters in one chapter,
+        # one in the next - Vietnamese, so the Vietnamese default applies.
+        paragraph = ("Mưa rơi trên mái nhà " * 7)[:145] + "."
+        assert len(paragraph) == 146
+        book = build_book([
+            ("Một", [(paragraph, "paragraph")] * 3),
+            ("Hai", [(paragraph, "paragraph")]),
+        ])
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        repository.add_book(book, source)
+        settings = root / "settings.json"
+        settings.write_text('{"chapter_chime": "off"}', encoding="utf-8")
+        flat = [segment for chapter in book.chapters for segment in chapter.segments]
+        return repository, settings, flat
+
+    def test_every_position_says_how_long_the_rest_of_the_reading_takes(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, settings, flat = self._library(root)
+            replies = run_server(
+                [{"id": 3, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam",
+                              "rate": 1.0, "chapters": 1}}],
+                FakeEngine(chunks_per_sentence=1),
+                repository=repository, settings_path=settings,
+            )
+            positions = [reply for reply in replies if reply.get("event") == "position"]
+            self.assertEqual([p["segment_id"] for p in positions],
+                             [s.id for s in flat[:3]], "the chapter, not the book")
+            # 146 characters each; the fake engine's 480-sample chunks are
+            # nowhere near ten seconds, so the Vietnamese default (14.5/s)
+            # is what the forecast rests on: 438 → 30 s, 292 → 20 s, 146 → 10 s.
+            self.assertEqual([p["remaining_s"] for p in positions], [30, 20, 10])
+
+    def test_the_estimate_forecasts_from_where_the_voice_resumes(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, settings, flat = self._library(root)
+            replies = run_server(
+                [{"id": 1, "method": "estimate",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam",
+                              "chapters": 1, "rate": 1.0}},
+                 {"id": 2, "method": "estimate",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam",
+                              "segment_id": flat[2].id, "chapters": 1,
+                              "rate": 1.0}},
+                 {"id": 3, "method": "estimate",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam",
+                              "segment_id": flat[2].id, "chapters": None,
+                              "rate": 2.0}}],
+                FakeEngine(), repository=repository, settings_path=settings,
+            )
+            whole, resumed, doubled = (reply["result"] for reply in replies)
+            self.assertEqual(whole["remaining_s"], 30)
+            # The money still quotes the whole chapter (a ceiling); the
+            # time is from the third paragraph, where the voice would start.
+            self.assertEqual(resumed["chars"], whole["chars"])
+            self.assertEqual(resumed["remaining_s"], 10)
+            # To the end of the book, at twice the speed: 292 chars → 10 s.
+            self.assertEqual(doubled["remaining_s"], 10)
+
+    def test_a_reading_teaches_the_pace_the_next_estimate_uses(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        class SlowVoice(FakeEngine):
+            """Four seconds of audio a sentence: 146 chars in 4 s is ~37
+            chars/s, well away from the 14.5 default, and three of them
+            settle the measurement (12 s > 10 s)."""
+
+            def stream(self, text, voice_id, settings):
+                self.requests.append((text, voice_id))
+                yield _chunk(np.full(4 * SAMPLE_RATE, 0.25, dtype=np.float32))
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, settings, flat = self._library(root)
+            # Over live pipes, so the estimate is asked AFTER the reading
+            # has been heard - a batch answers the quick request first.
+            request_read, request_write = os.pipe()
+            reply_read, reply_write = os.pipe()
+            reader = os.fdopen(request_read, "r")
+            writer = os.fdopen(reply_write, "w")
+            requests = os.fdopen(request_write, "w")
+            replies = os.fdopen(reply_read, "r")
+            server = threading.Thread(
+                target=serve, args=(reader, writer, SlowVoice()),
+                kwargs={"repository": repository, "settings_path": settings},
+                daemon=True,
+            )
+            server.start()
+            try:
+                _say(requests, {"id": 3, "method": "read.book",
+                                "params": {"book_id": BOOK_ID, "voice_id": "adam",
+                                           "rate": 1.0, "chapters": 1}})
+                reading = _until(replies, lambda m: m.get("id") == 3 and "ok" in m)
+                frames = [m for m in reading if m.get("event") == "chunk"]
+                heard = sum(len(base64.b64decode(f["pcm"])) // 4 for f in frames) / SAMPLE_RATE
+                self.assertGreater(heard, 12, "three paragraphs of four seconds")
+
+                _say(requests, {"id": 4, "method": "estimate",
+                                "params": {"book_id": BOOK_ID, "voice_id": "adam",
+                                           "segment_id": flat[3].id, "chapters": None,
+                                           "rate": 1.0}})
+                learned = _until(replies, lambda m: m.get("id") == 4)[-1]["result"]
+                # What one paragraph actually took, pauses included, is what
+                # the next paragraph is forecast at - within a second - and
+                # nothing like the default's 10 s.
+                self.assertAlmostEqual(learned["remaining_s"], heard / 3, delta=1.0)
+
+                _say(requests, {"id": 5, "method": "estimate",
+                                "params": {"book_id": BOOK_ID, "voice_id": "eve",
+                                           "segment_id": flat[3].id, "chapters": None,
+                                           "rate": 1.0}})
+                other = _until(replies, lambda m: m.get("id") == 5)[-1]["result"]
+                # Another voice has taught nothing yet: the default.
+                self.assertEqual(other["remaining_s"], 10)
+            finally:
+                requests.close()
+                server.join(timeout=5)
+                replies.close()
+
+
 class FlowControlReceipts(unittest.TestCase):
     """F1 of the 05/09 product audit, the engine's half.
 

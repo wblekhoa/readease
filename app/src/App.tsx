@@ -92,6 +92,7 @@ import {
   type Estimate,
 } from "./ui/readingCost";
 import { keyVerdict, type KeyReply } from "./ui/keyVerdict";
+import { remainingParts, scopeKey } from "./ui/remaining";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
@@ -301,6 +302,10 @@ export default function App() {
    * callback depend on it - the same reason `speech` is a ref. */
   const where = useRef<string | null>(null);
   const [figureCue, setFigureCue] = useState<string | null>(null);
+  /* How long the rest of this reading takes to hear, as the engine last
+     said at a position the ear reached (HIG 3.24). Null until the first
+     position, and again when the reading is over. */
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [externalHistory, setExternalHistory] = useState<ExternalEntry[]>([]);
   /* WHICH captured passage the voice is in. `position` alone cannot say:
    * every passage in the history has a `part-2`, so without this the marker
@@ -433,9 +438,10 @@ export default function App() {
         segment_id: position ?? openBook.segment_id ?? null,
         voice_id: voiceId,
         chapters: scope,
+        rate,
       }
       : content.trim()
-        ? { text: content, voice_id: voiceId }
+        ? { text: content, voice_id: voiceId, rate }
         : null;
     if (!params || !voiceId) {
       setEstimate(null);
@@ -467,8 +473,9 @@ export default function App() {
     // actually say: switching footnotes from short to full adds their words
     // to the bill. The setting is written before this runs (`remember` is
     // synchronous with the choice, the effect follows the render), and the
-    // engine answers requests in the order they arrive.
-  }, [openBook, position, voiceId, scope, content, noteReading]);
+    // engine answers requests in the order they arrive. `rate` only moves
+    // the time forecast that rides along (HIG 3.24), never the price.
+  }, [openBook, position, voiceId, scope, content, noteReading, rate]);
 
   const changeScope = useCallback((chapters: number | null) => {
     setScope(chapters);
@@ -831,10 +838,13 @@ export default function App() {
         current.current = null;
       },
     );
-    const moved = listen<{ segment_id: string; figure_id?: string }>(
+    const moved = listen<{ segment_id: string; figure_id?: string; remaining_s?: number }>(
       "reading:position",
       (event) => {
         setPosition(event.payload.segment_id);
+        setRemaining(
+          typeof event.payload.remaining_s === "number" ? event.payload.remaining_s : null,
+        );
         // The cue for a picture rides the same playback-anchored event, so
         // the picture comes into view when the ear hears "Xem hình 3", not
         // when the model wrote it.
@@ -943,6 +953,7 @@ export default function App() {
   const readBookFrom = useCallback(async (segmentId: string | null) => {
     if (!openBook || !voiceId) return;
     onPlayer({ type: "start" });
+    setRemaining(null);
     setOrigin({ kind: "book", book: openBook });
     current.current = { kind: "book", bookId: openBook.id };
     try {
@@ -1098,6 +1109,10 @@ export default function App() {
       onPlayer({ type: "toggle" });
       invoke("resume_audio").catch(console.error);
     }
+  }, [reading]);
+
+  useEffect(() => {
+    if (reading === "idle") setRemaining(null);
   }, [reading]);
 
   useEffect(() => {
@@ -1387,6 +1402,17 @@ export default function App() {
       ? tab === "library" && openBook?.id === origin.book.id
       : tab === origin.kind);
   const locale = language === "vi" ? "vi-VN" : "en-US";
+  /* "Chương này · còn ~52 phút" (HIG 3.24): the scope the reading stops at,
+     in the cost panel's own words, then the forecast - or just the forecast
+     when the scope is the whole document. */
+  const remainingLabel = (seconds: number) => {
+    const parts = remainingParts(seconds);
+    const time = text(parts.key, parts.params);
+    const key = scopeKey(scope);
+    return key
+      ? text("remaining.scoped", { scope: text(key, { count: scope ?? 0 }), time })
+      : text("remaining.left", { time });
+  };
 
   // What the screen in front of the person can actually do - the footer
   // carries that and nothing else (HIG §3.5). "reader" is a book open inside
@@ -1710,6 +1736,14 @@ export default function App() {
                         </span>
                       </span>
                       <span className="mt-0.5 block text-ink">{pageInfo.chapterTitle}</span>
+                      {typeof estimate?.remaining_s === "number" && (
+                        /* And how long the rest takes to hear, from where a
+                           read would pick up, at the current speed - the
+                           estimate's forecast (HIG 3.24). */
+                        <span className="mt-0.5 block text-ink-mute">
+                          {remainingLabel(estimate.remaining_s)}
+                        </span>
+                      )}
                     </span>
                   }
                 >
@@ -1939,6 +1973,15 @@ export default function App() {
           <div className="flex min-w-0 items-center gap-2">
             {reading === "idle" && screen === "reader" && (
               <span className="text-xs text-ink-mute">{text("player.hint_click")}</span>
+            )}
+            {reading !== "idle" && origin?.kind === "book" && atOrigin && remaining !== null && (
+              /* How long until this reading stops (HIG 3.24), in the corner
+                 that stands empty while the voice is where the eye is. A
+                 forecast from the engine's own count of what is left to
+                 say, at the pace this very reading has been heard at. */
+              <span className="min-w-0 truncate whitespace-nowrap text-xs text-ink-mute">
+                {remainingLabel(remaining)}
+              </span>
             )}
             {reading !== "idle" && origin && !atOrigin && (
               /* Playing, but the reader has walked off: say what is being

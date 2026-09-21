@@ -1372,6 +1372,32 @@ nghỉ; ReadEase làm cùng một việc, theo CÂU thay vì theo giây, vì câ
   `appended` khi đưa lại khung · lùi bằng một `read.book` mới từ đầu ĐOẠN (đoạn dài = lùi cả phút, và mất cả phần đã
   tổng hợp phía trước).
 
+### 3.24 "Còn ~N phút" — biết còn nghe bao lâu (21/09)
+
+Đề xuất 02/09 (`docs/reading-flow-proposal.md` §A): người nghe không biết mình đang ở đâu và còn bao lâu. Apple Books
+(đọc to) và Audible đều ghi thời gian còn lại cạnh transport. ReadEase nói **còn bao lâu tới khi lượt đọc này dừng**
+— tức tới hết phạm vi đã chọn (§3.5 "Đọc tới đâu": chương này / N chương / hết tài liệu). Một định nghĩa, đúng ở mọi
+chỗ hiện.
+
+- **Nguồn số** (engine, không phải trang): engine biết chính xác số ký tự sẽ NÓI (cùng chuỗi `speakable_text` mà
+  `estimate` đếm tiền) và số giây âm thanh nó đã phát ra — kể cả khoảng lặng, sau bộ kéo giãn tốc độ. Mỗi sự kiện
+  `position` mang `remaining_s` = ký tự còn lại của lượt đọc (từ đoạn này tới hết) × nhịp; trả lời `estimate` mang
+  `remaining_s` tính từ **điểm sẽ tiếp tục** (không phải từ đầu phạm vi như tiền — tiền là trần, thời gian là dự báo).
+- **Nhịp** (`playback/pace.py`): đo ngay trong lượt đang đọc — giây phát ra ÷ ký tự đã nói, quy về 1× — và nhớ theo
+  giọng trong phiên; **10 giây đầu** chưa đủ tin thì dùng mặc định theo ngôn ngữ, đo 21/09 bằng probe hai đoạn văn
+  bịa (~1 100 ký tự mỗi đoạn, rate 1,0, bản cài fp32): VieNeu (Minh Đức) **14,5 ký tự/s** (14,66 · 14,45; đoán đoạn
+  B từ đoạn A sai −1,4 %), Kokoro (af_heart) **16,0 ký tự/s** (16,33 · 16,00; sai −2,0 %). Cổng kế hoạch < 15 % — đạt.
+  Tốc độ đọc r: giây = ký tự ÷ (nhịp × r).
+- **Hiện ở đâu** (luật "đừng hiện quá nhiều thông tin": KHÔNG thêm chrome): (1) đang đọc và đứng đúng nguồn → ô TRÁI
+  footer, chữ xám nhỏ, chỗ đến nay bỏ trống khi đọc: "Chương này · còn ~52 phút" / "3 chương · còn ~1 giờ 5 phút" /
+  "còn ~3 giờ 10 phút" (hết tài liệu — không cần nói phạm vi); (2) rảnh, trong tài liệu → dòng thứ ba của tooltip nút ⓘ
+  (§3.9: "Trang 12/300 · Đã đọc 41 %" + tên chương + dòng này), từ `estimate`. Số tròn: dưới 30 s → "dưới 1 phút";
+  tới 59 phút → phút; từ 60 → "N giờ M phút" ("N giờ" khi M = 0). Luôn có dấu "~": đây là dự báo.
+- **Không hiện**: Dán nội dung / Quét đọc (lượt ngắn, không có phạm vi để nói) — `remaining_s` vẫn có trong sự kiện
+  nhưng trang không vẽ; và khi đã rời nguồn (ô trái đang nói "Đang đọc: …" + Quay lại).
+- **Don't**: hằng số nhịp viết tay không đo · tính ở trang từ chữ hiển thị (khác chuỗi engine nói: chú thích, "Xem
+  hình", chữ hét đã hạ) · nói "còn" mà không nói phạm vi khi phạm vi là một chương · em dash trong chuỗi.
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
