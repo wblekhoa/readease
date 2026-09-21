@@ -21,9 +21,9 @@
 
 ## Tải và cài ngay
 
-### [⬇️ Tải ReadEase 0.1.10 cho Mac Apple Silicon — 132 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.dmg)
+### [⬇️ Tải ReadEase 0.1.11 cho Mac Apple Silicon — 132 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.dmg)
 
-Bấm là tải ngay file `.dmg`. Mở nó, rồi **kéo `ReadEase.app` vào thư mục Applications** ngay trong cửa sổ đó. Không cần Terminal, không cần cài công cụ gì. Thích file `.zip` hơn thì có [bản zip](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.zip) (115 MB) — giải nén rồi kéo tương tự. Từ bản này app tự báo khi có bản mới (menu ReadEase › Kiểm tra bản mới…). Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
+Bấm là tải ngay file `.dmg`. Mở nó, rồi **kéo `ReadEase.app` vào thư mục Applications** ngay trong cửa sổ đó. Không cần Terminal, không cần cài công cụ gì. Thích file `.zip` hơn thì có [bản zip](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.zip) (115 MB) — giải nén rồi kéo tương tự. Từ bản này app tự báo khi có bản mới (menu ReadEase › Kiểm tra bản mới…). Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
 
 ### Chọn theo mục tiêu của bạn
 
@@ -31,11 +31,11 @@ Chỉ có **một** bản app; giọng đọc thì bạn chọn ngay trong app v
 
 | Bạn muốn | Tải gì | Tổng | Lấy ở đâu |
 | --- | --- | --- | --- |
-| Đọc **tiếng Việt**, gọn nhẹ | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.zip) + giọng Việt *Tiêu chuẩn* | 115 MB + 330 MB | Màn đầu tiên "Chọn cách đọc để bắt đầu" → Tiếng Việt → **Tải và dùng** ở dòng *Tiêu chuẩn · 330 MB* |
-| Đọc **tiếng Việt**, chất lượng cao nhất | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.zip) + giọng Việt *Cao nhất* | 115 MB + 625 MB | Cùng màn đó → **Tải và dùng** ở dòng *Cao nhất · 625 MB* (đọc chậm hơn ~11 %) |
-| Đọc **tiếng Anh** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.zip) + giọng Anh Kokoro (6 giọng Mỹ) | 115 MB + 330 MB | Màn đầu tiên (hoặc **Giọng đọc & mô hình** trên trang chủ) → Tiếng Anh → **Tải về** |
-| Đọc **cả hai thứ tiếng** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.zip) + giọng Việt + giọng Anh | 115 MB + 660–955 MB | Hai bước trên; tải bản nào cũng xoá được sau |
-| Dùng **giọng AI trả phí** (OpenAI / ElevenLabs), không tải mô hình | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.10/ReadEase-0.1.10-arm64.zip) + khoá API của bạn | 115 MB | **Giọng đọc & mô hình → Giọng API → Thêm khoá**; đọc được cả hai thứ tiếng, tính phí theo ký tự |
+| Đọc **tiếng Việt**, gọn nhẹ | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.zip) + giọng Việt *Tiêu chuẩn* | 115 MB + 330 MB | Màn đầu tiên "Chọn cách đọc để bắt đầu" → Tiếng Việt → **Tải và dùng** ở dòng *Tiêu chuẩn · 330 MB* |
+| Đọc **tiếng Việt**, chất lượng cao nhất | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.zip) + giọng Việt *Cao nhất* | 115 MB + 625 MB | Cùng màn đó → **Tải và dùng** ở dòng *Cao nhất · 625 MB* (đọc chậm hơn ~11 %) |
+| Đọc **tiếng Anh** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.zip) + giọng Anh Kokoro (6 giọng Mỹ) | 115 MB + 330 MB | Màn đầu tiên (hoặc **Giọng đọc & mô hình** trên trang chủ) → Tiếng Anh → **Tải về** |
+| Đọc **cả hai thứ tiếng** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.zip) + giọng Việt + giọng Anh | 115 MB + 660–955 MB | Hai bước trên; tải bản nào cũng xoá được sau |
+| Dùng **giọng AI trả phí** (OpenAI / ElevenLabs), không tải mô hình | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.11/ReadEase-0.1.11-arm64.zip) + khoá API của bạn | 115 MB | **Giọng đọc & mô hình → Giọng API → Thêm khoá**; đọc được cả hai thứ tiếng, tính phí theo ký tự |
 
 > [!NOTE]
 > Bản phát hành được ký bằng chứng chỉ Apple Developer ID và đã qua notarize của Apple, nên mở như mọi app khác. Hướng dẫn đầy đủ (kể cả cho bản cũ 0.1.0/0.1.1 bị macOS chặn) ở [INSTALL.md](INSTALL.md).
