@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.13
+
+The listening release: the voice picks the thread back up after a
+break, the bar says how long is left, Now Playing shows the cover - and
+the brand is blue. Installs over 0.1.12, or lets 0.1.12 install it.
 
 - Resuming after a break of 30 seconds or more starts again from the
   beginning of the sentence the voice was in - and from the sentence
