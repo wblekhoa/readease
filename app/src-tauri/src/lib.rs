@@ -1,3 +1,4 @@
+mod audio;
 mod engine;
 
 use std::sync::atomic::Ordering;
@@ -80,7 +81,7 @@ struct OpenedFiles(std::sync::Mutex<Vec<String>>);
 /// Which output the voice goes to (HIG 3.21) - asked once the page is up,
 /// since the audio thread's own event fired before there was a page.
 #[tauri::command]
-fn audio_output(slot: tauri::State<EngineSlot>) -> engine::AudioOutput {
+fn audio_output(slot: tauri::State<EngineSlot>) -> audio::AudioOutput {
     client_of(&slot).output.clone()
 }
 

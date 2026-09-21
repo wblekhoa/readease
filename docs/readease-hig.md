@@ -1325,7 +1325,7 @@ phải chỗ hỏng. Chỗ hỏng thật là **không ai biết app đang phát 
 `open_default_sink()` của rodio — thứ này khi mặc định không mở được sẽ *lặng lẽ* lấy thiết bị khác đầu tiên (trên máy
 chủ: một màn hình), không log, không báo trang, không error-callback.
 
-- **Host** (`engine.rs::open_output`): mở đúng **thiết bị mặc định của hệ theo tên**; chỉ khi nó không mở được mới
+- **Host** (`audio.rs::open_output`, tách khỏi `engine.rs` 22/09): mở đúng **thiết bị mặc định của hệ theo tên**; chỉ khi nó không mở được mới
   thử thiết bị khác, và **nói to** ở cả hai phía — `stderr` `[audio] opened "…"` (kèm "NOT the system's default
   output" khi phải rơi) và sự kiện `audio:device {name, default}`; stream lỗi giữa chừng → `[audio] stream error`.
   Lệnh `audio_output` để trang hỏi sau khi đã dựng (sự kiện lúc khởi động bắn trước khi có trang).
