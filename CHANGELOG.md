@@ -16,6 +16,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   tooltip says it before the reading starts. The engine forecasts it
   from what it still has to say and the pace it has actually been heard
   at, so the number settles as the reading goes on.
+- Now Playing shows the document's cover: Control Center and the menu
+  bar's Now Playing carry the cover beside the title and chapter, as
+  Music shows an album. A document without a cover shows the app's icon,
+  as before.
 
 ## 0.1.12
 

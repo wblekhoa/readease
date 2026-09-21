@@ -93,6 +93,7 @@ import {
 } from "./ui/readingCost";
 import { keyVerdict, type KeyReply } from "./ui/keyVerdict";
 import { remainingParts, scopeKey } from "./ui/remaining";
+import { artworkPayload } from "./ui/nowPlaying";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
@@ -1276,18 +1277,28 @@ export default function App() {
 
   /* Now Playing (HIG 3.19): what the system shows for the reading, and the
      media keys, AirPods and Control Center answering through the same
-     dispatcher as the menu. Withdrawn the moment the reading is idle. */
+     dispatcher as the menu. Withdrawn the moment the reading is idle. The
+     cover rides along for a document - its bytes once per document, the
+     key alone after that (`artworkPayload`); the shelf's own cover cache
+     answers, so nothing is fetched twice. */
+  const readingCover = useCover(origin?.kind === "book" ? origin.book.id : null);
+  const sentArtwork = useRef<string | null>(null);
   useEffect(() => {
     if (!IN_WINDOW) return;
+    const artwork = origin?.kind === "book" && reading !== "idle"
+      ? artworkPayload(origin.book.id, readingCover, sentArtwork.current)
+      : null;
     const info = reading === "idle"
       ? { title: "", subtitle: "", state: "stopped" }
       : origin?.kind === "book"
-        ? { title: origin.book.title, subtitle: pageInfo?.chapterTitle ?? "", state: reading }
+        ? { title: origin.book.title, subtitle: pageInfo?.chapterTitle ?? "", state: reading, artwork }
         : origin?.kind === "external"
           ? { title: text("nav.external"), subtitle: text("now_playing.selection"), state: reading }
           : { title: text("nav.paste"), subtitle: "", state: reading };
-    invoke("now_playing", { info }).catch((error: unknown) => console.error("[now playing]", error));
-  }, [reading, origin, pageInfo?.chapterTitle, language]);
+    invoke("now_playing", { info })
+      .then(() => { if (artwork) sentArtwork.current = artwork.key; })
+      .catch((error: unknown) => console.error("[now playing]", error));
+  }, [reading, origin, pageInfo?.chapterTitle, language, readingCover]);
   useEffect(() => {
     if (!IN_WINDOW) return;
     const heard = listen<string>("media:command", (event) => {
