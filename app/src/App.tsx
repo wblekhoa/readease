@@ -1247,7 +1247,7 @@ export default function App() {
     let stale = false;
     let installed: Awaited<ReturnType<typeof installAppMenu>> | null = null;
     installAppMenu(
-      { inBook, reading, sideOpen, appearance, hasSelection: selection.length > 0 },
+      { inBook, reading, sideOpen, appearance, hasSelection: selection.length > 0, update: updater.signal },
       (command) => performRef.current(command),
     ).then((menu) => {
       if (stale) { void menu.close().catch(() => undefined); return; }
@@ -1257,7 +1257,7 @@ export default function App() {
       stale = true;
       if (installed) void installed.close().catch(() => undefined);
     };
-  }, [language, inBook, reading, sideOpen, appearance, selection.length > 0]);
+  }, [language, inBook, reading, sideOpen, appearance, selection.length > 0, updater.signal.kind, updater.signal.kind === "none" ? "" : updater.signal.version]);
 
   /* Now Playing (HIG 3.19): what the system shows for the reading, and the
      media keys, AirPods and Control Center answering through the same
@@ -2349,21 +2349,18 @@ export default function App() {
           onClose={() => setHubOpen(false)}
         />
       </Presence>
-      {/* A newer ReadEase, found quietly after launch (HIG 3.20): a small
-          notice at the top of the page, not a dialog; the sheet opens on
-          request. */}
-      <Presence open={updater.found !== null && !updater.open && updater.phase.kind === "available"}>
-        <div className="pointer-events-none fixed inset-x-0 top-[calc(var(--shell-top-h)+var(--layer-gap))] z-20 flex justify-center">
-          <Surface edge="strong" material="glass" radius="menu" layer="popover" className="pointer-events-auto flex items-center gap-3 py-1.5 pl-4 pr-1.5 shadow-lifted">
-            <span className="text-sm text-ink">{text("update.found", { version: updater.found?.version ?? "" })}</span>
-            <Button size="sm" onClick={updater.show}>{text("update.view")}</Button>
-          </Surface>
-        </div>
-      </Presence>
+      {/* A newer ReadEase, found quietly after launch, is said by the menu
+          item under About (HIG 3.20) - no floating notice; the sheet opens
+          on request. */}
       <Presence open={updater.open}>
         <UpdatePanel
           phase={updater.phase}
-          onInstall={() => void updater.install()}
+          auto={updater.auto}
+          onQuit={updater.onQuit}
+          onInstallNow={() => void updater.installNow()}
+          onInstallOnQuit={() => void updater.installOnQuit()}
+          onSkip={updater.skip}
+          onAuto={updater.setAuto}
           onRestart={updater.restart}
           onClose={updater.dismiss}
         />

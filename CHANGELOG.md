@@ -8,6 +8,14 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 - The update sheet shows the release notes as paragraphs, not as the
   CHANGELOG's wrapped lines; the manifest is written that way too.
+- Updates behave the way a Mac expects of Sparkle: **Skip This
+  Version**, **Later** (quiet until the next launch), **Install When
+  Quitting** (downloaded now, installed as the app quits - nothing
+  interrupts a reading), **Install and Relaunch**, and an optional
+  **automatic download** (off unless you turn it on) that leaves the
+  update ready to install. The menu item under About says what is known
+  - "ReadEase 0.1.12 is available · Update…", "…is ready · Install…" -
+  and the floating notice is gone. The sheet shows the release date.
 
 ## 0.1.11
 

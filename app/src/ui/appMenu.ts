@@ -45,6 +45,9 @@ export interface MenuState {
   appearance: ThemePreference;
   /** Something is selected on the page, so "Read Selection" can. */
   hasSelection: boolean;
+  /** A newer release is known (and maybe downloaded): the item under
+   * About says so - the standing indicator, in place of a floating notice. */
+  update: { kind: "none" } | { kind: "available"; version: string } | { kind: "ready"; version: string };
 }
 
 export const HELP_URLS = {
@@ -82,8 +85,16 @@ export async function installAppMenu(
           },
         },
       }),
-      // Apple's slot for it: right under About (HIG 3.20).
-      await item("check-updates", text("menu.check_updates")),
+      // Apple's slot for it: right under About (HIG 3.20). Its words carry
+      // the state, the way LidRun's and Sparkle's do.
+      await item(
+        "check-updates",
+        state.update.kind === "ready"
+          ? text("menu.update_ready", { version: state.update.version })
+          : state.update.kind === "available"
+            ? text("menu.update_available", { version: state.update.version })
+            : text("menu.check_updates"),
+      ),
       await separator(),
       await PredefinedMenuItem.new({ text: text("menu.services"), item: "Services" }),
       await separator(),

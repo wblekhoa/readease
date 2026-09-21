@@ -1279,6 +1279,20 @@ mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plu
   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE`, không bao giờ in) → `.sig` → `latest.json` { version, notes, pub_date
   RFC 3339, platforms."darwin-aarch64".{signature, url} } với url = asset của release. Release phải upload **zip + dmg +
   tar.gz + latest.json**. Thiếu khoá thì script bỏ qua bước này và nói rõ.
+- **Hành vi kiểu Sparkle** (22/09, chủ hỏi khi thấy LidRun; chốt "theo đề xuất tối ưu nhất"): bộ cập nhật giữ nguyên
+  (plugin đã chứng minh 0.1.10 → 0.1.11), thêm đúng những hành vi người dùng Mac chờ ở Sparkle — và bỏ viên nổi:
+  - **Bỏ qua phiên bản này**: nhớ `readease.update.skipped`; kiểm tra lặng bỏ qua đúng phiên bản đó, kiểm tra bằng tay
+    vẫn hiện. **Để sau** = im tới lần mở app sau (không viên nổi, không nhắc lại).
+  - **Mục menu đổi chữ** thay cho viên nổi: *Kiểm tra bản mới…* → *Đã có ReadEase 0.1.12 — Cập nhật…* khi biết có, →
+    *ReadEase 0.1.12 đã sẵn sàng — Cài đặt…* khi đã tải. Đó là chỉ báo thường trực, không chen vào trang.
+  - **Cài đặt khi thoát**: tải ngay, cài lúc thoát app, KHÔNG khởi động lại — app đọc không bao giờ cắt ngang một bài
+    đang nghe. Host chặn `CloseRequested`/`ExitRequested` khi có bản đã tải chờ cài, bảo trang cài (`update:install-now`),
+    trang cài xong gọi `exit_now`; lưới an toàn: 60 s không thấy trang trả lời thì host tự thoát.
+  - **Tự động tải và cài bản mới** (ô trong sheet, **mặc định tắt**, nhớ `readease.update.auto`): bật thì kiểm tra lặng
+    tải luôn (115 MB — vì thế mặc định tắt, không âm thầm kéo qua 4G) và tự đặt cài-khi-thoát; sheet nói "đã sẵn sàng".
+  - Sheet ghi **phiên bản · ngày phát hành** (`pub_date` của manifest); giữ sheet, không mở cửa sổ riêng (Apple không
+    đòi; cửa sổ thứ hai trong Tauri là thêm webview + IPC mà không thêm gì cho người dùng).
+  - Không hiện sheet giữa lúc đang đọc: sheet chỉ mở khi người dùng bấm; kiểm tra lặng chỉ đổi chữ menu.
 - **Sự thật về bằng chứng**: 0.1.9 chưa có updater. Bản đầu tiên mang nó (0.1.10) chỉ chứng minh được *đường kiểm tra*
   (thấy "đang dùng bản mới nhất"); đường tải-cài-khởi động lại chỉ chạy thật khi **0.1.11 cập nhật 0.1.10**. Dry-run tại
   chỗ: tar + ký + dựng `latest.json` từ bản build ký, kiểm chữ ký bằng khoá công khai.

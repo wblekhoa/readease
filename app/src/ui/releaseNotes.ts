@@ -21,3 +21,11 @@ export function excerpt(notes: string): string {
   }
   return paragraphs.filter((p) => p.length > 0).slice(0, 8).join("\n");
 }
+
+/** The manifest's `pub_date` (RFC 3339) as a short local date; the raw
+ * string when it will not parse. */
+export function releaseDate(iso: string, locale = "vi"): string {
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime())) return iso;
+  return when.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+}

@@ -1062,6 +1062,9 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "audio_output") return Promise.resolve({ name: "Mock speakers", default: true });
   // No log file in the browser (HIG 3.22): the menu item does nothing here.
   if (command === "log_path") return Promise.resolve(null);
+  // Install-on-quit is the window's (HIG 3.20); the browser never quits.
+  if (command === "set_install_on_quit") return Promise.resolve(null);
+  if (command === "exit_now") return Promise.resolve(null);
   if (command === "restart_engine") return Promise.resolve(null);
   /* The system open panel, answered with a canned path: the harness has
      no Finder, and the point is the shelf after an import, not the panel.
