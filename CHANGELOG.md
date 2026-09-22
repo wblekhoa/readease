@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.14
+
+The new face: the soundwave-ring icon, a disk image that shows you where
+to drag it, and a website to point people at. Installs over 0.1.13, or
+lets 0.1.13 install it.
 
 - A new app icon: the soundwave ring. The disk image it arrives in has a
   backdrop now - the app on the left, Applications on the right, and one
