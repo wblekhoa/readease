@@ -21,7 +21,7 @@
 
 ## Tải và cài ngay
 
-### [⬇️ Tải ReadEase 0.1.14 cho Mac Apple Silicon — 132 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.14/ReadEase-0.1.14-arm64.dmg)
+### [⬇️ Tải ReadEase 0.1.14 cho Mac Apple Silicon — 124 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.14/ReadEase-0.1.14-arm64.dmg)
 
 Bấm là tải ngay file `.dmg`. Mở nó, rồi **kéo `ReadEase.app` vào thư mục Applications** ngay trong cửa sổ đó. Không cần Terminal, không cần cài công cụ gì. Thích file `.zip` hơn thì có [bản zip](https://github.com/wblekhoa/readease/releases/download/v0.1.14/ReadEase-0.1.14-arm64.zip) (115 MB) — giải nén rồi kéo tương tự. Từ bản này app tự báo khi có bản mới (menu ReadEase › Kiểm tra bản mới…). Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
 
