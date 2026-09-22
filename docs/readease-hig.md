@@ -1295,6 +1295,14 @@ mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plu
   `scripts/dmg-settings.py` cho `dmgbuild` (qua `uvx`, ghim 1.6.7): nó tự viết `.DS_Store`, gộp TIFF HiDPI bằng
   `tiffutil`, gắn icon volume, mount `-nobrowse` — không mở cửa sổ Finder nào lúc build. Không có `uvx` thì về ảnh
   trơn như trước. Vị trí icon (165,175)/(495,175) trong khung 660×400 là hợp đồng giữa ảnh và settings.
+- **Ảnh đĩa phải là APFS** (22/09, học bằng một lần bị Apple từ chối): mặc định của `dmgbuild` là HFS+, mà HFS+ lưu
+  tên tệp ở dạng **NFD**. Sidecar mang mẫu giọng có dấu tiếng Việt (`Bình (nam miền Bắc).pt`), chữ ký niêm phong tên
+  theo đúng dạng đã ghi, nên sau khi chuẩn hoá `codesign` đọc ra "file added" cho từng mẫu và "sealed resource is
+  missing" — Apple trả `Invalid: The signature of the binary is invalid` (0.1.14 lần đầu, 19:42). Bản 0.1.13 làm bằng
+  `hdiutil create -srcfolder` (macOS 15 mặc định APFS) thì sạch. `scripts/dmg-settings.py` đặt `filesystem = "APFS"`.
+- **Kiểm chữ ký NGAY TRONG ảnh đĩa trước khi notarize** (`build-release-app.sh`): mount `-nobrowse -readonly`, chạy
+  `codesign --verify --strict`, đòi "valid on disk" rồi mới gửi Apple. Năm giây thay cho bốn phút, và câu trả lời nêu
+  đúng tệp sai.
 - **Hành vi kiểu Sparkle** (22/09, chủ hỏi khi thấy LidRun; chốt "theo đề xuất tối ưu nhất"): bộ cập nhật giữ nguyên
   (plugin đã chứng minh 0.1.10 → 0.1.11), thêm đúng những hành vi người dùng Mac chờ ở Sparkle — và bỏ viên nổi:
   - **Bỏ qua phiên bản này**: nhớ `readease.update.skipped`; kiểm tra lặng bỏ qua đúng phiên bản đó, kiểm tra bằng tay
