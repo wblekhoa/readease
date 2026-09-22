@@ -80,6 +80,11 @@ failing somewhere confusing).
 - `./scripts/release.sh <v>`: tags the commit the bundle was built from (tag
   and `CFBundleVersion` name the same sha), publishes the four assets under
   their plain names, and proves each link's byte count.
+- The landing page (`site/`, GitHub Pages) needs nothing per release: its
+  download button asks GitHub for the newest release when the page is
+  viewed, and falls back to the Releases page. It redeploys itself
+  (`.github/workflows/pages.yml`) only when `site/` or the README
+  screenshots change on `main`.
 
 ## Deliberately not done
 

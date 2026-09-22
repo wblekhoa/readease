@@ -6,7 +6,7 @@
 
 > **Một ngoại lệ, và bạn phải tự bật:** ReadEase đọc được bằng **giọng AI trả phí của OpenAI hoặc ElevenLabs**, bằng khoá của chính bạn. Khi dùng, đoạn văn sắp đọc sẽ được gửi thẳng từ máy bạn tới nhà cung cấp đó — không qua máy chủ nào của ReadEase, vì không có máy chủ nào cả. Không gửi tên tài liệu, tiến độ, ghi chú hay bất cứ thứ gì nhận dạng bạn. Giá tính theo ký tự và **hiện sẵn trong nút đọc trước khi bấm**; bạn đặt được trần cho cả phạm vi đọc lẫn số tiền mỗi phiên. Không bật thì không có gì rời khỏi máy. Chi tiết: [PRIVACY.md](PRIVACY.md).
 
-> **English documentation:** [README.en.md](README.en.md)
+> **English documentation:** [README.en.md](README.en.md) · **Trang giới thiệu:** [wblekhoa.github.io/readease](https://wblekhoa.github.io/readease/)
 
 <p align="center">
   <img src="assets/screenshots/reader.png" width="800" alt="Trình đọc: hai trang, đoạn đang đọc được tô sáng, hình có chú thích Hình 3.1, nút Đọc tiếp và giọng đang dùng ở góc dưới">

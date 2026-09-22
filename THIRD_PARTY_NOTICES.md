@@ -19,6 +19,16 @@ text to ship. ReadEase's own source and scaffold are under
 PolyForm-Noncommercial-1.0.0; that does not change the licence of anything
 listed here.
 
+## Landing website (separate from the macOS bundle)
+
+The `site/` build uses React and React DOM 19.3.0 (MIT, including Scheduler)
+and GSAP/ScrollTrigger 3.15.0 under the
+[GSAP Standard No Charge License](https://gsap.com/standard-license/), not MIT.
+Vite and tsx are development/build tools, not additional app dependencies.
+Versions and integrity hashes are pinned in `site/package-lock.json`.
+The website build emits `THIRD_PARTY_LICENSES.txt` with installed React licences
+and the original GSAP runtime notices. No private DOL components are included.
+
 ## What the shipped app is made of
 
 The macOS bundle is a **Tauri** shell - a Rust host with a WebKit view - and

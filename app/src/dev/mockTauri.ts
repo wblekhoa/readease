@@ -11,6 +11,8 @@
  * `import.meta.env.DEV`, and the build check greps the bundle to prove it.
  */
 
+import { showcaseChapterCopy, showcaseFigureSvg } from "./showcaseFigure";
+
 type Handler = (event: { event: string; id: number; payload: unknown }) => void;
 
 const handlers = new Map<string, Handler[]>();
@@ -1235,6 +1237,53 @@ window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
 };
 window.__mockEmit = emit;
 window.__mockUnanswered = () => [...unanswered];
+
+// Opt-in public screenshot fixture. Changes sample data only, never app UI or
+// real library/settings. The whole module is excluded from production builds.
+const showcaseLocale = new URLSearchParams(window.location.search).get("showcase");
+if (showcaseLocale === "vi" || showcaseLocale === "en") {
+  SETTINGS.ui_language = showcaseLocale;
+  const sampler = showcaseChapterCopy(showcaseLocale);
+  const encoded = btoa(unescape(encodeURIComponent(showcaseFigureSvg(showcaseLocale))));
+  for (const id of ["fig-wide", "fig-sample", "fig-sample-vi"]) FIGURE_DATA[id] = encoded;
+  BOOK.chapters.forEach((chapter, index) => {
+    chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of);
+    if (index === 2) {
+      chapter.title = showcaseLocale === "vi" ? "Chương 3 · Những góc nhìn khác nhau" : "Chapter 3 · Different perspectives";
+      chapter.segments.forEach((segment, i) => { segment.text = sampler[i]; });
+    }
+    chapter.figures.forEach(figure => {
+      figure.label = showcaseLocale === "vi" ? "Hình 3.1" : "Figure 3.1";
+      figure.alt = showcaseLocale === "vi"
+        ? "Ba góc nhìn: kỹ thuật, thiết kế và nghiên cứu cùng tạo nên trải nghiệm người dùng"
+        : "Engineering, design and research together shape the user experience";
+    });
+  });
+}
+if (showcaseLocale === "en") {
+  SETTINGS.ui_language = "en";
+  SETTINGS.voice = "af_heart";
+  SETTINGS.rate = 1.25;
+  for (const key of Object.keys(SETTINGS)) if (key.endsWith("_api_key")) delete SETTINGS[key];
+  const titles = ["Principles of user experience — a practical guide", "A quieter way to read", "Usability notes for product teams", "The design team's field guide"];
+  BOOK.title = titles[0];
+  LIBRARY.forEach((book, index) => {
+    book.title = titles[index];
+    book.language = book.language_detected = DETECTED_LANGUAGE[book.id] = "en";
+    if (book.progress_chapter) book.progress_chapter = `Chapter ${index + 1}`;
+  });
+  COVERS["book-ux"] = coverSvg("Principles of", "experience", "#E8DCC8", "#2B2118");
+  COVERS["book-four"] = coverSvg("The design", "field guide", "#1F3A5F", "#F4F1EA");
+  BOOK.chapters.forEach((chapter, index) => {
+    // The ordinary showcase uses one illustration, not the default harness's
+    // deliberately repeated figure used to stress duplicate-handling tests.
+    chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of);
+    chapter.title = index === 2 ? chapter.title : `Chapter ${index + 1}`;
+    chapter.segments.forEach((segment, i) => {
+      if (index !== 2) segment.text = i === 0 ? chapter.title : "A thoughtful reading experience gives every idea room to breathe.";
+    });
+  });
+}
 
 // After the app has mounted and its listeners are up. Staggered, because two
 // passages captured in the same millisecond would share an `at` and collide
