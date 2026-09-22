@@ -749,6 +749,15 @@ export const TEXT = {
   "language.en": ["tiếng Anh", "English"],
   "reader.selection": ["Đọc phần đã chọn", "Read selection"],
   "player.warming": ["Đang chuẩn bị giọng đọc…", "Preparing the voice…"],
+  /* What a screen reader hears when the reading changes state (HIG 4.2).
+     Six sentences, and no more: a live region that speaks on every change
+     is a live region people turn off. */
+  "a11y.preparing": ["Đang chuẩn bị giọng đọc", "Preparing the voice"],
+  "a11y.reading": ["Bắt đầu đọc", "Reading"],
+  "a11y.paused": ["Đã tạm dừng", "Paused"],
+  "a11y.resumed": ["Đọc tiếp", "Resumed"],
+  "a11y.stopped": ["Đã dừng đọc", "Stopped"],
+  "a11y.finished": ["Đã đọc xong", "Finished"],
   "engine.starting": ["Đang chuẩn bị giọng đọc…", "Preparing the voice…"],
   "milestone.later": [
     "Màn hình này sang bản Tauri ở mốc sau.",

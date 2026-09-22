@@ -94,6 +94,7 @@ import {
 import { keyVerdict, type KeyReply } from "./ui/keyVerdict";
 import { remainingParts, scopeKey } from "./ui/remaining";
 import { artworkPayload } from "./ui/nowPlaying";
+import { announcement } from "./ui/announce";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
@@ -222,6 +223,21 @@ export default function App() {
   // One reducer owns every transition of the transport. Five hand-written
   // setReading calls used to; two of them forgot the warming notice.
   const [player, onPlayer] = useReducer(playback, IDLE);
+  /* What a screen reader is told about the reading (HIG 4.2). Derived from
+     the state machine's transitions, not from each place that calls it, so
+     the sentence cannot drift from what the transport shows. Position
+     markers deliberately say nothing: one announcement per paragraph is a
+     live region people switch off. */
+  const [spoken, setSpoken] = useState<string | null>(null);
+  const previousPlayer = useRef(player);
+  useEffect(() => {
+    const key = announcement(previousPlayer.current, player);
+    previousPlayer.current = player;
+    // Read at the moment of the transition, in whatever language the
+    // interface is in then; a later language change does not rewrite what
+    // was already said, which is what a person would expect of speech.
+    if (key) setSpoken(text(key));
+  }, [player]);
 
   /* The named insets are MEASURED, not declared twice: whatever the bars
      actually occupy (an error line wrapping in the footer, a taller row in
@@ -1428,6 +1444,13 @@ export default function App() {
 
   return (
     <div key={language} className="flex h-screen overflow-hidden">
+      {/* Heard, never seen: the one live region for the reading's state
+          (HIG 4.2). It lives at the root and never unmounts - a region
+          inserted together with its first sentence is not announced, and
+          the footer that carries the transport comes and goes with the
+          screen. `polite` waits for a gap in what the reader is already
+          hearing; a failure gets `role="alert"` on its own notice. */}
+      <p className="sr-only" aria-live="polite">{spoken}</p>
       {/* The side column (HIG 3.16): navigation at home, a book's lists
           inside one. A real column - the content beside it is pushed, not
           covered (owner, 16/09). */}

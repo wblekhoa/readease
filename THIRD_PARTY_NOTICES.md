@@ -29,6 +29,13 @@ Versions and integrity hashes are pinned in `site/package-lock.json`.
 The website build emits `THIRD_PARTY_LICENSES.txt` with installed React licences
 and the original GSAP runtime notices. No private DOL components are included.
 
+## Development and audit tools (not in the shipped app)
+
+The render audit runs **axe-core** 4.13 (Mozilla Public License 2.0) inside a
+headless browser to check the interface against WCAG 2 A/AA. It is a
+`devDependency` of `app/`, never bundled: the audit script reads it from
+`node_modules` and injects it into the page it is auditing.
+
 ## What the shipped app is made of
 
 The macOS bundle is a **Tauri** shell - a Rust host with a WebKit view - and

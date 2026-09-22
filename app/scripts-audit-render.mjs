@@ -13,6 +13,13 @@
  *   node scripts-audit-render.mjs            # against http://localhost:1420
  *   node scripts-audit-render.mjs --port N   # elsewhere
  *   node scripts-audit-render.mjs --shots DIR  # also write a PNG per cell
+ *   node scripts-audit-render.mjs --no-axe   # skip the accessibility pass
+ *
+ * Accessibility (HIG 4.2) rides along: axe-core runs in every cell that was
+ * reached, under wcag2a/wcag2aa. Serious and critical violations are RED;
+ * moderate and minor are listed to watch. Findings are grouped by rule and
+ * element and printed once with the first cell that showed them - 620 cells
+ * would otherwise print the same sentence six hundred times.
  *
  * Chrome is given a bounded lifetime - it is spawned, driven, and killed by
  * this process; a hang ends with a report line, never a stuck process.
@@ -27,6 +34,7 @@ const args = process.argv.slice(2);
 const opt = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
 const PORT = Number(opt("--port", "1420"));
 const SHOTS = opt("--shots", null);
+const AXE = !args.includes("--no-axe");
 const ONLY = opt("--only", null); // e.g. "voices/default" narrows a run to one screen/state
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const CDP_PORT = 9333 + Math.floor(Math.random() * 500);
@@ -34,6 +42,8 @@ const W = 960, H = 600; // tauri.conf.json minWidth/minHeight - the floor a pers
 
 // Every key the interface can print, so a leaked one is recognisable by name.
 const I18N = readFileSync(join(HERE, "src/i18n.ts"), "utf8");
+// axe-core is a dev dependency; its source is read once and injected per page.
+const AXE_SOURCE = AXE ? readFileSync(join(HERE, "node_modules/axe-core/axe.min.js"), "utf8") : "";
 const KEYS = new Set([...I18N.matchAll(/^  "([a-z_]+\.[a-z_0-9]+)"/gm)].map((m) => m[1]));
 
 // The matrix. Screens are reached by clicking; states by query string.
@@ -169,6 +179,9 @@ async function main() {
 
     if (SHOTS) mkdirSync(SHOTS, { recursive: true });
     const findings = []; let cells = 0;
+    // (rule + element) -> where it was first seen. Deduplicated because the
+    // same button is the same button in 620 cells.
+    const axeSeen = new Map();
     for (const [stateName, query] of Object.entries(STATES)) {
       for (const lang of LANGS) {
         for (const theme of THEMES) {
@@ -227,17 +240,41 @@ async function main() {
             if (probe.docWide) findings.push({ cell, kind: "overflow-x", detail: `document scrolls horizontally at ${W}px` + (probe.over.length ? ` (${probe.over.join(", ")})` : "") });
             if (probe.themeAttr !== theme) findings.push({ cell, kind: "theme", detail: `data-theme=${probe.themeAttr}, wanted ${theme}` });
             if (probe.textLen < 20) findings.push({ cell, kind: "blank", detail: `only ${probe.textLen} chars of text` });
+            if (AXE) {
+              // Injected per navigation (the page was reloaded for this cell),
+              // then run against the whole document. `axe.run` resolves with
+              // violations; a failure to load must not pass as "clean".
+              await evalJs(AXE_SOURCE);
+              const report = await evalJs(`(async () => {
+                try {
+                  const found = await axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] }, resultTypes: ["violations"] });
+                  return { ok: true, violations: found.violations.map((v) => ({ id: v.id, impact: v.impact,
+                    targets: v.nodes.slice(0, 3).map((n) => String(n.target[0]).slice(0, 80)) })) };
+                } catch (error) { return { ok: false, error: String((error && error.message) || error) }; }
+              })()`);
+              if (!report || !report.ok) findings.push({ cell, kind: "axe-failed", detail: report?.error || "axe did not answer" });
+              else for (const violation of report.violations) for (const target of violation.targets) {
+                const key = `${violation.id} ${target}`;
+                if (!axeSeen.has(key)) axeSeen.set(key, { cell, impact: violation.impact || "minor", id: violation.id, target });
+              }
+            }
             if (SHOTS) { const { result } = await send("Page.captureScreenshot", { format: "png" }); writeFileSync(join(SHOTS, cell.replaceAll("/", "__") + ".png"), Buffer.from(result.data, "base64")); }
           }
         }
       }
     }
     ws.close();
+    // Serious and critical fail the gate; the rest are printed to watch.
+    const axeFindings = [...axeSeen.values()];
+    const blocking = axeFindings.filter((a) => a.impact === "serious" || a.impact === "critical");
+    const watching = axeFindings.filter((a) => !(a.impact === "serious" || a.impact === "critical"));
+    for (const a of watching) console.log(`  axe-watch   ${a.cell.padEnd(34)} ${a.impact} ${a.id} ${a.target}`);
+    for (const a of blocking) findings.push({ cell: a.cell, kind: "axe", detail: `${a.impact} ${a.id} ${a.target}` });
     const byKind = {}; for (const f of findings) byKind[f.kind] = (byKind[f.kind] || 0) + 1;
     for (const f of findings) console.log(`  ${f.kind.padEnd(11)} ${f.cell.padEnd(34)} ${f.detail}`);
     const summary = Object.entries(byKind).map(([k, v]) => `${k}=${v}`).join(" ") || "clean";
     if (findings.length) { console.log(`RENDER_AUDIT RED cells=${cells} ${summary}`); process.exitCode = 1; }
-    else console.log(`RENDER_AUDIT PASS cells=${cells} — mọi màn render ở ${W}×${H}, không lỗi console, không lộ key, không tràn ngang`);
+    else console.log(`RENDER_AUDIT PASS cells=${cells}${AXE ? ` axe-watch=${watching.length}` : " (axe skipped)"} — mọi màn render ở ${W}×${H}, không lỗi console, không lộ key, không tràn ngang`);
   } finally { clearTimeout(killer); chrome.kill("SIGKILL"); }
 }
 main().catch((e) => { console.error(`RENDER_AUDIT RED ${e.message}`); process.exit(2); });

@@ -503,6 +503,11 @@ export function Notice({
   }
   return (
     <p
+      /* A failure interrupts on purpose (HIG 4.2): something the reader
+         asked for did not happen, and one of the ways it fails costs them
+         money. The quiet tones stay quiet - a screen reader is not told
+         that a line of fine print appeared. */
+      role={tone === "error" ? "alert" : undefined}
       className={`m-0 leading-relaxed ${size} ${voice} ${className}`}
     >
       {children}
