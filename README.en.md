@@ -6,7 +6,7 @@ ReadEase is a local-first macOS app that reads your **EPUB and PDF files** (text
 
 > **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).
 
-> [Đọc tài liệu tiếng Việt](README.md) · [Full English installation guide](INSTALL.en.md)
+> [Đọc tài liệu tiếng Việt](README.md) · [Full English installation guide](INSTALL.en.md) · **Website:** [wblekhoa.github.io/readease/en](https://wblekhoa.github.io/readease/en/)
 
 <p align="center">
   <img src="assets/screenshots/reader.png" width="800" alt="The reader: two pages, the passage being read highlighted, a figure captioned Figure 3.1, the Read on button and the current voice in the corner">

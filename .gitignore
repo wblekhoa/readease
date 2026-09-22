@@ -11,3 +11,5 @@ release/
 .tools/
 *.egg-info/
 output/
+site/node_modules/
+site/.vite-temp/
