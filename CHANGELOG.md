@@ -4,6 +4,14 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- A new app icon: the soundwave ring. The disk image it arrives in has a
+  backdrop now - the app on the left, Applications on the right, and one
+  line saying to drag.
+- There is a website: [wblekhoa.github.io/readease](https://wblekhoa.github.io/readease/),
+  in Vietnamese and English.
+
 ## 0.1.13
 
 The listening release: the voice picks the thread back up after a

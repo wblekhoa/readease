@@ -44,7 +44,7 @@ There is **one** app; the voices are chosen inside it, and the app **downloads o
 
 | Requirement | Details |
 | --- | --- |
-| Mac | Apple Silicon: M1, M2, M3, M4 or newer. Intel Macs are not supported yet. |
+| Mac | Apple Silicon: M1, M2, M3, M4 or newer. Intel Macs are not supported. |
 | macOS | macOS 15 or newer |
 | Free disk space | About 220 MB for the app, plus a one-time voice download: ~330 MB (Standard) or ~625 MB (Highest) |
 | Internet | Required to download the app and for the first voice-model download |
