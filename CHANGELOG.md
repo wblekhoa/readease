@@ -4,6 +4,17 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- ReadEase says what it is doing, for VoiceOver: preparing the voice,
+  reading, paused, resumed, stopped - once each, when it happens. A
+  failure now interrupts, as a failure should.
+- The delete button on a highlight can be reached with the keyboard: the
+  row and the button were nested, and a screen reader could only present
+  the row.
+- "Choose a document…" in Move notes is readable: it was set in the
+  disabled grey, at 2.1:1 against the page.
+
 ## 0.1.14
 
 The new face: the soundwave-ring icon, a disk image that shows you where

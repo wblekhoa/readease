@@ -533,8 +533,12 @@ export function BookChoice({
         <MiniCover source={null} fallback={<BookClosedIcon />} size="md" muted={!chosen} />
         <span className="min-w-0 flex-1">
           <span
+            /* `ink-mute`, not `ink-faint`: faint is the DISABLED token and
+               measured 2.1:1 on paper (axe, 22/09), and this line is the
+               instruction - the only thing saying what the control is for.
+               Nothing here is disabled; the picker is waiting. */
             className={`line-clamp-2 text-sm leading-snug ${
-              chosen ? "font-semibold" : "text-ink-faint"
+              chosen ? "font-semibold" : "text-ink-mute"
             }`}
             title={chosen ? chosen.title : undefined}
           >

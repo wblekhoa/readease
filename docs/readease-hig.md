@@ -735,6 +735,57 @@ state của `App.tsx`; mục có sẵn của hệ dùng `PredefinedMenuItem` v�
 - Mock không có menu bar: điều chứng minh được ở mock là bộ điều phối (gọi `perform` bằng tay) và không lỗi console;
   menu thật chỉ có ở bản build.
 
+### 4.2 Trợ năng — hợp đồng với VoiceOver (22/09)
+
+Kiểm kê 22/09: HIG này chưa có một dòng nào về VoiceOver, render audit (620 ô) không chạy axe. Với một app **đọc
+thành tiếng**, người dùng tự nhiên nhất là người đọc bằng tai — nếu VoiceOver không dùng được app thì app đã bỏ rơi
+đúng nhóm người mình sinh ra để phục vụ. Đây là lỗ hổng lớn nhất còn lại sau khi menu, phím tắt và Now Playing đã xong.
+
+**1. Mọi control có TÊN và VAI TRÒ.** Nút chỉ có icon phải có `aria-label` bằng ngôn ngữ đang dùng (đã có luật tooltip
+ở §3.9c — nhãn và tooltip nói cùng một câu). Không dùng `title` thay cho tên. Nhóm nút (transport, tab) có tên cho cả
+nhóm. Trạng thái đi bằng thuộc tính, không bằng màu: `aria-pressed` cho nút gạt, `aria-checked` cho radio/tab,
+`aria-expanded` + `aria-controls` cho thứ mở panel, `aria-current` cho mục đang ở.
+
+**2. Trạng thái đọc phải NÓI RA.** Người không nhìn màn hình cần biết ba điều, và chúng đổi khi không ai chạm vào bàn
+phím: đang chuẩn bị giọng · đang đọc (đoạn nào) · còn bao lâu · lỗi. Một vùng `aria-live="polite"` duy nhất trong
+footer đọc những chuyển trạng thái ĐÁNG nói: bắt đầu đọc, tạm dừng, tiếp tục, dừng, đọc xong, lỗi giọng. **Không**
+đọc mỗi lần mốc vị trí nhảy (mỗi đoạn một lần = tra tấn); "còn ~N phút" chỉ đọc khi người dùng hỏi (focus vào nó) hoặc
+khi lượt đọc bắt đầu. Lỗi đọc dùng `role="alert"` (assertive) vì nó cắt ngang có lý do.
+
+**3. Lớp nổi giữ được tiêu điểm.** Sheet/popover/menu: focus vào trong khi mở, `Esc` đóng và trả tiêu điểm về nút đã
+mở nó, tiêu điểm không thoát ra sau lưng (`aria-modal` cho sheet thật sự chặn). Luật này đã có một nửa trong §3.17
+(`[data-state="closed"] * { pointer-events: none }`) — nửa còn lại là bàn phím.
+
+**4. Màn đọc: đoạn đang đọc là một vùng có tên.** Đoạn được tô sáng mang `aria-current="true"`; vùng chứa trang có
+`aria-label` là tên chương. VoiceOver phải đọc được nội dung tài liệu bằng con trỏ của nó mà không bị highlight kéo đi
+— tự cuộn CHỈ chạy khi mắt (hoặc con trỏ VoiceOver) còn ở chỗ cũ, đúng như luật đã có ở §3.9.
+
+**5. Không dựa vào màu một mình** (đã có ở §7 cho tương phản): trạng thái "đang dùng", "đã chọn", "lỗi" đều có chữ
+hoặc thuộc tính đi kèm, không chỉ một chấm màu.
+
+**Cổng đo được** (`scripts-audit-render.mjs`, `--no-axe` để bỏ qua): axe-core 4.13 chạy trong từng ô đã tới được của
+render audit (620 ô), luật `wcag2a wcag2aa`; **vi phạm mức serious/critical là ĐỎ**, moderate/minor được liệt kê để
+theo dõi. Kết quả gộp theo (luật × phần tử) và chỉ in một lần kèm ô đầu tiên thấy nó — 620 ô nhân lên sẽ không đọc
+được. Luật HIG §8: chạy trên cây CHƯA sửa trước để biết nó đỏ được, rồi mới sửa.
+
+**Đo lần đầu 22/09 — 7 vi phạm, hai nhóm, không có mức nhẹ nào** (620 ô); sau khi sửa: **0**.
+1. `color-contrast` serious — dòng "Chọn tài liệu…" ở màn Chuyển ghi chú dùng `text-ink-faint`, tức token **disabled**,
+   đo 2,1:1 trên nền `paper` (cần 4,5). Ô chọn ấy không vô hiệu, nó đang chờ, và dòng đó là chỉ dẫn duy nhất → đổi sang
+   `text-ink-mute`. Luật rút ra: **faint chỉ dùng cho thứ thật sự vô hiệu**, không dùng cho placeholder.
+2. `nested-interactive` serious — mỗi hàng trong `NotesPanel` là `<button>` chứa `role="button" tabIndex=0` (nút xoá).
+   HTML không cho phép nút trong nút; VoiceOver chỉ trình bày cái ngoài, nút xoá biến mất với bàn phím. → một `<div>`
+   mang `group`/hover wash chứa **hai nút thật** (hàng · xoá); giao diện không đổi một pixel, `stopPropagation` bỏ đi
+   vì không còn sự kiện nào để chặn.
+
+**Phần máy không đo được — chủ kiểm 10 phút, một lần mỗi khi UI đổi lớn** (AI không bật VoiceOver trên máy chủ):
+⌘F5 bật VoiceOver, rồi chỉ dùng bàn phím: (1) mở app, nghe tên cửa sổ · (2) đi tới Thư viện, nghe tên tài liệu và
+tiến độ · (3) mở một tài liệu · (4) bấm Đọc tiếp, nghe app báo đang đọc · (5) tạm dừng rồi tiếp tục bằng Space ·
+(6) mở *Cài đặt giọng đọc*, đổi giọng, `Esc` đóng — tiêu điểm về đúng nút · (7) nghe "còn ~N phút" khi hỏi tới ·
+(8) dừng, nghe báo đã dừng. Đạt = 8/8 làm được, không cần chuột, không có chỗ nào VoiceOver đọc "button" trống.
+
+**Don't**: dùng `title` làm tên · `aria-live` cho mọi thay đổi (ồn = tắt tiếng) · bẫy tiêu điểm trong popover không
+có `Esc` · tự cuộn kéo con trỏ VoiceOver đi · sửa cho axe xanh bằng cách bỏ luật thay vì sửa giao diện.
+
 ## 5. Content guidelines (vay Polaris: luật chữ theo component)
 
 - Chuỗi VI/EN port **nguyên văn** từ nguồn đã audit (`ui/i18n.py` gốc) — đổi hộp, không đổi chữ.

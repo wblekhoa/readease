@@ -90,15 +90,25 @@ export function NotesPanel({
                   </Button>
                 </div>
               ) : (
-              <button
+              /* The row and the delete glyph are two separate buttons in
+                 one container, not a button inside a button: nested
+                 interactives are what `nested-interactive` refuses (axe,
+                 22/09) and what VoiceOver cannot present - it reads the
+                 outer name and the inner control is unreachable. The
+                 container carries the hover wash and the `group` the
+                 glyph's reveal hangs off, so nothing changes on screen. */
+              <div
                 key={item.id}
-                type="button"
-                ref={item.id === focusId ? focused : undefined}
-                onClick={() => onNavigate(item.segment_id)}
-                className={`group relative -mx-2 flex gap-2.5 overflow-hidden rounded-[var(--ctl-radius)] px-2 py-3 text-left hover-wash ${
+                className={`group relative -mx-2 overflow-hidden rounded-[var(--ctl-radius)] hover-wash ${
                   item.id === focusId ? "bg-wash" : ""
                 }`}
               >
+                <button
+                  type="button"
+                  ref={item.id === focusId ? focused : undefined}
+                  onClick={() => onNavigate(item.segment_id)}
+                  className="flex w-full gap-2.5 px-2 py-3 text-left"
+                >
                 {/* Which kind of thing this row is, said once on the left
                     (owner, 03/09): a passage kept, or a passage with
                     something written about it. Aligned to the first line,
@@ -120,28 +130,22 @@ export function NotesPanel({
                 <span className="sr-only">
                   {text(item.note ? "notes.kind_note" : "notes.kind_highlight")}
                 </span>
+                </button>
                 {/* Quiet until the row is under the cursor, but always
                     reachable by keyboard - a destructive action should not
                     be the first thing the eye lands on. Over the row's
                     tail, not beside it (owner, 16/09): the text keeps the
                     whole width, and the glyph comes up on a gradient blur. */}
-                <span
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   aria-label={text("notes.remove")}
                   title={text("notes.remove")}
                   className="tail-reveal text-ink-mute hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
-                  onClick={(event) => { event.stopPropagation(); setConfirming(item.id); }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setConfirming(item.id);
-                  }}
+                  onClick={() => setConfirming(item.id)}
                 >
                   <TrashIcon />
-                </span>
-              </button>
+                </button>
+              </div>
               )
             ))}
           </GroupedSection>
