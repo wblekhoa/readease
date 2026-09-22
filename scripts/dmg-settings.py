@@ -15,6 +15,16 @@ background = defines["background"]  # noqa: F821
 icon = defines.get("icon")  # noqa: F821 - the volume's own icon, when given
 
 format = "UDZO"
+# APFS, not dmgbuild's HFS+ default. HFS+ stores filenames normalised to
+# NFD; the sidecar ships voice samples whose names carry Vietnamese
+# diacritics ("Bình (nam miền Bắc).pt"), the code signature seals those
+# names as written, and after normalisation codesign reads every one as a
+# file ADDED to the bundle and the sealed one as missing. Apple's notary
+# answered "The signature of the binary is invalid" for 0.1.14's first
+# image; the 0.1.13 image, made by `hdiutil create -srcfolder` (APFS by
+# default on macOS 15), verified clean. Verified again by the mount check
+# in build-release-app.sh, which now runs before any notarisation.
+filesystem = "APFS"
 files = [app]
 symlinks = {"Applications": "/Applications"}
 

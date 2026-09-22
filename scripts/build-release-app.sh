@@ -269,6 +269,26 @@ if [[ -n "$developer_id" ]]; then
     hdiutil create -volname "ReadEase" -srcfolder "$staging" -ov -format UDZO -quiet "$dmg"
     rm -rf "$staging"
   fi
+  # What the notary would find, found here. A disk image can carry a
+  # perfectly signed app and still fail: copy it onto a filesystem that
+  # renames files (HFS+ normalises to NFD) and every sealed name stops
+  # matching. Apple answers "The signature of the binary is invalid" four
+  # minutes later; this says it in five seconds, with the file listed.
+  echo "==> the signature, as the disk image carries it"
+  dmg_mount="$(hdiutil attach -nobrowse -readonly -noautoopen "$dmg" | grep -o '/Volumes/.*' | head -1)"
+  if [[ -z "$dmg_mount" ]]; then
+    echo "DMG_VERIFY_FAILED: could not mount $dmg" >&2
+    exit 1
+  fi
+  dmg_verdict="$(codesign --verify --verbose=2 --strict "$dmg_mount/ReadEase.app" 2>&1 || true)"
+  hdiutil detach "$dmg_mount" -quiet || true
+  if ! grep -q "valid on disk" <<<"$dmg_verdict"; then
+    printf '%s\n' "$dmg_verdict" | head -20 | sed 's/^/    /' >&2
+    echo "DMG_VERIFY_FAILED: the app inside $dmg does not verify; not notarizing" >&2
+    exit 1
+  fi
+  echo "    valid on disk"
+
   codesign --sign "$developer_id" --timestamp "$dmg"
   if [[ "${READEASE_SKIP_NOTARY:-0}" != "1" ]]; then
     echo "==> notarizing the disk image"
