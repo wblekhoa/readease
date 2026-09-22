@@ -91,8 +91,8 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         # `tests/headless/test_server.py::SpokenCueTests` checks that every
         # language the app reads in has a line - which is more than a table
         # lookup ever checked about them.
-        ("headless/server.py", "Xem hình {number}."),
-        ("headless/server.py", "Nói thêm, {text}"),
+        ("headless/utterances.py", "Xem hình {number}."),
+        ("headless/utterances.py", "Nói thêm, {text}"),
         # Abbreviations the sentence splitter matches against. They are data
         # for a matcher, never text anyone reads, so there is nothing to
         # translate; an English build must still not split "ĐH. Bách Khoa".
