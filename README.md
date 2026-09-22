@@ -44,7 +44,7 @@ Chỉ có **một** bản app; giọng đọc thì bạn chọn ngay trong app v
 
 | Yêu cầu | Chi tiết |
 | --- | --- |
-| Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn. Máy Intel chưa được hỗ trợ. |
+| Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn. Máy Intel không được hỗ trợ. |
 | macOS | macOS 15 trở lên |
 | Dung lượng trống | Khoảng 220 MB cho app, cộng giọng đọc tải một lần: ~330 MB (Tiêu chuẩn) hoặc ~625 MB (Cao nhất) |
 | Kết nối mạng | Cần lúc tải app và lần chuẩn bị giọng đọc đầu tiên |

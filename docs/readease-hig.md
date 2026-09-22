@@ -1356,6 +1356,10 @@ kèm ngoài lời kể.
   rà một lượt riêng; tệp nằm ở máy người dùng, họ tự quyết định có đính kèm không.
 - **Mẫu issue** (`.github/ISSUE_TEMPLATE/bug.yml`): phiên bản (từ Giới thiệu ReadEase), macOS, chuyện gì xảy ra, các
   bước, và ô dán vài dòng cuối nhật ký (tuỳ chọn) — để một báo cáo có đủ ba thứ người sửa cần.
+- **Rào bằng test** (22/09): `tests/test_log_privacy.py` đọc mọi `eprintln!`/`println!` trong `app/src-tauri/src`
+  (trừ khối test) và mọi `print(..., file=sys.stderr)` trong `src/vieneu_reader`, từ chối dòng nào nội suy
+  `title/text/passage/segment/content/excerpt/path/filename/book` — `book_id`, `segment_id` (băm) vẫn được, đó là
+  thứ khớp báo lỗi với một hàng dữ liệu. Đã kiểm ĐỎ bằng cách chèn `{title}` vào một dòng `[stop]` rồi khôi phục.
 - **Don't**: `dup2` khi stderr là terminal (mất log dev) · ghi nội dung tài liệu · giữ nhật ký không giới hạn.
 
 ### 3.23 Tiếp tục sau khi tạm dừng lâu — lùi về đầu câu (21/09)
@@ -1534,8 +1538,12 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 DOL `#D42525`/`#B31F1F` viết cứng, không lật theme. Đo: chữ trắng trên b100 6,6:1 (sáng) / 4,9:1 (tối); chấm đầu dòng
 trên desk 6,6 / 4,4. Hệ quả: brand và `danger` là hai sắc khác hẳn (không còn phải giữ luật "hai sắc đỏ không đứng cạnh
 nhau"); vòng focus (info b60) là họ hàng của brand — Apple cũng dùng một màu xanh cho cả accent lẫn focus ring, đó là
-điều mong muốn. Icon app đổi theo: mark sóng âm trên nền xanh (xoay hue nguồn 1024 px sang 224°, `tauri icon` sinh lại
-cả bộ). Ảnh chụp trong README còn màu đỏ — chụp lại ở Phase 3.
+điều mong muốn. **Icon app (22/09)**: vòng sóng âm hữu cơ — các dải xanh uốn thành một vòng không đối xứng; nguồn chủ
+duyệt là `assets/branding/readease-icon-master.png` (1254 px, sha256 `26379365…`), `tauri icon` sinh lại cả bộ +
+`readease.icns` + `site/icon.png`. Bản xoay-hue 224° từ icon đỏ (21/09) chỉ là bước đệm, đã thay. Bạn đồng hành:
+`readease-wave-mark-flat-white.png` (64 px) — mark phẳng cho toolbar/UI nhỏ, CHƯA nối vào app, đợi chủ chỉ chỗ đặt.
+Ba concept bị loại, không mở lại: hình cuốn sách · vòng tròn hình học cứng · biến thể ba bướu đọc ra như nút play.
+Ảnh chụp trong README đã chụp lại theo brand xanh (#30).
 
 **Trên vật liệu** (cột bên trên `NSVisualEffectView`, 20/09) thang đục nhường cho thang alpha của DS — cùng một
 token lật theo theme: `veil` na05 (lõm) · `wash` na10 (hover) · `tint` na20 (chọn) · `edge-alpha` (sáng na20 / tối
