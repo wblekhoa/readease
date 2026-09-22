@@ -93,7 +93,7 @@ import {
 } from "./ui/readingCost";
 import { keyVerdict, type KeyReply } from "./ui/keyVerdict";
 import { remainingParts, scopeKey } from "./ui/remaining";
-import { artworkPayload } from "./ui/nowPlaying";
+import { useNowPlaying, type ReadingOrigin } from "./ui/useNowPlaying";
 import { announcement } from "./ui/announce";
 import { nextTheme, rememberThemePreference, resolveTheme, storedThemePreference, type Theme, type ThemePreference } from "./ui/theme";
 import { Library, type LibraryBook } from "./screens/Library";
@@ -356,9 +356,7 @@ export default function App() {
   /* Where the voice was started from, so a reader who walks off to another
      screen mid-reading can be shown the way back (owner, 02/09). null once
      nothing is playing. */
-  const [origin, setOrigin] = useState<
-    { kind: "book"; book: LibraryBook } | { kind: "paste" } | { kind: "external" } | null
-  >(null);
+  const [origin, setOrigin] = useState<ReadingOrigin>(null);
   const [gate, setGate] = useState<ModelGate>("checking");
   const [language, setLanguageState] = useState<Language>(currentLanguage());
   /* The side column (HIG 3.16): whether it shows, which of a document's
@@ -814,6 +812,15 @@ export default function App() {
         }
       })
       .catch(() => undefined);
+  }, []);
+
+  /* What the engine says on its own, after being asked nothing: a reading
+     moved, finished or found its voice; a provider's catalogue arrived; a
+     selection was captured somewhere else; money was spent. Registered once
+     on mount, released on unmount - a second effect, not a second timing:
+     it runs straight after the one above, as it did when the two were one
+     block, and both are torn down together. */
+  useEffect(() => {
     const done = listen<{ ok: boolean; error?: string }>(
       "reading:done",
       (event) => {
@@ -1263,43 +1270,17 @@ export default function App() {
     };
   }, [language, inBook, reading, sideOpen, appearance, selection.length > 0, updater.signal.kind, updater.signal.kind === "none" ? "" : updater.signal.version]);
 
-  /* Now Playing (HIG 3.19): what the system shows for the reading, and the
-     media keys, AirPods and Control Center answering through the same
-     dispatcher as the menu. Withdrawn the moment the reading is idle. The
-     cover rides along for a document - its bytes once per document, the
-     key alone after that (`artworkPayload`); the shelf's own cover cache
-     answers, so nothing is fetched twice. */
-  const readingCover = useCover(origin?.kind === "book" ? origin.book.id : null);
-  const sentArtwork = useRef<string | null>(null);
-  useEffect(() => {
-    if (!IN_WINDOW) return;
-    const artwork = origin?.kind === "book" && reading !== "idle"
-      ? artworkPayload(origin.book.id, readingCover, sentArtwork.current)
-      : null;
-    const info = reading === "idle"
-      ? { title: "", subtitle: "", state: "stopped" }
-      : origin?.kind === "book"
-        ? { title: origin.book.title, subtitle: pageInfo?.chapterTitle ?? "", state: reading, artwork }
-        : origin?.kind === "external"
-          ? { title: text("nav.external"), subtitle: text("now_playing.selection"), state: reading }
-          : { title: text("nav.paste"), subtitle: "", state: reading };
-    invoke("now_playing", { info })
-      .then(() => { if (artwork) sentArtwork.current = artwork.key; })
-      .catch((error: unknown) => console.error("[now playing]", error));
-  }, [reading, origin, pageInfo?.chapterTitle, language, readingCover]);
-  useEffect(() => {
-    if (!IN_WINDOW) return;
-    const heard = listen<string>("media:command", (event) => {
-      const command = event.payload;
-      // A command against the state is ignored, never inverted: "play"
-      // while playing must not pause.
-      if (command === "toggle") performRef.current("play-pause");
-      else if (command === "play" && reading === "paused") performRef.current("play-pause");
-      else if (command === "pause" && reading === "reading") performRef.current("play-pause");
-      else if (command === "stop" && reading !== "idle") performRef.current("stop");
-    });
-    return () => { heard.then((unlisten) => unlisten()).catch(() => undefined); };
-  }, [reading]);
+  /* Now Playing (HIG 3.19) and the media keys, in `useNowPlaying`: what
+     the system is shown about the reading, and what it sends back. Both
+     answer through the same dispatcher as the menu (HIG 4.1). */
+  useNowPlaying({
+    reading,
+    origin,
+    chapterTitle: pageInfo?.chapterTitle,
+    language,
+    inWindow: IN_WINDOW,
+    perform: (command) => performRef.current(command),
+  });
 
   /* The shelf's frame-side life - "Đang đọc" for the column, and the
      documents the system asks the app to open (HIG 3.18) - in `useShelf`;
