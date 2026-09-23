@@ -212,31 +212,29 @@ type Bubble = {
   bottom?: number;
 };
 
-/** One line of the contents tree (HIG 3.25): its number in a gutter sized
- * for its level, its words in the weight of its role, stepped in 12 px for
- * each level below the chapters. A part opens a group, so it gets air above;
- * lines two levels below a chapter fall back to `ink-mute` - one size for the
- * whole tree (the type scale has no step between xs and sm), told apart by
- * weight, colour, number and step. */
+/** One line of the contents tree (HIG 3.25): its words starting at the
+ * edge of their level, stepped in 16 px for each level below the chapters,
+ * in the weight of their role; the number on the RIGHT, level with the first
+ * line (owner, 23/09: "nên đánh số bên phải nhé. vậy thì text sẽ dễ đọc
+ * hơn" - a left-hand column made the eye cross the number to reach the
+ * words). A part opens a group, so it gets air above; lines two levels below
+ * a chapter fall back to `ink-mute` - one size for the whole tree (the type
+ * scale has no step between xs and sm), told apart by weight, colour and
+ * step. */
 function ContentsLine({
   row,
   first,
-  gutter,
   active,
   rowRef,
   onPress,
 }: {
   row: ContentsRow;
   first: boolean;
-  /** Whether the tree numbers anything: then every line keeps the gutter,
-   * numbered or not, so the words of one level start on one edge. */
-  gutter: boolean;
   active: boolean;
   rowRef?: RefObject<HTMLDivElement | null>;
   onPress: () => void;
 }) {
   const below = Math.max(0, row.sub);
-  const width = below === 0 ? "w-7" : below === 1 ? "w-9" : below === 2 ? "w-11" : "w-12";
   // Spoken: the book's own words where the number replaced them on screen
   // ("Chương 1 …", "Phần Một: …" - better aloud than a Roman "I"), else the
   // number and the title with a pause between them.
@@ -258,13 +256,19 @@ function ContentsLine({
         active={active}
         current={active}
         rowRef={rowRef}
-        inset={below * 12}
+        inset={below * 16}
         name={name}
-        leading={gutter
-          ? <span className={`inline-block ${width} text-xs tabular-nums ${active ? "text-ink" : ""}`}>{row.number ?? ""}</span>
-          : undefined}
         onPress={onPress}
-        title={<span className={`line-clamp-2 leading-snug ${words}`}>{row.label}</span>}
+        title={
+          <>
+            <span className={`min-w-0 flex-1 line-clamp-2 leading-snug ${words}`}>{row.label}</span>
+            {row.number !== null && (
+              <span className={`shrink-0 text-xs tabular-nums ${active ? "text-ink" : "text-ink-mute"}`}>
+                {row.number}
+              </span>
+            )}
+          </>
+        }
       />
     </>
   );
@@ -408,7 +412,6 @@ export function Reader({
   // marked on the page so the scroll can tell which line the eye is under.
   const tocRows = useMemo(() => contentsRows(opened?.book.toc ?? []), [opened]);
   const tocTargets = useMemo(() => new Set(tocRows.map((row) => row.entry.segment_id)), [tocRows]);
-  const tocNumbered = useMemo(() => tocRows.some((row) => row.number !== null), [tocRows]);
   // A pressed line belongs to the tree it was pressed in.
   useEffect(() => { setPickedRow(null); }, [tocRows]);
   const chapterOf = useCallback((segmentId: string): number => {
@@ -1055,7 +1058,6 @@ export function Reader({
             key={`${index}-${row.entry.segment_id}`}
             row={row}
             first={index === 0}
-            gutter={tocNumbered}
             active={index === activeRow}
             rowRef={index === activeRow ? here : undefined}
             onPress={() => { setPickedRow(index); goToPassage(row.entry.segment_id); }}

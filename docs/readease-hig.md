@@ -1567,15 +1567,18 @@ viện này không thấy gì lạ. PDF: vẫn một hàng mỗi bookmark cấp 
 - **Mục con** của một chương có số: `N.1`, `N.2`, rồi `N.1.1`…, theo thứ tự anh em.
 - **Không đánh số**: mọi thứ trước Phần/Chương đầu tiên và sau Chương cuối ở cấp Phần/Chương (lời bạt, lời mở đầu, phần kết,
   lời cảm ơn, chú thích, phụ lục…), cùng con của chúng.
-- Nhãn "Chương 1 " / "Phần Một: " được **bỏ khỏi chữ hiển thị** khi số đã đứng ở cột số (tránh "1 Chương 1 …"). Tên chỉ có
+- Nhãn "Chương 1 " / "Phần Một: " được **bỏ khỏi chữ hiển thị** khi số đã đứng trên dòng (tránh "Chương 1 … 1"). Tên chỉ có
   mỗi nhãn ("Chương 7") thì giữ nguyên. **Tên đọc** (VoiceOver): dòng đã bỏ nhãn đọc lại đúng tên gốc ("Chương 1 …", "Phần
-  Một: …" — dễ nghe hơn một chữ "I" La Mã), dòng khác đọc "số, tên" — số trong cột và chữ bên cạnh không tự có khoảng
-  ngắt, trình đọc sẽ nói liền "3.1BA…".
+  Một: …" — dễ nghe hơn một chữ "I" La Mã), dòng khác đọc "số, tên" — số và chữ trên cùng một dòng không tự có khoảng
+  ngắt, trình đọc sẽ nói liền "BA… 3.1".
 - Chữ HOA của tác giả **giữ nguyên** — đổi sang chữ thường sẽ hạ tên riêng (một địa danh, một khái niệm viết hoa).
 
-**4. Hình**: cột số `tabular-nums` `ink-mute`, rộng theo cấp — dòng không số vẫn giữ cột, để chữ cùng cấp thẳng một
-mép; thụt 12 px mỗi cấp dưới cấp chương. Phần (hay dòng cấp Phần CÓ dòng con — "Phần mở đầu" và các mục của nó)
-`font-semibold`, có khoảng trống phía trên vì nó mở một nhóm; dòng lẻ ở cấp đó ("Lời bạt") vẽ như một chương. Chương
+**4. Hình**: số đứng **bên PHẢI**, canh phải, `text-xs` `tabular-nums` `ink-mute`, ngang dòng đầu của tên (chủ 23/09: "nên
+đánh số bên phải nhé. vậy thì text sẽ dễ đọc hơn" — bản đầu đặt số trong một cột bên trái, mắt phải nhảy qua số mới tới
+chữ; như Apple Books đặt số trang). Chữ mỗi cấp bắt đầu ngay ở lề của cấp nó; thụt **16 px** mỗi cấp dưới cấp chương
+(bậc spacing 4 của DS — không còn cột số làm bậc thang, lề là thứ duy nhất vẽ cây). Phần (hay dòng cấp Phần CÓ
+dòng con — "Phần mở đầu" và các mục của nó) `font-semibold`, có khoảng trống phía trên vì nó mở một nhóm; dòng lẻ ở cấp
+đó ("Lời bạt") vẽ như một chương. Chương
 `font-medium`, mục con chữ thường, từ hai cấp dưới chương trở đi `ink-mute` — một cỡ `text-sm` cho cả cây (thang chữ
 không có bậc giữa xs và sm; phân cấp bằng độ đậm, màu, số và thụt). Hai dòng rồi cắt (như cũ).
 Dòng **đang ở** tô `tint` + `aria-current="location"`, cuộn tới khi mở cột; trên dòng đang ở mọi chữ là `ink` (`ink-mute`
