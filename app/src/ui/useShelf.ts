@@ -1,8 +1,8 @@
 /** The shelf as the app's frame sees it, lifted out of App: the list the
  * engine keeps, refreshed whenever the person is back on the home screens
- * (leaving a document is when progress moved), the five most recent
- * documents with a saved place for the column's "Đang đọc" group, and the
- * files the system asked the app to open (HIG 3.18).
+ * (leaving a document is when progress moved), the five documents with a
+ * saved place heard most recently for the column's "Đang đọc" group, and
+ * the files the system asked the app to open (HIG 3.18).
  */
 import { useCallback, useEffect, useMemo } from "react";
 import { useState } from "react";

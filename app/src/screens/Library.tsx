@@ -26,6 +26,9 @@ export type LibraryBook = {
   chapters: number;
   size_bytes: number | null;
   imported_at: string | null;
+  /** When a passage of it was last heard (the engine's progress row) - the
+   * order of the books being read, most recent first. Null until then. */
+  listened_at?: string | null;
   /** The pairing with Apple Books still holds, so a note sync lands on this
    * book. False for a book that arrived by hand. */
   from_apple_books?: boolean;

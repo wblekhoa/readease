@@ -1348,6 +1348,7 @@ class _Session:
                     "chapters": 0,
                     "size_bytes": size_bytes,
                     "imported_at": self._repository.imported_at(stored.id),
+                    "listened_at": None,
                     "from_apple_books": stored.id in paired,
                     "damaged": True,
                 })
@@ -1398,6 +1399,12 @@ class _Session:
                 "chapters": len(stored.book.chapters),
                 "size_bytes": size_bytes,
                 "imported_at": self._repository.imported_at(stored.book.id),
+                # When a passage of it was last heard - the shelf's order
+                # among the books being read (owner, 23/09). Null with no
+                # readable position, like `segment_id`.
+                "listened_at": (
+                    self._repository.listened_at(stored.book.id) if progress else None
+                ),
                 # True while the pairing holds, which is what makes a note
                 # sync land on this book rather than a guess at its title.
                 "from_apple_books": stored.book.id in paired,

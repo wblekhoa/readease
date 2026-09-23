@@ -724,6 +724,22 @@ class LibraryRepository:
                 ).fetchone()
         return str(row[0]) if row else None
 
+    def listened_at(self, book_id: str) -> str | None:
+        """When a passage of this book was last HEARD, as stored by SQLite.
+
+        The progress row's `updated_at`: the headless server writes it only
+        at `progress.reached`, the shell's word that the ear got to a
+        segment - opening a book leaves it where it was. None for a book
+        nobody has listened to. The shelf puts the book heard most recently
+        first (owner, 23/09).
+        """
+        with _database_errors():
+            with self._lock:
+                row = self._connection.execute(
+                    "SELECT updated_at FROM progress WHERE book_id = ?", (book_id,)
+                ).fetchone()
+        return str(row[0]) if row else None
+
     def save_active_book_id(self, book_id: str) -> None:
         if not _is_sha256(book_id):
             raise RepositoryError("Không thể lưu tài liệu đang mở.")
