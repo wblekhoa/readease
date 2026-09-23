@@ -72,7 +72,7 @@ export function UpdatePanel({
         )}
         {phase.kind === "downloading" && (
           <div className="px-6 py-2">
-            <div className="h-1.5 overflow-hidden rounded-full bg-band">
+            <div className="h-1.5 overflow-hidden rounded-full bg-track">
               <div className="h-full rounded-full bg-progress transition-[width]" style={{ width: `${phase.percent ?? 8}%` }} />
             </div>
           </div>

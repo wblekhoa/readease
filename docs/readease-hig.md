@@ -523,15 +523,52 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   rect) chỉ sống một giờ: chủ muốn giữ dáng pill ở trạng thái thường. Áp cho MỌI `SegmentedControl` (bảng giọng, tab
   cột bên — cao 36 thì 22 tự kẹp về pill) để một control chỉ có một hình. Luật chung §3.9d: góc ngoài = góc trong + lót.
 - Hàng điều khiển bên trong panel nổi theo Books: hàng toàn bề rộng cao 44, ô chia đều (`SegmentedControl size="lg"`),
-  có icon + chữ `text-sm` không xuống dòng; phần mở rộng đặt trong khối `bg-band rounded-2xl px-5 py-4`.
+  có icon + chữ `text-sm` không xuống dòng; phần mở rộng không đóng khung — một đường chấm mở đầu (chủ 06/09).
+- **Rãnh · viên · núm ở theme tối, núm slider ở cả hai** (23/09, chủ về bảng Cài đặt đọc: "tăng độ sáng của các màu neutral alpha này lên
+  … hiện tại nó đang bị mờ quá, tệp vào nền"). Đo trên bảng mở ở tối: kính (36,38,38) → rãnh `band` n20 (45,46,46),
+  chỉ **1,12:1** — và viên đang chọn `paper` n10 (38,39,39) **tối hơn chính rãnh nó cưỡi** (1,10:1 theo chiều ngược),
+  gần trùng màu kính. Luật "rãnh lùi dưới cái nổi trên nó" (§7) bị lật ở MỌI control dùng rãnh `band` + viên/núm
+  `paper`, trên kính lẫn trên giấy (giấy n10 = kính về độ sáng), còn ở sáng thì đúng (kính 254 → rãnh 240 → viên 255).
+  Sửa ở component, bằng năm vai trò theo theme — **sáng giữ nguyên từng giá trị**, chỉ tối đổi:
+
+  | Vai trò | Sáng | Tối | Ở đâu |
+  |---|---|---|---|
+  | `track` (rãnh) | n10 | **n40** | rãnh segmented (bản giấy) · cụm cỡ chữ · nút Tuỳ chỉnh · switch tắt · phần chưa tô của slider · thanh tiến độ |
+  | `pill` (viên đang chọn) | giấy trắng | **n80** | ô đang chọn của segmented (kể cả ô bị khoá) |
+  | `thumb` (núm) | giấy trắng | **n160** | núm switch |
+  | `tick` (vạch trên rãnh) | `edge-strong` | **n80** | chấm thang cỡ chữ chưa tới · vạch giữa hai nửa cụm cỡ chữ |
+  | `locked-choice` (chữ) | `ink-mute` | **`ink`** | chữ + ổ khoá của ô đang chọn khi bị khoá (Số cột lúc đọc cuộn) |
+
+  Đo (WCAG): rãnh/kính 1,26 (từ 1,12) · viên/rãnh **2,46** (từ 1,10 ngược chiều) · `ink-mute` (chữ ô chưa chọn) trên
+  rãnh 5,25 · `ink` trên viên 4,61 · núm/rãnh 9,48, núm/switch bật (brand) 3,57. **Trần của rãnh là n40**: n60 kéo
+  `ink-mute` xuống 4,19, dưới AA. Viên n80 là bậc duy nhất trên n40 vừa nổi rõ vừa giữ `ink` ≥ 4,5 (n60 chỉ cách rãnh
+  1,26). Núm switch là bậc sáng vì nó không mang chữ — như `bg-white` của `Switch` DS và núm của macOS/iOS.
+  **Núm slider khác núm switch, và đổi ở CẢ HAI theme** (chủ, cùng ngày, chỉ núm "Giãn dòng" ở sáng lẫn tối: "update
+  cho nút này dễ nhìn hơn nhé, hiện nó đang cùng màu với background"): núm switch nằm TRONG rãnh của nó, còn núm slider
+  treo trên một đường 4 px, chung quanh là mặt panel — nó phải tách khỏi PANEL. Núm `paper` chính là màu panel: trắng
+  trên kính 254 ở sáng (1,01:1), n10 trên kính tối (1,02:1) — chỉ còn cái bóng. Nay theo núm của DS `Slider` (thumb =
+  màu phần đã tô + `border-white`): nền `ink`, viền 2 px `paper`, `shadow-raised` — 13,0:1 trên kính sáng, 14,3:1 trên
+  kính tối; viền chìm vào panel và chỉ hiện chỗ núm gặp đường đã tô. `tick` phải đi
+  theo rãnh: `edge-strong` tối (n60) trên n40 chỉ còn 1,26 và chấm thang biến mất. Mọi chữ `ink-faint` nằm trên rãnh
+  — nửa bị khoá của cụm cỡ chữ ở cỡ nhỏ nhất/lớn nhất, các ô CHƯA chọn của Số cột khi bị khoá ("1", "2") — giữ quy ước
+  disabled toàn app, nên mờ hơn trước một chút (1,42 → 1,26): đó là trạng thái tắt, và dòng điều kiện bên dưới nói lý do.
+  **Ô ĐANG CHỌN bị khoá thì khác**: chữ `ink-mute` trên viên n80 chỉ còn 2,13:1 (trên viên `paper` cũ là 5,92) — trên viên
+  tối không bậc chữ nhạt nào còn đọc được, chỉ `ink` (4,61). Vai trò `locked-choice`: sáng `ink-mute` (chữ nhạt như cũ),
+  tối `ink` — ở tối ổ khoá trong ô là thứ duy nhất nói "bị khoá", đúng thứ tự ưu tiên của luật control bị khoá bên dưới.
+  **Đục, không alpha** (dù chủ gọi là "neutral alpha" — các fill này vốn đục n20/n10): trên kính 74 % giấy, một fill
+  alpha để lộ trang phía sau, qua một hình sáng thì rãnh sáng theo và `ink-mute` tụt dưới 4,5; fill đục giữ tỉ lệ chữ
+  không phụ thuộc thứ nằm sau kính. Thang alpha `veil`/`tint` vẫn là của cột bên trên vật liệu macOS (§3.16) — không
+  đổi. `band` từ nay chỉ còn nghĩa nội dung (dòng/hình đang đọc, dải bìa thay thế), không còn là rãnh của control.
+  Không cell nào của ma trận render mở bảng này — kiểm bằng axe trên bảng mở (sáng + tối) khi đổi, như lần này.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click CHUỘT** (`pressedByPointer()`): tooltip theo
   focus sẽ không treo trên panel vừa mở. Enter/Space thì không blur — tiêu điểm của bàn phím đi vào panel (§4.2 điểm 3).
 - **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
   (viền `border-dotted` của trình duyệt mỗi nơi một nhịp), `solid`/`dashed` là hairline. Không ghép tên lớp Tailwind từ
   biến — lớp không xuất hiện nguyên vẹn trong nguồn thì không được sinh ra.
-- **Control bị khoá phải NÓI vì sao**: ô đang chọn **GIỮ NGUYÊN** viên trắng nổi (`bg-paper` + `shadow-raised`) — nó vẫn
+- **Control bị khoá phải NÓI vì sao**: ô đang chọn **GIỮ NGUYÊN** viên nổi (`bg-pill` + `shadow-raised`) — nó vẫn
   là lựa chọn của người đọc, làm phẳng đi thành ra "chưa chọn gì". Cái nói lên trạng thái khoá là **icon ổ khoá nằm trong
-  chính ô đang chọn**, cùng chữ nhạt đi (`disabled:text-ink-faint` cho cả ô lẫn icon), cộng một dòng nhỏ nói điều kiện
+  chính ô đang chọn**, cùng chữ nhạt đi (ô chưa chọn `ink-faint`; ô đang chọn `locked-choice` = `ink-mute` ở sáng, còn ở
+  tối giữ `ink` vì viên n80 không chở nổi chữ nhạt — §3.9d), cộng một dòng nhỏ nói điều kiện
   ("Số cột · Chỉ dùng được khi đọc theo trang", chủ 06/09). `SegmentedControl` tự vẽ ổ khoá khi một ô vừa `on` vừa
   `disabled`, nên luật nằm một chỗ; **đừng** gắn ổ khoá lên nhãn — trạng thái thuộc về control, không thuộc về cái tên
   của nó. Một hàng chữ xám không giải thích gì.
@@ -552,7 +589,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   trúng ranh thì chữ lật qua lật lại chỉ với một nấc núm (`lineHeightBand`/`marginBand`, có test ghim).
   Cả cụm là **một** `<label>` — đừng bọc thêm `<label>` bên ngoài (lồng label thì click không tới input).
   Thanh: `appearance: none` rồi tự vẽ `::-webkit-slider-runnable-track` (cao 4, bo tròn) + `::-webkit-slider-thumb`
-  (20 tròn, `bg-paper`, `shadow-raised`); **tắt appearance là mất luôn phần đã tô**, nên phần tô là một gradient mà
+  (20 tròn, nền `ink` + viền 2 px `paper` + `shadow-raised` — núm DS `Slider`, §3.9d; phần chưa tô là `track`); **tắt appearance là mất luôn phần đã tô**, nên phần tô là một gradient mà
   component dời điểm dừng qua biến `--fill`. Chuỗi hiển thị do **caller** truyền: dấu thập phân là chuyện ngôn ngữ
   (tiếng Việt viết `1,75` — `decimal()` trong `i18n.ts`), không phải chuyện của control.
 - **Chỉ báo bậc thì im khi đang ở mặc định** (hàng chấm dưới cụm cỡ chữ, chủ 06/09): người chưa đụng tới cỡ chữ không
@@ -1700,7 +1737,11 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 | panel (nhóm lõm) | n10 | n05 | `GroupedSection` |
 | paper (mặt nổi) | n00 trắng | n10 | control, `Surface`, cột đọc |
 | rail (rãnh tab) | n10 | n05 | (`AppTabs`, gỡ 16/09 — token giữ cho rãnh sau này) |
-| band (dòng đang đọc) | n10 | n20 | highlight ở Reader |
+| band (dòng đang đọc) | n10 | n20 | highlight ở Reader — nội dung, không còn là rãnh control (23/09) |
+| track (rãnh control) | n10 | n40 | segmented · switch · slider · tiến độ · pill của bảng Cài đặt đọc (§3.9d) |
+| pill (ô đang chọn) | n00 trắng | n80 | ô đang chọn của segmented bản giấy |
+| thumb (núm) | n00 trắng | n160 | núm switch (núm slider = `ink` viền `paper`, §3.9d) |
+| tick (vạch trên rãnh) | `edge-strong` (n40) | n80 | chấm thang cỡ chữ, vạch giữa hai nửa cụm cỡ chữ |
 
 **Màu brand = XANH DƯƠNG** (chủ, 21/09: "update màu brand của app thành màu xanh dương"): `--color-brand-600` =
 `--blue-b100`, `--color-brand-700` = `--blue-b120` — ramp xanh của DS, lật theo theme (sáng #2B52D4 / #2446B4, tối
@@ -1744,7 +1785,10 @@ Hai luật rút ra khi chuyển sang nền trắng:
   n20; sau khi pill có viền `edge-strong` + shadow phân lớp, rãnh trả về **n10** cho nhẹ mắt
   (chủ yêu cầu giảm một bậc 01/09) mà cụm vẫn đọc ra là segmented control: rãnh/nền 1.12,
   pill/rãnh 1.12. Ở tối rãnh từng là n10 **đúng bằng màu viên pill** (chỉ viền cứu) → n05, và
-  giữ nguyên: thang tối không còn bậc nào để nhạt thêm mà không đụng desk.
+  giữ nguyên: thang tối không còn bậc nào để nhạt thêm mà không đụng desk. Đoạn trên nói về `rail`
+  (rãnh tab); rãnh của các control khác là `band` n20 dưới viên `paper` n10 — lật luật này ở tối
+  suốt tới 23/09. Ở tối, "lùi" là **tối hơn cái cưỡi trên nó** chứ không tối hơn nền: rãnh sáng
+  hơn mặt nó nằm một bậc, viên sáng hơn rãnh (`track` n40 · `pill` n80 · `thumb` n160, §3.9d).
 
 ## 8. Quy trình mở pattern mới
 

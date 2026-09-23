@@ -88,7 +88,7 @@ export function ReadingSettingsPanel({
           <div
             role="group"
             aria-label={text("settings.text_size_level", { n: step + 1, total: sizes.length })}
-            className="flex flex-col rounded-[22px] bg-band p-1"
+            className="flex flex-col rounded-[22px] bg-track p-1"
           >
             <div className="flex h-9 items-stretch">
               <button
@@ -101,7 +101,7 @@ export function ReadingSettingsPanel({
               >
                 <TextSmallerIcon className="h-5 w-5" />
               </button>
-              <span aria-hidden className="my-1.5 w-px bg-edge-strong" />
+              <span aria-hidden className="my-1.5 w-px bg-tick" />
               <button
                 type="button"
                 onClick={() => onSize(1)}
@@ -134,7 +134,7 @@ export function ReadingSettingsPanel({
                     <span
                       key={value}
                       className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                        index <= step ? "bg-ink-mute" : "bg-edge-strong"
+                        index <= step ? "bg-ink-mute" : "bg-tick"
                       }`}
                     />
                   ))}
@@ -167,7 +167,7 @@ export function ReadingSettingsPanel({
             type="button"
             onClick={() => setMore((value) => !value)}
             aria-expanded={more}
-            className="flex h-11 items-center justify-center gap-2 rounded-[22px] bg-band px-4 text-sm font-semibold text-ink transition-colors hover-wash"
+            className="flex h-11 items-center justify-center gap-2 rounded-[22px] bg-track px-4 text-sm font-semibold text-ink transition-colors hover-wash"
           >
             <SlidersIcon />
             {text("settings.customize")}
