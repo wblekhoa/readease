@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- VoiceOver hears the reading controls as one group - "Reading controls" -
+  before it reads the buttons in it.
+- The rows of a scanned selection say whether they are open, not only by
+  turning an arrow.
+
 ## 0.1.15
 
 For the ear and the keyboard: VoiceOver hears what ReadEase is doing,

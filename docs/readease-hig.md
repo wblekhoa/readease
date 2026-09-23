@@ -812,6 +812,26 @@ chọn tràn sang mọi ô sau nó. Suy ra: mỗi lần chạy đầy đủ, **2
 state `default` là tiếng Việt thật; lượt bàn phím chạy sau ô cuối (tiếng Anh) cũng vì thế không tìm thấy nút nào. Nay
 mỗi ô gieo ngôn ngữ của nó vào kho setting của mock trước khi tải trang: 16/16 xanh.
 
+**Bản đồ cổng (23/09) — điểm nào được cái gì canh, điểm nào CHƯA.** Luật rút từ lần đo trên: một điểm không có cổng
+có thể đỏ được thì không ai làm (lesson `docs-claim-must-follow-not-precede-the-code`, Corollary 5).
+
+| Điểm | Canh bởi | Chưa canh |
+|---|---|---|
+| 1 · tên control | axe (`button-name`, `link-name`, `select-name`…) | dùng `title` thay tên — quét tĩnh 23/09 không thấy chỗ nào |
+| 1 · nhóm có tên | lượt bàn phím, bước `transport`; `SegmentedControl` bắt buộc `label` (TypeScript) | — |
+| 1 · trạng thái bằng thuộc tính | — | quét 23/09 (heuristic) thấy 2 chỗ, đã sửa; không có cổng |
+| 2 · vùng live | `announce.test.ts` (3 test) | câu nói ra thật — đo tay 22/09 |
+| 3 · tiêu điểm lớp nổi | lượt bàn phím (14 bước, gồm một cú chuột) | cú bấm `⌃⌥Space` của VoiceOver — checklist của chủ |
+| 4 · đoạn đang đọc có tên | — | đo tay 23/09 trong preview |
+| 5 · không chỉ bằng màu | axe `color-contrast` (một phần) | phần còn lại |
+| 6 · ngôn ngữ | khẳng định `<html lang>` từng ô | `lang` của đoạn văn — đo tay |
+
+**Đi lại từng điểm 23/09, sau 0.1.15 — điểm 1 còn hai chỗ.** Nhóm transport (lùi câu · tạm dừng · dừng · sang câu) là
+một `div` trần: VoiceOver đọc bốn nút rời, không câu nào nói chúng để làm gì. Dòng mở/đóng ở màn Quét đọc chỉ xoay mũi
+tên. Không ô nào của ma trận đang đọc dở, nên transport chưa từng được nhìn thấy: lượt bàn phím nay bấm Đọc tiếp, kiểm tên
+nhóm, rồi dừng — đỏ trên main ("the transport is not a group"), **15/15** sau khi sửa (`role="group"` + "Điều khiển lượt
+đọc"; `aria-expanded` cho dòng mở/đóng).
+
 **Phần máy không đo được — chủ kiểm 10 phút, một lần mỗi khi UI đổi lớn** (AI không bật VoiceOver trên máy chủ):
 ⌘F5 bật VoiceOver, rồi chỉ dùng bàn phím: (1) mở app, nghe tên cửa sổ · (2) đi tới Thư viện, nghe tên tài liệu và
 tiến độ · (3) mở một tài liệu · (4) bấm Đọc tiếp, nghe app báo đang đọc · (5) tạm dừng rồi tiếp tục bằng Space ·

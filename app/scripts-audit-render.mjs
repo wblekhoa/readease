@@ -378,6 +378,17 @@ async function main() {
           expect("mouse", !w.tip, "a tooltip hangs over the panel a mouse click opened");
           await findAndClick(/^Cài đặt đọc$/);
         }
+        // The transport is a named group (HIG 4.2, point 1): VoiceOver says
+        // what the buttons are FOR before it reads them one by one. No cell
+        // of the matrix is mid-reading, so this is the only place it is seen.
+        if (!(await findAndClick(/^Đọc tiếp$/))) expect("transport", false, "no Continue button to start a reading");
+        else if (!(await waitFor(/^Tạm dừng$/, 6000, "button"))) expect("transport", false, "the reading did not start");
+        else {
+          const group = await evalJs(`(() => { const pause = [...document.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Tạm dừng");
+            const g = pause && pause.closest("[role=group]"); return g ? (g.getAttribute("aria-label") || "") : null; })()`);
+          expect("transport", !!group, group === null ? "the transport is not a group" : "the transport group has no name");
+          await findAndClick(/^Dừng$/);
+        }
         crashed("reader");
       }
 
@@ -432,7 +443,7 @@ async function main() {
     for (const f of findings) console.log(`  ${f.kind.padEnd(11)} ${f.cell.padEnd(34)} ${f.detail}`);
     const summary = Object.entries(byKind).map(([k, v]) => `${k}=${v}`).join(" ") || "clean";
     if (findings.length) { console.log(`RENDER_AUDIT RED cells=${cells} ${summary}`); process.exitCode = 1; }
-    else if (KEYS_ONLY) console.log(`RENDER_AUDIT PASS keys=${keyChecks} — bàn phím vào được lớp nổi và về đúng nút, chuột không đổi gì`);
+    else if (KEYS_ONLY) console.log(`RENDER_AUDIT PASS keys=${keyChecks} — bàn phím vào được lớp nổi và về đúng nút, chuột không đổi gì, nhóm điều khiển đọc có tên`);
     else console.log(`RENDER_AUDIT PASS cells=${cells}${AXE ? ` axe-watch=${watching.length}` : " (axe skipped)"}${keyChecks ? ` keys=${keyChecks}` : ""} — mọi màn render ở ${W}×${H}, không lỗi console, không lộ key, không tràn ngang`);
   } finally { clearTimeout(killer); chrome.kill("SIGKILL"); }
 }
