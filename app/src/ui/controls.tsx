@@ -591,15 +591,15 @@ export function Switch({
         aria-hidden
         className={`h-full w-full rounded-full border transition-colors ${
           disabled
-            ? "border-edge bg-band"
+            ? "border-edge bg-track"
             : checked
               ? "border-brand-600 bg-brand-600"
-              : "border-edge-strong bg-band"
+              : "border-edge-strong bg-track"
         } peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600`}
       />
       <span
         aria-hidden
-        className={`pointer-events-none absolute left-[3px] h-4 w-4 rounded-full bg-paper shadow-raised transition-transform ${
+        className={`pointer-events-none absolute left-[3px] h-4 w-4 rounded-full bg-thumb shadow-raised transition-transform ${
           checked ? "translate-x-4" : ""
         } ${disabled ? "opacity-60" : ""}`}
       />
@@ -703,7 +703,7 @@ export function SegmentedControl<T extends string | number>({
       // các item sẽ tràn viền"): the chosen tint runs to the track's edge,
       // like a segmented control on Apple's toolbar; a raised paper pill
       // needs the 4 px of track around it to read as riding on the track.
-      className={`flex items-stretch rounded-[22px] ${material ? "bg-veil" : "bg-band p-1"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
+      className={`flex items-stretch rounded-[22px] ${material ? "bg-veil" : "bg-track p-1"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
       {options.map((option) => {
         const on = option.value === value;
@@ -718,7 +718,7 @@ export function SegmentedControl<T extends string | number>({
            they are written, so a locked choice could not be told to be
            darker than a locked non-choice. */
         const chosen = on
-          ? `${material ? "bg-tint" : "bg-paper shadow-raised"} font-semibold ${option.disabled ? "text-ink-mute" : "text-ink"}`
+          ? `${material ? "bg-tint" : "bg-pill shadow-raised"} font-semibold ${option.disabled ? "text-ink-mute" : "text-ink"}`
           : option.disabled
             ? "text-ink-faint"
             : "text-ink-mute hover:text-ink";
@@ -829,7 +829,7 @@ export function Slider({
 
 export function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-1.5 overflow-hidden rounded-full bg-band">
+    <div className="h-1.5 overflow-hidden rounded-full bg-track">
       <div
         className="h-full rounded-full bg-progress transition-[width]"
         style={{ width: `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%` }}

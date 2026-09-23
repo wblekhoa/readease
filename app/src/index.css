@@ -101,11 +101,38 @@
      light is barely black 6 %, and only na20 matches the n20 line the
      column had. */
   --app-edge-alpha: var(--border-color-neutral-tint);
+  /* A control and what rides on it (HIG 3.9d, 23/09): the TRACK a choice
+     sits in, the PILL of the chosen segment, the THUMB of a switch, and the
+     TICKS drawn on a track (the size scale's steps and the line between its
+     halves). In light these are exactly what they were - n10 track, white
+     paper pill and thumb, `edge-strong` ticks - because the ladder already
+     reads there: glass 254, track 240, pill 255. A slider's knob is not a
+     thumb in this sense: it hangs over a 4 px line with the panel all round
+     it, so it takes the colour of the line (`.reading-slider` below). */
+  --app-track: var(--neutral-n10);
+  --app-pill: var(--fill-neutral-base);
+  --app-thumb: var(--fill-neutral-base);
+  --app-tick: var(--border-color-neutral-soft);
 }
 [data-theme="dark"] {
   --app-dot: var(--border-color-neutral-soft);
   --app-edge-alpha: var(--border-color-neutral-wash);
   --app-band: var(--neutral-n20);
+  /* In dark the same controls were drawn upside down: the track was `band`
+     n20, only 1.12:1 off the glass, and the chosen pill was `paper` n10 -
+     DARKER than the track it rides on and all but the glass's own colour
+     (owner, 23/09: "mờ quá, tệp vào nền"). Each part now steps up from what
+     it sits on. n40 is as far as the track can go: at n60 the unchosen
+     labels (`ink-mute`) fall to 4.19:1. n80 is the one step above it that
+     both stands out (2.46:1 over the track) and keeps `ink` at 4.61:1 on
+     the pill. A thumb carries no text, so it takes a near-white step, as the
+     DS's own switch thumb and the Mac's do. Opaque on purpose: on the glass
+     an alpha fill lets the page through, and over a bright figure it would
+     take the labels' contrast with it. */
+  --app-track: var(--neutral-n40);
+  --app-pill: var(--neutral-n80);
+  --app-thumb: var(--neutral-n160);
+  --app-tick: var(--neutral-n80);
   --app-rail: var(--neutral-n05);
   --app-edge-field: transparent;
   /* Dark keeps a real ladder - desk n00, panel n05, paper n10 - so a grouped
@@ -147,6 +174,10 @@
   --color-veil: var(--neutral-alpha-na05);
   --color-tint: var(--neutral-alpha-na20);
   --color-band: var(--app-band);
+  --color-track: var(--app-track);
+  --color-pill: var(--app-pill);
+  --color-thumb: var(--app-thumb);
+  --color-tick: var(--app-tick);
   --color-rail: var(--app-rail);
   /* A grouped panel: one step off the desk, so settings rows read as an inset
      group instead of an outlined white box lost on a white page. */
@@ -859,18 +890,26 @@ mark[data-search="current"] {
   background: linear-gradient(
     to right,
     var(--color-ink) var(--fill, 0%),
-    var(--color-band) var(--fill, 0%)
+    var(--color-track) var(--fill, 0%)
   );
 }
 .reading-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
+  box-sizing: border-box;
   width: 20px;
   height: 20px;
   /* Half the knob above the 4px track, so it rides centred on the line. */
   margin-top: -8px;
   border-radius: 9999px;
-  background: var(--color-paper);
+  /* The DS Slider's knob: the colour of the part already filled, ringed in
+     paper (owner, 23/09: "update cho nút này dễ nhìn hơn nhé, hiện nó đang
+     cùng màu với background"). It was paper, which IS the panel's colour in
+     both themes - white on the white glass, n10 on the dark one - so only
+     its shadow said where it was. The ring vanishes into the panel and
+     shows only where the knob meets the line. */
+  background: var(--color-ink);
+  border: 2px solid var(--color-paper);
   box-shadow: var(--shadow-raised);
 }
 .reading-slider:focus-visible::-webkit-slider-thumb {

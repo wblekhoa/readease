@@ -14,6 +14,14 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   Reading now. Documents being read used to be ordered by when they were
   imported, so one you listened to yesterday could sit below one you left
   a week ago.
+- In the dark theme, controls stand out from the panel they sit on. The
+  chosen option of a segmented control was darker than its own track and
+  almost the colour of the panel; now the track is a step above the panel
+  and the chosen option a clear step above the track. Switches and
+  sliders follow, in every panel.
+- A slider's knob can be seen in both themes. It was the panel's own
+  colour, white on white and dark on dark, and only its shadow showed
+  where it was; it now takes the colour of the filled part of the line.
 
 ## 0.1.15
 
