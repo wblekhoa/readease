@@ -136,7 +136,7 @@ async function main() {
   // took 14m34s+ on 15/09 once the mock's bridge answered a tick later, a
   // minute under the old 15, so the next state added would have turned a
   // green run red for taking too long.
-  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 60 * 60 * 1000); // 620 cells took 31 min run screen by screen (16/09); 35 was cut twice
+  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 60 * 60 * 1000); // 620 cells took 31 min run screen by screen (16/09); 35 was cut twice; 648 with the two settings panels took 31m38s (23/09)
   try {
     const wsUrl = await (async () => {
       for (let i = 0; i < 60; i++) {

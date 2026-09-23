@@ -559,7 +559,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   alpha để lộ trang phía sau, qua một hình sáng thì rãnh sáng theo và `ink-mute` tụt dưới 4,5; fill đục giữ tỉ lệ chữ
   không phụ thuộc thứ nằm sau kính. Thang alpha `veil`/`tint` vẫn là của cột bên trên vật liệu macOS (§3.16) — không
   đổi. `band` từ nay chỉ còn nghĩa nội dung (dòng/hình đang đọc, dải bìa thay thế), không còn là rãnh của control.
-  Không cell nào của ma trận render mở bảng này — kiểm bằng axe trên bảng mở (sáng + tối) khi đổi, như lần này.
+  Lúc đó chưa ô nào của ma trận render mở bảng này. Từ #46 có ô `reading_settings` (mở cả Tuỳ chỉnh, `default` và
+  `sidebar`, §4.2), nhưng ở chế độ trang: ô Số cột BỊ KHOÁ (chỉ khi đọc cuộn) vẫn chưa được vẽ, và axe vốn bỏ qua control
+  disabled — nên đổi màu của control thì vẫn kiểm tay trạng thái khoá, sáng + tối, như lần này.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click CHUỘT** (`pressedByPointer()`): tooltip theo
   focus sẽ không treo trên panel vừa mở. Enter/Space thì không blur — tiêu điểm của bàn phím đi vào panel (§4.2 điểm 3).
 - **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
