@@ -14,6 +14,16 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   the row.
 - "Choose a document…" in Move notes is readable: it was set in the
   disabled grey, at 2.1:1 against the page.
+- Panels and menus work from the keyboard: opened with Enter, they take
+  the focus, and Escape gives it back to the button that opened them -
+  before, the focus fell to the top of the window. Menus move with the
+  arrow keys, and Tab stays inside a sheet while it is up. Nothing
+  changes for the mouse.
+- VoiceOver hears which paragraph the voice is reading, and the reading
+  page is named after the chapter in front of you.
+- VoiceOver reads the interface in its own language: the page declared
+  English whatever it showed, so Vietnamese labels came out in an English
+  voice. A document's paragraphs carry the document's language.
 
 ## 0.1.14
 

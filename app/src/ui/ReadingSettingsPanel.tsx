@@ -56,6 +56,7 @@ export function ReadingSettingsPanel({
   return (
     <Surface
       ref={panel}
+      dialog={text("reader.settings")}
       edge="strong"
       material="glass"
       /* A floating panel sets its content in by the sheets' 24 and takes the

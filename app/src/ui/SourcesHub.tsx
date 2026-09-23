@@ -124,6 +124,8 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
       edge="strong"
       radius="sheet"
       ref={sheet}
+      dialog={text("hub.title")}
+      modal
       /* The Apple Books sheet's frame: a layer that stands on its own in the
          middle of the window, capped so a short window scrolls the body. */
       layer="sheet"

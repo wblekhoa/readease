@@ -649,6 +649,14 @@ select[data-overlay] {
   outline-offset: 1px;
 }
 
+/* A floating panel takes the keyboard's focus ITSELF when it opens (HIG
+   4.2, point 3): VoiceOver reads its name, the next Tab reaches its first
+   control. A ring round the whole panel would say nothing the panel does
+   not already say by being open. */
+[role="dialog"][tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /* Text entry matches :focus-visible on a plain click too, so this ring is on
    screen the whole time someone is writing - the paste box is a home
    screen. Drawn ON the field's own edge instead of floating a line outside

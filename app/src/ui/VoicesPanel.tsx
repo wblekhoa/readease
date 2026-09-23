@@ -182,6 +182,7 @@ export function VoicesPanel({
       edge="strong"
       radius="sheet"
       ref={panel}
+      dialog={text("voices.title")}
       /* `overflow-hidden` is not tidying: without it the rows above the
          list simply drew past the rounded surface when they came to more
          than the cap, and the footer ended up floating below the window edge

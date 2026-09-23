@@ -160,6 +160,7 @@ export function SettingsPanel({
          own, which is what the guideline's 24 is for (owner, 03/09). */
       radius="sheet"
       ref={panel}
+      dialog={text("player.settings")}
       /* Over its OWN button, not over the middle of the window. The button
          is the last thing in the footer's right-hand cluster, so the panel's
          right edge sits at the same 24px inset the row is padded by and the
