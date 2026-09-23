@@ -1011,6 +1011,57 @@ class ProtocolTests(unittest.TestCase):
             # And the managed copy is gone with the record.
             self.assertEqual(list(paths.books.glob("*")), [])
 
+    def test_book_open_carries_the_publishers_contents(self) -> None:
+        """HIG 3.25: the tree rides with the book, each line placed on a
+        stored segment. A book without one answers an empty list, and the
+        shell lists the chapters as it always did."""
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+        from vieneu_reader.storage.repository import LibraryRepository
+        from tests.importers.epub_fixture import make_epub, make_epub_with_contents
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = AppPaths.create(root / "data")
+            repository = LibraryRepository(paths.database)
+            service = LibraryService(paths, repository)
+            sources = root / "sources"
+            sources.mkdir()
+            imported = run_server(
+                [{"id": 1, "method": "library.import",
+                  "params": {"path": str(make_epub_with_contents(sources))}},
+                 {"id": 2, "method": "library.import",
+                  "params": {"path": str(make_epub(sources, name="plain.epub"))}}],
+                FakeEngine(), repository=repository, service=service,
+            )
+            tree_id = imported[0]["result"]["book_id"]
+            plain_id = imported[1]["result"]["book_id"]
+
+            opened = run_server(
+                [{"id": 3, "method": "book.open", "params": {"book_id": tree_id}},
+                 {"id": 4, "method": "book.open", "params": {"book_id": plain_id}}],
+                FakeEngine(), repository=repository, service=service,
+            )
+
+            book = opened[0]["result"]["book"]
+            text = {s["id"]: s["text"] for c in book["chapters"] for s in c["segments"]}
+            self.assertEqual(
+                [(line["title"], line["level"], text[line["segment_id"]]) for line in book["toc"]],
+                [
+                    ("Lời tựa lạc chỗ", 1, "Bờ bên kia"),
+                    ("Phần Một: Những con đường", 1, "Phần sách"),
+                    ("Chương 1 Bến sông", 2, "Chương 1"),
+                    ("Con thuyền", 3, "Con thuyền"),
+                    ("Mái chèo", 4, "Mái chèo"),
+                    ("Mốc giữa đoạn", 3, "Câu có một mốc đứng trước chữ đầu."),
+                    ("Mốc không có trên trang", 3, "Chương 1"),
+                    ("Chương 2 Bờ bên kia", 2, "Bờ bên kia"),
+                ],
+            )
+            self.assertEqual(opened[1]["result"]["book"]["toc"], [])
+
     def test_an_epub_and_a_pdf_land_in_the_same_library(self) -> None:
         """Two formats, one shelf. The Qt shell's own smoke asserted this and
         the pipe never did, so the assurance was about to leave with a shell
@@ -1634,7 +1685,7 @@ class ProtocolTests(unittest.TestCase):
                     label=None, caption_segment_id=None, duplicate_of=None,
                 ),
             )
-            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+            presentation = SimpleNamespace(contents=(), chapters=[SimpleNamespace(
                 chapter_id=book.chapters[0].id, figures=figures,
             )])
             service = SimpleNamespace(
@@ -1714,7 +1765,7 @@ class ProtocolTests(unittest.TestCase):
                     duplicate_of=None,
                 ),
             )
-            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+            presentation = SimpleNamespace(contents=(), chapters=[SimpleNamespace(
                 chapter_id=book.chapters[0].id, figures=figures,
             )])
             service = SimpleNamespace(
@@ -1799,7 +1850,7 @@ class ProtocolTests(unittest.TestCase):
                     label=None, caption_segment_id=None, duplicate_of=None,
                 ),
             )
-            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+            presentation = SimpleNamespace(contents=(), chapters=[SimpleNamespace(
                 chapter_id=book.chapters[0].id, figures=figures,
             )])
             service = SimpleNamespace(
@@ -1866,7 +1917,7 @@ class ProtocolTests(unittest.TestCase):
             source.write_bytes(b"fixture")
             repository.add_book(book, source)
             anchor_segment = book.chapters[0].segments[0]
-            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+            presentation = SimpleNamespace(contents=(), chapters=[SimpleNamespace(
                 chapter_id=book.chapters[0].id,
                 figures=(),
                 notes=(SimpleNamespace(
@@ -1942,7 +1993,7 @@ class ProtocolTests(unittest.TestCase):
             repository.add_book(book, source)
             anchor_segment = book.chapters[0].segments[0]
             notes_chapter = book.chapters[1]
-            presentation = SimpleNamespace(chapters=[
+            presentation = SimpleNamespace(contents=(), chapters=[
                 SimpleNamespace(
                     chapter_id=book.chapters[0].id,
                     figures=(),
@@ -1999,7 +2050,7 @@ class ProtocolTests(unittest.TestCase):
         repository.add_book(book, source)
         first, second = book.chapters[0].segments
         notes_chapter = book.chapters[1]
-        presentation = SimpleNamespace(chapters=[
+        presentation = SimpleNamespace(contents=(), chapters=[
             SimpleNamespace(
                 chapter_id=book.chapters[0].id, figures=(),
                 notes=(
@@ -2095,7 +2146,7 @@ class ProtocolTests(unittest.TestCase):
             source.write_bytes(b"fixture")
             repository.add_book(book, source)
             first, hidden, after = book.chapters[0].segments
-            presentation = SimpleNamespace(chapters=[SimpleNamespace(
+            presentation = SimpleNamespace(contents=(), chapters=[SimpleNamespace(
                 chapter_id=book.chapters[0].id,
                 figures=(), notes=(),
                 spoken_elsewhere=(hidden.id,),
@@ -2142,6 +2193,7 @@ class ProtocolTests(unittest.TestCase):
                 asset_path="OEBPS/images/one.png",
             )
             presentation = SimpleNamespace(
+                contents=(),
                 chapters=[SimpleNamespace(
                     chapter_id=book.chapters[0].id, figures=(figure,),
                 )],

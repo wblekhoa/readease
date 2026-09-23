@@ -161,6 +161,36 @@ const FIGURE_DATA: Record<string, string> = {
   "fig-sample-vi": FIGURE_WIDE,
 };
 
+/** The publisher's contents tree the harness answers with (HIG 3.25), laid
+ * over the chapters above: front matter, a part holding numbered chapters,
+ * sections and subsections pointing into the sampler chapter, a second part,
+ * back matter - every shape the numbering handles. `?empty=toc` answers
+ * none, and the column falls back to one line a chapter. */
+const TOC: Array<{ level: number; title: string; segment_id: string }> = [
+  { level: 1, title: "Bìa sách", segment_id: "ch-0-seg-h" },
+  { level: 1, title: "Lời giới thiệu", segment_id: "ch-1-seg-h" },
+  { level: 2, title: "Các nguyên tắc phổ quát của trải nghiệm người dùng", segment_id: "ch-1-seg-h" },
+  { level: 1, title: "Phần Một: NỀN MÓNG", segment_id: "ch-2-seg-0" },
+  { level: 2, title: "Chương 3 Bộ mẫu trình bày", segment_id: "ch-2-seg-0" },
+  { level: 3, title: "BA CON ĐƯỜNG VÀO UX", segment_id: "ch-2-seg-0" },
+  { level: 4, title: "Từ một nghề gần đó", segment_id: "ch-2-seg-1" },
+  { level: 4, title: "Cắt cho giọng đọc", segment_id: "ch-2-seg-2" },
+  { level: 3, title: "BA BƯỚC ĐỂ BẮT ĐẦU", segment_id: "ch-2-seg-6" },
+  { level: 4, title: "Hãy bắt đầu từ nguồn", segment_id: "ch-2-seg-7" },
+  { level: 2, title: "Chương 4", segment_id: "ch-3-seg-h" },
+  { level: 1, title: "Phần Hai: THỰC HÀNH", segment_id: "ch-4-seg-h" },
+  ...Array.from({ length: 22 }, (_, index) => [
+    { level: 2, title: `Chương ${index + 5} Bài tập ${String(index + 1).padStart(2, "0")}`, segment_id: `ch-${index + 4}-seg-h` },
+    ...(index % 4 === 0
+      ? [
+        { level: 3, title: "MỤC TIÊU", segment_id: `ch-${index + 4}-seg-1` },
+        { level: 3, title: "CÁCH LÀM", segment_id: `ch-${index + 4}-seg-3` },
+      ]
+      : []),
+  ]).flat(),
+  { level: 1, title: "Lời cảm ơn", segment_id: "ch-25-seg-3" },
+];
+
 const BOOK = {
   id: "book-ux",
   title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo",
@@ -799,7 +829,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     }
     case "book.open":
       return {
-        book: BOOK,
+        book: { ...BOOK, toc: isEmpty("toc") ? [] : TOC },
         annotations: isEmpty("notes") ? [] : ANNOTATIONS,
         progress: { segment_id: "ch-2-seg-1" },
       };

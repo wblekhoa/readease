@@ -15,7 +15,7 @@ from vieneu_reader.importers.epub_presentation import (
     load_epub_presentation,
 )
 
-from tests.importers.epub_fixture import make_epub, make_png
+from tests.importers.epub_fixture import make_epub, make_epub_with_contents, make_png
 
 
 class EpubImportTests(unittest.TestCase):
@@ -1163,3 +1163,77 @@ class CoverTests(unittest.TestCase):
         self.assertEqual(_jpeg_dimensions(payload)[1], COVER_HEIGHT_PX)
         self.assertLess(len(payload), len(big.getvalue()))
 
+
+
+class ContentsTreeTests(unittest.TestCase):
+    """The publisher's contents tree, placed on the stored segments (HIG 3.25).
+
+    An overlay, never a recut: the book is cut into chapters and segments
+    exactly as it was, and every line of the tree points INTO them."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _contents(self, navigation="nav", **kwargs):
+        path = make_epub_with_contents(self.root, navigation=navigation, **kwargs)
+        book = import_epub(path)
+        text = {s.id: s.text for c in book.chapters for s in c.segments}
+        presentation = load_epub_presentation(path, book)
+        return book, [(e.title, e.level, text[e.segment_id]) for e in presentation.contents]
+
+    def test_each_line_leads_to_its_own_passage(self):
+        _book, contents = self._contents()
+
+        self.assertEqual(contents, [
+            # The cover has no words: its line is left out, and the line
+            # under it moves up to level 1 rather than hang from nothing.
+            ("Lời tựa lạc chỗ", 1, "Bờ bên kia"),
+            ("Phần Một: Những con đường", 1, "Phần sách"),
+            ("Chương 1 Bến sông", 2, "Chương 1"),
+            # On the heading itself; on a wrapper around it; on an empty
+            # `<a>` before a paragraph's first word.
+            ("Con thuyền", 3, "Con thuyền"),
+            ("Mái chèo", 4, "Mái chèo"),
+            ("Mốc giữa đoạn", 3, "Câu có một mốc đứng trước chữ đầu."),
+            # An id the page does not have leads to the top of its chapter.
+            ("Mốc không có trên trang", 3, "Chương 1"),
+            ("Chương 2 Bờ bên kia", 2, "Bờ bên kia"),
+        ])
+
+    def test_an_epub_2_ncx_gives_the_same_tree(self):
+        _book, from_nav = self._contents("nav", name="nav.epub")
+        _book, from_ncx = self._contents("ncx", name="ncx.epub")
+
+        self.assertEqual(from_ncx, from_nav)
+
+    def test_a_book_without_a_tree_has_no_contents(self):
+        _book, contents = self._contents("none")
+
+        self.assertEqual(contents, [])
+
+    def test_a_broken_tree_costs_only_the_contents(self):
+        path = make_epub_with_contents(self.root, nav_override="<html><body><nav>")
+        book = import_epub(path)
+
+        presentation = load_epub_presentation(path, book)
+
+        self.assertEqual(presentation.contents, ())
+        self.assertEqual(len(presentation.chapters), len(book.chapters))
+
+    def test_the_book_is_cut_the_same_with_or_without_its_tree(self):
+        """Progress, highlights and the Apple Books pairing are keyed by
+        segment id: the tree must not move a single one."""
+        with_tree = import_epub(make_epub_with_contents(self.root, name="a.epub"))
+        without = import_epub(make_epub_with_contents(self.root, name="b.epub", navigation="none"))
+
+        def cut(book):
+            return [
+                (chapter.title, [(s.ordinal, s.text, s.kind, s.joint) for s in chapter.segments])
+                for chapter in book.chapters
+            ]
+
+        self.assertEqual(cut(with_tree), cut(without))

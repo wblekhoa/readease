@@ -101,6 +101,25 @@ class ChapterPresentation:
     #: keep their place in the book; the reading just does not say them
     #: twice.
     spoken_elsewhere: tuple[str, ...] = ()
+    #: Where the book's own anchors land: (element id, segment id) for every
+    #: id the source gave an element at or just before a block - what a line
+    #: of the contents pointing at `chapter.xhtml#section-2` leads to.
+    anchors: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ContentsEntry:
+    """One line of the publisher's contents (HIG 3.25).
+
+    An overlay on the chapters, never a change to them: progress, highlights
+    and the Apple Books pairing are keyed by segment id, so the tree points
+    INTO the stored segments instead of cutting the book anew. `level` is 1
+    for the outermost line and never more than one below the line before.
+    """
+
+    title: str
+    level: int
+    segment_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +127,10 @@ class BookPresentation:
     book_id: str
     source_hash: str
     chapters: tuple[ChapterPresentation, ...] = ()
+    #: The publisher's contents tree, when the book carries one (EPUB 3 nav,
+    #: EPUB 2 NCX) and its lines lead to text; empty otherwise, and the
+    #: shell lists the chapters as it always did.
+    contents: tuple[ContentsEntry, ...] = ()
 
     def chapter(self, chapter_id: str) -> ChapterPresentation | None:
         return next(

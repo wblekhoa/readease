@@ -2077,10 +2077,12 @@ class _Session:
             # the text itself is fine - it is the bookmark that is torn.
             progress = None
         figures_by_chapter: dict[str, list[dict[str, Any]]] = {}
+        contents: tuple[Any, ...] = ()
         if self._service is not None:
             presentation = self._service.presentation_for(
                 stored.book, stored.managed_path
             )
+            contents = presentation.contents
             for chapter in presentation.chapters:
                 figures_by_chapter[chapter.chapter_id] = [
                     {
@@ -2132,6 +2134,18 @@ class _Session:
                         ],
                     }
                     for chapter in stored.book.chapters
+                ],
+                # The publisher's contents tree (HIG 3.25): each line's title,
+                # its depth (1 the outermost) and the passage it leads to.
+                # Empty when the book has none; the shell then lists the
+                # chapters, as it always did.
+                "toc": [
+                    {
+                        "title": entry.title,
+                        "level": entry.level,
+                        "segment_id": entry.segment_id,
+                    }
+                    for entry in contents
                 ],
             },
             "annotations": [

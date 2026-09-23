@@ -91,6 +91,9 @@ export function ListRow({
   rowRef,
   active = false,
   dense = false,
+  inset = 0,
+  current = false,
+  name,
 }: {
   leading?: ReactNode;
   title: ReactNode;
@@ -107,6 +110,15 @@ export function ListRow({
   /** Navigation lists (a book's contents) trade padding for how many rows
    * fit on screen; content lists keep the roomier default. */
   dense?: boolean;
+  /** Pixels the row's content steps in - a level of a tree. Inside the
+   * button, so the row's wash still runs the full width (HIG 3.25). */
+  inset?: number;
+  /** "You are here" for a screen reader: the row of the place being read
+   * (`aria-current="location"`), not merely a chosen one. */
+  current?: boolean;
+  /** The row's name when its visible words do not read aloud as one - a
+   * number in a gutter beside a title runs together ("3.1BA…"). */
+  name?: string;
 }) {
   const shape = dense
     // 8 px above and below, not 6: a chapter title on two lines needs the
@@ -123,7 +135,10 @@ export function ListRow({
     >
       <button
         onClick={onPress}
+        aria-current={current ? "location" : undefined}
+        aria-label={name}
         className={`flex min-w-0 flex-1 items-center gap-3 text-left ${shape}`}
+        style={inset ? { paddingInlineStart: `calc(${inset}px + ${dense ? "0.625rem" : "0.75rem"})` } : undefined}
       >
         {leading && <span className="shrink-0 text-ink-mute">{leading}</span>}
         <span className="min-w-0 flex-1">
