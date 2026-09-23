@@ -267,14 +267,29 @@ export function InlineIconButton({
   );
 }
 
+/** A select's name, required (HIG 4.2): with none, VoiceOver says "pop up
+ * button" and nothing else. Six selects shipped that way, their row's
+ * title beside them but not tied to them, and axe never saw them - no
+ * render cell opened the panels they were in (23/09). */
+type SelectName =
+  /** The id of the words on screen that name it - a row's title, which
+   * `GroupedRow` hands to its trailing control. Preferred: what VoiceOver
+   * says is then exactly what the eye reads. */
+  | { labelledBy: string; label?: never }
+  /** The name in words, for a select with nothing beside it to name it
+   * (the language pill in the column's foot). */
+  | { label: string; labelledBy?: never };
+
 /** The one styled <select>. The chevron and appearance reset live in
  * index.css, because WKWebView ignores radius on native selects. */
 export function Select({
   className = "",
   pill = false,
   ghost = false,
+  label,
+  labelledBy,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & {
+}: Omit<SelectHTMLAttributes<HTMLSelectElement>, "aria-label" | "aria-labelledby"> & SelectName & {
   pill?: boolean;
   /** No stroke and no fill until hovered - the select as chrome, beside
    * the icon buttons it stands with (owner, 16/09: the language in the
@@ -283,6 +298,8 @@ export function Select({
 }) {
   return (
     <select
+      aria-label={label}
+      aria-labelledby={labelledBy}
       className={`${pill ? "h-8 rounded-full px-3" : "h-[30px] rounded-[var(--ctl-radius)] px-2"} border ${
         ghost ? "border-transparent bg-transparent text-ink-mute hover:text-ink" : "border-edge-strong bg-paper text-ink"
       } text-sm hover:bg-wash disabled:text-ink-faint ${className}`}
