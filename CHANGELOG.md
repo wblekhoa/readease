@@ -14,6 +14,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   Reading now. Documents being read used to be ordered by when they were
   imported, so one you listened to yesterday could sit below one you left
   a week ago.
+- The contents follow the document's own tree - parts, chapters, sections
+  and the sections inside them - and number it: a chapter keeps the number
+  it carries, a part gets a Roman numeral, a section counts as 3.1 or
+  3.1.2. Each line takes you to its exact passage, and the one you are in
+  is lit. Documents already in the library get it too; nothing is imported
+  again. Before, the contents were one flat line per file, and the sections
+  inside a file were missing.
 
 ## 0.1.15
 
