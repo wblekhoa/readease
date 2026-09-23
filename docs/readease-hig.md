@@ -1573,6 +1573,58 @@ chỗ hiện.
 - **Don't**: hằng số nhịp viết tay không đo · tính ở trang từ chữ hiển thị (khác chuỗi engine nói: chú thích, "Xem
   hình", chữ hét đã hạ) · nói "còn" mà không nói phạm vi khi phạm vi là một chương · em dash trong chuỗi.
 
+### 3.25 Mục lục — cây của nhà xuất bản, đánh số, phân cấp (23/09)
+
+Chủ 23/09: "Phân tích và nâng cấp mục lục được tối ưu nhất có thể nhé. có đánh số tự động và phân cấp heading hợp lý".
+
+**Đo trước khi làm.** Mục lục cũ là MỘT hàng cho mỗi tệp trong spine, tên = heading đầu tiên của tệp; importer bỏ qua
+`nav`/NCX hoàn toàn. Trên một EPUB thật có nav 4 cấp — 231 mục (9 · 28 · 69 · 125), 29 tệp spine — ReadEase hiện 27 hàng
+phẳng: không cấp bậc, mất cả "Chương N" (tệp mở bằng một dòng nhãn "Chương 1" rồi mới tới `<h1>` tên chương), và hơn 200
+mục con — vốn trỏ `tệp#anchor` vào giữa tệp — không có mặt. Chính Apple Books vẽ nav đó lệch cấp (một mục cấp 3 in đậm
+sát lề như cấp 1), nên "hợp lý" ở đây là **vẽ đúng cây nhà xuất bản đã viết**, không bắt chước Apple Books.
+
+**1. Nguồn: cây nav là chuẩn, chương giữ nguyên.** EPUB 3 `nav[epub:type=toc]` (các `ol` lồng nhau), EPUB 2 NCX (các
+`navPoint` lồng nhau). Mỗi dòng trỏ `tệp#anchor` → đoạn mở bằng (hoặc đứng ngay sau) phần tử mang `id` đó — trên chính
+heading, trên thẻ bọc nó, hay một `<a id>` rỗng trước chữ đầu đoạn. **Chương và đoạn KHÔNG đổi**: tiến độ, highlight, liên
+kết Apple Books đều gắn vào segment id, nên cây là một LỚP PHỦ lên các đoạn đã lưu (test: có hay không có cây, sách được cắt
+y hệt). Dòng trỏ vào tệp không có chữ (bìa) bị bỏ; dòng con của nó dời lên, và không dòng nào sâu hơn dòng trước nó quá
+một bậc. `id` không có trên trang → đầu chương đó. Nav hỏng hay không có → như cũ: một hàng mỗi chương.
+
+**2. Không lưu — dựng khi mở.** Cây là dữ liệu DẪN XUẤT, dựng trong cùng lớp presentation đã dựng hình minh hoạ: đọc lại bản
+EPUB thư viện giữ (kiểm hash), đối chiếu từng khối chữ với đoạn đã lưu, giữ trong bộ nhớ cho cả phiên (đo 138 ms cho
+5 327 đoạn). Không ghi gì vào DB, không đổi định dạng lưu — sách nhập từ trước có mục lục ngay, và một bản build cũ đọc thư
+viện này không thấy gì lạ. PDF: vẫn một hàng mỗi bookmark cấp 1; outline sâu hơn là bước sau.
+
+**3. Đánh số tự động** (`ui/contents.ts`, test node):
+- **Chương**: dòng mang "Chương N" / "Chapter N" (số, chữ, La Mã) ở **cấp chương** — cấp các nhãn ấy xuất hiện nhiều nhất
+  — giữ đúng số N của sách. Sách không có nhãn nào: các dòng cấp cao nhất được đánh 1…N, trừ phần mở đầu/kết thúc mà tên
+  nói rõ (Lời bạt, Lời cảm ơn, Chú thích, Preface, Notes…).
+- **Phần**: "Phần Một/Hai…", "Part 1…", "Quyển…" ở cấp CAO HƠN cấp chương → số La Mã I, II, III. Cùng chữ "Phần" mà nằm sâu
+  hơn cấp chương là một mục thường (nav thật có một mục "Phần Bốn…" nằm bên trong một chương).
+- **Mục con** của một chương có số: `N.1`, `N.2`, rồi `N.1.1`…, theo thứ tự anh em.
+- **Không đánh số**: mọi thứ trước Phần/Chương đầu tiên và sau Chương cuối ở cấp Phần/Chương (lời bạt, lời mở đầu, phần kết,
+  lời cảm ơn, chú thích, phụ lục…), cùng con của chúng.
+- Nhãn "Chương 1 " / "Phần Một: " được **bỏ khỏi chữ hiển thị** khi số đã đứng trên dòng (tránh "Chương 1 … 1"). Tên chỉ có
+  mỗi nhãn ("Chương 7") thì giữ nguyên. **Tên đọc** (VoiceOver): dòng đã bỏ nhãn đọc lại đúng tên gốc ("Chương 1 …", "Phần
+  Một: …" — dễ nghe hơn một chữ "I" La Mã), dòng khác đọc "số, tên" — số và chữ trên cùng một dòng không tự có khoảng
+  ngắt, trình đọc sẽ nói liền "BA… 3.1".
+- Chữ HOA của tác giả **giữ nguyên** — đổi sang chữ thường sẽ hạ tên riêng (một địa danh, một khái niệm viết hoa).
+
+**4. Hình**: số đứng **bên PHẢI**, canh phải, `text-xs` `tabular-nums` `ink-mute`, ngang dòng đầu của tên (chủ 23/09: "nên
+đánh số bên phải nhé. vậy thì text sẽ dễ đọc hơn" — bản đầu đặt số trong một cột bên trái, mắt phải nhảy qua số mới tới
+chữ; như Apple Books đặt số trang). Chữ mỗi cấp bắt đầu ngay ở lề của cấp nó; thụt **16 px** mỗi cấp dưới cấp chương
+(bậc spacing 4 của DS — không còn cột số làm bậc thang, lề là thứ duy nhất vẽ cây). Phần (hay dòng cấp Phần CÓ
+dòng con — "Phần mở đầu" và các mục của nó) `font-semibold`, có khoảng trống phía trên vì nó mở một nhóm; dòng lẻ ở cấp
+đó ("Lời bạt") vẽ như một chương. Chương
+`font-medium`, mục con chữ thường, từ hai cấp dưới chương trở đi `ink-mute` — một cỡ `text-sm` cho cả cây (thang chữ
+không có bậc giữa xs và sm; phân cấp bằng độ đậm, màu, số và thụt). Hai dòng rồi cắt (như cũ).
+Dòng **đang ở** tô `tint` + `aria-current="location"`, cuộn tới khi mở cột; trên dòng đang ở mọi chữ là `ink` (`ink-mute`
+trên `tint` đo dưới 4,5:1 ở nền tối — axe bắt 23/09). Chọn dòng nào: **trang** — dòng vừa bấm, khi đoạn của nó còn trên
+trang (cú nhảy thường rơi giữa trang, dưới đuôi mục trước); không thì dòng đầu tiên bắt đầu trên trang này; không thì dòng
+mà trang mở ra bên trong. **Cuộn** — dòng cuối cùng có đoạn đã qua GIỮA vùng đọc (chỗ cú nhảy đặt đoạn tới, `block:
+"center"`), dòng vừa bấm khi đó là đoạn của nó. Nhiều dòng chung một đoạn mà không dòng nào vừa bấm → dòng sâu nhất.
+Bấm = nhảy tới đúng đoạn của dòng (không chỉ đầu chương); đang đọc thì đọc tiếp từ đó.
+
 ### 3.13 Giọng đọc: một nơi chọn, một nơi đổi (03/09)
 
 Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:

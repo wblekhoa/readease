@@ -18,7 +18,7 @@
  * everywhere else): drag to copy, or hand the selection to the voice through
  * the pill. A plain click on a paragraph still moves the voice.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
@@ -28,6 +28,7 @@ import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
 import { matchRanges } from "../ui/textSearch";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow } from "../ui/patterns";
+import { contentsRows, currentRow, type ContentsRow, type TocEntry } from "../ui/contents";
 import { Presence, scrollBehavior } from "../ui/motion";
 import type { SidebarTab } from "../ui/sidebarState";
 import { CloseIcon, NoteIcon } from "../ui/icons";
@@ -93,7 +94,14 @@ type BookAnnotation = {
   style: number;
 };
 type OpenedBook = {
-  book: { id: string; title: string; chapters: BookChapter[] };
+  book: {
+    id: string;
+    title: string;
+    chapters: BookChapter[];
+    /** The publisher's contents tree (HIG 3.25); empty or absent when the
+     * book has none, and the column lists the chapters instead. */
+    toc?: TocEntry[];
+  };
   /** Highlights brought over from Apple Books, pinned to segments. */
   annotations?: BookAnnotation[];
   progress: { segment_id: string | null };
@@ -204,6 +212,68 @@ type Bubble = {
   bottom?: number;
 };
 
+/** One line of the contents tree (HIG 3.25): its words starting at the
+ * edge of their level, stepped in 16 px for each level below the chapters,
+ * in the weight of their role; the number on the RIGHT, level with the first
+ * line (owner, 23/09: "nên đánh số bên phải nhé. vậy thì text sẽ dễ đọc
+ * hơn" - a left-hand column made the eye cross the number to reach the
+ * words). A part opens a group, so it gets air above; lines two levels below
+ * a chapter fall back to `ink-mute` - one size for the whole tree (the type
+ * scale has no step between xs and sm), told apart by weight, colour and
+ * step. */
+function ContentsLine({
+  row,
+  first,
+  active,
+  rowRef,
+  onPress,
+}: {
+  row: ContentsRow;
+  first: boolean;
+  active: boolean;
+  rowRef?: RefObject<HTMLDivElement | null>;
+  onPress: () => void;
+}) {
+  const below = Math.max(0, row.sub);
+  // Spoken: the book's own words where the number replaced them on screen
+  // ("Chương 1 …", "Phần Một: …" - better aloud than a Roman "I"), else the
+  // number and the title with a pause between them.
+  const name = row.label !== row.entry.title
+    ? row.entry.title
+    : row.number ? `${row.number}, ${row.label}` : undefined;
+  // On the lit row everything is ink: `ink-mute` on the `tint` wash measured
+  // under 4.5:1 in dark (axe, 23/09), and the wash already says "here".
+  const words =
+    row.role === "part" ? "text-sm font-semibold text-ink"
+    : row.role === "chapter" ? "text-sm font-medium text-ink"
+    : below === 1 ? "text-sm text-ink"
+    : `text-sm ${active ? "text-ink" : "text-ink-mute"}`;
+  return (
+    <>
+      {row.role === "part" && !first && <div aria-hidden="true" className="h-2 shrink-0" />}
+      <ListRow
+        dense
+        active={active}
+        current={active}
+        rowRef={rowRef}
+        inset={below * 16}
+        name={name}
+        onPress={onPress}
+        title={
+          <>
+            <span className={`min-w-0 flex-1 line-clamp-2 leading-snug ${words}`}>{row.label}</span>
+            {row.number !== null && (
+              <span className={`shrink-0 text-xs tabular-nums ${active ? "text-ink" : "text-ink-mute"}`}>
+                {row.number}
+              </span>
+            )}
+          </>
+        }
+      />
+    </>
+  );
+}
+
 export function Reader({
   bookId,
   language,
@@ -265,6 +335,13 @@ export function Reader({
   const [openError, setOpenError] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [seenChapter, setSeenChapter] = useState<string | null>(null);
+  /** The last passage of the contents tree the scroll has carried past the
+   * reading line - the section the eye is in, finer than the chapter. */
+  const [seenEntry, setSeenEntry] = useState<string | null>(null);
+  /** The contents line last pressed: on pages it stays lit while its passage
+   * is on the page - the jump often lands mid-page, under the tail of the
+   * section before it. */
+  const [pickedRow, setPickedRow] = useState<number | null>(null);
   const [following, setFollowing] = useState(true);
   const [zoomed, setZoomed] = useState<{ source: string; alt: string } | null>(null);
   /* A note read where it sits, without opening anything.
@@ -330,6 +407,13 @@ export function Reader({
     () => opened?.book.chapters.flatMap((chapter) => chapter.segments.map((s) => s.id)) ?? [],
     [opened],
   );
+  const flatIndex = useMemo(() => new Map(flat.map((id, index) => [id, index])), [flat]);
+  // The contents as numbered rows (HIG 3.25), and the passages they lead to -
+  // marked on the page so the scroll can tell which line the eye is under.
+  const tocRows = useMemo(() => contentsRows(opened?.book.toc ?? []), [opened]);
+  const tocTargets = useMemo(() => new Set(tocRows.map((row) => row.entry.segment_id)), [tocRows]);
+  // A pressed line belongs to the tree it was pressed in.
+  useEffect(() => { setPickedRow(null); }, [tocRows]);
   const chapterOf = useCallback((segmentId: string): number => {
     const index = opened?.book.chapters.findIndex((chapter) =>
       chapter.segments.some((segment) => segment.id === segmentId),
@@ -604,6 +688,18 @@ export function Reader({
         if (heading.getBoundingClientRect().top <= line) current = chapter.id;
       }
       setSeenChapter(current ?? opened.book.chapters[0]?.id ?? null);
+      // The contents' own lines: the last one whose passage has reached the
+      // MIDDLE of the page - where a jump from the contents puts it
+      // (`jumpTo`, block "center"). In document order: the first one below
+      // the middle ends the search.
+      const middle = root.getBoundingClientRect().top + insetTop
+        + (root.clientHeight - insetTop - insetBottom) / 2;
+      let entry: string | null = null;
+      for (const element of column.current?.querySelectorAll<HTMLElement>("[data-toc]") ?? []) {
+        if (element.getBoundingClientRect().top > middle) break;
+        entry = element.dataset.segment ?? null;
+      }
+      setSeenEntry(entry);
       if (currentSegment) {
         const spoken = column.current?.querySelector(
           `[data-segment="${currentSegment}"]`,
@@ -691,6 +787,38 @@ export function Reader({
     opened.book.chapters.find((chapter) =>
       chapter.segments.some((segment) => segment.id === marker),
     )?.id;
+  // The same in the tree's own terms (HIG 3.25). On pages: the line last
+  // pressed while its passage is on the page, else the first line that
+  // starts on this page, else the line the page opens inside. In a scroll:
+  // the last line whose passage has reached the middle (the top of the book
+  // before any) - the pressed one while it is that line's passage. Where
+  // several lines share a passage and none was pressed, the deepest is lit.
+  const orderOf = (id: string) => flatIndex.get(id) ?? -1;
+  let activeRow = -1;
+  if (tocRows.length && paged) {
+    const onPage = new Set(shown);
+    const picked = pickedRow !== null ? tocRows[pickedRow] : undefined;
+    const starts = tocRows
+      .filter((row) => onPage.has(row.entry.segment_id))
+      .map((row) => orderOf(row.entry.segment_id));
+    if (picked && onPage.has(picked.entry.segment_id)) activeRow = pickedRow!;
+    else if (starts.length) activeRow = currentRow(tocRows, orderOf, Math.min(...starts));
+    else if (shown[0] ?? marker) activeRow = currentRow(tocRows, orderOf, orderOf((shown[0] ?? marker)!));
+  } else if (tocRows.length) {
+    const at = seenEntry ?? flat[0] ?? marker;
+    const picked = pickedRow !== null ? tocRows[pickedRow] : undefined;
+    if (picked && picked.entry.segment_id === at) activeRow = pickedRow!;
+    else if (at) activeRow = currentRow(tocRows, orderOf, orderOf(at));
+  }
+  const goToPassage = (segmentId: string) => {
+    if (paged) {
+      setChapterIndex(chapterOf(segmentId));
+      setTarget({ segmentId, source: "contents" });
+    } else {
+      jumpTo(segmentId);
+    }
+    if (reading) onReadFrom(segmentId);
+  };
   /** A paragraph's text with EVERY highlight it carries marked.
    *
    * A paragraph often holds more than one - two sentences marked on
@@ -876,6 +1004,7 @@ export function Reader({
         <p
           data-segment={segment.id}
           data-chapter={segment.kind === "heading" ? chapter.id : undefined}
+          data-toc={tocTargets.has(segment.id) ? "" : undefined}
           /* Where the voice is, said to the screen reader as well as drawn
              (HIG 4.2, point 4): the dotted line is for the eye only. */
           aria-current={segment.id === marker ? "true" : undefined}
@@ -924,7 +1053,17 @@ export function Reader({
    * stays, because a column is not a thing that disappears when used. */
   const contents = showToc && (
     <nav aria-label={text("reader.toc_title")} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1.5 pb-6">
-        {opened.book.chapters.map((chapter, index) => (
+        {tocRows.length > 0 && tocRows.map((row, index) => (
+          <ContentsLine
+            key={`${index}-${row.entry.segment_id}`}
+            row={row}
+            first={index === 0}
+            active={index === activeRow}
+            rowRef={index === activeRow ? here : undefined}
+            onPress={() => { setPickedRow(index); goToPassage(row.entry.segment_id); }}
+          />
+        ))}
+        {tocRows.length === 0 && opened.book.chapters.map((chapter, index) => (
           <ListRow
             key={chapter.id}
             dense

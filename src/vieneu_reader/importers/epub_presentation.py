@@ -22,6 +22,7 @@ from vieneu_reader.domain.content_patterns import is_image_annotation
 from vieneu_reader.domain.presentation import (
     BookPresentation,
     ChapterPresentation,
+    ContentsEntry,
     FigureRef,
     NoteRef,
     figure_label,
@@ -32,6 +33,7 @@ from .epub import (
     MAX_ARCHIVE_BYTES,
     MAX_MANIFEST_ITEMS,
     MAX_SPINE_ITEMS,
+    MAX_TITLE_CHARS,
     SPEECH_SEGMENT_MAX_CHARS,
     _IGNORED_TAGS,
     _READING_TAGS,
@@ -50,6 +52,10 @@ from .errors import CorruptBookError
 
 
 MAX_FIGURE_OCCURRENCES = 20_000
+#: The contents tree (HIG 3.25). A nav longer or deeper than this is not a
+#: book's contents; what fits is kept.
+MAX_CONTENTS_ENTRIES = 4_000
+MAX_CONTENTS_DEPTH = 8
 #: A book with more references than this is not a book with footnotes.
 MAX_NOTE_OCCURRENCES = 5_000
 #: A note longer than this stopped being a note: read aloud in the middle of
@@ -85,6 +91,10 @@ class _TextEvent:
     #: Its words have already been read, as a footnote, at the sentence that
     #: referenced it. The block stays on the page; the voice skips it.
     spoken: bool = False
+    #: The ids of the elements that open this block or wait just before it -
+    #: `<h2 id>`, `<section id><h2>`, `<p><a id/>…` - which is where a line
+    #: of the contents pointing at `chapter.xhtml#id` leads (HIG 3.25).
+    anchors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +200,15 @@ def _chapter_events(
 
     events: list[_Event] = []
     occurrence = 0
+    # Ids met since the last block: they name the NEXT one - a wrapper's id,
+    # or an empty `<a id>` standing before a heading.
+    waiting: list[str] = []
+
+    def element_id(element: ElementTree.Element) -> str | None:
+        return next(
+            (value for key, value in element.attrib.items() if _local_name(key) == "id" and value),
+            None,
+        )
 
     def images_within(
         element: ElementTree.Element,
@@ -223,15 +242,28 @@ def _chapter_events(
         if tag in _IGNORED_TAGS or _is_hidden(element):
             return
         classes = ancestor_classes | _class_names(element)
+        own = element_id(element)
+        if own:
+            waiting.append(own)
         if tag in _READING_TAGS:
             text = _visible_inner_text(element)
+            inner = [
+                found for found in (element_id(node) for node in element.iter() if node is not element)
+                if found
+            ]
             if text:
-                events.append(_TextEvent(text, id(element) in spoken_blocks))
+                events.append(_TextEvent(
+                    text, id(element) in spoken_blocks, anchors=tuple(waiting + inner),
+                ))
+                waiting.clear()
+            else:
+                waiting.extend(inner)
             events.extend(images_within(element, ancestor_classes))
             return
         normalized = normalize_paragraph(element.text or "")
         if normalized:
-            events.append(_TextEvent(normalized))
+            events.append(_TextEvent(normalized, anchors=tuple(waiting)))
+            waiting.clear()
         for child in element:
             child_tag = _local_name(child.tag)
             if child_tag == "img" and not _is_hidden(child):
@@ -248,7 +280,8 @@ def _chapter_events(
                 visit(child, classes)
             normalized_tail = normalize_paragraph(child.tail or "")
             if normalized_tail:
-                events.append(_TextEvent(normalized_tail))
+                events.append(_TextEvent(normalized_tail, anchors=tuple(waiting)))
+                waiting.clear()
 
     visit(root, frozenset())
     return tuple(events)
@@ -697,6 +730,7 @@ def _chapter_presentation(
     image_anchors: list[tuple[_AcceptedImage, int | None]] = []
     note_marks: list[tuple[int, int, int]] = []
     spoken_indexes: list[int] = []
+    anchor_indexes: dict[str, int] = {}
     previous_segment_index: int | None = None
     for event in events:
         if isinstance(event, _TextEvent):
@@ -734,6 +768,9 @@ def _chapter_presentation(
                     note_marks.append((-1, -1, size))
             if event.spoken:
                 spoken_indexes.extend(range(base, base + len(parts)))
+            if parts:
+                for anchor in event.anchors:
+                    anchor_indexes.setdefault(anchor, base)
             generated_text.extend(parts)
             if parts:
                 previous_segment_index = len(generated_text) - 1
@@ -832,6 +869,7 @@ def _chapter_presentation(
             tuple(figures),
             tuple(notes),
             tuple(chapter.segments[index].id for index in spoken_indexes),
+            tuple((anchor, chapter.segments[index].id) for anchor, index in anchor_indexes.items()),
         ),
         next_number,
     )
@@ -990,6 +1028,9 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
         frozen_blocks = frozenset(spoken_blocks)
         dimensions: dict[str, tuple[int, int] | None] = {}
         presentations: list[ChapterPresentation] = []
+        # Which chapter each file became - the first time, if the spine
+        # names it twice - for the contents lines that point at it.
+        chapter_of_member: dict[str, int] = {}
         chapter_index = 0
         next_figure_number = 1
         for item_id in spine:
@@ -1029,10 +1070,164 @@ def load_epub_presentation(path: Path, book: BookDocument) -> BookPresentation:
                 first_figure_number=next_figure_number,
             )
             presentations.append(presentation)
+            chapter_of_member.setdefault(member, chapter_index)
             chapter_index += 1
         if chapter_index != len(book.chapters):
             raise CorruptBookError("Spine EPUB không còn khớp bản đã nhập.")
-        return BookPresentation(book.id, book.source_hash, tuple(presentations))
+        contents = _contents(archive, book, chapter_of_member, presentations)
+        return BookPresentation(
+            book.id, book.source_hash, tuple(presentations), contents,
+        )
+
+
+def _nav_entries(root: ElementTree.Element) -> list[tuple[str, int, str]]:
+    """EPUB 3: the `nav` whose `epub:type` names `toc`, as nested `ol`s -
+    (title, depth, href) in reading order, depth 1 the outermost."""
+
+    toc = next(
+        (
+            element for element in root.iter()
+            if _local_name(element.tag) == "nav"
+            and "toc" in " ".join(
+                value for key, value in element.attrib.items() if _local_name(key) == "type"
+            ).split()
+        ),
+        None,
+    )
+    top = next((node for node in toc.iter() if _local_name(node.tag) == "ol"), None) if toc is not None else None
+    entries: list[tuple[str, int, str]] = []
+
+    def walk(ol: ElementTree.Element, depth: int) -> None:
+        for item in ol:
+            if _local_name(item.tag) != "li" or len(entries) >= MAX_CONTENTS_ENTRIES:
+                continue
+            label = next((node for node in item if _local_name(node.tag) in ("a", "span")), None)
+            if label is not None:
+                title = " ".join("".join(label.itertext()).split())
+                href = label.attrib.get("href", "") if _local_name(label.tag) == "a" else ""
+                if title:
+                    entries.append((title, min(depth, MAX_CONTENTS_DEPTH), href))
+            for node in item:
+                if _local_name(node.tag) == "ol":
+                    walk(node, depth + 1)
+
+    if top is not None:
+        walk(top, 1)
+    return entries
+
+
+def _ncx_entries(root: ElementTree.Element) -> list[tuple[str, int, str]]:
+    """EPUB 2: `navMap` > nested `navPoint`s, each a `navLabel` and a `content`.
+    (`_local_name` folds case, as HTML tags need: "navpoint", not "navPoint".)"""
+
+    nav_map = next((node for node in root.iter() if _local_name(node.tag) == "navmap"), None)
+    entries: list[tuple[str, int, str]] = []
+
+    def walk(parent: ElementTree.Element, depth: int) -> None:
+        for point in parent:
+            if _local_name(point.tag) != "navpoint" or len(entries) >= MAX_CONTENTS_ENTRIES:
+                continue
+            label = next((node for node in point if _local_name(node.tag) == "navlabel"), None)
+            content = next((node for node in point if _local_name(node.tag) == "content"), None)
+            title = " ".join("".join(label.itertext()).split()) if label is not None else ""
+            href = content.attrib.get("src", "") if content is not None else ""
+            if title:
+                entries.append((title, min(depth, MAX_CONTENTS_DEPTH), href))
+            walk(point, depth + 1)
+
+    if nav_map is not None:
+        walk(nav_map, 1)
+    return entries
+
+
+def _navigation(archive: ZipFile) -> tuple[str, list[tuple[str, int, str]]] | None:
+    """The book's own contents: the EPUB 3 nav if it has one with entries,
+    else the EPUB 2 NCX; with the member it was read from, which its hrefs
+    are relative to."""
+
+    package_path, package_root = _package_document(archive)
+    ncx_id = next(
+        (node.attrib.get("toc") for node in package_root.iter() if _local_name(node.tag) == "spine"),
+        None,
+    )
+    nav_member: str | None = None
+    ncx_member: str | None = None
+    for element in package_root.iter():
+        if _local_name(element.tag) != "item" or not element.attrib.get("href"):
+            continue
+        properties = element.attrib.get("properties", "").split()
+        if "nav" in properties and nav_member is None:
+            nav_member = _resolve_href(package_path, element.attrib["href"])
+        elif element.attrib.get("media-type") == "application/x-dtbncx+xml" and (
+            ncx_member is None or element.attrib.get("id") == ncx_id
+        ):
+            ncx_member = _resolve_href(package_path, element.attrib["href"])
+    for member, read in ((nav_member, _nav_entries), (ncx_member, _ncx_entries)):
+        if member is None:
+            continue
+        entries = read(_parse_xml(_read_member(archive, member), "EPUB navigation"))
+        if entries:
+            return member, entries
+    return None
+
+
+def _compacted(levels: list[int]) -> list[int]:
+    """The first line at level 1, and none more than one step below the line
+    before it - a line whose parent was left out moves up to where it can be
+    seen to belong."""
+
+    out: list[int] = []
+    for level in levels:
+        out.append(max(1, min(level, out[-1] + 1 if out else 1)))
+    return out
+
+
+def _contents(
+    archive: ZipFile,
+    book: BookDocument,
+    chapter_of_member: dict[str, int],
+    presentations: list[ChapterPresentation],
+) -> tuple[ContentsEntry, ...]:
+    """The publisher's contents tree, placed on the stored segments (HIG 3.25).
+
+    Best effort on purpose: the tree is a way around the book, and a broken
+    or missing one costs nothing but itself - the figures and notes this
+    presentation carries still stand, and the shell lists the chapters as it
+    always did. A line that points at a file with no words (the cover) is
+    left out; one that names an id the page does not have leads to the top
+    of its chapter.
+    """
+
+    try:
+        found = _navigation(archive)
+    except (CorruptBookError, ValueError, KeyError, ElementTree.ParseError):
+        return ()
+    if found is None:
+        return ()
+    member, entries = found
+    anchors = [dict(chapter.anchors) for chapter in presentations]
+    placed: list[tuple[str, int, str]] = []
+    for title, depth, href in entries:
+        if not href:
+            continue
+        try:
+            target = _resolve_href(member, href)
+            fragment = unquote(urlsplit(href).fragment)
+        except (CorruptBookError, ValueError):
+            continue
+        index = chapter_of_member.get(target)
+        if index is None:
+            continue
+        first = book.chapters[index].segments[0].id
+        segment_id = anchors[index].get(fragment, first) if fragment else first
+        words = normalize_paragraph(title)[:MAX_TITLE_CHARS]
+        if words:
+            placed.append((words, depth, segment_id))
+    levels = _compacted([depth for _title, depth, _segment in placed])
+    return tuple(
+        ContentsEntry(title, level, segment_id)
+        for (title, _depth, segment_id), level in zip(placed, levels)
+    )
 
 
 def load_epub_assets(
