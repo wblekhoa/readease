@@ -37,6 +37,7 @@ export const TEXT = {
   "player.pause": ["Tạm dừng", "Pause"],
   "player.resume": ["Tiếp tục", "Resume"],
   "player.stop": ["Dừng", "Stop"],
+  "player.transport": ["Điều khiển lượt đọc", "Reading controls"],
   "reader.back": ["Quay lại thư viện", "Back to library"],
   "reader.open_failed": [
     "Không mở được tài liệu này. Tài liệu vẫn còn trong thư viện - lần này ứng dụng chưa đọc được nội dung.",

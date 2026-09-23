@@ -104,6 +104,9 @@ function ScanEntry({
         <div className="flex items-center gap-1">
           <button
             onClick={onToggle}
+            /* Open or shut, said as well as drawn: the chevron turns for the
+               eye only (HIG 4.2, point 1). */
+            aria-expanded={open}
             title={open ? text("external.close_text") : text("external.open_text")}
             className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
           >
