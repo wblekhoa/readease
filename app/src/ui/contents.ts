@@ -109,7 +109,7 @@ export function marker(title: string): Marker | null {
 }
 
 /** Front and back matter a book without numbered chapters names. */
-const MATTER = /^(bìa|bìa sách|lời bạt|lời nói đầu|lời giới thiệu|lời tựa|lời mở đầu|phần mở đầu|mở đầu|dẫn nhập|lời kết|phần kết|lời cảm ơn|lời cám ơn|chú thích|ghi chú|phụ lục|tài liệu tham khảo|thư mục|mục lục|về tác giả|cover|title page|copyright|contents|table of contents|preface|foreword|prologue|epilogue|afterword|acknowledg(e)?ments|notes|endnotes|appendix|bibliography|index|glossary|about the author)\b/iu;
+const MATTER = /^(bìa|bìa sách|lời bạt|lời nói đầu|lời giới thiệu|lời tựa|lời mở đầu|phần mở đầu|mở đầu|dẫn nhập|lời kết|phần kết|lời cảm ơn|lời cám ơn|chú thích|ghi chú|phụ lục|tài liệu tham khảo|thư mục|mục lục|về tác giả|cover|title page|copyright|contents|table of contents|preface|foreword|prologue|epilogue|afterword|acknowledg(e)?ments|notes|endnotes|appendix|bibliography|index|glossary|about the author)(?![\p{L}\p{N}])/iu;
 
 export function contentsRows(entries: readonly TocEntry[]): ContentsRow[] {
   if (!entries.length) return [];

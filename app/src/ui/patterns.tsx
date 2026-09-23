@@ -93,6 +93,7 @@ export function ListRow({
   dense = false,
   inset = 0,
   current = false,
+  name,
 }: {
   leading?: ReactNode;
   title: ReactNode;
@@ -115,6 +116,9 @@ export function ListRow({
   /** "You are here" for a screen reader: the row of the place being read
    * (`aria-current="location"`), not merely a chosen one. */
   current?: boolean;
+  /** The row's name when its visible words do not read aloud as one - a
+   * number in a gutter beside a title runs together ("3.1BA…"). */
+  name?: string;
 }) {
   const shape = dense
     // 8 px above and below, not 6: a chapter title on two lines needs the
@@ -132,6 +136,7 @@ export function ListRow({
       <button
         onClick={onPress}
         aria-current={current ? "location" : undefined}
+        aria-label={name}
         className={`flex min-w-0 flex-1 items-center gap-3 text-left ${shape}`}
         style={inset ? { paddingInlineStart: `calc(${inset}px + ${dense ? "0.625rem" : "0.75rem"})` } : undefined}
       >

@@ -237,6 +237,12 @@ function ContentsLine({
 }) {
   const below = Math.max(0, row.sub);
   const width = below === 0 ? "w-7" : below === 1 ? "w-9" : below === 2 ? "w-11" : "w-12";
+  // Spoken: the book's own words where the number replaced them on screen
+  // ("Chương 1 …", "Phần Một: …" - better aloud than a Roman "I"), else the
+  // number and the title with a pause between them.
+  const name = row.label !== row.entry.title
+    ? row.entry.title
+    : row.number ? `${row.number}, ${row.label}` : undefined;
   // On the lit row everything is ink: `ink-mute` on the `tint` wash measured
   // under 4.5:1 in dark (axe, 23/09), and the wash already says "here".
   const words =
@@ -253,6 +259,7 @@ function ContentsLine({
         current={active}
         rowRef={rowRef}
         inset={below * 12}
+        name={name}
         leading={gutter
           ? <span className={`inline-block ${width} text-xs tabular-nums ${active ? "text-ink" : ""}`}>{row.number ?? ""}</span>
           : undefined}
@@ -401,6 +408,7 @@ export function Reader({
   // marked on the page so the scroll can tell which line the eye is under.
   const tocRows = useMemo(() => contentsRows(opened?.book.toc ?? []), [opened]);
   const tocTargets = useMemo(() => new Set(tocRows.map((row) => row.entry.segment_id)), [tocRows]);
+  const tocNumbered = useMemo(() => tocRows.some((row) => row.number !== null), [tocRows]);
   // A pressed line belongs to the tree it was pressed in.
   useEffect(() => { setPickedRow(null); }, [tocRows]);
   const chapterOf = useCallback((segmentId: string): number => {
@@ -1047,7 +1055,7 @@ export function Reader({
             key={`${index}-${row.entry.segment_id}`}
             row={row}
             first={index === 0}
-            gutter={tocRows.some((other) => other.number !== null)}
+            gutter={tocNumbered}
             active={index === activeRow}
             rowRef={index === activeRow ? here : undefined}
             onPress={() => { setPickedRow(index); goToPassage(row.entry.segment_id); }}

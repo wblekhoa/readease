@@ -1563,12 +1563,14 @@ viện này không thấy gì lạ. PDF: vẫn một hàng mỗi bookmark cấp 
   — giữ đúng số N của sách. Sách không có nhãn nào: các dòng cấp cao nhất được đánh 1…N, trừ phần mở đầu/kết thúc mà tên
   nói rõ (Lời bạt, Lời cảm ơn, Chú thích, Preface, Notes…).
 - **Phần**: "Phần Một/Hai…", "Part 1…", "Quyển…" ở cấp CAO HƠN cấp chương → số La Mã I, II, III. Cùng chữ "Phần" mà nằm sâu
-  hơn cấp chương là một mục thường (nav thật có "PHẦN BỐN KẾT THÚC" nằm trong một chương).
+  hơn cấp chương là một mục thường (nav thật có một mục "Phần Bốn…" nằm bên trong một chương).
 - **Mục con** của một chương có số: `N.1`, `N.2`, rồi `N.1.1`…, theo thứ tự anh em.
 - **Không đánh số**: mọi thứ trước Phần/Chương đầu tiên và sau Chương cuối ở cấp Phần/Chương (lời bạt, lời mở đầu, phần kết,
   lời cảm ơn, chú thích, phụ lục…), cùng con của chúng.
 - Nhãn "Chương 1 " / "Phần Một: " được **bỏ khỏi chữ hiển thị** khi số đã đứng ở cột số (tránh "1 Chương 1 …"). Tên chỉ có
-  mỗi nhãn ("Chương 7") thì giữ nguyên.
+  mỗi nhãn ("Chương 7") thì giữ nguyên. **Tên đọc** (VoiceOver): dòng đã bỏ nhãn đọc lại đúng tên gốc ("Chương 1 …", "Phần
+  Một: …" — dễ nghe hơn một chữ "I" La Mã), dòng khác đọc "số, tên" — số trong cột và chữ bên cạnh không tự có khoảng
+  ngắt, trình đọc sẽ nói liền "3.1BA…".
 - Chữ HOA của tác giả **giữ nguyên** — đổi sang chữ thường sẽ hạ tên riêng (một địa danh, một khái niệm viết hoa).
 
 **4. Hình**: cột số `tabular-nums` `ink-mute`, rộng theo cấp — dòng không số vẫn giữ cột, để chữ cùng cấp thẳng một

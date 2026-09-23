@@ -18,7 +18,7 @@ const tree = [
   entry(2, "Chương 2 BỜ BÊN KIA"),
   entry(1, "Phần Hai BẦU TRỜI"),
   entry(2, "Chương 3 MÂY"),
-  entry(3, "Phần Bốn KẾT THÚC"),
+  entry(3, "Phần Bốn CUỐI MÙA"),
   entry(3, "MƯA"),
   entry(1, "Phần kết"),
   entry(1, "Lời cảm ơn"),
@@ -40,7 +40,7 @@ test("chapters keep the book's own numbers, parts get Roman numerals, sections c
     ["II", "BẦU TRỜI"],
     ["3", "MÂY"],
     // "Phần" below the chapter level is an ordinary section, not a part.
-    ["3.1", "Phần Bốn KẾT THÚC"],
+    ["3.1", "Phần Bốn CUỐI MÙA"],
     ["3.2", "MƯA"],
     [null, "Phần kết"],
     [null, "Lời cảm ơn"],
@@ -80,9 +80,11 @@ test("a book without chapter labels is numbered 1..N at its top, less the matter
     entry(1, "Những ngày đầu"),
     entry(2, "Buổi sáng"),
     entry(1, "Mùa mưa"),
+    // A title ending in an accented letter: `\b` knows only ASCII letters.
+    entry(1, "Ghi chú"),
     entry(1, "Acknowledgements"),
   ]);
-  assert.deepEqual(rows.map((r) => r.number), [null, "1", "1.1", "2", null]);
+  assert.deepEqual(rows.map((r) => r.number), [null, "1", "1.1", "2", null, null]);
 });
 
 test("the row the reader is at is the deepest one at or before the place", () => {
