@@ -718,7 +718,7 @@ export function SegmentedControl<T extends string | number>({
            they are written, so a locked choice could not be told to be
            darker than a locked non-choice. */
         const chosen = on
-          ? `${material ? "bg-tint" : "bg-pill shadow-raised"} font-semibold ${option.disabled ? "text-ink-mute" : "text-ink"}`
+          ? `${material ? "bg-tint" : "bg-pill shadow-raised"} font-semibold ${option.disabled ? "text-locked-choice" : "text-ink"}`
           : option.disabled
             ? "text-ink-faint"
             : "text-ink-mute hover:text-ink";

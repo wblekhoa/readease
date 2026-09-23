@@ -113,6 +113,10 @@
   --app-pill: var(--fill-neutral-base);
   --app-thumb: var(--fill-neutral-base);
   --app-tick: var(--border-color-neutral-soft);
+  /* The words of a chosen option that is locked (Columns while scrolling):
+     faded on the white pill, beside the padlock that says why (owner,
+     06/09). */
+  --app-locked-choice: var(--text-color-neutral-secondary);
 }
 [data-theme="dark"] {
   --app-dot: var(--border-color-neutral-soft);
@@ -133,6 +137,10 @@
   --app-pill: var(--neutral-n80);
   --app-thumb: var(--neutral-n160);
   --app-tick: var(--neutral-n80);
+  /* On the n80 pill no faded ink still reads - `ink-mute` is 2.13:1 there,
+     where it was 5.92 on the old paper pill - so a locked choice keeps
+     `ink` (4.61) and the padlock in it is what says "locked". */
+  --app-locked-choice: var(--text-color-neutral-primary);
   --app-rail: var(--neutral-n05);
   --app-edge-field: transparent;
   /* Dark keeps a real ladder - desk n00, panel n05, paper n10 - so a grouped
@@ -178,6 +186,7 @@
   --color-pill: var(--app-pill);
   --color-thumb: var(--app-thumb);
   --color-tick: var(--app-tick);
+  --color-locked-choice: var(--app-locked-choice);
   --color-rail: var(--app-rail);
   /* A grouped panel: one step off the desk, so settings rows read as an inset
      group instead of an outlined white box lost on a white page. */

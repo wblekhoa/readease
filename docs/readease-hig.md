@@ -529,7 +529,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   chỉ **1,12:1** — và viên đang chọn `paper` n10 (38,39,39) **tối hơn chính rãnh nó cưỡi** (1,10:1 theo chiều ngược),
   gần trùng màu kính. Luật "rãnh lùi dưới cái nổi trên nó" (§7) bị lật ở MỌI control dùng rãnh `band` + viên/núm
   `paper`, trên kính lẫn trên giấy (giấy n10 = kính về độ sáng), còn ở sáng thì đúng (kính 254 → rãnh 240 → viên 255).
-  Sửa ở component, bằng bốn vai trò theo theme — **sáng giữ nguyên từng giá trị**, chỉ tối đổi:
+  Sửa ở component, bằng năm vai trò theo theme — **sáng giữ nguyên từng giá trị**, chỉ tối đổi:
 
   | Vai trò | Sáng | Tối | Ở đâu |
   |---|---|---|---|
@@ -537,6 +537,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   | `pill` (viên đang chọn) | giấy trắng | **n80** | ô đang chọn của segmented (kể cả ô bị khoá) |
   | `thumb` (núm) | giấy trắng | **n160** | núm switch |
   | `tick` (vạch trên rãnh) | `edge-strong` | **n80** | chấm thang cỡ chữ chưa tới · vạch giữa hai nửa cụm cỡ chữ |
+  | `locked-choice` (chữ) | `ink-mute` | **`ink`** | chữ + ổ khoá của ô đang chọn khi bị khoá (Số cột lúc đọc cuộn) |
 
   Đo (WCAG): rãnh/kính 1,26 (từ 1,12) · viên/rãnh **2,46** (từ 1,10 ngược chiều) · `ink-mute` (chữ ô chưa chọn) trên
   rãnh 5,25 · `ink` trên viên 4,61 · núm/rãnh 9,48, núm/switch bật (brand) 3,57. **Trần của rãnh là n40**: n60 kéo
@@ -548,8 +549,12 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   trên kính 254 ở sáng (1,01:1), n10 trên kính tối (1,02:1) — chỉ còn cái bóng. Nay theo núm của DS `Slider` (thumb =
   màu phần đã tô + `border-white`): nền `ink`, viền 2 px `paper`, `shadow-raised` — 13,0:1 trên kính sáng, 14,3:1 trên
   kính tối; viền chìm vào panel và chỉ hiện chỗ núm gặp đường đã tô. `tick` phải đi
-  theo rãnh: `edge-strong` tối (n60) trên n40 chỉ còn 1,26 và chấm thang biến mất. Chữ `ink-faint` của nửa bị khoá
-  (cỡ nhỏ nhất/lớn nhất) giữ nguyên quy ước toàn app, nên mờ hơn trước một chút (1,42 → 1,26) — đó là trạng thái tắt.
+  theo rãnh: `edge-strong` tối (n60) trên n40 chỉ còn 1,26 và chấm thang biến mất. Mọi chữ `ink-faint` nằm trên rãnh
+  — nửa bị khoá của cụm cỡ chữ ở cỡ nhỏ nhất/lớn nhất, các ô CHƯA chọn của Số cột khi bị khoá ("1", "2") — giữ quy ước
+  disabled toàn app, nên mờ hơn trước một chút (1,42 → 1,26): đó là trạng thái tắt, và dòng điều kiện bên dưới nói lý do.
+  **Ô ĐANG CHỌN bị khoá thì khác**: chữ `ink-mute` trên viên n80 chỉ còn 2,13:1 (trên viên `paper` cũ là 5,92) — trên viên
+  tối không bậc chữ nhạt nào còn đọc được, chỉ `ink` (4,61). Vai trò `locked-choice`: sáng `ink-mute` (chữ nhạt như cũ),
+  tối `ink` — ở tối ổ khoá trong ô là thứ duy nhất nói "bị khoá", đúng thứ tự ưu tiên của luật control bị khoá bên dưới.
   **Đục, không alpha** (dù chủ gọi là "neutral alpha" — các fill này vốn đục n20/n10): trên kính 74 % giấy, một fill
   alpha để lộ trang phía sau, qua một hình sáng thì rãnh sáng theo và `ink-mute` tụt dưới 4,5; fill đục giữ tỉ lệ chữ
   không phụ thuộc thứ nằm sau kính. Thang alpha `veil`/`tint` vẫn là của cột bên trên vật liệu macOS (§3.16) — không
@@ -562,7 +567,8 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   biến — lớp không xuất hiện nguyên vẹn trong nguồn thì không được sinh ra.
 - **Control bị khoá phải NÓI vì sao**: ô đang chọn **GIỮ NGUYÊN** viên nổi (`bg-pill` + `shadow-raised`) — nó vẫn
   là lựa chọn của người đọc, làm phẳng đi thành ra "chưa chọn gì". Cái nói lên trạng thái khoá là **icon ổ khoá nằm trong
-  chính ô đang chọn**, cùng chữ nhạt đi (`disabled:text-ink-faint` cho cả ô lẫn icon), cộng một dòng nhỏ nói điều kiện
+  chính ô đang chọn**, cùng chữ nhạt đi (ô chưa chọn `ink-faint`; ô đang chọn `locked-choice` = `ink-mute` ở sáng, còn ở
+  tối giữ `ink` vì viên n80 không chở nổi chữ nhạt — §3.9d), cộng một dòng nhỏ nói điều kiện
   ("Số cột · Chỉ dùng được khi đọc theo trang", chủ 06/09). `SegmentedControl` tự vẽ ổ khoá khi một ô vừa `on` vừa
   `disabled`, nên luật nằm một chỗ; **đừng** gắn ổ khoá lên nhãn — trạng thái thuộc về control, không thuộc về cái tên
   của nó. Một hàng chữ xám không giải thích gì.
