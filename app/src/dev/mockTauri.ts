@@ -204,6 +204,8 @@ type ShelfRow = {
   chapters: number;
   size_bytes: number | null;
   imported_at: string | null;
+  /** When a passage was last heard - what orders the books being read. */
+  listened_at?: string | null;
   from_apple_books: boolean;
   language?: string;
   language_set?: boolean;
@@ -221,6 +223,7 @@ const LIBRARY: ShelfRow[] = [
     chapters: BOOK.chapters.length,
     size_bytes: 9_512_000,
     imported_at: "2026-08-28T09:12:00Z",
+    listened_at: "2026-09-22T20:15:00Z",
     // Paired, and it must agree with APPLE_SHELF below: a harness that
     // says "linked" on the shelf and "not paired" on the card teaches the
     // wrong thing about the feature.
@@ -254,6 +257,7 @@ const LIBRARY: ShelfRow[] = [
     chapters: 26,
     size_bytes: 25_200_000,
     imported_at: "2026-08-26T08:00:00Z",
+    listened_at: "2026-09-19T08:40:00Z",
     from_apple_books: true,
     language: "vi",
     language_set: false,
@@ -1129,6 +1133,11 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
           : `voice_failed: ${VOICE_FAIL}: provider said no`,
       );
     }
+    // The engine moves `listened_at` when the ear reaches a passage; the
+    // harness does it when the reading starts, which is close enough to
+    // watch the shelf reorder (owner, 23/09: heard most recently first).
+    const heard = LIBRARY.find((row) => row.id === args.bookId);
+    if (heard) heard.listened_at = new Date().toISOString();
     const bookRate = mockRate(String(args.voiceId ?? ""));
     const bookWalk = bookSteps((args.segmentId as string | null) ?? null);
     startMockReading(
@@ -1175,10 +1184,16 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     return Promise.resolve(null);
   }
   if (command === "engine_request") {
-    const result = engineRequest(
+    const answered = engineRequest(
       args.method as string,
       (args.params as Record<string, unknown>) ?? {},
     );
+    // Through JSON, as the real bridge does: every answer is a new object.
+    // Handing the page the harness's own arrays meant a page that keeps its
+    // last answer (the column's "Đang đọc", `useShelf`) was given the SAME
+    // array again after the harness had changed a row inside it - React saw
+    // no change and the list kept its old order (23/09).
+    const result = answered === undefined ? undefined : JSON.parse(JSON.stringify(answered));
     if (args.method === "estimate") {
       // The engine walks the whole book to count characters, which takes a
       // moment. Answering instantly here would hide the button's own

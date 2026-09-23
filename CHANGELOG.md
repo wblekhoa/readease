@@ -10,6 +10,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   before it reads the buttons in it.
 - The rows of a scanned selection say whether they are open, not only by
   turning an arrow.
+- The document you listened to last comes first, in the library and under
+  Reading now. Documents being read used to be ordered by when they were
+  imported, so one you listened to yesterday could sit below one you left
+  a week ago.
 
 ## 0.1.15
 

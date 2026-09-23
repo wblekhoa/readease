@@ -945,6 +945,9 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(row["chapters"], 1)
             self.assertEqual(row["size_bytes"], len(b"fixture"))
             self.assertRegex(row["imported_at"], r"^\d{4}-\d{2}-\d{2}")
+            # When a passage of it was last heard: the shelf's order among
+            # the books being read (owner, 23/09).
+            self.assertRegex(row["listened_at"], r"^\d{4}-\d{2}-\d{2}")
             opened = replies[1]["result"]
             self.assertEqual(opened["book"]["title"], "Sách thử")
             self.assertEqual(
@@ -2261,6 +2264,7 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(broken["chapters"], 0)
             self.assertGreater(broken["size_bytes"], 0)
             self.assertRegex(broken["imported_at"], r"^\d{4}-\d{2}-\d{2}")
+            self.assertIsNone(broken["listened_at"])
             self.assertTrue(replies[1]["ok"], replies[1])
             self.assertEqual(replies[1]["result"], {"media_type": None, "data": None})
             self.assertTrue(replies[2]["ok"], replies[2])
@@ -3040,6 +3044,46 @@ class ListeningProgressReceipts(unittest.TestCase):
             self.assertEqual(progress.segment_id, flat[0].id)
             self.assertEqual(progress.playback_rate, 1.25)
             self.assertEqual(progress.voice_id, "adam")
+
+    def test_only_hearing_a_passage_moves_when_the_book_was_last_heard(self) -> None:
+        """`listened_at` orders the shelf's books being read (owner, 23/09),
+        so it has to mean what it says: the ear, not the eye. Opening the
+        book leaves it; a passage the shell reports heard moves it."""
+        import sqlite3
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import Progress
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository, flat = self._library(root)
+            self.assertIsNone(repository.listened_at(BOOK_ID))
+            repository.save_progress(Progress(
+                book_id=BOOK_ID, segment_id=flat[0].id,
+                playback_rate=1.25, voice_id="adam",
+            ))
+            other = sqlite3.connect(root / "reader.sqlite3")
+            try:
+                with other:
+                    other.execute("UPDATE progress SET updated_at = '2020-01-01 00:00:00'")
+            finally:
+                other.close()
+            self.assertEqual(repository.listened_at(BOOK_ID), "2020-01-01 00:00:00")
+
+            run_server(
+                [{"id": 23, "method": "book.open", "params": {"book_id": BOOK_ID}}],
+                FakeEngine(), repository=repository,
+            )
+            self.assertEqual(repository.listened_at(BOOK_ID), "2020-01-01 00:00:00")
+
+            run_server(
+                [{"id": 24, "method": "read.book",
+                  "params": {"book_id": BOOK_ID, "voice_id": "adam", "rate": 1.25}},
+                 {"method": "progress.reached",
+                  "params": {"id": 24, "segment_id": flat[1].id}}],
+                FakeEngine(chunks_per_sentence=1), repository=repository,
+            )
+            self.assertGreater(repository.listened_at(BOOK_ID), "2020-01-01 00:00:00")
 
     def test_a_report_for_another_reading_writes_nothing(self) -> None:
         from tempfile import TemporaryDirectory

@@ -620,8 +620,11 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Content**: dòng dữ kiện ~24 ký tự dưới bìa 150px → thứ tự = **điều đổi hành vi trước**: "Đã đọc
   42%" (đang đọc) · "26 chương" · "9,5 MB" · định dạng cuối (chỉ để phân biệt hai bản, bị cắt trước).
   Không bìa → placeholder chữ: tiêu đề trên `panel` với dải `band` bên trái (cách Apple Books/Kindle
-  làm) — luôn đọc được, không bao giờ là icon vỡ. Thứ tự kệ: đang đọc trước, rồi mới nhập gần nhất
-  (`orderShelf`, test node). **Một lưới, không "kệ đọc tiếp" riêng** phía trên: thư viện 3–30 cuốn
+  làm) — luôn đọc được, không bao giờ là icon vỡ. Thứ tự kệ: đang đọc trước — **cuốn vừa được NGHE gần nhất lên
+  đầu** (chủ 23/09; `listened_at` = lần cuối một đoạn của nó thật sự được nghe, tức `progress.updated_at` mà engine
+  ghi ở `progress.reached` — mở tài liệu hay đổi giọng không tính), rồi mới nhập gần nhất (`orderShelf`, test node).
+  Trước 23/09 nhóm đang đọc xếp theo NGÀY NHẬP, nên cuốn nghe hôm qua có thể nằm dưới cuốn nhập từ tuần trước mà
+  bỏ dở. **Một lưới, không "kệ đọc tiếp" riêng** phía trên: thư viện 3–30 cuốn
   mà liệt kê cùng cuốn hai lần chỉ để có tiêu đề là nhiễu; sắp trước + thanh tiến độ cho cùng tín hiệu.
 - **Do/Don't sống**: ✗ bìa co giãn theo tiêu đề (mọi bìa cùng cột, cùng tỉ lệ) · ✗ lớp wash phủ lên
   ảnh khi hover (làm bẩn bìa; bìa nhấc lên, không đổi màu) · ✗ chữ "undefined"/icon vỡ khi thiếu bìa
@@ -1144,8 +1147,9 @@ ngại đó.
   hàng "⇅ Thư viện" ~13 px và nút đầu tiên đứng sát đèn 4 px — chủ 17/09 "vị trí các nút window… chưa đẹp") và
   nút thu/mở ở mép phải; **một đường ngang duy nhất** cho đèn · nút thu/mở · toolbar; *thân* cuộn — ở home: mục điều hướng (`RailItem`: icon + nhãn, đang chọn = `tint` +
   `ink` — 20/09, trước là `wash`; luật state layer §2) rồi nhóm **Đang đọc** (nhãn nhóm = kiểu nhãn của `GroupedSection`: xs semibold IN HOA
-  `tracking-wide` `ink-mute` — chủ 17/09 "thử style khác" cho nhãn thường; tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`; engine
-  chưa có mốc thời gian đọc nên "gần đây" = thứ tự kệ). Mục đích của nhóm là **cầm lại đúng chỗ**, nên mỗi hàng
+  `tracking-wide` `ink-mute` — chủ 17/09 "thử style khác" cho nhãn thường; tối đa 5 tài liệu có tiến độ, thứ tự `orderShelf`
+  — vừa nghe gần nhất lên đầu (23/09; trước đó ghi "engine chưa có mốc thời gian đọc", sai: mốc có sẵn trong bảng
+  `progress`, chỉ chưa được gửi lên). Mục đích của nhóm là **cầm lại đúng chỗ**, nên mỗi hàng
   là `RailDocument` (17/09; trước đó chỉ là tên bị cắt một dòng): *bìa nhỏ* 24×36 (2:3, bo 3 px, `MiniCover`-lite:
   ảnh thật hoặc panel `tint` có gáy — 20/09, trước là `band`) mang **dải tiến độ 2 px** ở mép dưới (`brand` trên `wash`) — cùng ngôn ngữ với
   vạch dưới bìa ở kệ; *tên* tối đa **hai dòng** (`line-clamp-2`, tên tài liệu tiếng Việt dài, một dòng cắt mất phần
