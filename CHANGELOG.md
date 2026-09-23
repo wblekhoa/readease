@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.15
+
+For the ear and the keyboard: VoiceOver hears what ReadEase is doing,
+panels and menus work without a mouse, and the interface speaks its own
+language. Installs over 0.1.14, or lets 0.1.14 install it.
 
 - ReadEase says what it is doing, for VoiceOver: preparing the voice,
   reading, paused, resumed, stopped - once each, when it happens. A
