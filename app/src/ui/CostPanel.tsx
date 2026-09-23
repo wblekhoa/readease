@@ -146,6 +146,7 @@ export function CostPanel({
       radius="sheet"
       material="glass"
       ref={panel}
+      dialog={text("cost.title")}
       layer="popover"
       className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom -translate-x-1/2 p-6 shadow-lifted"
     >

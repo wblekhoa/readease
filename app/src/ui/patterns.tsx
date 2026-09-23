@@ -5,7 +5,7 @@
  * once. Building a screen means picking a pattern and pouring content in.
  * The written half lives in docs/readease-hig.md.
  */
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { hoverText } from "./format";
 import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
@@ -628,6 +628,7 @@ export function BookTile({
  */
 export function useDismiss(onClose: () => void, enabled = true) {
   const panel = useRef<HTMLDivElement>(null);
+  const giveBack = useLayerFocus(panel);
   useEffect(() => {
     if (!enabled) return;
     const onDown = (event: MouseEvent) => {
@@ -638,7 +639,7 @@ export function useDismiss(onClose: () => void, enabled = true) {
       onClose();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") { onClose(); giveBack(); }
     };
     document.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
@@ -646,8 +647,107 @@ export function useDismiss(onClose: () => void, enabled = true) {
       document.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [enabled, onClose]);
+  }, [enabled, onClose, giveBack]);
   return panel;
+}
+
+/* Which hand is on the app, for the keyboard's half of HIG 4.2 (point 3).
+   Only a real press counts as the pointer; a key counts as the keyboard.
+   VoiceOver's own press is EXPECTED to reach the page as a bare click with
+   neither in front of it, and so to leave the last answer standing - in
+   practice the keyboard, which is who it is for. Expected, not measured:
+   that is WebKit's behaviour, and the owner's VoiceOver checklist (item 6)
+   is the check. Captured, so no handler further down can hide an event. */
+let lastInput: "key" | "pointer" | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("keydown", () => { lastInput = "key"; }, true);
+  window.addEventListener("pointerdown", () => { lastInput = "pointer"; }, true);
+}
+
+/** Whether the press being handled came from the mouse (or a trackpad).
+ *
+ * The openers blur themselves after THAT press only: the tooltip follows
+ * focus and would hang over the panel it just opened (owner, 06/09 and
+ * 16/09), and App's Space handler skips anything with a `value` - a button
+ * has one - so a focused opener would turn the next Space into a second
+ * press instead of a pause. From the keyboard the focus has somewhere to go
+ * instead: into the panel, then back (`useLayerFocus`). */
+export const pressedByPointer = () => lastInput === "pointer";
+
+const TABBABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Every open layer's way back - what opened it, then what opened THAT -
+ * so a layer opened from a row inside another layer that closes as it
+ * opens (the voice settings' "Manage voices…") can still hand the focus
+ * back to the button in the footer once the row is gone. */
+const ways = new WeakMap<HTMLElement, HTMLElement[]>();
+
+/** The keyboard's way into a floating layer and back out (HIG 4.2, point 3).
+ *
+ * Opened from the keyboard, the layer takes the focus itself - it is a named
+ * `role="dialog"` (see `Surface`'s `dialog`), so VoiceOver reads its title
+ * and the next Tab reaches its first control - unless something inside
+ * already took it (a search field with `autoFocus`). Closed from the
+ * keyboard, the focus goes back to what opened it; otherwise it falls to the
+ * page and the next Tab starts again from the top of the window.
+ *
+ * Opened by the mouse, nothing moves, now or on the way out: pulling the
+ * focus into the panel or handing it back to the opener would put back the
+ * very tooltip and the Space trouble `pressedByPointer` is there to avoid.
+ *
+ * A layer marked `aria-modal` (a sheet over the scrim - nothing behind it
+ * can be used) keeps Tab inside it, whichever hand opened it; a popover
+ * lets it leave, since a click outside would close it anyway.
+ *
+ * Returns the way back, for Escape: at once, rather than when the layer has
+ * finished fading out. */
+export function useLayerFocus(layer: RefObject<HTMLElement | null>) {
+  const way = useRef<HTMLElement[]>([]);
+  useEffect(() => {
+    const element = layer.current;
+    if (!element) return;
+    const active = document.activeElement;
+    // Someone typing keeps their field: a layer never pulls the caret out.
+    const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement ||
+      (active instanceof HTMLElement && active.isContentEditable);
+    if (lastInput !== "pointer" && !typing) {
+      // The focus already inside is this layer's own doing - React's
+      // development double mount runs this twice - so the way back stays.
+      if (active instanceof HTMLElement && active !== document.body && !element.contains(active)) {
+        const host = active.closest<HTMLElement>('[role="dialog"]');
+        way.current = [active, ...((host && host !== element && ways.get(host)) || [])];
+        ways.set(element, way.current);
+      }
+      if (!element.contains(document.activeElement)) element.focus({ preventScroll: true });
+    }
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || element.getAttribute("aria-modal") !== "true") return;
+      const stops = [...element.querySelectorAll<HTMLElement>(TABBABLE)]
+        .filter((stop) => stop.getClientRects().length > 0 && !stop.closest("[inert]"));
+      const at = document.activeElement;
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      let to: HTMLElement | undefined;
+      if (!at || !element.contains(at)) to = event.shiftKey ? last : first;
+      else if (event.shiftKey && (at === first || at === element)) to = last;
+      else if (!event.shiftKey && at === last) to = first;
+      if (!to && stops.length) return;
+      event.preventDefault();
+      to?.focus();
+    };
+    window.addEventListener("keydown", onTab, true);
+    return () => {
+      window.removeEventListener("keydown", onTab, true);
+      // Closed from the keyboard with the focus inside (a ✕ pressed with
+      // Enter): it fell to the page with the layer - put it back.
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (lost && lastInput !== "pointer") way.current.find((node) => node.isConnected)?.focus({ preventScroll: true });
+    };
+  }, [layer]);
+  return useCallback(() => {
+    if (lastInput !== "pointer") way.current.find((node) => node.isConnected)?.focus({ preventScroll: true });
+  }, []);
 }
 
 
@@ -679,15 +779,40 @@ export function MenuButton({
 }) {
   const [open, setOpen] = useState(false);
   const holder = useRef<HTMLSpanElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
+    const items = () => [...(list.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    // Opened from the keyboard, the first item takes the focus - the menu
+    // pattern VoiceOver expects (HIG 4.2, point 3). From the mouse nothing
+    // moves: the button let go of the focus when it was pressed.
+    if (!pressedByPointer()) items()[0]?.focus({ preventScroll: true });
     const onDown = (event: MouseEvent) => {
       if (!holder.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       // Swallow it entirely: the sheet under the menu also closes on
-      // Escape, and one press should close only the menu.
-      if (event.key === "Escape") { event.stopImmediatePropagation(); setOpen(false); }
+      // Escape, and one press should close only the menu. The keyboard that
+      // was in the menu goes back to the button that opened it.
+      if (event.key === "Escape") {
+        event.stopImmediatePropagation();
+        setOpen(false);
+        if (holder.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
+        return;
+      }
+      const rows = items();
+      const at = rows.indexOf(document.activeElement as HTMLElement);
+      if (at < 0) return;
+      if (event.key === "Tab") { setOpen(false); return; }
+      const to = event.key === "ArrowDown" ? (at + 1) % rows.length
+        : event.key === "ArrowUp" ? (at - 1 + rows.length) % rows.length
+        : event.key === "Home" ? 0
+        : event.key === "End" ? rows.length - 1
+        : -1;
+      if (to < 0) return;
+      event.preventDefault();
+      rows[to].focus({ preventScroll: true });
     };
     document.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey, true);
@@ -699,9 +824,11 @@ export function MenuButton({
   return (
     <span ref={holder} className="relative inline-flex">
       <IconButton
+        ref={trigger}
         /* The tooltip follows focus, and a click leaves the button focused
-           - so the tip sat over the menu's first row (16/09). Let it go. */
-        onClick={(event) => { event.currentTarget.blur(); setOpen((value) => !value); }}
+           - so the tip sat over the menu's first row (16/09). Let it go -
+           after a mouse press; the keyboard's focus moves into the menu. */
+        onClick={(event) => { if (pressedByPointer()) event.currentTarget.blur(); setOpen((value) => !value); }}
         disabled={disabled}
         aria-label={label}
         title={label}
@@ -719,13 +846,24 @@ export function MenuButton({
           layer="menu"
           className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
         >
-          <div role="menu" className="flex flex-col">
+          <div ref={list} role="menu" aria-label={label} className="flex flex-col">
             {items.map((item, index) => (
               <button
                 key={item.label}
                 type="button"
                 role="menuitem"
-                onClick={() => { setOpen(false); item.onSelect(); }}
+                /* Reached by the arrows, not by Tab (the menu pattern): Tab
+                   leaves the menu, and closes it. */
+                tabIndex={-1}
+                onClick={() => {
+                  const keys = !pressedByPointer();
+                  setOpen(false);
+                  item.onSelect();
+                  // Chosen from the keyboard: back to the button, not to the
+                  // top of the window. A layer the choice opens takes it from
+                  // there, and hands it back to the button when it closes.
+                  if (keys) trigger.current?.focus({ preventScroll: true });
+                }}
                 /* 12px, not the 8px this started at: the menu's own corner is
                  * 16 and its padding is 4, so a nested row is only concentric
                  * with it at 12 - which is also the control tier (owner asked

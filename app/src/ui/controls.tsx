@@ -132,6 +132,9 @@ export function IconButton({
      a chapter and a percentage set in three weights, and it had grown its own
      floating panel for want of this (App.tsx, owner 04/09). */
   title?: ReactNode;
+  /** For a caller that hands the focus back to this button - a menu's
+   * trigger, once its menu closes from the keyboard (HIG 4.2). */
+  ref?: Ref<HTMLButtonElement>;
 }) {
   const [tip, setTip] = useState<
     { centre: number; above: number; below: number } | null
@@ -406,11 +409,20 @@ export function Surface({
   material = "paper",
   layer,
   ref,
+  dialog,
+  modal = false,
 }: {
   children: ReactNode;
   className?: string;
   /** For a floating layer that has to know whether a click landed inside it. */
   ref?: Ref<HTMLDivElement>;
+  /** A floating panel's NAME - its own title - which makes it a dialog to
+   * assistive technology and a place the keyboard's focus can land
+   * (HIG 4.2, point 3; `useLayerFocus` moves it here). */
+  dialog?: string;
+  /** A sheet over the scrim: nothing behind it can be used while it is up,
+   * so VoiceOver is told so and Tab stays inside it. */
+  modal?: boolean;
   /** How this surface comes and goes when it floats (HIG 3.17): a `popover`
    * grows out of its control (pass an `origin-*` class in `className` for
    * which corner), a `sheet` grows in place over a scrim, a `menu` appears
@@ -437,6 +449,10 @@ export function Surface({
   return (
     <div
       ref={ref}
+      role={dialog ? "dialog" : undefined}
+      aria-label={dialog}
+      aria-modal={dialog && modal ? true : undefined}
+      tabIndex={dialog ? -1 : undefined}
       className={`border ${material === "glass" ? "glass-panel" : "bg-paper"} ${
         radius === "sheet" ? "rounded-3xl" : radius === "menu" ? "rounded-[20px]" : "rounded-2xl"
       } ${

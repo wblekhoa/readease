@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
-import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn, Toolbar } from "./ui/patterns";
+import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn, Toolbar, pressedByPointer } from "./ui/patterns";
 import { useCover } from "./ui/useCover";
 import { useSideColumn } from "./ui/useSideColumn";
 import type { SidebarTab } from "./ui/sidebarState";
@@ -359,6 +359,12 @@ export default function App() {
   const [origin, setOrigin] = useState<ReadingOrigin>(null);
   const [gate, setGate] = useState<ModelGate>("checking");
   const [language, setLanguageState] = useState<Language>(currentLanguage());
+  /* The page's language is the interface's (HIG 4.2, WCAG 3.1.1). VoiceOver
+     picks its voice from <html lang>, and the page used to say "en" whatever
+     it showed - a Vietnamese interface spelled out in an English voice. */
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
   /* The side column (HIG 3.16): whether it shows, which of a document's
      lists it shows, its width and the note to land on - all in
      `useSideColumn`, under the rules in ui/sidebarState.ts. */
@@ -1404,6 +1410,8 @@ export default function App() {
         onClick={() => { setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true); }}
         aria-label={text("hub.title")}
         title={text("hub.title")}
+        aria-haspopup="dialog"
+        aria-expanded={hubOpen}
         className={hubOpen ? "text-ink" : ""}
         data-popover-trigger
       >
@@ -1589,7 +1597,7 @@ export default function App() {
                   column - a real switch, decided in sidebarState. */}
               <IconButton
                 onClick={(event) => {
-                  event.currentTarget.blur();
+                  if (pressedByPointer()) event.currentTarget.blur();
                   dispatchSide({ type: "show", tab: "contents" });
                 }}
                 aria-label={sideTab === "contents" ? text("reader.toc_hide") : text("reader.toc_show")}
@@ -1603,12 +1611,13 @@ export default function App() {
               {(pageInfo?.annotations ?? 0) > 0 && (
                 <IconButton
                   onClick={(event) => {
-                    event.currentTarget.blur();
+                    if (pressedByPointer()) event.currentTarget.blur();
                     setNotesFocus(null);
                     dispatchSide({ type: "show", tab: "notes" });
                   }}
                   aria-label={text("notes.open")}
                   title={text("notes.count", { count: pageInfo?.annotations ?? 0 })}
+                  aria-expanded={sideTab === "notes"}
                   className={sideTab === "notes" ? "text-ink" : ""}
                 >
                   <NoteIcon />
@@ -1686,25 +1695,30 @@ export default function App() {
                   data-popover-trigger
                   /* The tooltip follows focus, and a mouse click leaves the
                      button focused - so the tip sat over the panel it had
-                     just opened (owner's screenshot, 06/09). Let it go. */
+                     just opened (owner's screenshot, 06/09). Let it go -
+                     after the mouse; the keyboard's focus goes into the
+                     panel instead (HIG 4.2). */
                   onClick={(event) => {
-                    event.currentTarget.blur();
+                    if (pressedByPointer()) event.currentTarget.blur();
                     setReadingSettingsOpen((value) => !value);
                   }}
                   aria-label={text("reader.settings")}
                   title={text("reader.settings")}
+                  aria-haspopup="dialog"
+                  aria-expanded={readingSettingsOpen}
                   className={readingSettingsOpen ? "text-ink" : ""}
                 >
                   <ReadingSettingsIcon />
                 </IconButton>
                 <IconButton
                   onClick={(event) => {
-                    event.currentTarget.blur();
+                    if (pressedByPointer()) event.currentTarget.blur();
                     setReadingSettingsOpen(false);
                     dispatchSide({ type: "show", tab: "search" });
                   }}
                   aria-label={text("reader.search")}
                   title={text("reader.search")}
+                  aria-expanded={sideTab === "search"}
                   className={sideTab === "search" ? "text-ink" : ""}
                 >
                   <SearchIcon />
@@ -1734,6 +1748,7 @@ export default function App() {
           openBook ? (
             <Reader
               bookId={openBook.id}
+              language={openBook.language}
               /* Only a BOOK position belongs to the book. A plain read
                  reports "part-2", which matches no segment and would blank
                  the highlight the eye is following. */
@@ -2088,6 +2103,8 @@ export default function App() {
                     }}
                     aria-label={text("cost.open")}
                     title={text("cost.open")}
+                    aria-haspopup="dialog"
+                    aria-expanded={costOpen}
                     data-popover-trigger
                     className={costOpen ? "text-ink" : ""}
                   >
@@ -2186,6 +2203,8 @@ export default function App() {
                     ? text(hint.kind === "switch" ? "hint.mismatch" : "hint.no_voice", { language: languageName(hint.content) })
                     : text("player.settings_open")
                 }
+                aria-haspopup="dialog"
+                aria-expanded={settingsOpen}
                 /* It toggles, so the outside-click that closes the panel has
                    to leave this button alone - see `useDismiss`. */
                 data-popover-trigger

@@ -7,11 +7,11 @@
  * book at a time (each import is its own request, so the sheet can say where
  * it is and the engine stays free between books).
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text } from "../i18n";
 import { Button, IconButton, Input, Notice, Surface } from "../ui/controls";
-import { BookTile, EmptyState, MenuButton, MiniCover, Scrim } from "../ui/patterns";
+import { BookTile, EmptyState, MenuButton, MiniCover, Scrim, useLayerFocus } from "../ui/patterns";
 import { BookClosedIcon, BookIcon, ChevronDownIcon, CloseIcon, ImportIcon, LockIcon, SyncIcon } from "../ui/icons";
 import { useCover } from "../ui/useCover";
 import { SEARCH_ABOVE, matchesQuery, orderShelfItems } from "../ui/shelfFilter";
@@ -128,13 +128,17 @@ export function AppleBooksPanel({
   }, []);
   useEffect(refresh, [refresh]);
 
+  // A sheet like the others (HIG 4.2): opened from the keyboard it holds
+  // the focus, and Escape hands it back to the button that opened it.
+  const sheet = useRef<HTMLDivElement>(null);
+  const giveBack = useLayerFocus(sheet);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !working) onClose();
+      if (event.key === "Escape" && !working) { onClose(); giveBack(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, working]);
+  }, [onClose, working, giveBack]);
 
   /** Import (if needed) then bring over what `mode` asks for. */
   const run = useCallback(async (books: ShelfBook[], mode: SyncMode) => {
@@ -180,6 +184,9 @@ export function AppleBooksPanel({
     <>
     <Scrim />
     <Surface
+      ref={sheet}
+      dialog={text("apple.title")}
+      modal
       edge="strong"
       radius="sheet"
       layer="sheet"

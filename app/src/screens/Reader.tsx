@@ -206,6 +206,7 @@ type Bubble = {
 
 export function Reader({
   bookId,
+  language,
   currentSegment,
   currentFigure,
   reading,
@@ -223,6 +224,9 @@ export function Reader({
   onPageInfo,
 }: {
   bookId: string;
+  /** The language the document is written in ("vi" / "en"), for its words
+   * only - the interface around them speaks the app's (WCAG 3.1.2). */
+  language?: string;
   currentSegment: string | null;
   /** Figure whose spoken cue the ear just heard, or null. */
   currentFigure: string | null;
@@ -536,14 +540,19 @@ export function Reader({
     if (reason === "turn" && currentSegment) setFollowing(ids.includes(currentSegment));
   }, [opened, chapterIndex, currentSegment]);
 
+  // The chapter in front of the reader - the page's own on pages, the one
+  // scrolled into in a scroll: what the ⓘ below reports, and the page's
+  // name to a screen reader (HIG 4.2, point 4).
+  const chapterInView = !opened ? undefined : paged
+    ? opened.book.chapters[chapterIndex]
+    : opened.book.chapters.find((c) => c.id === seenChapter) ?? opened.book.chapters[0];
+
   // The facts about where you are go up to the toolbar's ⓘ - the page
   // itself stays clear of them (owner, 02/09: "giảm bớt nội dung không
   // quan trọng").
   useEffect(() => {
     if (!opened) { onPageInfo(null); return; }
-    const chapter = paged
-      ? opened.book.chapters[chapterIndex]
-      : opened.book.chapters.find((c) => c.id === seenChapter) ?? opened.book.chapters[0];
+    const chapter = chapterInView;
     const first = paged ? shown[0] : chapter?.segments[0]?.id;
     const percent = flat.length && first ? Math.round((Math.max(0, flat.indexOf(first)) / flat.length) * 100) : 0;
     const resume = marker ? opened.book.chapters[chapterOf(marker)] : null;
@@ -561,7 +570,7 @@ export function Reader({
       resumeSegmentId: marker,
       resumeExcerpt: resumeSegment?.text ?? null,
     });
-  }, [opened, paged, chapterIndex, seenChapter, shown, pageIndex, flat, marker, chapterOf, onPageInfo]);
+  }, [opened, paged, chapterInView, shown, pageIndex, flat, marker, chapterOf, onPageInfo]);
   useEffect(() => () => onPageInfo(null), [onPageInfo]);
 
   const onChapterChange = useCallback((index: number, edge: "start" | "end") => {
@@ -867,6 +876,12 @@ export function Reader({
         <p
           data-segment={segment.id}
           data-chapter={segment.kind === "heading" ? chapter.id : undefined}
+          /* Where the voice is, said to the screen reader as well as drawn
+             (HIG 4.2, point 4): the dotted line is for the eye only. */
+          aria-current={segment.id === marker ? "true" : undefined}
+          /* The document's own language, so VoiceOver reads an English book
+             in an English voice under a Vietnamese interface (HIG 4.2). */
+          lang={language}
           onClick={() => {
             // A drag that selected text ends in a click on the same
             // paragraph; that click means "I am copying", not "read
@@ -1124,7 +1139,10 @@ export function Reader({
   );
 
   return (
-    <section className={`relative flex min-h-0 flex-1 flex-col ${paged ? "shell-inset" : ""}`}>
+    <section
+      aria-label={chapterInView?.title || undefined}
+      className={`relative flex min-h-0 flex-1 flex-col ${paged ? "shell-inset" : ""}`}
+    >
       {paged ? (
         <div ref={column} className="relative flex min-h-0 flex-1 flex-col">
           <PageFlow

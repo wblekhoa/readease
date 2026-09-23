@@ -45,6 +45,8 @@ export function UpdatePanel({
         radius="sheet"
         layer="sheet"
         ref={sheet}
+        dialog={text("update.title")}
+        modal
         className="fixed left-1/2 top-1/2 z-30 flex w-[28rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col shadow-lifted"
       >
         <div className="flex items-start gap-3 px-6 pb-2 pt-5">

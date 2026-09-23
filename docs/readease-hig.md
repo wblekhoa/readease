@@ -524,8 +524,8 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   cột bên — cao 36 thì 22 tự kẹp về pill) để một control chỉ có một hình. Luật chung §3.9d: góc ngoài = góc trong + lót.
 - Hàng điều khiển bên trong panel nổi theo Books: hàng toàn bề rộng cao 44, ô chia đều (`SegmentedControl size="lg"`),
   có icon + chữ `text-sm` không xuống dòng; phần mở rộng đặt trong khối `bg-band rounded-2xl px-5 py-4`.
-- Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click**: tooltip theo focus sẽ không treo trên
-  panel vừa mở.
+- Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click CHUỘT** (`pressedByPointer()`): tooltip theo
+  focus sẽ không treo trên panel vừa mở. Enter/Space thì không blur — tiêu điểm của bàn phím đi vào panel (§4.2 điểm 3).
 - **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
   (viền `border-dotted` của trình duyệt mỗi nơi một nhịp), `solid`/`dashed` là hairline. Không ghép tên lớp Tailwind từ
   biến — lớp không xuất hiện nguyên vẹn trong nguồn thì không được sinh ra.
@@ -744,24 +744,43 @@ thành tiếng**, người dùng tự nhiên nhất là người đọc bằng t
 **1. Mọi control có TÊN và VAI TRÒ.** Nút chỉ có icon phải có `aria-label` bằng ngôn ngữ đang dùng (đã có luật tooltip
 ở §3.9c — nhãn và tooltip nói cùng một câu). Không dùng `title` thay cho tên. Nhóm nút (transport, tab) có tên cho cả
 nhóm. Trạng thái đi bằng thuộc tính, không bằng màu: `aria-pressed` cho nút gạt, `aria-checked` cho radio/tab,
-`aria-expanded` + `aria-controls` cho thứ mở panel, `aria-current` cho mục đang ở.
+`aria-expanded` cho thứ mở panel hay menu, `aria-current` cho mục đang ở. Không `aria-controls` (sửa 23/09): panel chỉ
+được mount khi mở, nên lúc đóng cái id nó trỏ tới không tồn tại — và VoiceOver không dùng thuộc tính này.
 
 **2. Trạng thái đọc phải NÓI RA.** Người không nhìn màn hình cần biết ba điều, và chúng đổi khi không ai chạm vào bàn
-phím: đang chuẩn bị giọng · đang đọc (đoạn nào) · còn bao lâu · lỗi. Một vùng `aria-live="polite"` duy nhất trong
-footer đọc những chuyển trạng thái ĐÁNG nói: bắt đầu đọc, tạm dừng, tiếp tục, dừng, đọc xong, lỗi giọng. **Không**
+phím: đang chuẩn bị giọng · đang đọc (đoạn nào) · còn bao lâu · lỗi. Một vùng `aria-live="polite"` duy nhất, đặt ở
+**gốc app chứ không trong footer** (sửa 23/09 theo mã): footer chỉ có khi đang đọc, và một vùng live được chèn vào cùng
+câu đầu tiên của nó thì không được đọc — vùng phải có sẵn trước khi chữ trong nó đổi. Nó đọc những chuyển trạng thái
+ĐÁNG nói: bắt đầu đọc, tạm dừng, tiếp tục, dừng, đọc xong, lỗi giọng. **Không**
 đọc mỗi lần mốc vị trí nhảy (mỗi đoạn một lần = tra tấn); "còn ~N phút" chỉ đọc khi người dùng hỏi (focus vào nó) hoặc
 khi lượt đọc bắt đầu. Lỗi đọc dùng `role="alert"` (assertive) vì nó cắt ngang có lý do.
 
-**3. Lớp nổi giữ được tiêu điểm.** Sheet/popover/menu: focus vào trong khi mở, `Esc` đóng và trả tiêu điểm về nút đã
-mở nó, tiêu điểm không thoát ra sau lưng (`aria-modal` cho sheet thật sự chặn). Luật này đã có một nửa trong §3.17
-(`[data-state="closed"] * { pointer-events: none }`) — nửa còn lại là bàn phím.
+**3. Lớp nổi giữ được tiêu điểm — cho bàn phím; chuột không đổi gì.** Mở bằng bàn phím (hay VoiceOver) thì tiêu điểm
+vào trong lớp. Panel và sheet là `role="dialog"` mang tên (chính tiêu đề của nó) và nhận tiêu điểm ở chính nó
+(`tabIndex=-1`, không vẽ viền — VoiceOver đọc tên dialog là đủ, Tab đi tiếp vào các control); menu thì tiêu điểm vào
+mục đầu, ↑ ↓ Home End đi giữa các mục, Tab đóng menu. `Esc` — hay ✕ bấm bằng bàn phím — đóng và **trả tiêu điểm về nút
+đã mở nó**. Sheet nằm trên scrim là thật sự chặn: `aria-modal="true"` và Tab vòng trong sheet; popover thì không chặn
+(bấm ra ngoài là đóng) nên Tab được đi ra. **Chuột giữ nguyên hành vi cũ**: nút mở vẫn tự `blur()` sau một cú bấm
+CHUỘT (`pressedByPointer()`) — để Space vẫn là tạm dừng/tiếp tục chứ không bấm lại chính nút ấy (bộ bắt Space bỏ qua mọi
+thứ có `value`, và nút có) và để tooltip không treo trên panel vừa mở (chủ 06/09, 16/09); sau một cú chuột, tiêu điểm
+không bị kéo vào panel cũng không bị trả về nút. "Chuột" = lần nhập gần nhất là một `pointerdown` thật. Cú bấm của
+VoiceOver (`⌃⌥Space`) **dự kiến** tới trang như một click trần, không kèm phím hay con trỏ, nên sẽ được tính cùng bàn
+phím — đúng người nó dành cho; dự kiến, CHƯA đo: đó là hành vi của WebKit, và mục 6 trong checklist của chủ là phép
+kiểm. Luật này đã có một nửa trong §3.17 (`[data-state="closed"] * { pointer-events: none }`) — nửa còn lại là bàn phím.
 
-**4. Màn đọc: đoạn đang đọc là một vùng có tên.** Đoạn được tô sáng mang `aria-current="true"`; vùng chứa trang có
-`aria-label` là tên chương. VoiceOver phải đọc được nội dung tài liệu bằng con trỏ của nó mà không bị highlight kéo đi
-— tự cuộn CHỈ chạy khi mắt (hoặc con trỏ VoiceOver) còn ở chỗ cũ, đúng như luật đã có ở §3.9.
+**4. Màn đọc: đoạn đang đọc là một vùng có tên.** Đoạn mang dấu giọng (`voice-here`) mang `aria-current="true"`; vùng
+chứa trang (`<section>` của Reader) có `aria-label` là tên chương đang ở trước mắt. VoiceOver phải đọc được nội dung
+tài liệu bằng con trỏ của nó mà không bị highlight kéo đi — tự cuộn CHỈ chạy khi mắt (hoặc con trỏ VoiceOver) còn ở
+chỗ cũ, đúng như luật đã có ở §3.9.
 
 **5. Không dựa vào màu một mình** (đã có ở §7 cho tương phản): trạng thái "đang dùng", "đã chọn", "lỗi" đều có chữ
 hoặc thuộc tính đi kèm, không chỉ một chấm màu.
+
+**6. Trang nói nó viết bằng tiếng gì** (WCAG 3.1.1 và 3.1.2; thêm 23/09). `<html lang>` theo ngôn ngữ giao diện —
+VoiceOver chọn giọng theo nó, và trang từng ghi cứng `en`, nên giao diện tiếng Việt bị đánh vần bằng giọng Anh. Đoạn
+văn của tài liệu mang `lang` của TÀI LIỆU (`LibraryBook.language`, đã tính cả lựa chọn của người đọc), không phải của
+giao diện: tài liệu tiếng Anh dưới giao diện tiếng Việt vẫn được đọc bằng giọng Anh. axe không bắt được lỗi này — nó
+chỉ kiểm `lang` có hợp lệ hay không, không biết trang thật sự viết bằng tiếng gì.
 
 **Cổng đo được** (`scripts-audit-render.mjs`, `--no-axe` để bỏ qua): axe-core 4.13 chạy trong từng ô đã tới được của
 render audit (620 ô), luật `wcag2a wcag2aa`; **vi phạm mức serious/critical là ĐỎ**, moderate/minor được liệt kê để
@@ -776,6 +795,22 @@ theo dõi. Kết quả gộp theo (luật × phần tử) và chỉ in một l�
    HTML không cho phép nút trong nút; VoiceOver chỉ trình bày cái ngoài, nút xoá biến mất với bàn phím. → một `<div>`
    mang `group`/hover wash chứa **hai nút thật** (hàng · xoá); giao diện không đổi một pixel, `stopPropagation` bỏ đi
    vì không còn sự kiện nào để chặn.
+
+**Đo lại 23/09 — điểm 3 và 4 chưa từng vào mã, và axe không thể thấy.** axe đọc trang như nó đang đứng, không bao giờ
+biết tiêu điểm đi đâu khi một lớp mở rồi đóng. Năm nút mở tự `blur()` sau MỌI cú bấm, kể cả Enter — người dùng bàn
+phím mở panel xong đứng ở `<body>`; `useDismiss` đóng bằng Esc mà không trả tiêu điểm cho ai; 0 `aria-modal`; đoạn đang
+đọc chỉ có dấu chấm cho mắt. **Cổng thứ hai — lượt bàn phím** (`scripts-audit-render.mjs`, cuối mỗi lần chạy đầy đủ;
+`--keys` chạy riêng, `--only` bỏ qua): Enter/Esc trên Cài đặt đọc và Cài đặt giọng đọc, chuỗi Cài đặt giọng đọc → Quản
+lý giọng → Esc (về nút ở footer), menu Đổi chế độ (mục đầu, ↓, Esc), sheet Giọng đọc & mô hình (24 lần Tab không lọt
+ra), và một cú **chuột** (tiêu điểm không bị kéo vào panel, không tooltip treo trên nó). Trên `main` @ b9a9b4f:
+**10 lỗi**; sau khi sửa: **14/14 bước đạt**.
+
+**Cùng ngày, cổng thứ ba — ngôn ngữ của ô.** Mỗi ô giờ khẳng định `<html lang>` bằng ngôn ngữ nó mang tên. Trên mã cũ
+đỏ 8/16 ô (`--only shelf/d`): mọi ô `vi` mang `lang="en"` (điểm 6). Sửa app xong vẫn đỏ 6/8 ô `vi` — lộ ra lỗ của CHÍNH
+audit: mock giữ setting trong localStorage cho sống qua reload (như engine giữ file setting), nên tiếng Anh mà một ô
+chọn tràn sang mọi ô sau nó. Suy ra: mỗi lần chạy đầy đủ, **290/310 ô "vi" thật ra vẽ bằng tiếng Anh** — chỉ 20 ô của
+state `default` là tiếng Việt thật; lượt bàn phím chạy sau ô cuối (tiếng Anh) cũng vì thế không tìm thấy nút nào. Nay
+mỗi ô gieo ngôn ngữ của nó vào kho setting của mock trước khi tải trang: 16/16 xanh.
 
 **Phần máy không đo được — chủ kiểm 10 phút, một lần mỗi khi UI đổi lớn** (AI không bật VoiceOver trên máy chủ):
 ⌘F5 bật VoiceOver, rồi chỉ dùng bàn phím: (1) mở app, nghe tên cửa sổ · (2) đi tới Thư viện, nghe tên tài liệu và
@@ -1050,8 +1085,8 @@ chương". Thay cho ba thẻ đục rời (mục lục 288, ghi chú 368, tìm 3
   số đó để vẫn cách CONTROL 12 px ở cả hai chế độ (đo 15/09: neo theo cột thì lật trang cách 36, cuộn cách 12 —
   hai lớp khác nhau cho cùng một thứ). Bề rộng theo nội dung (mục lục `w-72`, ghi chú `w-[23rem]`, tìm `w-[22rem]`).
   Material giới hạn trong vùng sidebar là điều §7 cho phép; toàn cửa sổ vẫn nghỉ hưu.
-- **Behavior**: mở bằng nút toolbar (▤ · ghi chú · tìm) — nút mang `data-popover-trigger` và `blur()` sau click
-  để là CÔNG TẮC thật (bấm lần nữa đóng, không đóng-rồi-mở); trượt vào 12 px + hiện dần 180 ms bằng
+- **Behavior**: mở bằng nút toolbar (▤ · ghi chú · tìm) — nút mang `data-popover-trigger` và `blur()` sau click chuột
+  (bàn phím giữ tiêu điểm trên nút, §4.2) để là CÔNG TẮC thật (bấm lần nữa đóng, không đóng-rồi-mở); trượt vào 12 px + hiện dần 180 ms bằng
   `@starting-style` (`starting:` của Tailwind), `motion-reduce:` tắt; đóng bằng Escape, bấm ra ngoài, nút ✕ —
   cùng một `useDismiss` cho cả ba (mục lục từng không có Escape, ghi chú từng không đóng khi bấm ngoài); mục lục
   ↔ ghi chú ↔ tìm loại trừ nhau (luật ở App); chọn chương / ghi chú → nhảy và ĐÓNG; chọn kết quả tìm → nhảy,
