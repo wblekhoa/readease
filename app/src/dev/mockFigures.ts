@@ -136,38 +136,72 @@ function venn(locale: Locale): string {
 </g>`);
 }
 
-/** About 1:2 - a phone screen, the tallest thing a page has to fit. */
+/** About 1:2 - a phone screen, the tallest thing a page has to fit. Drawn
+ * the way product books show one: a thin-bezel device lifted off a soft
+ * ground, and a screen that tells its own story - the reminder the copy
+ * promises is sitting right there on it. */
 function phone(locale: Locale): string {
   const w = locale === "en"
-    ? { title: "The welcome screen of a reading app", head: ["Ten minutes", "of reading a day"], body: ["Pick one fixed time each day.", "The app will remind you."], go: "Get started", later: "Not now" }
-    : { title: "Màn hình chào của một ứng dụng đọc", head: ["Mỗi ngày", "mười phút đọc"], body: ["Chọn một khung giờ cố định.", "Ứng dụng sẽ nhắc đúng lúc."], go: "Bắt đầu", later: "Để sau" };
-  return svg(560, 1160, w.title, `<defs>
-  <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E7ECF5"/><stop offset="1" stop-color="#F6F7FA"/></linearGradient>
-  <linearGradient id="art" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE6BF"/><stop offset="1" stop-color="#FFC9B5"/></linearGradient>
+    ? { title: "The welcome screen of a reading app", head: ["Ten minutes", "of reading a day"], body: ["Pick one fixed time each day.", "The app will remind you."], ping: ["Time to read", "Your ten minutes start now"], go: "Get started", later: "Not now" }
+    : { title: "Màn hình chào của một ứng dụng đọc", head: ["Mỗi ngày", "mười phút đọc"], body: ["Chọn một khung giờ cố định.", "Ứng dụng sẽ nhắc đúng lúc."], ping: ["Đến giờ đọc rồi", "Mười phút của bạn bắt đầu"], go: "Bắt đầu", later: "Để sau" };
+  const book = (x: number, y: number, width: number, height: number, colour: string, band: string, label: number) =>
+    `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="${colour}"/>` +
+    `<rect x="${x + 12}" y="${y}" width="6" height="${height}" fill="${band}"/>` +
+    `<rect x="${x + 30}" y="${y + height / 2 - 3.5}" width="${label}" height="7" rx="3.5" fill="#FFFFFF" fill-opacity=".6"/>` +
+    `<rect x="${x + width - 12}" y="${y + 4}" width="7" height="${height - 8}" rx="2" fill="#FFF6E5"/>`;
+  return svg(600, 1160, w.title, `<defs>
+  <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EEF1F8"/><stop offset="1" stop-color="#E2E7F1"/></linearGradient>
+  <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E7EEFF"/><stop offset="1" stop-color="#F5EDFF"/></linearGradient>
+  <radialGradient id="sun" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#FFE4A8"/><stop offset="1" stop-color="#FFB45A"/></radialGradient>
+  <filter id="haze" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="46"/></filter>
+  <filter id="lift" x="-30%" y="-20%" width="160%" height="150%"><feDropShadow dx="0" dy="26" stdDeviation="26" flood-color="#1B2233" flood-opacity=".24"/></filter>
+  <filter id="float" x="-20%" y="-50%" width="140%" height="220%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#1B2233" flood-opacity=".14"/></filter>
 </defs>
-<rect width="560" height="1160" fill="url(#ground)"/>
-<rect x="60" y="60" width="440" height="1040" rx="72" fill="#161A22"/>
-<rect x="76" y="76" width="408" height="1008" rx="58" fill="#FFFFFF"/>
-<rect x="230" y="94" width="100" height="30" rx="15" fill="#161A22"/>
+<rect width="600" height="1160" fill="url(#ground)"/>
+<g filter="url(#haze)"><circle cx="110" cy="250" r="150" fill="#D3E0FF"/><circle cx="520" cy="890" r="170" fill="#FFE0CF"/></g>
+<g filter="url(#lift)"><rect x="70" y="100" width="460" height="960" rx="78" fill="#15181E"/></g>
+<rect x="71.5" y="101.5" width="457" height="957" rx="76.5" fill="none" stroke="#353B47" stroke-width="3"/>
+<g fill="#15181E"><rect x="63" y="268" width="8" height="44" rx="3"/><rect x="63" y="336" width="8" height="78" rx="3"/><rect x="63" y="430" width="8" height="78" rx="3"/><rect x="529" y="372" width="8" height="118" rx="3"/></g>
+<rect x="84" y="114" width="432" height="932" rx="64" fill="#FFFFFF"/>
+<rect x="254" y="132" width="92" height="28" rx="14" fill="#0B0D11"/>
 <g font-family="${SANS}">
-  <text x="114" y="118" font-size="19" font-weight="700" fill="${INK}">9:41</text>
-  <g fill="${INK}"><rect x="384" y="106" width="4" height="10" rx="1"/><rect x="391" y="102" width="4" height="14" rx="1"/><rect x="398" y="98" width="4" height="18" rx="1"/><rect x="416" y="100" width="30" height="15" rx="4" fill="none" stroke="${INK}" stroke-width="2"/><rect x="419" y="103" width="21" height="9" rx="2"/></g>
-  <rect x="100" y="170" width="360" height="390" rx="36" fill="url(#art)"/>
-  <circle cx="386" cy="246" r="38" fill="#FFB35C"/>
-  <g transform="translate(170 250)"><circle r="36" fill="#FFFFFF"/><path d="M0 -20V0l14 10" fill="none" stroke="#E07A4F" stroke-width="5" stroke-linecap="round"/></g>
-  <path d="M280 470c-40-22-92-26-128-14v-96c36-12 88-8 128 14z" fill="#FFFFFF" stroke="#E07A4F" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M280 470c40-22 92-26 128-14v-96c-36-12-88-8-128 14z" fill="#FFFFFF" stroke="#E07A4F" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M176 392h72M176 414h60M312 392h72M312 414h54" stroke="#F3B79F" stroke-width="5" stroke-linecap="round"/>
-  <text font-size="38" font-weight="700" fill="${INK}"><tspan x="112" y="636">${w.head[0]}</tspan><tspan x="112" y="682">${w.head[1]}</tspan></text>
-  <text font-size="21" fill="${MUTED}"><tspan x="112" y="734">${w.body[0]}</tspan><tspan x="112" y="764">${w.body[1]}</tspan></text>
-  <rect x="112" y="818" width="30" height="10" rx="5" fill="#2F6FDE"/>
-  <circle cx="160" cy="823" r="5" fill="#C9D1DD"/>
-  <circle cx="178" cy="823" r="5" fill="#C9D1DD"/>
-  <rect x="100" y="900" width="360" height="72" rx="36" fill="#2F6FDE"/>
-  <text x="280" y="944" text-anchor="middle" font-size="24" font-weight="700" fill="#FFFFFF">${w.go}</text>
-  <text x="280" y="1022" text-anchor="middle" font-size="21" fill="#2F6FDE">${w.later}</text>
+  <text x="126" y="155" font-size="19" font-weight="600" fill="${INK}">9:41</text>
+  <g fill="${INK}"><rect x="410" y="148" width="4" height="7" rx="1.5"/><rect x="416" y="145" width="4" height="10" rx="1.5"/><rect x="422" y="142" width="4" height="13" rx="1.5"/><rect x="428" y="139" width="4" height="16" rx="1.5"/></g>
+  <path d="M441.2 145.2A11 11 0 0 1 456.8 145.2M444.4 148.4A6.5 6.5 0 0 1 453.6 148.4" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="449" cy="152.5" r="2" fill="${INK}"/>
+  <rect x="465" y="141" width="27" height="14" rx="4.5" fill="none" stroke="${INK}" stroke-opacity=".4" stroke-width="2"/>
+  <rect x="467.5" y="143.5" width="18" height="9" rx="2.5" fill="${INK}"/>
+  <path d="M495 146.5v3.5" stroke="${INK}" stroke-opacity=".4" stroke-width="2" stroke-linecap="round"/>
+  <rect x="108" y="186" width="384" height="410" rx="32" fill="url(#panel)"/>
+  <circle cx="392" cy="282" r="56" fill="url(#sun)"/>
+  <g fill="#FFFFFF" fill-opacity=".92"><rect x="148" y="240" width="96" height="26" rx="13"/><rect x="174" y="224" width="52" height="30" rx="15"/><rect x="322" y="318" width="84" height="22" rx="11"/><rect x="344" y="305" width="40" height="24" rx="12"/></g>
+  <rect x="132" y="528" width="336" height="12" rx="6" fill="#D3DCF2"/>
+  <path d="M150 478h40l-6 50h-28z" fill="#E07A5F"/>
+  <rect x="145" y="470" width="50" height="11" rx="4" fill="#C8644A"/>
+  <g fill="#3E9C6E"><ellipse cx="158" cy="436" rx="10" ry="30" transform="rotate(-28 158 436)"/><ellipse cx="184" cy="432" rx="10" ry="32" transform="rotate(24 184 432)"/></g>
+  <ellipse cx="170" cy="422" rx="10" ry="38" fill="#58B384"/>
+  ${book(214, 490, 190, 38, "#2F6FDE", "#1F4FAE", 70)}
+  ${book(228, 456, 164, 34, "#F2B544", "#D9982A", 56)}
+  ${book(218, 424, 176, 32, "#7B61D9", "#6147C0", 62)}
+  <rect x="418" y="478" width="44" height="50" rx="10" fill="#FFFFFF" stroke="#CFD8EC" stroke-width="3"/>
+  <path d="M462 490q15 0 15 13t-15 13" fill="none" stroke="#CFD8EC" stroke-width="4"/>
+  <path d="M432 466q-7-11 0-22M448 466q-7-11 0-22" fill="none" stroke="#C3CDE6" stroke-width="3.5" stroke-linecap="round"/>
+  <g filter="url(#float)"><rect x="124" y="556" width="352" height="86" rx="22" fill="#FFFFFF"/></g>
+  <rect x="142" y="575" width="48" height="48" rx="12" fill="#2F6FDE"/>
+  <path d="M166 591c-5-3.5-11-4.5-16-3.5v19c5-1 11 0 16 3.5zM166 591c5-3.5 11-4.5 16-3.5v19c-5-1-11 0-16 3.5z" fill="#FFFFFF"/>
+  <text x="204" y="594" font-size="18" font-weight="700" fill="${INK}">${w.ping[0]}</text>
+  <text x="204" y="618" font-size="15.5" fill="${MUTED}">${w.ping[1]}</text>
+  <text x="458" y="594" text-anchor="end" font-size="14" fill="#8A93A6">8:00</text>
+  <text font-size="36" font-weight="700" letter-spacing="-.4" fill="#141A26"><tspan x="112" y="712">${w.head[0]}</tspan><tspan x="112" y="756">${w.head[1]}</tspan></text>
+  <text font-size="19.5" fill="${MUTED}"><tspan x="112" y="804">${w.body[0]}</tspan><tspan x="112" y="832">${w.body[1]}</tspan></text>
+  <rect x="112" y="872" width="26" height="8" rx="4" fill="#2F6FDE"/>
+  <circle cx="150" cy="876" r="4" fill="#CBD3E1"/>
+  <circle cx="164" cy="876" r="4" fill="#CBD3E1"/>
+  <rect x="108" y="908" width="384" height="62" rx="31" fill="#2F6FDE"/>
+  <text x="300" y="946" text-anchor="middle" font-size="21" font-weight="700" fill="#FFFFFF">${w.go}</text>
+  <text x="300" y="1004" text-anchor="middle" font-size="18.5" font-weight="600" fill="#2F6FDE">${w.later}</text>
 </g>
-<rect x="210" y="1058" width="140" height="6" rx="3" fill="#161A22"/>`);
+<rect x="234" y="1026" width="132" height="5" rx="2.5" fill="#15181E"/>`);
 }
 
 /** 4:3 - an illustration with no words at all, like a photograph. */
