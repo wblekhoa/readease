@@ -63,8 +63,9 @@ export function ReadingLimits({
       {scoped && (
       <GroupedRow
         title={text("cost.scope")}
-        trailing={
+        trailing={(titleId) => (
           <Select
+            labelledBy={titleId}
             value={scope === null ? "all" : String(scope)}
             onChange={(event) =>
               onScope(event.target.value === "all" ? null : Number(event.target.value))
@@ -80,7 +81,7 @@ export function ReadingLimits({
               </option>
             ))}
           </Select>
-        }
+        )}
       />
       )}
       <GroupedRow
@@ -88,8 +89,9 @@ export function ReadingLimits({
         /* The running total sits under the ceiling it is running towards -
            a limit with no sense of how close you are is half a limit. */
         subtitle={spent > 0 ? text("cost.spent", { usd: formatUsd(spent) }) : undefined}
-        trailing={
+        trailing={(titleId) => (
           <Select
+            labelledBy={titleId}
             value={budget === null ? "off" : String(budget)}
             onChange={(event) =>
               onBudget(event.target.value === "off" ? null : Number(event.target.value))
@@ -101,7 +103,7 @@ export function ReadingLimits({
               </option>
             ))}
           </Select>
-        }
+        )}
       />
     </>
   );
