@@ -38,6 +38,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   sounds, and "pp." as "pip"; they are now "ten thirty", "nineteen ninety
   to two thousand", "twelve to fifteen", "three sixteen" and "pages". A
   date like "Jan. 5, 2024" is no longer cut in two after "Jan.".
+- Numbered lists keep their numbers. When an EPUB numbers a list by its
+  structure rather than in the words, the numbers were lost - the page
+  drew a dot and the voice said nothing, so steps 1, 2, 3 lost their
+  order. The page now shows the number, the voice says it ("one, …"), and
+  VoiceOver reads it. Documents already in the library get this too;
+  nothing is imported again.
 
 ## 0.1.15
 

@@ -22,9 +22,13 @@ export type ListLead = {
   rest: string;
 };
 
-export function listLead(text: string): ListLead {
+/** `numbered` is the number an `<ol>` gives the item when its text carries
+ * none ("1.", "e.", "IV." from `book.open`, HIG 3): the browser drew those
+ * numbers from the list's structure, so they were never in the words. A
+ * marker typed into the text wins - the importer gives such an item none. */
+export function listLead(text: string, numbered?: string): ListLead {
   const match = text.match(LEAD);
-  if (!match) return { marker: { kind: "dot" }, rest: text };
+  if (!match) return { marker: numbered ? { kind: "number", label: numbered } : { kind: "dot" }, rest: text };
   const rest = text.slice(match[0].length);
   if (match[1]) return { marker: { kind: "dot" }, rest };
   return { marker: { kind: "number", label: (match[2] ?? match[3]).trim() }, rest };

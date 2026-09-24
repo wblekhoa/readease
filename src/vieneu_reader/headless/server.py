@@ -1190,12 +1190,22 @@ class _Session:
         cues: dict[str, list[_FigureCue]] = {}
         notes: dict[str, list[tuple[int, int, str]]] = {}
         already_said: set[str] = set()
+        # What the voice says before an `<ol>` item: its number and a comma
+        # ("1, chuẩn bị…"), the rule the owner chose for "(a)" on 02/09 -
+        # not "1.", which the sentence splitter would cut off as a sentence
+        # of its own (HIG 5.1).
+        spoken_markers: dict[str, str] = {}
         if self._service is not None:
             presentation = self._service.presentation_for(
                 stored.book, stored.managed_path
             )
             cues = _figure_cues(presentation)
             notes = _note_marks(presentation)
+            spoken_markers = {
+                marker.segment_id: marker.spoken
+                for chapter in presentation.chapters
+                for marker in getattr(chapter, "markers", ())
+            }
             already_said = {
                 segment_id
                 for chapter in presentation.chapters
@@ -1292,6 +1302,14 @@ class _Session:
                     ))
             if not spoken_pieces:
                 spoken_pieces.append((speakable_text(segment.text, segment.kind, language), False))
+            if segment.id in spoken_markers and not spoken_pieces[0][1]:
+                # On the words, not on `segment.text`: the note marks above
+                # are offsets into the stored text, and a prefix there would
+                # move every one of them.
+                spoken_pieces[0] = (
+                    f"{spoken_markers[segment.id]}, {spoken_pieces[0][0]}",
+                    False,
+                )
             for order, (spoken, is_note) in enumerate(spoken_pieces):
                 last = order == len(spoken_pieces) - 1
                 add(_Utterance(
@@ -2078,11 +2096,17 @@ class _Session:
             progress = None
         figures_by_chapter: dict[str, list[dict[str, Any]]] = {}
         contents: tuple[Any, ...] = ()
+        markers: dict[str, str] = {}
         if self._service is not None:
             presentation = self._service.presentation_for(
                 stored.book, stored.managed_path
             )
             contents = presentation.contents
+            markers = {
+                marker.segment_id: marker.label
+                for chapter in presentation.chapters
+                for marker in getattr(chapter, "markers", ())
+            }
             for chapter in presentation.chapters:
                 figures_by_chapter[chapter.chapter_id] = [
                     {
@@ -2129,6 +2153,14 @@ class _Session:
                                 # importer cut for the voice, and the page
                                 # must not open a new paragraph there.
                                 "joint": segment.joint,
+                                # The number an `<ol>` gives this item, which
+                                # its text never carried ("1.", "e.", "IV.");
+                                # absent when there is none (HIG 3).
+                                **(
+                                    {"marker": markers[segment.id]}
+                                    if segment.id in markers
+                                    else {}
+                                ),
                             }
                             for segment in chapter.segments
                         ],

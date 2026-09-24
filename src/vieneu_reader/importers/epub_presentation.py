@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
+import re
 import stat
 import struct
 from typing import BinaryIO, Literal
@@ -24,6 +25,7 @@ from vieneu_reader.domain.presentation import (
     ChapterPresentation,
     ContentsEntry,
     FigureRef,
+    ListMarker,
     NoteRef,
     figure_label,
 )
@@ -95,6 +97,10 @@ class _TextEvent:
     #: `<h2 id>`, `<section id><h2>`, `<p><a id/>…` - which is where a line
     #: of the contents pointing at `chapter.xhtml#id` leads (HIG 3.25).
     anchors: tuple[str, ...] = ()
+    #: ("1.", "1"), ("e.", "e"), ("IV.", "4") - what the page prints for the
+    #: number an `<ol>` gives this item, and what the voice says for it; set
+    #: when the item's own words do not already start with a number.
+    marker: tuple[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +192,70 @@ def _image_event(
     )
 
 
+# A marker the author typed in front of an item ("1. ", "b) ", "• ") - the
+# same lead the page's own `listLead` (app/src/ui/blockStyle.ts) recognises,
+# so an item that shows its own number never gets a second one.
+_TYPED_MARKER = re.compile(r"^\s*(?:[•·◦▪‣●■\-–—*]|\(?\d{1,3}[.)]|[a-zA-Z][.)])\s+")
+_ROMAN_STEPS = (
+    (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"),
+    (50, "l"), (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"),
+)
+
+
+def _counted(number: int, kind: str) -> str:
+    """`number` the way an `<ol type=kind>` writes it; digits where that
+    style has no way to (zero, negative, too large)."""
+    if kind in {"a", "A"} and 1 <= number <= 702:
+        letters = ""
+        rest = number
+        while rest:
+            rest, digit = divmod(rest - 1, 26)
+            letters = chr(ord("a") + digit) + letters
+        return letters.upper() if kind == "A" else letters
+    if kind in {"i", "I"} and 1 <= number < 4000:
+        roman = ""
+        rest = number
+        for value, glyphs in _ROMAN_STEPS:
+            while rest >= value:
+                roman += glyphs
+                rest -= value
+        return roman.upper() if kind == "I" else roman
+    return str(number)
+
+
+def _list_markers(ordered: ElementTree.Element) -> dict[int, tuple[str, str]]:
+    """The number each `<li>` of one `<ol>` shows and says, by element
+    identity: ("iv.", "4") - a letter is said as the letter, a numeral as
+    its number.
+
+    `start`, `type` and an item's own `value` are honoured; `reversed` is
+    not (rare, and a list counted the wrong way is worse than a plain one
+    - it is left for when a book needs it)."""
+    attributes = {_local_name(key): value for key, value in ordered.attrib.items()}
+    kind = attributes.get("type", "1").strip()
+    if kind not in {"1", "a", "A", "i", "I"}:
+        kind = "1"
+    try:
+        counter = int(attributes.get("start", "1"))
+    except ValueError:
+        counter = 1
+    markers: dict[int, tuple[str, str]] = {}
+    for item in ordered:
+        if _local_name(item.tag) != "li" or _is_hidden(item):
+            continue
+        own = {_local_name(key): value for key, value in item.attrib.items()}.get("value")
+        if own is not None:
+            try:
+                counter = int(own)
+            except ValueError:
+                pass
+        shown = _counted(counter, kind)
+        spoken = shown.lower() if kind in {"a", "A"} and not shown.lstrip("-").isdigit() else str(counter)
+        markers[id(item)] = (f"{shown}.", spoken)
+        counter += 1
+    return markers
+
+
 def _chapter_events(
     root: ElementTree.Element,
     spoken_blocks: frozenset[int] = frozenset(),
@@ -236,6 +306,7 @@ def _chapter_events(
     def visit(
         element: ElementTree.Element,
         ancestor_classes: frozenset[str],
+        marker: tuple[str, str] | None = None,
     ) -> None:
         nonlocal occurrence
         tag = _local_name(element.tag)
@@ -254,6 +325,11 @@ def _chapter_events(
             if text:
                 events.append(_TextEvent(
                     text, id(element) in spoken_blocks, anchors=tuple(waiting + inner),
+                    marker=(
+                        marker
+                        if tag == "li" and marker and not _TYPED_MARKER.match(text)
+                        else None
+                    ),
                 ))
                 waiting.clear()
             else:
@@ -264,6 +340,9 @@ def _chapter_events(
         if normalized:
             events.append(_TextEvent(normalized, anchors=tuple(waiting)))
             waiting.clear()
+        # An `<ol>` numbers its own items; a list inside an item is part of
+        # that item's words (an `<li>` is one block), so it never gets here.
+        markers = _list_markers(element) if tag == "ol" else {}
         for child in element:
             child_tag = _local_name(child.tag)
             if child_tag == "img" and not _is_hidden(child):
@@ -277,7 +356,7 @@ def _chapter_events(
                 if image is not None:
                     events.append(image)
             else:
-                visit(child, classes)
+                visit(child, classes, markers.get(id(child)))
             normalized_tail = normalize_paragraph(child.tail or "")
             if normalized_tail:
                 events.append(_TextEvent(normalized_tail, anchors=tuple(waiting)))
@@ -731,6 +810,7 @@ def _chapter_presentation(
     note_marks: list[tuple[int, int, int]] = []
     spoken_indexes: list[int] = []
     anchor_indexes: dict[str, int] = {}
+    marker_indexes: list[tuple[int, tuple[str, str]]] = []
     previous_segment_index: int | None = None
     for event in events:
         if isinstance(event, _TextEvent):
@@ -771,6 +851,10 @@ def _chapter_presentation(
             if parts:
                 for anchor in event.anchors:
                     anchor_indexes.setdefault(anchor, base)
+                if event.marker:
+                    # The item's FIRST segment only: the tail of an item the
+                    # importer cut in two does not say "1." again.
+                    marker_indexes.append((base, event.marker))
             generated_text.extend(parts)
             if parts:
                 previous_segment_index = len(generated_text) - 1
@@ -870,6 +954,10 @@ def _chapter_presentation(
             tuple(notes),
             tuple(chapter.segments[index].id for index in spoken_indexes),
             tuple((anchor, chapter.segments[index].id) for anchor, index in anchor_indexes.items()),
+            tuple(
+                ListMarker(chapter.segments[index].id, label, spoken)
+                for index, (label, spoken) in marker_indexes
+            ),
         ),
         next_number,
     )

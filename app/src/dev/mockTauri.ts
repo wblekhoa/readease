@@ -55,11 +55,13 @@ const PARAGRAPHS = [
 ];
 
 /** Chapter 3 of the mock book is the style sampler: every kind of block the
- * importer produces, in the three shapes lists actually arrive in (a glyph
- * typed into the text, a number typed into the text, clean), a paragraph cut
- * in two for the voice, a real quotation and the one-word "quotes" that
- * translated books use as labels. */
-const STYLE_SAMPLER: Array<{ text: string; kind: string; joint?: string }> = [
+ * importer produces, in the four shapes lists actually arrive in (a glyph
+ * typed into the text, a number typed into the text, clean, and numbered by
+ * an `<ol>` - clean text with a `marker` beside it, as `book.open` sends it;
+ * kept at the END so no id before it moves), a paragraph cut in two for the
+ * voice, a real quotation and the one-word "quotes" that translated books
+ * use as labels. */
+const STYLE_SAMPLER: Array<{ text: string; kind: string; joint?: string; marker?: string }> = [
   { text: "Ba con đường vào UX", kind: "heading" },
   { text: "Phần lớn người làm UX không bắt đầu từ UX. Họ đến từ một nghề gần đó, mang theo cách nhìn của nghề ấy, và chính cách nhìn đó làm nên thế mạnh của họ về sau.", kind: "paragraph" },
   { text: "Đây là phần tiếp của cùng một đoạn, bị cắt cho giọng đọc: trên trang nó phải nối liền với câu trước, không mở một đoạn mới.", kind: "paragraph", joint: "split" },
@@ -86,6 +88,10 @@ const STYLE_SAMPLER: Array<{ text: string; kind: string; joint?: string }> = [
   { text: "Bản dịch của hình đứng ngay trên là bản trùng: cùng số, cùng chú thích, không được giới thiệu lần hai.", kind: "paragraph" },
   { text: "def read(book):\n    for segment in book:\n        speak(segment)", kind: "preformatted" },
   { text: "Khối preformatted (mã, bảng chữ) hiện chưa có kiểu riêng - cố ý để trong bộ mẫu cho thấy điều còn thiếu.", kind: "paragraph" },
+  { text: "Danh sách đánh số theo cấu trúc: chữ của từng mục không mang số, số được dựng khi mở tài liệu.", kind: "paragraph" },
+  { text: "Viết ra câu hỏi trước khi đọc.", kind: "list_item", marker: "1." },
+  { text: "Đọc lướt một lượt để thấy khung.", kind: "list_item", marker: "2." },
+  { text: "Quay lại những chỗ khó và đọc chậm.", kind: "list_item", marker: "3." },
 ];
 
 const CHAPTER_NAMES = [
