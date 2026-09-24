@@ -873,6 +873,16 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.assertTrue(coordinator.snapshot.is_selection)
         self.assertEqual(self.progress.saved, [])
 
+    def test_a_scene_break_in_a_selection_is_a_silence_not_a_failure(self):
+        # "* * *" says nothing (HIG 5.1, 24/09): the voice is never asked for
+        # an empty string, and saying nothing there is not the voice failing.
+        self.coordinator.play_selection("* * *", "Adam")
+
+        self.scheduler.run_next()
+
+        self.assertEqual(self.engine.calls, [])
+        self.assertNotEqual(self.coordinator.snapshot.state, PlaybackState.ERROR)
+
     def test_progress_failure_enters_error_after_audio_drains(self):
         self.progress.failure = RuntimeError("database unavailable")
         self.coordinator.play(self.book, self.first.id, "Adam")
