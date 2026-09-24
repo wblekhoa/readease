@@ -1237,3 +1237,77 @@ class ContentsTreeTests(unittest.TestCase):
             ]
 
         self.assertEqual(cut(with_tree), cut(without))
+
+
+class OrderedListMarkerTests(unittest.TestCase):
+    """The number an `<ol>` gives its items (HIG 3, 24/09): the browser drew
+    it from the list's structure, so the imported text never had it. It is
+    put back as metadata on open - the segments are not touched."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _markers(self, body):
+        chapter = f'<html xmlns="http://www.w3.org/1999/xhtml"><body>{body}</body></html>'
+        path = make_epub(self.root, spine=("chapter-1",), chapter_overrides={"chapter-1": chapter})
+        book = import_epub(path)
+        presentation = load_epub_presentation(path, book)
+        found = {marker.segment_id: marker for c in presentation.chapters for marker in c.markers}
+        return [
+            (s.text, found[s.id].label, found[s.id].spoken) if s.id in found else (s.text, None, None)
+            for c in book.chapters for s in c.segments
+        ]
+
+    def test_an_ol_numbers_its_items_and_a_ul_does_not(self):
+        self.assertEqual(
+            self._markers(
+                "<h1>Cách làm</h1>"
+                "<ol><li>Chuẩn bị.</li><li>Nấu.</li><li>2. Đã gõ số sẵn.</li></ol>"
+                "<ul><li>Muối</li><li>Tiêu</li></ul>"
+            ),
+            [
+                ("Cách làm", None, None),
+                ("Chuẩn bị.", "1.", "1"),
+                ("Nấu.", "2.", "2"),
+                # Typed in: the page and the voice already have its number.
+                ("2. Đã gõ số sẵn.", None, None),
+                ("Muối", None, None),
+                ("Tiêu", None, None),
+            ],
+        )
+
+    def test_start_type_and_value_are_honoured(self):
+        self.assertEqual(
+            self._markers(
+                '<ol start="5" type="a"><li>Mục e.</li><li value="10">Mục j.</li></ol>'
+                '<ol type="I"><li>Một.</li><li>Hai.</li><li>Ba.</li><li>Bốn.</li></ol>'
+                '<ol type="i" start="9"><li>Chín.</li></ol>'
+                '<ol type="a" start="9"><li>Chữ i.</li></ol>'
+            ),
+            [
+                ("Mục e.", "e.", "e"),
+                ("Mục j.", "j.", "j"),
+                # A numeral is SAID as its number - "IV" is not a word.
+                ("Một.", "I.", "1"),
+                ("Hai.", "II.", "2"),
+                ("Ba.", "III.", "3"),
+                ("Bốn.", "IV.", "4"),
+                # "i." alone is both: which one is decided where the type is known.
+                ("Chín.", "ix.", "9"),
+                ("Chữ i.", "i.", "i"),
+            ],
+        )
+
+    def test_only_the_first_part_of_a_long_item_is_numbered(self):
+        long_item = "Một câu rất dài trong mục đầu tiên của danh sách. " * 8
+        rows = self._markers(f"<ol><li>{long_item.strip()}</li><li>Mục hai.</li></ol>")
+
+        labels = [label for _text, label, _spoken in rows]
+        self.assertGreater(len(rows), 2)  # the first item was cut for the voice
+        self.assertEqual(labels[0], "1.")
+        self.assertEqual(labels[1:-1], [None] * (len(rows) - 2))
+        self.assertEqual(labels[-1], "2.")

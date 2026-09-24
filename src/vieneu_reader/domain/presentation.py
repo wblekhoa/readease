@@ -105,6 +105,23 @@ class ChapterPresentation:
     #: id the source gave an element at or just before a block - what a line
     #: of the contents pointing at `chapter.xhtml#section-2` leads to.
     anchors: tuple[tuple[str, str], ...] = ()
+    #: The number an ordered list gives its items, which the browser draws
+    #: from `<ol>` and the text never carried - on the FIRST segment of each
+    #: item that has no number of its own written in. Metadata, never text:
+    #: the segments stay exactly as stored (HIG 3, "Danh sách <ol> mang số
+    #: của nó").
+    markers: tuple["ListMarker", ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ListMarker:
+    segment_id: str
+    #: What the page prints in the gutter: "1.", "e.", "IV.".
+    label: str
+    #: What the voice says before the item, a comma after it (HIG 5.1):
+    #: "1", "e", and "4" for "IV." - decided where the list's type is known,
+    #: because "i." alone is both the ninth letter and the first numeral.
+    spoken: str
 
 
 @dataclass(frozen=True, slots=True)

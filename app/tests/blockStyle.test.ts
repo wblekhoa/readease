@@ -15,6 +15,15 @@ test("a list item gives up the marker the book typed in front of it", () => {
   assert.deepEqual(listLead("1998 là năm khởi đầu."), { marker: { kind: "dot" }, rest: "1998 là năm khởi đầu." });
 });
 
+test("an item an <ol> numbered shows that number; a marker typed in the text wins", () => {
+  // The number the browser drew from the list's structure, sent by book.open.
+  assert.deepEqual(listLead("Viết ra câu hỏi.", "1."), { marker: { kind: "number", label: "1." }, rest: "Viết ra câu hỏi." });
+  assert.deepEqual(listLead("Mục thứ tư.", "IV."), { marker: { kind: "number", label: "IV." }, rest: "Mục thứ tư." });
+  // The importer gives a typed item no marker; if one ever came, the text wins.
+  assert.deepEqual(listLead("2. Đã gõ số.", "1."), { marker: { kind: "number", label: "2." }, rest: "Đã gõ số." });
+  assert.deepEqual(listLead("• Gạch đầu dòng.", "1."), { marker: { kind: "dot" }, rest: "Gạch đầu dòng." });
+});
+
 test("a blockquote of one to three unpunctuated words is a label, anything longer a quotation", () => {
   assert.equal(quoteRole("Trải nghiệm"), "label");
   assert.equal(quoteRole("Phần cứng"), "label");

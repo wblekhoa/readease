@@ -60,7 +60,9 @@ export type PageInfo = {
   resumeExcerpt: string | null;
 };
 
-type BookSegment = { id: string; text: string; kind: string; joint?: Joint };
+/** `marker`: the number an `<ol>` gives a list item whose text carries none
+ * ("1.", "e.", "IV." - HIG 3). */
+type BookSegment = { id: string; text: string; kind: string; joint?: Joint; marker?: string };
 type BookFigure = {
   id: string;
   anchor_segment_id: string;
@@ -958,7 +960,7 @@ export function Reader({
   const blockBody = (segment: BookSegment) => {
     if (segment.kind !== "list_item") return marked(segment);
     if (continues(segment.joint)) return marked(segment);
-    const { marker, rest } = listLead(segment.text);
+    const { marker, rest } = listLead(segment.text, segment.marker);
     return (
       <>
         {/* The gutter mark shares the first line's baseline: `top-1` is the
@@ -970,9 +972,11 @@ export function Reader({
             ordinal at the text's size in tabular figures, a shade lighter
             than the words so it ranks below them, right-aligned in a
             gutter that holds "99." (the 0.9em number read as a footnote
-            mark, and "10." overran a 20 px gutter). */}
+            mark, and "10." overran a 20 px gutter). The dot is decoration
+            and stays hidden from VoiceOver; the number is the item's place
+            in the list, so it is read (24/09 - it was hidden too). */}
         <span
-          aria-hidden
+          aria-hidden={marker.kind === "dot" ? true : undefined}
           className={`absolute left-0 top-1 w-8 text-right tabular-nums ${
             // The dot sits under the DIGIT of a number, not under its
             // period: a number is right-aligned to 8 px from the text, so

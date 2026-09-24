@@ -29,6 +29,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - A slider's knob can be seen in both themes. It was the panel's own
   colour, white on white and dark on dark, and only its shadow showed
   where it was; it now takes the colour of the filled part of the line.
+- Numbered lists keep their numbers. When an EPUB numbers a list by its
+  structure rather than in the words, the numbers were lost - the page
+  drew a dot and the voice said nothing, so steps 1, 2, 3 lost their
+  order. The page now shows the number, the voice says it ("one, …"), and
+  VoiceOver reads it. Documents already in the library get this too;
+  nothing is imported again.
 
 ## 0.1.15
 

@@ -480,6 +480,18 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   SỐ chứ không dưới dấu chấm của số** (tâm chữ số ≈ 15 px kể từ chữ; chủ 17/09: "bullet xa ra bên trái một xíu để
   align với number") (chủ 17/09: "padding left của bullet bằng với number"; bản 24/32 tách rãnh chỉ
   sống vài phút).
+- **Danh sách `<ol>` mang số của nó — trên trang và trong giọng** (24/09, audit giọng đọc 23/09, chủ duyệt sửa). Trước:
+  importer lấy chữ của từng `<li>` và bỏ cấu trúc, nên số của một danh sách đánh số (trình duyệt tự vẽ từ `<ol>`,
+  không có trong chữ) mất ở cả hai nơi — EPUB thử: `<ol><li>Chuẩn bị…` ra `list_item` "Chuẩn bị…", y hệt `<ul>`;
+  gutter vẽ chấm, giọng không đọc số, các bước "1, 2, 3" mất thứ tự. Chỉ danh sách có số GÕ trong chữ ("1. …") còn số.
+  Nay: **nhãn là metadata, dựng khi mở, không lưu** (cùng lớp presentation với mục lục §3.25): chữ và id của đoạn không
+  đổi — `_chapter_presentation` vẫn so từng chữ với bản đã lưu, tiến độ/highlight/liên kết Apple Books không chạm —
+  sách nhập từ trước có số ngay, bản build cũ không thấy gì lạ. Nhãn theo `<ol>`: `start`, `type` (1 · a · A · i · I),
+  `value` trên `<li>`; `reversed` chưa làm (hiếm). Chỉ ĐOẠN ĐẦU của một `<li>` mang nhãn (nửa sau của mục bị cắt không
+  lặp "1."); mục đã gõ số sẵn giữ số của nó, không thêm nhãn thứ hai. Trang vẽ nhãn vào đúng rãnh 32 px của số gõ.
+  Giọng đọc nhãn là **số + phẩy** ("1, chuẩn bị…" → *một, chuẩn bị*; "a," cho chữ cái; kiểu La Mã đọc thành số) — cùng
+  luật "(a)" → "a," chủ chọn 02/09 — chứ không phải "1." (máy cắt câu tách "1." thành một câu, SDK ép dấu chấm → *một.*
+  + nghỉ hết câu). Danh sách lồng TRONG một `<li>` vẫn là một khối chữ của mục cha (giới hạn cũ của importer).
 - **`ink-faint` là màu VÔ HIỆU, đừng dùng cho chữ của sách.** Nhánh "trích dẫn ngắn = nhãn" (`quoteRole`, ≤3 từ và
   không có dấu kết câu) từng tô chữ thật của sách bằng `ink-faint`, tương phản ~2:1 trên giấy trắng — chủ đọc không
   ra và hỏi "nội dung gì mà mờ quá vậy". **Nhãn là NHỎ và khẽ, không phải không dùng được**: cỡ chữ và độ đậm nói
@@ -927,6 +939,9 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   `full`; ngoặc là chữ ("(một người bạn cũ)") và năm trong câu giữ nguyên. Chữ trên trang không đổi; ước
   tính chi phí giọng API đi qua cùng hàm nên tính đúng chữ được đọc.
 - **Ký hiệu liệt kê "(a) … (b) …" nói thành chữ cái kèm nghỉ** — chủ chọn bằng tai 02/09 giữa 4 bản render cùng một câu (giữ nguyên · xoá · "một là/hai là" · chữ cái + nghỉ): "khớp với a, nhiệm vụ hiện tại, hoặc b, sở thích cá nhân". Nghỉ đặt TRƯỚC liên từ dẫn vào ký hiệu (hoặc/hay/và/rồi/cũng như). Tham chiếu "mục (b)" → "mục b", không nghỉ. Chỉ chữ thường đơn có khoảng trắng phía trước; "book(s)", "(ii)", "(1)" không đụng (thư viện: 31 ký hiệu, 0 chữ số/hoa/tham chiếu). Test chốt = chính câu chủ duyệt, so khớp từng ký tự với bản render đã nghe.
+- **Số của `<ol>` nói theo cùng luật: số + phẩy** (24/09) — nhãn dựng từ `<ol>` (§3, "Danh sách `<ol>` mang số của nó")
+  đi vào lời nói ở MỘT chỗ, bộ dựng lời của sách (`_book_utterances`), nên ước tính chi phí và lượt đọc đếm cùng chữ.
+  Chỉ số GÕ trong chữ ("1. …", "2) …") vẫn đọc như trước — mục 6 của audit 23/09, chưa duyệt.
 
 
 ## 6. Số đo đã chốt (vay M3: measurements tường minh)

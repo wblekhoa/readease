@@ -1719,6 +1719,61 @@ class ProtocolTests(unittest.TestCase):
             )
         # A second-chapter picture starts again at 1 - that is the promise.
 
+    def test_an_ordered_list_is_numbered_on_the_page_and_in_the_voice(self) -> None:
+        """HIG 3 / 5.1 (24/09): an `<ol>` item's number rides with its
+        segment in book.open, and the voice says it with a comma - "1, …",
+        the rule the owner chose for "(a)" - not "1.", which the splitter
+        would cut off into a sentence of its own. Unmarked items say nothing
+        extra, and the stored text is what book.open shows."""
+        from types import SimpleNamespace
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            book = build_book([(
+                "Một",
+                [("Chuẩn bị nguyên liệu.", "list_item"),
+                 ("Nấu trong mười phút.", "list_item"),
+                 ("Muối và tiêu.", "list_item")],
+            )])
+            source = root / "book.epub"
+            source.write_bytes(b"fixture")
+            repository.add_book(book, source)
+            first, second, plain = book.chapters[0].segments
+            presentation = SimpleNamespace(contents=(), chapters=[SimpleNamespace(
+                chapter_id=book.chapters[0].id, figures=(),
+                markers=(
+                    SimpleNamespace(segment_id=first.id, label="1.", spoken="1"),
+                    SimpleNamespace(segment_id=second.id, label="II.", spoken="2"),
+                ),
+            )])
+            service = SimpleNamespace(
+                presentation_for=lambda book, path: presentation,
+                assets_for=lambda book, path, figures: {},
+            )
+            engine = FakeEngine()
+            replies = run_server([
+                {"id": 92, "method": "book.open", "params": {"book_id": book.id}},
+                {"id": 93, "method": "read.book",
+                 "params": {"book_id": book.id, "voice_id": "adam"}},
+            ], engine, repository=repository, service=service)
+
+            segments = replies[0]["result"]["book"]["chapters"][0]["segments"]
+            self.assertEqual(
+                [(s["text"], s.get("marker")) for s in segments],
+                [("Chuẩn bị nguyên liệu.", "1."),
+                 ("Nấu trong mười phút.", "II."),
+                 ("Muối và tiêu.", None)],
+            )
+            self.assertEqual(
+                [text for text, _voice in engine.requests],
+                ["1, Chuẩn bị nguyên liệu.", "2, Nấu trong mười phút.", "Muối và tiêu."],
+            )
+            self.assertEqual(plain.text, "Muối và tiêu.")
+
     def test_a_book_that_numbers_its_own_figures_is_not_numbered_again(self) -> None:
         """Three announcements for one picture (owner, 05/09): the voice said
         "Xem hình 1", the page said "Hình 1 · Hình 1.1. …", and then the
