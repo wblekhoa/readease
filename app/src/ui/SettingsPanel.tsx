@@ -264,8 +264,9 @@ export function SettingsPanel({
                     ? PROVIDERS.find((item) => item.id === providerOf(voiceId))?.label
                     : describe(current?.label)
                 }
-                trailing={
+                trailing={(titleId) => (
                   <Select
+                    labelledBy={titleId}
                     value={chosen}
                     className="max-w-[11rem]"
                     onChange={(event) => onVoice(event.target.value)}
@@ -298,7 +299,7 @@ export function SettingsPanel({
                       ))
                     )}
                   </Select>
-                }
+                )}
               />
               {voicesError && (
                 <Notice tone="error" className="py-2">
@@ -319,13 +320,13 @@ export function SettingsPanel({
               />
               <GroupedRow
                 title={text("player.speed")}
-                trailing={
-                  <Select value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
+                trailing={(titleId) => (
+                  <Select labelledBy={titleId} value={rate} disabled={reading} onChange={(event) => onRate(Number(event.target.value))}>
                     {rates.map((value) => (
                       <option key={value} value={value}>{value}×</option>
                     ))}
                   </Select>
-                }
+                )}
               />
               {/* How the document SOUNDS beyond the voice and its speed:
                   the chime between chapters and how much of a footnote is
@@ -336,24 +337,24 @@ export function SettingsPanel({
               <GroupedRow
                 title={text("settings.chime")}
                 subtitle={text("settings.chime_hint")}
-                trailing={
-                  <Select value={chime} onChange={(event) => onChime(event.target.value as Chime)}>
+                trailing={(titleId) => (
+                  <Select labelledBy={titleId} value={chime} onChange={(event) => onChime(event.target.value as Chime)}>
                     {CHIMES.map((value) => (
                       <option key={value} value={value}>{text(`settings.chime_${value}`)}</option>
                     ))}
                   </Select>
-                }
+                )}
               />
               <GroupedRow
                 title={text("settings.notes")}
                 subtitle={text(`settings.notes_${noteReading}_hint`)}
-                trailing={
-                  <Select value={noteReading} onChange={(event) => onNoteReading(event.target.value as NoteReading)}>
+                trailing={(titleId) => (
+                  <Select labelledBy={titleId} value={noteReading} onChange={(event) => onNoteReading(event.target.value as NoteReading)}>
                     {NOTE_READINGS.map((value) => (
                       <option key={value} value={value}>{text(`settings.notes_${value}`)}</option>
                     ))}
                   </Select>
-                }
+                )}
               />
               {/* How far a press reads and where the money stops - only
                   under a voice that bills. The same two controls the panel

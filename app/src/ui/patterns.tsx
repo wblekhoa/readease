@@ -5,7 +5,7 @@
  * once. Building a screen means picking a pattern and pouring content in.
  * The written half lives in docs/readease-hig.md.
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { hoverText } from "./format";
 import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
@@ -213,17 +213,26 @@ export function GroupedRow({
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
-  trailing?: ReactNode;
+  /** The control at the row's end. As a function it is handed the id of the
+   * row's title, so a control with no words of its own - a select - takes
+   * the title as its name (`<Select labelledBy={id}>`, HIG 4.2): the title
+   * standing beside it names nothing for VoiceOver on its own. */
+  trailing?: ReactNode | ((titleId: string) => ReactNode);
   /** Taller row, wider gaps - for a list of items with actions on them. */
   roomy?: boolean;
 }) {
+  const titleId = useId();
   return (
     <div className={`flex items-center ${roomy ? "gap-4 py-4" : "gap-3 py-3.5"}`}>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{title}</div>
+        <div id={titleId} className="text-sm font-medium">{title}</div>
         {subtitle && <div className={`text-xs text-ink-mute ${roomy ? "mt-1" : ""}`}>{subtitle}</div>}
       </div>
-      {trailing && <div className={`flex shrink-0 items-center ${roomy ? "gap-3" : "gap-2"}`}>{trailing}</div>}
+      {trailing && (
+        <div className={`flex shrink-0 items-center ${roomy ? "gap-3" : "gap-2"}`}>
+          {typeof trailing === "function" ? trailing(titleId) : trailing}
+        </div>
+      )}
     </div>
   );
 }

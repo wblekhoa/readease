@@ -86,6 +86,21 @@ const SCREENS = {
   // open tab has: the checked radio for notes, the search box for search.
   book_notes: [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/]],
   search: [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]],
+  // The two floating settings panels over an open document (HIG 4.2): until
+  // 23/09 no cell opened either, so axe had never seen a control in them -
+  // and four of their selects had no name. The reading panel opens its finer
+  // choices too, or the sliders and switches under "Tuỳ chỉnh" stay unseen.
+  player_settings: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
+  reading_settings: [...OPEN_BOOK, ["click", /^Cài đặt đọc$|^Reading settings$/], ["wait", /^Cài đặt đọc$|^Reading settings$/, "[role=dialog]"],
+    ["click", /^Tuỳ chỉnh$|^Customize$/], ["wait", /^Giãn dòng$|^Line spacing$/, "input"]],
+};
+// A panel is opened only in the states that change what is in it. The two
+// settings panels follow the models and the voice, not the library's
+// states: opened in all sixteen they would add 120 cells (~6 min of a
+// ~31 min run) saying the same thing, for these 28.
+const ONLY_IN = {
+  player_settings: ["default", "sidebar", "english_missing", "english_partial", "vietnamese_missing"],
+  reading_settings: ["default", "sidebar"],
 };
 const STATES = {
   default: "",
@@ -121,7 +136,7 @@ async function main() {
   // took 14m34s+ on 15/09 once the mock's bridge answered a tick later, a
   // minute under the old 15, so the next state added would have turned a
   // green run red for taking too long.
-  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 60 * 60 * 1000); // 620 cells took 31 min run screen by screen (16/09); 35 was cut twice
+  const killer = setTimeout(() => { console.error("RENDER_AUDIT RED chrome lifetime exceeded"); chrome.kill("SIGKILL"); process.exit(2); }, 60 * 60 * 1000); // 620 cells took 31 min run screen by screen (16/09); 35 was cut twice; 648 with the two settings panels took 31m38s (23/09)
   try {
     const wsUrl = await (async () => {
       for (let i = 0; i < 60; i++) {
@@ -207,6 +222,7 @@ async function main() {
           for (const screen of Object.keys(SCREENS)) {
             const cell = `${screen}/${stateName}/${lang}/${theme}`;
             if (ONLY && !cell.startsWith(ONLY)) continue;
+            if (ONLY_IN[screen] && !ONLY_IN[screen].includes(stateName)) continue;
             cells++;
             // With no model on the machine the shell shows the setup screen
             // and nothing else - there are no tabs to reach. That screen is

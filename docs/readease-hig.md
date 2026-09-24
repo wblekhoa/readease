@@ -168,7 +168,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 ### 3.5 PlayerBar
 - **Cài đặt = một chip ở GIỮA, chi tiết trong panel (02/09, chủ: "tối giản, tinh tế, đưa vào giữa")**:
   chip ghost `⚙ Thu Hà · 1,25×` nằm giữa footer khi rảnh; bấm → `SettingsPanel` (Surface nổi trên
-  footer, giữa): Giọng · Tốc độ (GroupedRow + Select) · Chất lượng (`ModelChoices`, ruột của ModelPanel
+  footer, giữa): Giọng · Tốc độ (GroupedRow + Select, ô chọn mang tên là tiêu đề hàng — §4.2) · Chất lượng (`ModelChoices`, ruột của ModelPanel
   cũ). Đang đọc: select bị vô hiệu (giọng/tốc độ chỉ đọc lúc bắt đầu). Esc đóng, trừ khi đang tải
   model. Hàng "Giọng": select chỉ mang TÊN giọng (≤ 11rem), mô tả "Nữ · Bắc · Kể chuyện"
   là dòng phụ của hàng — nhãn đầy đủ trong select từng tràn hàng, cắt mất chữ "Giọng" (chủ, 02/09). **Tên dài hơn
@@ -559,7 +559,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   alpha để lộ trang phía sau, qua một hình sáng thì rãnh sáng theo và `ink-mute` tụt dưới 4,5; fill đục giữ tỉ lệ chữ
   không phụ thuộc thứ nằm sau kính. Thang alpha `veil`/`tint` vẫn là của cột bên trên vật liệu macOS (§3.16) — không
   đổi. `band` từ nay chỉ còn nghĩa nội dung (dòng/hình đang đọc, dải bìa thay thế), không còn là rãnh của control.
-  Không cell nào của ma trận render mở bảng này — kiểm bằng axe trên bảng mở (sáng + tối) khi đổi, như lần này.
+  Lúc đó chưa ô nào của ma trận render mở bảng này. Từ #46 có ô `reading_settings` (mở cả Tuỳ chỉnh, `default` và
+  `sidebar`, §4.2), nhưng ở chế độ trang: ô Số cột BỊ KHOÁ (chỉ khi đọc cuộn) vẫn chưa được vẽ, và axe vốn bỏ qua control
+  disabled — nên đổi màu của control thì vẫn kiểm tay trạng thái khoá, sáng + tối, như lần này.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click CHUỘT** (`pressedByPointer()`): tooltip theo
   focus sẽ không treo trên panel vừa mở. Enter/Space thì không blur — tiêu điểm của bàn phím đi vào panel (§4.2 điểm 3).
 - **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
@@ -857,7 +859,7 @@ có thể đỏ được thì không ai làm (lesson `docs-claim-must-follow-not
 
 | Điểm | Canh bởi | Chưa canh |
 |---|---|---|
-| 1 · tên control | axe (`button-name`, `link-name`, `select-name`…) | dùng `title` thay tên — quét tĩnh 23/09 không thấy chỗ nào |
+| 1 · tên control | axe (`button-name`, `link-name`, `select-name`…) trên các ô của ma trận — từ 23/09 gồm cả hai bảng cài đặt; `Select` bắt buộc `label`/`labelledBy` (TypeScript) | dùng `title` thay tên — quét tĩnh 23/09 không thấy chỗ nào; hàng Chi phí (chỉ dưới giọng trả phí, không ô nào có) — chỉ TypeScript |
 | 1 · nhóm có tên | lượt bàn phím, bước `transport`; `SegmentedControl` bắt buộc `label` (TypeScript) | — |
 | 1 · trạng thái bằng thuộc tính | — | quét 23/09 (heuristic) thấy 2 chỗ, đã sửa; không có cổng |
 | 2 · vùng live | `announce.test.ts` (3 test) | câu nói ra thật — đo tay 22/09 |
@@ -871,6 +873,22 @@ một `div` trần: VoiceOver đọc bốn nút rời, không câu nào nói ch�
 tên. Không ô nào của ma trận đang đọc dở, nên transport chưa từng được nhìn thấy: lượt bàn phím nay bấm Đọc tiếp, kiểm tên
 nhóm, rồi dừng — đỏ trên main ("the transport is not a group"), **15/15** sau khi sửa (`role="group"` + "Điều khiển lượt
 đọc"; `aria-expanded` cho dòng mở/đóng).
+
+**Cùng ngày, sau #45 — sáu `Select` không tên, trong hai bảng axe chưa từng thấy.** Chạy axe tay trên bảng *Cài đặt giọng
+đọc* đang mở (sáng + tối): `select-name` **critical** ×4 — Giọng, Tốc độ, Âm hiệu chương, Chú thích chỉ có chữ ĐỨNG CẠNH
+(tiêu đề của `GroupedRow`), không nối vào ô chọn, nên VoiceOver đọc "nút bật lên" không tên. Dưới một giọng trả phí có
+thêm hai ô ở hàng Chi phí (Đọc tới đâu · Dừng lại khi đã tiêu — `ReadingLimits`, cũng là ruột của bảng *Chi phí và phạm
+vi*): ×6 trên bảng giọng, ×2 trên bảng chi phí. Bản đồ cổng dưới đây từng ghi `select-name` là axe canh — đúng về luật, sai
+về phạm vi: **không ô nào của ma trận mở một bảng cài đặt**, nên axe chưa từng thấy ô chọn nào trong đó. Sửa hai nửa:
+- **`Select` bắt buộc TÊN ở kiểu** (TypeScript), như `SegmentedControl` bắt buộc `label`: hoặc `labelledBy` — id của CHỮ
+  ĐANG HIỆN gọi tên nó, cách được ưu tiên, vì tên VoiceOver đọc khi đó chính là chữ mắt thấy (WCAG 2.5.3) — hoặc `label`,
+  chỉ khi bên cạnh không có chữ nào (pill ngôn ngữ ở chân cột). `aria-label`/`aria-labelledby` thô bị bỏ khỏi kiểu, để
+  chỉ có một cách đặt tên. `GroupedRow` đưa id tiêu đề của nó cho control ở cuối hàng (`trailing` nhận một hàm của id).
+- **Ma trận mở hai bảng**: `player_settings` (Cài đặt giọng đọc) và `reading_settings` (Cài đặt đọc, mở cả Tuỳ chỉnh —
+  thanh trượt và công tắc nằm dưới đó). Không mở ở cả 16 state: nội dung hai bảng chỉ đổi theo mô hình và giọng, nên
+  `player_settings` chạy ở `default` · `sidebar` · `english_missing` · `english_partial` · `vietnamese_missing`, còn
+  `reading_settings` ở `default` · `sidebar` — +28 ô thay vì +120 (~6 phút) nói cùng một điều. Hàng Chi phí vẫn ngoài
+  ma trận (mock không có state nào dùng giọng trả phí): nó chỉ có TypeScript canh, cộng một lần axe tay 23/09.
 
 **Phần máy không đo được — chủ kiểm 10 phút, một lần mỗi khi UI đổi lớn** (AI không bật VoiceOver trên máy chủ):
 ⌘F5 bật VoiceOver, rồi chỉ dùng bàn phím: (1) mở app, nghe tên cửa sổ · (2) đi tới Thư viện, nghe tên tài liệu và

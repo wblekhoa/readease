@@ -29,6 +29,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - A slider's knob can be seen in both themes. It was the panel's own
   colour, white on white and dark on dark, and only its shadow showed
   where it was; it now takes the colour of the filled part of the line.
+- VoiceOver names every choice in Voice settings - voice, speed, chapter
+  chime, footnotes - and, under a paid voice, how far to read and where to
+  stop. They were pop-up buttons with no name; each now takes the words of
+  its row.
 
 ## 0.1.15
 
