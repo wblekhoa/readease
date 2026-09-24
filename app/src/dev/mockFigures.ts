@@ -9,6 +9,8 @@
  * Imported only by the DEV mock host, so none of it reaches a build.
  */
 
+type Locale = "vi" | "en";
+
 const SANS = "system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif";
 const INK = "#1B2233";
 const MUTED = "#5B6475";
@@ -21,48 +23,63 @@ ${body}
 }
 
 /** 3:2 - a diagram with words inside and beside it. */
-function pyramid(): string {
+function pyramid(locale: Locale): string {
+  const w = locale === "en"
+    ? { title: "The hierarchy of experience", note: "Each level only counts once the one below it holds",
+        tiers: ["Functional", "Reliable", "Usable", "Memorable"],
+        why: ["Solves a need that is real", "Works every time, loses nothing", "Does the job without a manual", "Makes people want to come back"],
+        stop: ["Most products", "stop here"] }
+    : { title: "Tháp nhu cầu của trải nghiệm", note: "Mỗi tầng chỉ có nghĩa khi tầng bên dưới đã vững",
+        tiers: ["Hoạt động được", "Tin cậy", "Dễ dùng", "Đáng nhớ"],
+        why: ["Giải quyết đúng một nhu cầu có thật", "Chạy ổn định, không làm mất dữ liệu", "Làm được việc mà không cần học", "Có cảm xúc, khiến người ta quay lại"],
+        stop: ["Phần lớn sản phẩm", "dừng ở đây"] };
   const note = (y: number, from: number, colour: string, words: string) =>
     `<path d="M${from} ${y}H770" stroke="#B9C3D3" stroke-width="2"/>` +
     `<circle cx="770" cy="${y}" r="6" fill="${colour}"/>` +
     `<text x="788" y="${y + 7}" font-size="19" fill="${MUTED}">${words}</text>`;
-  return svg(1200, 800, "Tháp nhu cầu của trải nghiệm", `<defs>
+  return svg(1200, 800, w.title, `<defs>
   <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F8F9FC"/><stop offset="1" stop-color="#ECF0F7"/></linearGradient>
 </defs>
 <rect width="1200" height="800" fill="url(#ground)"/>
 <g font-family="${SANS}">
-  <text x="80" y="92" font-size="38" font-weight="700" fill="${INK}">Tháp nhu cầu của trải nghiệm</text>
-  <text x="80" y="132" font-size="21" fill="${MUTED}">Mỗi tầng chỉ có nghĩa khi tầng bên dưới đã vững</text>
+  <text x="80" y="92" font-size="38" font-weight="700" fill="${INK}">${w.title}</text>
+  <text x="80" y="132" font-size="21" fill="${MUTED}">${w.note}</text>
   <polygon points="80,700 720,700 643.4,578 156.6,578" fill="#1D3D8C"/>
   <polygon points="160.3,572 639.7,572 565,453 235,453" fill="#2C62D0"/>
   <polygon points="238.7,447 561.3,447 486.6,328 313.4,328" fill="#86ABEF"/>
   <polygon points="317.2,322 482.8,322 400,190" fill="#F2B544"/>
   <g text-anchor="middle" font-weight="700">
-    <text x="400" y="648" font-size="27" fill="#FFFFFF">Hoạt động được</text>
-    <text x="400" y="522" font-size="27" fill="#FFFFFF">Tin cậy</text>
-    <text x="400" y="398" font-size="27" fill="#0E214A">Dễ dùng</text>
-    <text x="400" y="300" font-size="21" fill="#3B2805">Đáng nhớ</text>
+    <text x="400" y="648" font-size="27" fill="#FFFFFF">${w.tiers[0]}</text>
+    <text x="400" y="522" font-size="27" fill="#FFFFFF">${w.tiers[1]}</text>
+    <text x="400" y="398" font-size="27" fill="#0E214A">${w.tiers[2]}</text>
+    <text x="400" y="300" font-size="21" fill="#3B2805">${w.tiers[3]}</text>
   </g>
-  ${note(262, 458, "#F2B544", "Có cảm xúc, khiến người ta quay lại")}
-  ${note(387, 537, "#86ABEF", "Làm được việc mà không cần học")}
-  ${note(512, 615, "#2C62D0", "Chạy ổn định, không làm mất dữ liệu")}
-  ${note(639, 695, "#1D3D8C", "Giải quyết đúng một nhu cầu có thật")}
+  ${note(262, 458, "#F2B544", w.why[3])}
+  ${note(387, 537, "#86ABEF", w.why[2])}
+  ${note(512, 615, "#2C62D0", w.why[1])}
+  ${note(639, 695, "#1D3D8C", w.why[0])}
   <path d="M96 325H520" stroke="#E4665C" stroke-width="3" stroke-dasharray="10 8"/>
   <circle cx="96" cy="325" r="6" fill="#E4665C"/>
-  <text font-size="17" font-style="italic" fill="#C2473E"><tspan x="96" y="290">Phần lớn sản phẩm</tspan><tspan x="96" y="312">dừng ở đây</tspan></text>
+  <text font-size="17" font-style="italic" fill="#C2473E"><tspan x="96" y="290">${w.stop[0]}</tspan><tspan x="96" y="312">${w.stop[1]}</tspan></text>
 </g>`);
 }
 
 /** 3.5:1 - a panorama: short, wide, with type that needs the lightbox. */
-function timeline(): string {
+function timeline(locale: Locale): string {
+  const en = locale === "en";
+  const w = en
+    ? { title: "How we tell computers what to do", note: "Each step changed how people and machines talk to each other",
+        labels: ["Mouse and windows", "The web browser", "Multi-touch", "Voice assistants", "Virtual reality", "Chatting with AI"] }
+    : { title: "Ta điều khiển máy tính bằng gì", note: "Mỗi bước đổi cách con người và máy nói chuyện với nhau",
+        labels: ["Chuột và cửa sổ", "Trình duyệt web", "Chạm đa điểm", "Trợ lý giọng nói", "Thực tế ảo", "Trò chuyện với AI"] };
   const steps: Array<[string, string, string, string, string]> = [
     // year, label, colour, tint, icon drawn around (0, 0)
-    ["1984", "Chuột và cửa sổ", "#7E8AA0", "#EDF0F5", `<rect x="-13" y="-19" width="26" height="38" rx="13"/><path d="M0 -19V-7"/>`],
-    ["1993", "Trình duyệt web", "#5C7BB8", "#E7EDF8", `<circle r="18"/><ellipse rx="8" ry="18"/><path d="M-18 0H18M-15 -9H15M-15 9H15"/>`],
-    ["2007", "Chạm đa điểm", "#2F6FDE", "#E3EDFD", `<circle r="4" fill="currentColor"/><circle r="11"/><circle r="18" stroke-opacity=".45"/>`],
-    ["2011", "Trợ lý giọng nói", "#1A9E8F", "#DFF3F0", `<rect x="-6" y="-19" width="12" height="22" rx="6"/><path d="M-11 -3a11 11 0 0 0 22 0M0 8V16M-7 16H7"/>`],
-    ["2016", "Thực tế ảo", "#E4665C", "#FCE7E5", `<rect x="-20" y="-11" width="40" height="22" rx="9"/><circle cx="-9" r="4.5"/><circle cx="9" r="4.5"/><path d="M-20 -3H-27M20 -3H27"/>`],
-    ["2022", "Trò chuyện với AI", "#7B61D9", "#7B61D9", `<path d="M-18 -16h36a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6h-20l-10 8v-8h-6a6 6 0 0 1-6-6v-16a6 6 0 0 1 6-6z"/><path d="M0 -10l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="currentColor"/>`],
+    ["1984", w.labels[0], "#7E8AA0", "#EDF0F5", `<rect x="-13" y="-19" width="26" height="38" rx="13"/><path d="M0 -19V-7"/>`],
+    ["1993", w.labels[1], "#5C7BB8", "#E7EDF8", `<circle r="18"/><ellipse rx="8" ry="18"/><path d="M-18 0H18M-15 -9H15M-15 9H15"/>`],
+    ["2007", w.labels[2], "#2F6FDE", "#E3EDFD", `<circle r="4" fill="currentColor"/><circle r="11"/><circle r="18" stroke-opacity=".45"/>`],
+    ["2011", w.labels[3], "#1A9E8F", "#DFF3F0", `<rect x="-6" y="-19" width="12" height="22" rx="6"/><path d="M-11 -3a11 11 0 0 0 22 0M0 8V16M-7 16H7"/>`],
+    ["2016", w.labels[4], "#E4665C", "#FCE7E5", `<rect x="-20" y="-11" width="40" height="22" rx="9"/><circle cx="-9" r="4.5"/><circle cx="9" r="4.5"/><path d="M-20 -3H-27M20 -3H27"/>`],
+    ["2022", w.labels[5], "#7B61D9", "#7B61D9", `<path d="M-18 -16h36a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6h-20l-10 8v-8h-6a6 6 0 0 1-6-6v-16a6 6 0 0 1 6-6z"/><path d="M0 -10l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="currentColor"/>`],
   ];
   const marks = steps.map(([year, label, colour, tint, icon], index) => {
     const x = 170 + index * 252;
@@ -75,13 +92,13 @@ function timeline(): string {
   <text x="${x}" y="356" text-anchor="middle" font-size="32" font-weight="700" fill="${INK}">${year}</text>
   <text x="${x}" y="392" text-anchor="middle" font-size="21" fill="${MUTED}">${label}</text>`;
   }).join("\n  ");
-  return svg(1600, 460, "Ta điều khiển máy tính bằng gì", `<defs>
+  return svg(1600, 460, w.title, `<defs>
   <linearGradient id="track" gradientUnits="userSpaceOnUse" x1="100" y1="0" x2="1500" y2="0"><stop offset="0" stop-color="#AEB7C7"/><stop offset=".55" stop-color="#2F6FDE"/><stop offset="1" stop-color="#7B61D9"/></linearGradient>
 </defs>
 <rect width="1600" height="460" fill="#FBFBFD"/>
 <g font-family="${SANS}">
-  <text x="80" y="70" font-size="30" font-weight="700" fill="${INK}">Ta điều khiển máy tính bằng gì</text>
-  <text x="80" y="104" font-size="19" fill="${MUTED}">Mỗi bước đổi cách con người và máy nói chuyện với nhau</text>
+  <text x="80" y="70" font-size="30" font-weight="700" fill="${INK}">${w.title}</text>
+  <text x="80" y="104" font-size="19" fill="${MUTED}">${w.note}</text>
   <path d="M100 300H1502" stroke="url(#track)" stroke-width="4" stroke-linecap="round"/>
   <path d="M1494 290l14 10-14 10" fill="none" stroke="#7B61D9" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   ${marks}
@@ -90,7 +107,7 @@ function timeline(): string {
 
 /** 1:1 - a Venn diagram, drawn twice: the book's original and its
  * translated copy, the pair the duplicate rule is about. */
-function venn(locale: "en" | "vi"): string {
+function venn(locale: Locale): string {
   const en = locale === "en";
   const words = en
     ? { title: "Three paths into UX", note: "Most people come from a neighbouring craft", a: ["Web and", "software"], b: ["Graphic and", "print"], c: ["Research and", "psychology"] }
@@ -120,8 +137,11 @@ function venn(locale: "en" | "vi"): string {
 }
 
 /** About 1:2 - a phone screen, the tallest thing a page has to fit. */
-function phone(): string {
-  return svg(560, 1160, "Màn hình chào của một ứng dụng đọc", `<defs>
+function phone(locale: Locale): string {
+  const w = locale === "en"
+    ? { title: "The welcome screen of a reading app", head: ["Ten minutes", "of reading a day"], body: ["Pick one fixed time each day.", "The app will remind you."], go: "Get started", later: "Not now" }
+    : { title: "Màn hình chào của một ứng dụng đọc", head: ["Mỗi ngày", "mười phút đọc"], body: ["Chọn một khung giờ cố định.", "Ứng dụng sẽ nhắc đúng lúc."], go: "Bắt đầu", later: "Để sau" };
+  return svg(560, 1160, w.title, `<defs>
   <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E7ECF5"/><stop offset="1" stop-color="#F6F7FA"/></linearGradient>
   <linearGradient id="art" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE6BF"/><stop offset="1" stop-color="#FFC9B5"/></linearGradient>
 </defs>
@@ -138,20 +158,20 @@ function phone(): string {
   <path d="M280 470c-40-22-92-26-128-14v-96c36-12 88-8 128 14z" fill="#FFFFFF" stroke="#E07A4F" stroke-width="4" stroke-linejoin="round"/>
   <path d="M280 470c40-22 92-26 128-14v-96c-36-12-88-8-128 14z" fill="#FFFFFF" stroke="#E07A4F" stroke-width="4" stroke-linejoin="round"/>
   <path d="M176 392h72M176 414h60M312 392h72M312 414h54" stroke="#F3B79F" stroke-width="5" stroke-linecap="round"/>
-  <text font-size="38" font-weight="700" fill="${INK}"><tspan x="112" y="636">Mỗi ngày</tspan><tspan x="112" y="682">mười phút đọc</tspan></text>
-  <text font-size="21" fill="${MUTED}"><tspan x="112" y="734">Chọn một khung giờ cố định.</tspan><tspan x="112" y="764">Ứng dụng sẽ nhắc đúng lúc.</tspan></text>
+  <text font-size="38" font-weight="700" fill="${INK}"><tspan x="112" y="636">${w.head[0]}</tspan><tspan x="112" y="682">${w.head[1]}</tspan></text>
+  <text font-size="21" fill="${MUTED}"><tspan x="112" y="734">${w.body[0]}</tspan><tspan x="112" y="764">${w.body[1]}</tspan></text>
   <rect x="112" y="818" width="30" height="10" rx="5" fill="#2F6FDE"/>
   <circle cx="160" cy="823" r="5" fill="#C9D1DD"/>
   <circle cx="178" cy="823" r="5" fill="#C9D1DD"/>
   <rect x="100" y="900" width="360" height="72" rx="36" fill="#2F6FDE"/>
-  <text x="280" y="944" text-anchor="middle" font-size="24" font-weight="700" fill="#FFFFFF">Bắt đầu</text>
-  <text x="280" y="1022" text-anchor="middle" font-size="21" fill="#2F6FDE">Để sau</text>
+  <text x="280" y="944" text-anchor="middle" font-size="24" font-weight="700" fill="#FFFFFF">${w.go}</text>
+  <text x="280" y="1022" text-anchor="middle" font-size="21" fill="#2F6FDE">${w.later}</text>
 </g>
 <rect x="210" y="1058" width="140" height="6" rx="3" fill="#161A22"/>`);
 }
 
 /** 4:3 - an illustration with no words at all, like a photograph. */
-function interview(): string {
+function interview(locale: Locale): string {
   const notes: Array<[number, number, number, string]> = [
     [742, 186, -4, "#FFE27A"], [822, 180, 3, "#FFB3C1"], [902, 188, -2, "#A7D8FF"], [982, 182, 4, "#FFE27A"],
     [746, 268, 2, "#B8F0C8"], [826, 262, -3, "#FFE27A"], [906, 270, 3, "#FFB3C1"],
@@ -161,7 +181,7 @@ function interview(): string {
   const board = notes.map(([x, y, turn, colour]) =>
     `<g transform="translate(${x} ${y}) rotate(${turn})"><rect x="-32" y="-32" width="64" height="64" rx="4" fill="${colour}"/><path d="M-20 -10H18M-20 4H8" stroke="#1B2233" stroke-opacity=".25" stroke-width="4" stroke-linecap="round"/></g>`,
   ).join("");
-  return svg(1200, 900, "Buổi phỏng vấn người dùng", `<defs>
+  return svg(1200, 900, locale === "en" ? "A user interview" : "Buổi phỏng vấn người dùng", `<defs>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9FD3F0"/><stop offset="1" stop-color="#E4F4FB"/></linearGradient>
   <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E4EDE7"/><stop offset="1" stop-color="#D8E4DC"/></linearGradient>
   <radialGradient id="glow" cx="600" cy="170" r="420" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF1C7" stop-opacity=".9"/><stop offset="1" stop-color="#FFF1C7" stop-opacity="0"/></radialGradient>
@@ -217,12 +237,15 @@ ${board}
 
 /** About 5:6 - pen on nothing: a sketch with NO background, the way line
  * art is usually shipped. On a dark page its lines sit on the page itself. */
-function wireframe(): string {
+function wireframe(locale: Locale): string {
+  const w = locale === "en"
+    ? { title: "A wireframe sketch of a homepage", button: "Sign up", notes: [["Big photo:", "real people?"], ["Only one", "call to action"], ["Three key", "benefits"]] }
+    : { title: "Bản phác thảo khung trang chủ", button: "Đăng ký", notes: [["Ảnh lớn:", "người thật?"], ["Chỉ một nút", "kêu gọi"], ["Ba lợi ích", "chính"]] };
   const pen = `fill="none" stroke="#262626" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"`;
   const red = `fill="none" stroke="#C8372D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"`;
   const card = (x: number) =>
     `<path d="M${x} 790h190v210H${x}z"/><path d="M${x} 890h190M${x} 790l190 100M${x + 190} 790L${x} 890"/><path d="M${x + 14} 928h160M${x + 14} 954h110" stroke-width="4"/>`;
-  return svg(1000, 1180, "Bản phác thảo khung trang chủ", `<g ${pen}>
+  return svg(1000, 1180, w.title, `<g ${pen}>
   <path d="M44 40q348-4 694 2 6 548 2 1096-348 6-696 2-6-550 0-1100z"/>
   <path d="M42 92q348 3 697-1"/>
   <circle cx="72" cy="66" r="7"/><circle cx="96" cy="66" r="7"/><circle cx="120" cy="66" r="7"/>
@@ -236,41 +259,47 @@ function wireframe(): string {
   ${card(80)}${card(290)}${card(500)}
   <path d="M80 1066h620" stroke-dasharray="14 12"/>
 </g>
-<text x="185" y="728" text-anchor="middle" font-family="${SANS}" font-size="24" fill="#262626">Đăng ký</text>
+<text x="185" y="728" text-anchor="middle" font-family="${SANS}" font-size="24" fill="#262626">${w.button}</text>
 <g ${red}>
   <path d="M772 318q-30-6-62-2"/><path d="M724 306l-14 10 16 8"/>
   <path d="M772 726q-200 18-472-4"/><path d="M314 712l-14 10 14 10"/>
   <path d="M772 900q-30-4-62 0"/><path d="M724 888l-14 12 16 8"/>
 </g>
 <g font-family="${SANS}" font-size="24" font-style="italic" fill="#C8372D">
-  <text><tspan x="784" y="306">Ảnh lớn:</tspan><tspan x="784" y="336">người thật?</tspan></text>
-  <text><tspan x="784" y="712">Chỉ một nút</tspan><tspan x="784" y="742">kêu gọi</tspan></text>
-  <text><tspan x="784" y="890">Ba lợi ích</tspan><tspan x="784" y="920">chính</tspan></text>
+  <text><tspan x="784" y="306">${w.notes[0][0]}</tspan><tspan x="784" y="336">${w.notes[0][1]}</tspan></text>
+  <text><tspan x="784" y="712">${w.notes[1][0]}</tspan><tspan x="784" y="742">${w.notes[1][1]}</tspan></text>
+  <text><tspan x="784" y="890">${w.notes[2][0]}</tspan><tspan x="784" y="920">${w.notes[2][1]}</tspan></text>
 </g>`);
 }
 
 /** Smaller than the column: it must stay its own size, not be blown up. */
-function buttonStates(): string {
+function buttonStates(locale: Locale): string {
+  const w = locale === "en"
+    ? { title: "Three states of a button", save: "Save", states: ["Default", "Hover", "Saving"] }
+    : { title: "Ba trạng thái của một nút", save: "Lưu", states: ["Mặc định", "Rê chuột", "Đang lưu"] };
   const button = (x: number, fill: string, extra: string) =>
     `<rect x="${x}" y="30" width="124" height="46" rx="23" fill="${fill}"/>${extra}`;
-  return svg(480, 140, "Ba trạng thái của một nút", `<rect width="480" height="140" rx="12" fill="#F4F6F9"/>
+  return svg(480, 140, w.title, `<rect width="480" height="140" rx="12" fill="#F4F6F9"/>
 <g font-family="${SANS}">
-  ${button(28, "#2F6FDE", `<text x="90" y="59" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">Lưu</text>`)}
-  ${button(178, "#1F4FAE", `<text x="240" y="59" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">Lưu</text><path d="M282 58v22l6-6 4 10 4-2-4-10h8z" fill="#FFFFFF" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`)}
-  ${button(328, "#8FB2EE", `<circle cx="366" cy="53" r="9" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="3"/><path d="M366 44a9 9 0 0 1 9 9" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/><text x="402" y="59" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">Lưu</text>`)}
+  ${button(28, "#2F6FDE", `<text x="90" y="59" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">${w.save}</text>`)}
+  ${button(178, "#1F4FAE", `<text x="240" y="59" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">${w.save}</text><path d="M282 58v22l6-6 4 10 4-2-4-10h8z" fill="#FFFFFF" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`)}
+  ${button(328, "#8FB2EE", `<circle cx="366" cy="53" r="9" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="3"/><path d="M366 44a9 9 0 0 1 9 9" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/><text x="402" y="59" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">${w.save}</text>`)}
   <g text-anchor="middle" font-size="14" fill="${MUTED}">
-    <text x="90" y="110">Mặc định</text><text x="240" y="110">Rê chuột</text><text x="390" y="110">Đang lưu</text>
+    <text x="90" y="110">${w.states[0]}</text><text x="240" y="110">${w.states[1]}</text><text x="390" y="110">${w.states[2]}</text>
   </g>
 </g>`);
 }
 
 /** 16:9 - a chart: numbers that line up, one bar that matters. */
-function funnel(): string {
+function funnel(locale: Locale): string {
+  const w = locale === "en"
+    ? { title: "Where people drop off", note: "Share still with us after each sign-up step · illustrative numbers", steps: ["Open sign-up page", "Fill in details", "Verify email", "Done"], lost: "Lost" , points: "points" }
+    : { title: "Người dùng rời đi ở bước nào", note: "Tỷ lệ còn lại sau mỗi bước đăng ký · số liệu minh hoạ", steps: ["Mở trang đăng ký", "Điền thông tin", "Xác minh email", "Hoàn tất"], lost: "Mất", points: "điểm" };
   const rows: Array<[string, number, string]> = [
-    ["Mở trang đăng ký", 100, "#2F6FDE"],
-    ["Điền thông tin", 72, "#2F6FDE"],
-    ["Xác minh email", 41, "#E4665C"],
-    ["Hoàn tất", 33, "#2F6FDE"],
+    [w.steps[0], 100, "#2F6FDE"],
+    [w.steps[1], 72, "#2F6FDE"],
+    [w.steps[2], 41, "#E4665C"],
+    [w.steps[3], 33, "#2F6FDE"],
   ];
   const grid = [0, 25, 50, 75, 100].map((step) => {
     const x = 360 + step * 8;
@@ -282,32 +311,42 @@ function funnel(): string {
     const figure = drop
       ? `<text x="${344 + value * 8}" y="${y + 8}" text-anchor="end" font-size="22" font-weight="700" fill="#FFFFFF">${value}%</text>
   <rect x="${366 + value * 8}" y="${y - 27}" width="${drop * 8 - 8}" height="54" rx="10" fill="#FDF0EE" stroke="#E4665C" stroke-width="2" stroke-dasharray="7 6"/>
-  <text x="${362 + value * 8 + drop * 4}" y="${y + 7}" text-anchor="middle" font-size="20" font-weight="700" fill="#C2473E">Mất ${drop} điểm</text>`
+  <text x="${362 + value * 8 + drop * 4}" y="${y + 7}" text-anchor="middle" font-size="20" font-weight="700" fill="#C2473E">${w.lost} ${drop} ${w.points}</text>`
       : `<text x="${376 + value * 8}" y="${y + 8}" font-size="22" font-weight="700" fill="${INK}">${value}%</text>`;
     return `<text x="80" y="${y + 8}" font-size="22" fill="${INK}">${label}</text>
   <rect x="360" y="${y - 28}" width="${value * 8}" height="56" rx="10" fill="${colour}"/>
   ${figure}`;
   }).join("\n  ");
-  return svg(1280, 720, "Người dùng rời đi ở bước nào", `<rect width="1280" height="720" fill="#FCFCFD"/>
+  return svg(1280, 720, w.title, `<rect width="1280" height="720" fill="#FCFCFD"/>
 <g font-family="${SANS}">
-  <text x="80" y="86" font-size="34" font-weight="700" fill="${INK}">Người dùng rời đi ở bước nào</text>
-  <text x="80" y="124" font-size="20" fill="${MUTED}">Tỷ lệ còn lại sau mỗi bước đăng ký · số liệu minh hoạ</text>
+  <text x="80" y="86" font-size="34" font-weight="700" fill="${INK}">${w.title}</text>
+  <text x="80" y="124" font-size="20" fill="${MUTED}">${w.note}</text>
   ${grid}
   ${bars}
 </g>`);
 }
 
-/** Every picture the harness serves, by figure id. */
+/** Every picture the harness serves, by figure id: the Vietnamese sample
+ * book's set, then the English one's (`en-` ids) - the same drawings with
+ * their words in the book's own language, as a translated edition has them. */
 export function mockFigureSvgs(): Record<string, string> {
   return {
-    "fig-wide": pyramid(),
-    "fig-timeline": timeline(),
+    "fig-wide": pyramid("vi"),
+    "fig-timeline": timeline("vi"),
     "fig-sample": venn("en"),
     "fig-sample-vi": venn("vi"),
-    "fig-tall": phone(),
-    "fig-scene": interview(),
-    "fig-lineart": wireframe(),
-    "fig-small": buttonStates(),
-    "fig-chart": funnel(),
+    "fig-tall": phone("vi"),
+    "fig-scene": interview("vi"),
+    "fig-lineart": wireframe("vi"),
+    "fig-small": buttonStates("vi"),
+    "fig-chart": funnel("vi"),
+    "en-fig-wide": pyramid("en"),
+    "en-fig-timeline": timeline("en"),
+    "en-fig-venn": venn("en"),
+    "en-fig-tall": phone("en"),
+    "en-fig-scene": interview("en"),
+    "en-fig-lineart": wireframe("en"),
+    "en-fig-small": buttonStates("en"),
+    "en-fig-chart": funnel("en"),
   };
 }

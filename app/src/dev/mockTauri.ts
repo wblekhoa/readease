@@ -11,6 +11,7 @@
  * `import.meta.env.DEV`, and the build check greps the bundle to prove it.
  */
 
+import { ENGLISH_BOOK, ENGLISH_TOC } from "./mockEnglishBook";
 import { mockFigureSvgs } from "./mockFigures";
 import { showcaseChapterCopy, showcaseFigureSvg } from "./showcaseFigure";
 
@@ -346,12 +347,12 @@ const LIBRARY: ShelfRow[] = [
   },
   {
     id: "book-four",
-    title: "Quy trình làm việc của nhóm thiết kế 2024",
+    title: ENGLISH_BOOK.title,
     source_format: "epub",
     segment_id: null,
     progress_ratio: null,
     progress_chapter: null,
-    chapters: 23,
+    chapters: ENGLISH_BOOK.chapters.length,
     size_bytes: 45_900_000,
     imported_at: "2026-09-02T10:20:00Z",
     from_apple_books: false,
@@ -383,7 +384,7 @@ function coverSvg(top: string, bottom: string, fill: string, ink: string): strin
 }
 const COVERS: Record<string, string> = {
   "book-ux": coverSvg("Nguyên tắc", "trải nghiệm", "#E8DCC8", "#2B2118"),
-  "book-four": coverSvg("Quy trình", "nhóm thiết kế", "#1F3A5F", "#F4F1EA"),
+  "book-four": coverSvg("The design", "field guide", "#1F3A5F", "#F4F1EA"),
 };
 
 /* The real catalogue, names and all: a panel that lists twenty voices cannot
@@ -673,9 +674,10 @@ function pauseMockReading(paused: boolean) {
   stepReading(1200);
 }
 
-/** Every segment of the fixture book, in reading order. */
-function bookSteps(from: string | null): string[] {
-  const all = BOOK.chapters.flatMap((chapter: { segments: { id: string }[] }) =>
+/** Every segment of the fixture book being read, in reading order. */
+function bookSteps(from: string | null, bookId: unknown): string[] {
+  const book = bookId === ENGLISH_BOOK.id ? ENGLISH_BOOK : BOOK;
+  const all = book.chapters.flatMap((chapter: { segments: { id: string }[] }) =>
     chapter.segments.map((segment) => segment.id));
   const start = from ? all.indexOf(from) : 0;
   return all.slice(start < 0 ? 0 : start);
@@ -879,6 +881,15 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       };
     }
     case "book.open":
+      // The English book is its own document, never started; every other
+      // shelf row opens the Vietnamese sample where it was left.
+      if (params.book_id === ENGLISH_BOOK.id) {
+        return {
+          book: { ...ENGLISH_BOOK, toc: isEmpty("toc") ? [] : ENGLISH_TOC },
+          annotations: [],
+          progress: { segment_id: null },
+        };
+      }
       return {
         book: { ...BOOK, toc: isEmpty("toc") ? [] : TOC },
         annotations: isEmpty("notes") ? [] : ANNOTATIONS,
@@ -1220,7 +1231,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     const heard = LIBRARY.find((row) => row.id === args.bookId);
     if (heard) heard.listened_at = new Date().toISOString();
     const bookRate = mockRate(String(args.voiceId ?? ""));
-    const bookWalk = bookSteps((args.segmentId as string | null) ?? null);
+    const bookWalk = bookSteps((args.segmentId as string | null) ?? null, args.bookId);
     startMockReading(
       bookWalk,
       // ~11.8k characters a chapter, spread over the steps it walks - the
