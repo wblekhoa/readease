@@ -960,10 +960,40 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
 - **Chuyển chương có nhạc chờ** (chủ, 16/09: "sound effect dạng nhạc chờ ngắn giữa các chương"). Ba âm sinh
   bằng ElevenLabs rồi hạ mono 48 kHz, −14 dBFS, đóng vào gói `speech/chimes/` (marimba 0,9 s · harp 2 s ·
   piano 2 s; nguồn ghi ở `THIRD_PARTY_NOTICES.md`, audit công khai ghim hash). Thay chỗ 1 200 ms im lặng
-  bằng **300 ms → âm → 500 ms**; chỉ khi ĐỔI chương giữa bài, không ở câu đầu; phát như khung im lặng
+  bằng **300 ms → âm → 500 ms**; chỉ ở chỗ MỞ một chương hoặc phần (bullet kế tiếp), không ở câu đầu; phát như khung im lặng
   (`from_voice=False`: không stretch theo tốc độ, không vào cache, không tính tiền giọng API). Setting
   `chapter_chime` ∈ {off, marimba, harp, piano}, mặc định **marimba** (ngắn nhất); setting chưa từng ghi =
   mặc định, không phải tắt.
+- **Chương và phần là của MỤC LỤC, không phải của tệp** (chủ 24/09: "tiếp tục phân tích và nâng cấp 'pipeline đọc' …
+  ngắt nghỉ và nhạc nền giữa các chương/phần"; phân tích: plan `readease-chapter-transitions-2026-09-24`). Trước đây
+  "chương" của giọng = một tệp trong spine, hoặc một TRANG của PDF không bookmark: tài liệu thử 3 chương / 2 phần vang
+  **8** chuông — giữa các trang đầu sách, giữa chương khi bộ chuyển đổi tách tệp (`…_split_001`), hai chuông liền ở Phần →
+  Chương 1; tài liệu một tệp nhiều chương thì **không chuông nào**; PDF không bookmark vang chuông **giữa câu** mỗi lần
+  sang trang. Nay một bản đồ dựng khi đọc (`domain/divisions.py`, lớp phủ như mục lục — không đổi cách nhập, không đổi
+  id đoạn) nói mỗi chỗ nối là gì, và CẢ khoảng nghỉ lẫn chuông đọc từ nó:
+  - **Có mục lục**: vai của từng dòng theo ĐÚNG luật cột Mục lục (§3.25, `app/src/ui/contents.ts`): cấp chương = cấp có
+    nhiều dòng "Chương N / Chapter N" nhất (không có thì cấp ngoài cùng); trên cấp đó, dòng có dòng con hoặc mang
+    "Phần/Part/Quyển N" là **phần**; dưới là mục. Chuông vang ở dòng **chương** và **phần**; mục giữ nhịp tiêu đề. Tai
+    nghe chuông đúng chỗ mắt thấy một dòng chương/phần ở cột. Hai dòng trỏ cùng một đoạn → lấy bậc cao (phần).
+  - **Không mục lục (EPUB)**: tệp mới chỉ là chương khi nó MỞ bằng tiêu đề (tệp tách giữa chương mở bằng đoạn văn → không
+    chuông); tiêu đề "Phần/Part N" → phần.
+  - **PDF**: không bookmark (chương = trang) → sang trang KHÔNG phải chuyển chương: câu vắt trang nối liền (0 ms chèn),
+    hết câu ở cuối trang nghỉ như hết đoạn. Có bookmark → mỗi bookmark là một chương.
+  - **Phần chỉ một âm**: chuông vang trước tên phần; chương đầu tiên đứng ngay sau tên phần (≤ 80 chữ ở giữa: tên,
+    phụ đề, đề từ) KHÔNG vang lần hai mà nghỉ **1 500 ms** (`PART_TO_CHAPTER_MS`, số tạm chờ chủ nghe). Tắt chuông:
+    chương và phần đều 1 200 ms như cũ.
+  - Tệp mới mà không phải chương (trang đầu sách, tệp bị tách) → nhịp khối thường (đoạn 450, trước tiêu đề 1 000).
+  - Rủi ro đã biết, chưa đo: mục lục PHẲNG liệt kê cả mục nhỏ ở cấp ngoài cùng sẽ vang chuông ở mỗi mục — cột Mục lục
+    cũng đánh số chúng như chương nên tai và mắt vẫn khớp; chưa đếm trên thư viện của chủ (chưa được phép quét).
+  - Không đổi: phạm vi "N chương" của giọng trả phí (`scope_end`) và danh sách chương vẫn theo tệp.
+- **Ngắt cảnh là khoảng lặng, không phải chữ** (24/09). Dòng chỉ gồm ký hiệu ngắt cảnh ("* * *", "***", "⁂", "❖ ❖ ❖",
+  "---", "• • •") hay kiểu "o0o" ("-o0o-", "~oOo~") trước đây bị ĐỌC: SDK Việt nói "sao sao sao", "ô không ô", "khoảng
+  ô oo khoảng"; G2P Anh nói "O zero O", "ex ex ex". Nay `speakable_text` trả chuỗi rỗng cho chúng (`is_scene_break`:
+  ≤ 24 ký tự, ≥ 3 ký hiệu hoặc một ký hiệu riêng như ⁂ ❖ §; kiểu "o0o" phải có số 0 hoặc lẫn o với O — "ooo", "OOO"
+  không tính; "…" hay "—" đứng một mình, "12", "3.5" không tính) và chỗ đó lặng **1 600 ms** (`SCENE_PAUSE_MS`, số tạm
+  chờ chủ nghe) thay cho hai nhịp đoạn. `<hr/>` — importer bỏ vì không có chữ, trước chỉ nghỉ 450 ms như sang đoạn —
+  được ghi vào lớp phủ (`ChapterPresentation.breaks`) và nghỉ cùng 1 600 ms. Trang vẫn hiện ký hiệu; đoạn vẫn có vị trí
+  (đọc tiếp được từ đó), không tổng hợp, không tính tiền giọng API.
 - **Chú thích không lê thê** (chủ, 16/09: "tối ưu nội dung khi đọc các ref để tránh dài dòng"). Setting
   `note_reading` ∈ {full, short, off}, mặc định **short**: thân chú thích là *thư mục* (Sđd/Ibid/op. cit.,
   "tr."/"p."/"pp.", năm bốn số + NXB/Press, URL/DOI/ISBN, số tạp chí) → **không đọc**; thân là *bình luận* →
@@ -992,6 +1022,26 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   đi vào lời nói ở MỘT chỗ, bộ dựng lời của sách (`_book_utterances`), nên ước tính chi phí và lượt đọc đếm cùng chữ.
   Chỉ số GÕ trong chữ ("1. …", "2) …") vẫn đọc như trước — mục 6 của audit 23/09, chưa duyệt.
 
+
+### 5.2 Pipeline đọc — bản đồ (24/09)
+Một chỗ trả lời "luật này nằm ở đâu": từng chặng từ tệp tới loa, nơi nó sống, số đang chạy, và mục/ test giữ nó. Lý do
+của từng số nằm ở bullet §5.1 và ở chú thích ngay cạnh hằng số trong mã.
+
+| Chặng | Nơi sống | Số / quy tắc chính | Luật · test |
+|---|---|---|---|
+| 1. Nhập: tệp → chương, đoạn | `importers/epub.py` (chương = tệp spine có chữ), `importers/pdf.py` (bookmark cấp 1; không có → mỗi trang), `domain/segmenter.py` | đoạn ≤ 240 ký tự (`SPEECH_SEGMENT_MAX_CHARS`) | §3 · `tests/importers/` |
+| 2. Lớp phủ khi mở | `importers/epub_presentation.py` → `domain/presentation.py` | hình, chú thích, mốc, số `<ol>`, ngắt cảnh `<hr>`, mục lục | §3.9, §3.25 · `test_epub.py` |
+| 3. Chương / phần | `domain/divisions.py` | vai theo luật cột Mục lục; phần → chương cách ≤ 80 chữ thì không vang lại | §5.1 · `test_divisions.py` |
+| 4. Lượt đọc | `headless/server.py` `_book_utterances` | "Xem hình N." + 600 ms · "Nói thêm, …" + 450 ms · số `<ol>` + phẩy · khoảng nghỉ sau mỗi lượt | §3.9, §5.1 · `test_server.py` |
+| 5. Chữ cho tai | `domain/prosody.py` `speakable_text` (+ `speak_english_forms`, `speak_attached_dashes`) | hạ chữ hét, "#N", gạch, giờ và khoảng số tiếng Anh, ngắt cảnh → "" | §5.1 · `test_prosody.py` |
+| 6. Cắt câu | `domain/prosody.py` `split_sentences` | chỉ cắt ở dấu kết câu; viết tắt, tên viết tắt không cắt | §5.1 · `test_prosody.py` |
+| 7. Giọng | `speech/vieneu.py` + SDK VieNeu (tự chuẩn hoá chữ) · `speech/kokoro.py` (G2P + ONNX) | VI: lượt ≤ 3 chữ đi `infer`; EN: tỉa mép lặng còn 120 ms | §5.1 · `test_kokoro.py` |
+| 8. Nhịp nghỉ chèn | `domain/prosody.py` `pause_after_ms`, `headless/utterances.py` | câu 250 · dòng 250 · đoạn 450 · danh sách 300 · trích dẫn 550 · tiêu đề trước 1 000 / sau 850 · ngắt cảnh 1 600 · chương, phần 1 200 · phần → chương 1 500 | §5.1 · `test_prosody.py` |
+| 9. Tiêu đề và chuông | `headless/server.py` `_speak`, `speech/chimes.py` | tiêu đề 0,92× và +2 dB · chuông 300 → âm → 500 ms, không stretch | §5.1 · `THIRD_PARTY_NOTICES.md` |
+| 10. Tốc độ và ống âm thanh | `playback/time_stretch.py`, `playback/pace.py`, shell Rust | mọi khoảng lặng chia theo tốc độ; khung `from_voice` | §3.23, §3.24 |
+
+`docs/reading-intelligence-audit.md`, `docs/reading-flow-proposal.md`, `docs/english-reading-2026-09.md` là ĐỀ XUẤT
+09/2026, không mô tả hiện trạng: hiện trạng là bảng này, §5.1 và mã.
 
 ## 6. Số đo đã chốt (vay M3: measurements tường minh)
 

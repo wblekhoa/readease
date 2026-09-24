@@ -796,3 +796,74 @@ class ReferenceReadingTests(unittest.TestCase):
         # Off by default in `speakable_text`; on when asked.
         self.assertIn("(Trần, 2019)", speakable_text("Thế (Trần, 2019) đấy."))
         self.assertNotIn("Trần", speakable_text("Thế (Trần, 2019) đấy.", citations=True))
+
+
+class SceneBreakTests(unittest.TestCase):
+    """A line that only marks a change of scene is a silence, not words
+    (HIG 5.1, 24/09): the Vietnamese SDK read "* * *" as "sao sao sao" and
+    "-o0o-" as "ô không ô"; the English G2P read them "O zero O", "ex ex ex"."""
+
+    def test_the_marks_books_use_between_scenes(self) -> None:
+        from vieneu_reader.domain.prosody import is_scene_break
+
+        for mark in ["* * *", "***", "*****", "⁂", "❖ ❖ ❖", "---", "• • •", "§",
+                     "-o0o-", "~oOo~", "o0o", "OoO", "---o0o---"]:
+            self.assertTrue(is_scene_break(mark), mark)
+
+    def test_what_only_looks_like_one(self) -> None:
+        from vieneu_reader.domain.prosody import is_scene_break
+
+        # A lone dash or an ellipsis is a beat in a dialogue; letters and
+        # numbers are words; "ooo" is a word some people write.
+        for text in ["—", "-", "…", "...", "12", "3.5", "ooo", "OOO", "Ồ", "A", "* Ghi chú",
+                     "Chương 1", "", "   "]:
+            self.assertFalse(is_scene_break(text), text)
+
+    def test_the_voice_says_nothing_for_it_in_either_language(self) -> None:
+        for mark in ["* * *", "-o0o-", "❖ ❖ ❖"]:
+            self.assertEqual(speakable_text(mark), "", mark)
+            self.assertEqual(speakable_text(mark, "paragraph", "en"), "", mark)
+            self.assertEqual(speakable_text(mark, "heading"), "", mark)
+
+
+class DivisionPauseTests(unittest.TestCase):
+    """With a division plan (HIG 5.1, 24/09) a new FILE is no longer a new
+    chapter: the plan says what the seam is, and the rest follows it. Without
+    a plan the old rule stands, for the Qt coordinator that still uses it."""
+
+    def test_the_plan_decides_what_a_seam_between_files_is(self) -> None:
+        from vieneu_reader.domain.prosody import PART_TO_CHAPTER_MS, SCENE_PAUSE_MS
+
+        end = _segment("Mọi thứ đã khác.", chapter_id="c1")
+        opening = _segment("Chương 2", kind="heading", chapter_id="c2")
+        self.assertEqual(pause_after_ms(end, opening, divisions={opening.id: "chapter"}), CHAPTER_PAUSE_MS)
+        self.assertEqual(pause_after_ms(end, opening, divisions={opening.id: "part"}), CHAPTER_PAUSE_MS)
+        self.assertEqual(pause_after_ms(end, opening, divisions={opening.id: "part-chapter"}), PART_TO_CHAPTER_MS)
+        after_break = _segment("Nhiều năm sau.", chapter_id="c1", ordinal=1)
+        self.assertEqual(pause_after_ms(end, after_break, divisions={after_break.id: "scene"}), SCENE_PAUSE_MS)
+        # No plan: the file is the chapter, as it always was.
+        self.assertEqual(pause_after_ms(end, opening), CHAPTER_PAUSE_MS)
+
+    def test_a_file_that_is_not_a_division_rests_like_a_block(self) -> None:
+        # A converter's split, a front-matter page: a new file that opens no
+        # division rests the way any block does - even after a line with no
+        # full stop, like an author's name on a title page. Only a PDF page
+        # the plan says carries on a sentence reads on with no rest.
+        author = _segment("Lê Minh Thư", chapter_id="c1")
+        copyright_page = _segment("Bản quyền © 2024 Nhà xuất bản Gió Nam.", chapter_id="c2")
+        self.assertEqual(pause_after_ms(author, copyright_page, divisions={}), BLOCK_PAUSE_MS)
+        mid = _segment("Ông lão chèo thuyền và không nói", chapter_id="c1", ordinal=1)
+        next_page = _segment("một lời nào suốt quãng đường.", chapter_id="c3")
+        self.assertEqual(pause_after_ms(mid, next_page, divisions={next_page.id: "continue"}), 0)
+
+    def test_a_scene_mark_carries_the_whole_rest(self) -> None:
+        from vieneu_reader.domain.prosody import SCENE_PAUSE_MS
+
+        before = _segment("Mọi thứ đã khác.")
+        mark = _segment("* * *", ordinal=1)
+        after = _segment("Nhiều năm sau.", ordinal=2)
+        self.assertEqual(pause_after_ms(before, mark, divisions={}), 0)
+        self.assertEqual(pause_after_ms(mark, after, divisions={}), SCENE_PAUSE_MS)
+        # A chapter that opens right after the mark keeps its own rest.
+        opening = _segment("Chương 2", kind="heading", chapter_id="chapter-2")
+        self.assertEqual(pause_after_ms(mark, opening, divisions={opening.id: "chapter"}), CHAPTER_PAUSE_MS)

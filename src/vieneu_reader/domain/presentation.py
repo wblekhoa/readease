@@ -111,6 +111,10 @@ class ChapterPresentation:
     #: the segments stay exactly as stored (HIG 3, "Danh sách <ol> mang số
     #: của nó").
     markers: tuple["ListMarker", ...] = ()
+    #: Segments a thematic break (`<hr/>`) stands before: a change of scene
+    #: the page drew as a rule and the text never carried, so the voice
+    #: rests there as it does at "* * *" (HIG 5.1, 24/09).
+    breaks: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

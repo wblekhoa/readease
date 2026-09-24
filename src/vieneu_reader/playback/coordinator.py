@@ -481,7 +481,7 @@ class PlaybackCoordinator:
                         # the cache, exactly as _prefetch does.
                         for _chunk in chunks:
                             pass
-                if not produced_chunks:
+                if not produced_chunks and text.strip():
                     # The engine finished without a single sample, so the person
                     # is sitting in silence. On either path that is the voice
                     # failing, and staying quiet would leave them with no way to
@@ -521,7 +521,8 @@ class PlaybackCoordinator:
         never stand in for audio the engine failed to produce.
         """
 
-        sentences = split_sentences(text) or (text,)
+        # A scene break's spoken text is empty (HIG 5.1): nothing to ask for.
+        sentences = split_sentences(text) or ((text,) if text.strip() else ())
         for index, sentence in enumerate(sentences):
             if index:
                 yield _silence_chunk(SENTENCE_PAUSE_MS), False

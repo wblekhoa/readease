@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from vieneu_reader.domain.models import Segment, SegmentJoint
 
@@ -32,6 +32,14 @@ LINE_PAUSE_MS = 250
 # (`kokoro.trim_edges`), so one number sets both.
 SENTENCE_PAUSE_MS = 250
 BLOCK_PAUSE_MS = 450
+# A change of scene - "* * *", "-o0o-", a `<hr/>` - is a silence the ear
+# can tell from a paragraph's (HIG 5.1, 24/09). Provisional: the owner hears
+# it before it is settled.
+SCENE_PAUSE_MS = 1600
+# The chapter that stands right after its part's title: the part's chime
+# already announced the arrival, so this one is a longer rest, not a second
+# sound (HIG 5.1, 24/09). Provisional, like the scene rest.
+PART_TO_CHAPTER_MS = 1500
 
 # Pauses inside a segment are baked into the audio that gets cached, so the
 # cache has to know which reading produced it. Deriving this from the pause
@@ -87,6 +95,31 @@ _BEFORE_KIND_MS = {
     "caption": 0,
     "preformatted": 0,
 }
+
+
+# Marks books put on a line of their own between scenes. A run of three or
+# more ("* * *", "---", "• • •") or one of the ornaments that never stand
+# for anything else. A lone dash or an ellipsis is a beat in a dialogue, not
+# a change of scene, so neither is here.
+_BREAK_GLYPHS = frozenset("*⁂❖✱✲✳✴✵✶✷✸✹✺✻✼✽✾❀❁❃❊❋✦✧◆◇♦•·°~＊#§¶─━—–-_=")
+_BREAK_ALONE = frozenset("⁂❖§✽✾❀❁❃❊❋✦✧◆◇♦¶")
+# "o0o", "-oOo-", "~o0o~": letters o and the digit 0, framed or not. It has
+# to have the zero or mix the cases - "ooo" and "OOO" are words people write.
+_BREAK_OOO = re.compile(r"[oO0]{3,7}")
+
+
+def is_scene_break(text: str) -> bool:
+    """A line that marks a change of scene and says nothing (HIG 5.1)."""
+
+    marks = "".join(text.split())
+    if not marks or len(marks) > 24:
+        return False
+    if all(character in _BREAK_GLYPHS for character in marks):
+        return len(marks) >= 3 or any(character in _BREAK_ALONE for character in marks)
+    core = marks.strip("".join(_BREAK_GLYPHS))
+    if not _BREAK_OOO.fullmatch(core):
+        return False
+    return "0" in core or ("o" in core and "O" in core)
 
 
 def final_punctuation(text: str) -> str:
@@ -175,13 +208,39 @@ def _block_pause_ms(current_kind: str, next_kind: str) -> int:
     return max(after, _BEFORE_KIND_MS[next_kind])
 
 
-def pause_after_ms(current: Segment, next_segment: Segment | None) -> int:
-    """Silence to add between one segment's audio and the next one's."""
+def pause_after_ms(
+    current: Segment,
+    next_segment: Segment | None,
+    *,
+    divisions: Mapping[str, str] | None = None,
+) -> int:
+    """Silence to add between one segment's audio and the next one's.
+
+    `divisions` is the book's plan of what each seam opens
+    (`domain.divisions.division_plan`, HIG 5.1). With it, a new FILE is only
+    a new chapter when the plan says so; without it - the Qt coordinator -
+    every new file is one, as it always was.
+    """
 
     if next_segment is None:
         return 0
-    if next_segment.chapter_id != current.chapter_id:
-        return CHAPTER_PAUSE_MS
+    if divisions is None:
+        if next_segment.chapter_id != current.chapter_id:
+            return CHAPTER_PAUSE_MS
+    else:
+        opens = divisions.get(next_segment.id)
+        if opens == "part-chapter":
+            return PART_TO_CHAPTER_MS
+        if opens in ("part", "chapter"):
+            return CHAPTER_PAUSE_MS
+        if is_scene_break(next_segment.text):
+            # The mark itself carries the whole rest.
+            return 0
+        if opens == "scene" or is_scene_break(current.text):
+            return SCENE_PAUSE_MS
+        if opens == "continue":
+            # A sentence that runs over a PDF's page break goes on.
+            return 0
     if next_segment.joint == "split":
         return _split_pause_ms(current.text)
     if next_segment.joint == "line":
@@ -908,6 +967,9 @@ def speakable_text(
     period are the same job in either language.
     """
 
+    if is_scene_break(text):
+        # "* * *" is a silence, not "sao sao sao" (HIG 5.1, 24/09).
+        return ""
     # Roman numerals BEFORE unshout: "II" is all-caps and vowel-less, and a
     # de-shouted "ii" is no longer a numeral anything can recognise.
     spoken = drop_note_marks(text)

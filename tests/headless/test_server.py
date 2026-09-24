@@ -3602,3 +3602,122 @@ class SpokenCueTests(unittest.TestCase):
                         sentence,
                         f"{name}[{language!r}] no longer carries {placeholder}",
                     )
+
+
+class DivisionReadingTests(unittest.TestCase):
+    """Where a reading marks a new part or chapter (HIG 5.1, 24/09), checked
+    by WHERE the chime falls - the passage each one opens - not by how many.
+    Before: a book of 3 chapters in 2 parts chimed 8 times, at front-matter
+    pages and at a converter's file split; a one-file book never chimed; a
+    PDF without bookmarks chimed mid-sentence at every page."""
+
+    def _read(self, make_book, *, chime="marimba"):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from vieneu_reader.config import AppPaths
+        from vieneu_reader.importers.service import LibraryService
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = LibraryRepository(root / "reader.sqlite3")
+            service = LibraryService(AppPaths.create(root / "app"), repository)
+            stored = service.import_book(make_book(root)).book
+            settings = root / "settings.json"
+            settings.write_text(json.dumps({"chapter_chime": chime}), encoding="utf-8")
+            engine = FakeEngine(chunks_per_sentence=1)
+            replies = run_server(
+                [{"id": 1, "method": "read.book",
+                  "params": {"book_id": stored.id, "voice_id": "adam", "rate": 1.0}}],
+                engine, repository=repository, service=service, settings_path=settings,
+            )
+        texts = {s.id: s.text for c in stored.chapters for s in c.segments}
+        return replies, texts, engine
+
+    @staticmethod
+    def _opened_by_chime(replies, texts):
+        opened, pending = [], False
+        for message in replies:
+            if message.get("event") == "chunk" and not message["from_voice"]:
+                pcm = np.frombuffer(base64.b64decode(message["pcm"]), dtype=np.float32)
+                if np.abs(pcm).max() > 0:
+                    pending = True
+            elif message.get("event") == "position" and pending:
+                opened.append(texts[message["segment_id"]])
+                pending = False
+        return opened
+
+    @staticmethod
+    def _rests(replies):
+        return [
+            np.frombuffer(base64.b64decode(m["pcm"]), dtype=np.float32).size
+            for m in replies
+            if m.get("event") == "chunk" and not m["from_voice"]
+            and np.abs(np.frombuffer(base64.b64decode(m["pcm"]), dtype=np.float32)).max() == 0
+        ]
+
+    def test_the_chimes_fall_where_the_contents_opens_a_part_or_a_chapter(self) -> None:
+        from tests.importers.epub_fixture import (
+            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+        )
+
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+        ))
+        # None between the front-matter pages, none at the file a converter
+        # split off chapter 1, and one for a part and its first chapter.
+        self.assertEqual(self._opened_by_chime(replies, texts), ["PHẦN MỘT", "Chương 2", "PHẦN HAI"])
+
+    def test_a_book_in_one_file_chimes_at_its_chapters(self) -> None:
+        from tests.importers.epub_fixture import ONE_FILE_NAV, ONE_FILE_PAGES, make_structured_epub
+
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="one-file.epub", pages=ONE_FILE_PAGES, spine=("book",), nav=ONE_FILE_NAV,
+        ))
+        self.assertEqual(
+            self._opened_by_chime(replies, texts),
+            ["Chương 2. Mùa nước nổi", "Chương 3. Lên núi"],
+        )
+
+    def test_a_scene_break_is_a_silence_the_voice_never_hears_about(self) -> None:
+        from vieneu_reader.domain.prosody import SCENE_PAUSE_MS
+        from tests.importers.epub_fixture import (
+            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+        )
+
+        replies, _texts, engine = self._read(lambda root: make_structured_epub(
+            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+        ))
+        said = [text.strip() for text, _voice in engine.requests]
+        self.assertTrue(said)
+        for mark in ("* * *", "-o0o-", ""):
+            self.assertNotIn(mark, said)
+        # "* * *" in chapter 1 and the `<hr/>` in chapter 2 (the "-o0o-" at
+        # the end of the split file gives way to the next chapter's chime).
+        self.assertEqual(self._rests(replies).count(SAMPLE_RATE * SCENE_PAUSE_MS // 1000), 2)
+
+    def test_a_pdf_without_bookmarks_reads_on_across_its_pages(self) -> None:
+        from tests.importers.pdf_fixture import make_pdf
+
+        replies, texts, _engine = self._read(lambda root: make_pdf(
+            root / "khong-bookmark.pdf",
+            pages=(
+                ((50, 720, "Ong lao cheo thuyen va khong noi"),),
+                ((50, 720, "mot loi nao suot quang duong."),),
+                ((50, 720, "Ben song vang nguoi."),),
+            ),
+        ))
+        self.assertEqual(self._opened_by_chime(replies, texts), [])
+        # The sentence that runs over the first page break gets no rest at
+        # all; the one that ended at the second gets a paragraph's.
+        rests_before = []
+        silence = 0
+        for message in replies:
+            if message.get("event") == "chunk":
+                pcm = np.frombuffer(base64.b64decode(message["pcm"]), dtype=np.float32)
+                silence = silence + pcm.size if not message["from_voice"] else 0
+            elif message.get("event") == "position":
+                rests_before.append(silence)
+                silence = 0
+        from vieneu_reader.domain.prosody import BLOCK_PAUSE_MS
+        self.assertEqual(rests_before, [0, 0, SAMPLE_RATE * BLOCK_PAUSE_MS // 1000])

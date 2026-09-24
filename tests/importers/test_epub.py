@@ -1311,3 +1311,38 @@ class OrderedListMarkerTests(unittest.TestCase):
         self.assertEqual(labels[0], "1.")
         self.assertEqual(labels[1:-1], [None] * (len(rows) - 2))
         self.assertEqual(labels[-1], "2.")
+
+
+class ThematicBreakTests(unittest.TestCase):
+    """A `<hr/>` has no words, so the importer never made a segment of it and
+    the voice read straight through a change of scene (HIG 5.1, 24/09). It is
+    kept as metadata on open - on the passage it stands before - and the
+    segments are not touched."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _after_breaks(self, body):
+        chapter = f'<html xmlns="http://www.w3.org/1999/xhtml"><body>{body}</body></html>'
+        path = make_epub(self.root, spine=("chapter-1",), chapter_overrides={"chapter-1": chapter})
+        book = import_epub(path)
+        presentation = load_epub_presentation(path, book)
+        breaks = {segment_id for c in presentation.chapters for segment_id in c.breaks}
+        return [s.text for c in book.chapters for s in c.segments if s.id in breaks]
+
+    def test_the_passage_after_a_rule_opens_a_new_scene(self):
+        self.assertEqual(
+            self._after_breaks(
+                "<h1>Mùa nước nổi</h1><p>Đêm đó mưa rất to.</p><hr/>"
+                "<p>Sáng ra, nước đã rút.</p><p>Lũ trẻ chạy khắp bãi bồi.</p>"
+                '<div class="scene"><hr/></div><p>Chiều về.</p>'
+            ),
+            ["Sáng ra, nước đã rút.", "Chiều về."],
+        )
+
+    def test_a_rule_with_nothing_after_it_marks_nothing(self):
+        self.assertEqual(self._after_breaks("<h1>Hết</h1><p>Câu cuối.</p><hr/>"), [])
