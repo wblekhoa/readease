@@ -142,9 +142,13 @@ class _Utterance:
     # (slower, louder, HEADING_RATE/HEADING_GAIN); everything else reads as
     # a paragraph. Cues and notes are paragraphs.
     kind: str = "paragraph"
-    # True on the first utterance of a chapter that is not the reading's
-    # first: the chime, if one is chosen, sounds before it.
-    chapter_start: bool = False
+    # What this utterance opens, on the first utterance of the passage the
+    # book's division plan names (`domain.divisions`, HIG 5.1): "part" or
+    # "chapter" - the chime, if one is chosen, sounds before it - or
+    # "part-chapter", the chapter right after its part's title, which gets a
+    # rest and no second sound. None for everything else, a new FILE
+    # included: a file is not a chapter.
+    opens: str | None = None
     # Set on the spoken cue for a picture ("Xem hình 3."): rides the position
     # event so the shell can bring the picture into view exactly when the ear
     # hears the cue, not when the model synthesised it.

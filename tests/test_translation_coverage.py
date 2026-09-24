@@ -93,6 +93,14 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         # lookup ever checked about them.
         ("headless/utterances.py", "Xem hình {number}."),
         ("headless/utterances.py", "Nói thêm, {text}"),
+        # The words a contents line opens with when it names a chapter or a
+        # part, and the one word of a Vietnamese number that is not a digit
+        # of its own ("hai MƯƠI mốt") - the same matcher as the contents
+        # column's (`app/src/ui/contents.ts`), reading book titles to decide
+        # where the voice marks a division (HIG 5.1). Never shown.
+        ("domain/divisions.py", r"^(chương|chapter|phần|part|quyển)\s+(.+)$"),
+        ("domain/divisions.py", "mươi"),
+        ("domain/divisions.py", "chương"),
         # Abbreviations the sentence splitter matches against. They are data
         # for a matcher, never text anyone reads, so there is nothing to
         # translate; an English build must still not split "ĐH. Bách Khoa".

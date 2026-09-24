@@ -101,6 +101,8 @@ class _TextEvent:
     #: number an `<ol>` gives this item, and what the voice says for it; set
     #: when the item's own words do not already start with a number.
     marker: tuple[str, str] | None = None
+    #: A `<hr/>` came between the previous block and this one.
+    after_break: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,6 +275,13 @@ def _chapter_events(
     # Ids met since the last block: they name the NEXT one - a wrapper's id,
     # or an empty `<a id>` standing before a heading.
     waiting: list[str] = []
+    # A `<hr/>` met since the last block: the next one opens a new scene.
+    broken = False
+
+    def take_break() -> bool:
+        nonlocal broken
+        was, broken = broken, False
+        return was
 
     def element_id(element: ElementTree.Element) -> str | None:
         return next(
@@ -308,9 +317,12 @@ def _chapter_events(
         ancestor_classes: frozenset[str],
         marker: tuple[str, str] | None = None,
     ) -> None:
-        nonlocal occurrence
+        nonlocal occurrence, broken
         tag = _local_name(element.tag)
         if tag in _IGNORED_TAGS or _is_hidden(element):
+            return
+        if tag == "hr":
+            broken = True
             return
         classes = ancestor_classes | _class_names(element)
         own = element_id(element)
@@ -330,6 +342,7 @@ def _chapter_events(
                         if tag == "li" and marker and not _TYPED_MARKER.match(text)
                         else None
                     ),
+                    after_break=take_break(),
                 ))
                 waiting.clear()
             else:
@@ -338,7 +351,7 @@ def _chapter_events(
             return
         normalized = normalize_paragraph(element.text or "")
         if normalized:
-            events.append(_TextEvent(normalized, anchors=tuple(waiting)))
+            events.append(_TextEvent(normalized, anchors=tuple(waiting), after_break=take_break()))
             waiting.clear()
         # An `<ol>` numbers its own items; a list inside an item is part of
         # that item's words (an `<li>` is one block), so it never gets here.
@@ -359,7 +372,7 @@ def _chapter_events(
                 visit(child, classes, markers.get(id(child)))
             normalized_tail = normalize_paragraph(child.tail or "")
             if normalized_tail:
-                events.append(_TextEvent(normalized_tail, anchors=tuple(waiting)))
+                events.append(_TextEvent(normalized_tail, anchors=tuple(waiting), after_break=take_break()))
                 waiting.clear()
 
     visit(root, frozenset())
@@ -811,6 +824,7 @@ def _chapter_presentation(
     spoken_indexes: list[int] = []
     anchor_indexes: dict[str, int] = {}
     marker_indexes: list[tuple[int, tuple[str, str]]] = []
+    break_indexes: list[int] = []
     previous_segment_index: int | None = None
     for event in events:
         if isinstance(event, _TextEvent):
@@ -855,6 +869,8 @@ def _chapter_presentation(
                     # The item's FIRST segment only: the tail of an item the
                     # importer cut in two does not say "1." again.
                     marker_indexes.append((base, event.marker))
+                if event.after_break:
+                    break_indexes.append(base)
             generated_text.extend(parts)
             if parts:
                 previous_segment_index = len(generated_text) - 1
@@ -958,6 +974,7 @@ def _chapter_presentation(
                 ListMarker(chapter.segments[index].id, label, spoken)
                 for index, (label, spoken) in marker_indexes
             ),
+            tuple(chapter.segments[index].id for index in break_indexes),
         ),
         next_number,
     )

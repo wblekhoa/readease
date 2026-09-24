@@ -65,6 +65,7 @@ from vieneu_reader.domain.language import (
     language_of_text,
     language_of_texts,
 )
+from vieneu_reader.domain.divisions import CHAPTER, PART, PART_CHAPTER, division_plan
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
     HEADING_GAIN,
@@ -1195,9 +1196,20 @@ class _Session:
         # not "1.", which the sentence splitter would cut off as a sentence
         # of its own (HIG 5.1).
         spoken_markers: dict[str, str] = {}
+        # Where the reading marks a new part or chapter, and the scene breaks
+        # a `<hr/>` drew (HIG 5.1, 24/09). Without a presentation - a PDF, a
+        # server with no library service - the plan falls back to the files.
+        contents: tuple[Any, ...] = ()
+        breaks: tuple[str, ...] = ()
         if self._service is not None:
             presentation = self._service.presentation_for(
                 stored.book, stored.managed_path
+            )
+            contents = tuple(getattr(presentation, "contents", ()))
+            breaks = tuple(
+                segment_id
+                for chapter in presentation.chapters
+                for segment_id in getattr(chapter, "breaks", ())
             )
             cues = _figure_cues(presentation)
             notes = _note_marks(presentation)
@@ -1241,9 +1253,16 @@ class _Session:
             if cue.caption_segment_id is not None
         }
 
+        divisions = division_plan(stored.book, contents, breaks)
+        opened: set[str] = set()
+
         def add(utterance: _Utterance, chapter: int) -> None:
-            if chapter_of and chapter_of[-1] != chapter:
-                utterance = replace(utterance, chapter_start=True)
+            # The division opens on the FIRST utterance of its passage - a
+            # figure cue placed before it, when there is one.
+            opens = divisions.get(utterance.segment_id or "")
+            if opens in (PART, CHAPTER, PART_CHAPTER) and utterance.segment_id not in opened:
+                opened.add(utterance.segment_id or "")
+                utterance = replace(utterance, opens=opens)
             utterances.append(utterance)
             chapter_of.append(chapter)
 
@@ -1268,6 +1287,7 @@ class _Session:
             after_segment = pause_after_ms(
                 segment,
                 segments[index + 1] if index + 1 < len(segments) else None,
+                divisions=divisions,
             )
             # Notes turn one segment into several utterances - the same thing
             # a figure cue already does - so the follow-along, the estimate
@@ -2750,7 +2770,7 @@ class _Session:
                 is_last = position + 1 == len(utterances)
                 if is_last:
                     continue
-                if chime is not None and utterances[position + 1].chapter_start:
+                if chime is not None and utterances[position + 1].opens in (PART, CHAPTER):
                     # Between chapters: a breath, the chime, a breath - in
                     # place of the flat silence. The chime is not stretched
                     # (it is not speech) and not credited to a voice.

@@ -214,3 +214,96 @@ def make_epub_with_contents(
         manifest_extra=manifest,
         extra_members=extra,
     )
+
+
+def make_structured_epub(
+    root: Path,
+    *,
+    name: str,
+    pages: dict[str, tuple[str, str]],
+    spine: tuple[str, ...],
+    nav: str | None,
+    title: str = "Sách có cấu trúc",
+) -> Path:
+    """An EPUB from whole pages: `pages` maps a manifest id to (href, body
+    XHTML inside `<body>`), `nav` is an EPUB 3 nav body or None for none."""
+
+    def page(body: str) -> str:
+        return (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>x</title></head>'
+            f"<body>{body}</body></html>"
+        )
+
+    manifest = "".join(
+        f'<item id="{key}" href="{href}" media-type="application/xhtml+xml"/>'
+        for key, (href, _body) in pages.items()
+    )
+    if nav is not None:
+        manifest += '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>'
+    opf = f"""<?xml version="1.0"?>
+    <package xmlns="http://www.idpf.org/2007/opf"
+             xmlns:dc="http://purl.org/dc/elements/1.1/" version="3.0">
+      <metadata><dc:title>{title}</dc:title></metadata>
+      <manifest>{manifest}</manifest>
+      <spine>{''.join(f'<itemref idref="{key}"/>' for key in spine)}</spine>
+    </package>
+    """
+    path = root / name
+    with ZipFile(path, "w") as archive:
+        archive.writestr("mimetype", "application/epub+zip", compress_type=ZIP_STORED)
+        archive.writestr("META-INF/container.xml", CONTAINER_XML, compress_type=ZIP_DEFLATED)
+        archive.writestr("OEBPS/content.opf", opf, compress_type=ZIP_DEFLATED)
+        for _key, (href, body) in pages.items():
+            archive.writestr(f"OEBPS/{href}", page(body), compress_type=ZIP_DEFLATED)
+        if nav is not None:
+            archive.writestr(
+                "OEBPS/nav.xhtml",
+                '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body>'
+                f'<nav epub:type="toc">{nav}</nav></body></html>',
+                compress_type=ZIP_DEFLATED,
+            )
+    return path
+
+
+# A book shaped the way real ones arrive (HIG 5.1, 24/09), invented words:
+# a title page, a copyright page, a printed contents page, a part page, a
+# chapter a converter split across two files, scene breaks written three
+# ways and one drawn with `<hr/>`, a second chapter, a second part.
+DIVISIONS_PAGES = {
+    "title": ("title.xhtml", "<h1>Bến Sông Xa</h1><p>Lê Minh Thư</p>"),
+    "copyright": ("copyright.xhtml", "<p>Bản quyền © 2024 Nhà xuất bản Gió Nam.</p><p>In lần thứ nhất.</p>"),
+    "toc": ("toc.xhtml", '<h1>Mục lục</h1><p><a href="part1.xhtml">Phần Một: Những con đường</a></p>'
+                         '<p><a href="ch1.xhtml">Chương 1. Bến sông</a></p>'),
+    "part1": ("part1.xhtml", "<h1>PHẦN MỘT</h1><p>Những con đường</p>"),
+    "ch1": ("ch1.xhtml", "<h2>Chương 1</h2><h3>Bến sông</h3><p>Sương còn phủ kín mặt sông.</p>"
+                         "<p>* * *</p><p>Nhiều năm sau, cô vẫn nhớ mùi khói bếp.</p>"),
+    "ch1b": ("ch1_split_001.xhtml", "<p>Chiều xuống, gió đổi hướng.</p><p>-o0o-</p>"),
+    "ch2": ("ch2.xhtml", "<h2>Chương 2</h2><h3>Mùa nước nổi</h3><p>Đêm đó mưa rất to.</p><hr/>"
+                         "<p>Sáng ra, nước đã rút.</p>"),
+    "part2": ("part2.xhtml", "<h1>PHẦN HAI</h1><p>Bờ bên kia</p>"),
+    "ch3": ("ch3.xhtml", "<h2>Chương 3</h2><h3>Lên núi</h3><p>Con đường lên núi dài hơn anh tưởng.</p>"),
+}
+DIVISIONS_SPINE = ("title", "copyright", "toc", "part1", "ch1", "ch1b", "ch2", "part2", "ch3")
+DIVISIONS_NAV = """<ol>
+  <li><a href="part1.xhtml">Phần Một: Những con đường</a><ol>
+    <li><a href="ch1.xhtml">Chương 1. Bến sông</a></li>
+    <li><a href="ch2.xhtml">Chương 2. Mùa nước nổi</a></li>
+  </ol></li>
+  <li><a href="part2.xhtml">Phần Hai: Bờ bên kia</a><ol>
+    <li><a href="ch3.xhtml">Chương 3. Lên núi</a></li>
+  </ol></li>
+</ol>"""
+
+# The same chapters kept in ONE file, found through the nav's anchors.
+ONE_FILE_PAGES = {
+    "book": ("book.xhtml",
+             '<h1 id="c1">Chương 1. Bến sông</h1><p>Sương còn phủ kín mặt sông.</p>'
+             '<h1 id="c2">Chương 2. Mùa nước nổi</h1><p>Đêm đó mưa rất to.</p>'
+             '<h1 id="c3">Chương 3. Lên núi</h1><p>Con đường lên núi dài hơn anh tưởng.</p>'),
+}
+ONE_FILE_NAV = """<ol>
+  <li><a href="book.xhtml#c1">Chương 1. Bến sông</a></li>
+  <li><a href="book.xhtml#c2">Chương 2. Mùa nước nổi</a></li>
+  <li><a href="book.xhtml#c3">Chương 3. Lên núi</a></li>
+</ol>"""

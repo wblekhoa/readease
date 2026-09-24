@@ -51,6 +51,17 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   and the voice carries on. The English voice no longer stops for almost
   a second between sentences; it keeps the same rhythm as the Vietnamese
   one.
+- The chapter chime follows the contents, not the files a document happens
+  to be cut into. It rang between the title and copyright pages, in the
+  middle of a chapter a converter had split in two, never in a document
+  kept in one file, and at every page of a PDF without bookmarks - in the
+  middle of sentences. It now rings where the contents show a chapter or
+  a part; a part and the chapter right after its title share one chime,
+  followed by a longer rest. A PDF without bookmarks reads on across its
+  pages, and a sentence that runs over a page break is no longer cut.
+- A change of scene is a silence. "* * *", "-o0o-" and the like were read
+  out as words ("star star star", "O zero O"), and a horizontal rule was
+  not heard at all. Each is now a pause of about a second and a half.
 
 ## 0.1.15
 
