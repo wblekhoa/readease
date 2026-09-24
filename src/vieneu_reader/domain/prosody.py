@@ -23,10 +23,14 @@ _BULLET_GLYPHS = frozenset("•◦▪●‣·*")
 CHAPTER_PAUSE_MS = 1200
 LINE_PAUSE_MS = 250
 # One sentence to the next inside a paragraph. The voice is asked to read each
-# sentence on its own, which leaves about 260 ms at the seam by itself; this
+# sentence on its own, which leaves about 250 ms at the seam by itself; this
 # tops it up to something the ear reads as a full stop without turning it into
-# a paragraph break.
-SENTENCE_PAUSE_MS = 100
+# a paragraph break. It was 100, and a full stop then came out no longer than
+# a comma - 0.35 s against the model's own 0.50-0.65 when it reads a stop
+# inside one run (audit 23/09, three voices); the owner chose 250 by ear
+# (24/09). The English voice's seam is trimmed to the same ~250 ms
+# (`kokoro.trim_edges`), so one number sets both.
+SENTENCE_PAUSE_MS = 250
 BLOCK_PAUSE_MS = 450
 
 # Pauses inside a segment are baked into the audio that gets cached, so the
@@ -35,20 +39,13 @@ BLOCK_PAUSE_MS = 450
 READING_REVISION = f"sentences-{SENTENCE_PAUSE_MS}"
 
 # A terminal mark, any closing quotes or brackets, then the gap before whatever
-# comes next.
+# comes next. Only a sentence's end is a cut: a colon and a dash used to be
+# cuts too, and each piece then reached the Vietnamese SDK without a closing
+# mark - which it FORCES to a full stop, so "Anh ấy nói:" was read as
+# "anh ấy nói." with a falling voice and a sentence's pause (audit 23/09).
+# Left in the sentence they are read as the commas the SDK turns them into;
+# the one dash it drops, the attached one, is `speak_attached_dashes`' job.
 _SENTENCE_BOUNDARY = re.compile(r"[.!?…]+[\"\'”’»›)\]}]*\s+")
-# A colon only introduces something when a gap follows it, which is what keeps
-# "10:30" and "https://" whole without this needing to know about clocks or
-# links. A dash sets an aside apart, attached or spaced - but between two
-# digits it is a range like "1975—1980", so the range is matched FIRST, as its
-# own thing, and skipped. The old guard refused any dash touching a digit on
-# either side, which silently swallowed "kể—99 xu": a letter before, a number
-# after, and the voice ran straight through it (owner, 2026-09-02). A hyphen
-# only counts as a dash when spaced on both sides ("Anh - em"); "tháng 1-2"
-# and "Anh-Mỹ" stay whole.
-_CLAUSE_BOUNDARY = re.compile(
-    r":\s+|(?P<range>\d\s*[—–-]\s*\d)|\s*[—–]\s*|\s-\s"
-)
 _SENTENCE_OPENERS = frozenset("(\"'“‘«[-—–")
 # Titles and initials end in a period and are followed by a capitalised name,
 # which is exactly what a sentence boundary looks like.
@@ -145,30 +142,16 @@ def _boundaries(text: str) -> list[int]:
         if _is_abbreviation(text, match.start()):
             continue
         cuts.add(following)
-    for match in _CLAUSE_BOUNDARY.finditer(text):
-        if match.group("range"):
-            continue  # "1975—1980": one thing, not two
-        if match.end() >= len(text):
-            continue
-        # A dash that OPENS a line of dialogue has nothing before it to end -
-        # at the start of the text, or right after a finished sentence
-        # ("Cô ấy gật đầu. - Vâng"). The sentence break already cut there;
-        # cutting again would leave the dash standing alone.
-        before = text[: match.start()].rstrip()
-        if not before or ends_sentence(before):
-            continue
-        cuts.add(match.end())
     return sorted(cuts)
 
 
 def split_sentences(text: str) -> tuple[str, ...]:
-    """Split one paragraph into the parts the voice should read apart.
+    """Split one paragraph into the sentences the voice reads one at a time.
 
-    A full stop is the obvious break, but a colon introducing something and a
-    dash setting an aside apart are breaks the ear expects too, and the voice
-    places none of them reliably on its own. Each cut is only taken where the
-    punctuation really means it: not inside "TS. Nguyễn Văn A", "10:30",
-    "https://readease.vn" or "1975—1980".
+    Only a real full stop cuts: not "TS. Nguyễn Văn A", not "3.5", not "Jan.
+    5". A colon or a dash stays inside its sentence, where the voice reads it
+    as a comma - a pause with the voice still going on - instead of a falling
+    full stop (HIG 5.1, 24/09).
     """
 
     parts: list[str] = []
@@ -357,6 +340,24 @@ def spell_ordinal_marks(
             lambda m: f"number {_english_cardinal(int(m.group(1)))}", text
         )
     return _ORDINAL_MARK.sub(lambda m: ordinal_words(int(m.group(1))), text)
+
+
+# An em or en dash with a word on each side ("kể—99 xu", "mép đường—rất khó").
+# The Vietnamese SDK turns a SPACED dash into a comma, and a pause, but drops
+# an attached one outright: "kể chín mươi chín xu", straight through - the
+# owner's own complaint on 02/09. A dash between two DIGITS is a range the SDK
+# reads as "đến" and is left alone.
+_ATTACHED_DASH = re.compile(r"(?<=\S)[—–](?=\S)")
+
+
+def speak_attached_dashes(text: str) -> str:
+    """'kể—99 xu' → 'kể, 99 xu' for the Vietnamese voice; '1975—1980' stays."""
+
+    def comma(match: re.Match[str]) -> str:
+        before, after = text[match.start() - 1], text[match.end()]
+        return match.group(0) if before.isdigit() and after.isdigit() else ", "
+
+    return _ATTACHED_DASH.sub(comma, text)
 
 
 # English clock times, ranges and references, written out before the G2P sees
@@ -916,6 +917,10 @@ def speakable_text(
         spoken = drop_citations(spoken)
     if speech_language(language) == "en":
         spoken = speak_english_forms(spoken)
+    else:
+        # The English G2P keeps an attached dash as a mark Kokoro pauses at;
+        # the Vietnamese SDK would drop it (HIG 5.1).
+        spoken = speak_attached_dashes(spoken)
     spoken = speak_roman_numerals(speak_enumerators(spoken), language)
     spoken = spell_ordinal_marks(unshout(speak_links(spoken, language)), language)
     stripped = spoken.lstrip()

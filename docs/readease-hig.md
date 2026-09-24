@@ -934,6 +934,21 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   khối; luật cũ né mọi gạch chạm chữ số ở *bất kỳ* phía nên nuốt luôn ca chữ-trước-số-sau. Gạch
   nối chỉ tính là gạch ngang khi có khoảng trắng hai bên ("Anh - em"); "tháng 1-2", "Anh-Mỹ" giữ
   nguyên. Gạch MỞ lời thoại (đầu văn bản hoặc ngay sau câu đã kết) không cắt lần nữa.
+  **Từ 24/09 chỗ nghỉ ấy là DẤU PHẨY, không còn là nhát CẮT** (audit giọng 23/09 mục 4, chủ duyệt sau khi nghe bản A/B).
+  Cắt ở ":" và gạch từng gửi mỗi mẩu cho model như một câu riêng; SDK tiếng Việt thấy mẩu không có dấu kết thì ÉP dấu
+  chấm ("Anh ấy nói:" → *anh ấy nói.*, "đến muộn —" → *đến muộn.*) nên giọng hạ xuống như hết câu, cộng thêm khoảng nghỉ
+  hết câu. Gửi nguyên câu thì chính SDK đổi ": " và gạch CÓ khoảng trắng thành phẩy ("anh ấy nói, tôi sẽ đến") — giọng đi
+  tiếp, nghỉ 0,2–0,5 s (đo bản B). Riêng gạch DÍNH chữ ("kể—99", "đường—rất") SDK bỏ hẳn, không nghỉ — đúng lỗi 02/09
+  — nên `speakable_text` tiếng Việt đổi nó thành ", " (khoảng số chữ-số—chữ-số vẫn giữ để SDK đọc "đến"). Tiếng Anh không
+  cần đổi gì: G2P giữ ":" và "—" (cả dạng dính) làm dấu câu cho Kokoro tự ngắt. `split_sentences` chỉ còn cắt ở dấu kết câu.
+- **Nhịp nghỉ hết câu** (audit giọng 23/09 mục 3 và 5, chủ duyệt 24/09 sau khi nghe bản C và D). Đo trước khi sửa, tốc độ
+  1×, ba giọng Việt: nghỉ hết câu 0,26–0,47 s (TB ≈ 0,35) — ngang hoặc NGẮN hơn nghỉ ở dấu phẩy (0,20–0,58, TB ≈ 0,38), dưới
+  mức hết câu của chính model khi đọc liền (0,50–0,65 s). Nguyên do: mỗi câu tổng hợp riêng, mối nối tự nhiên chỉ ~250 ms,
+  và `SENTENCE_PAUSE_MS` chèn thêm 100. Nay **250** → mối nối ≈ 0,5 s, bậc phẩy < chấm < đoạn trở lại. Rẻ: đường Tauri cache
+  từng câu với revision cố định, khoảng lặng phát NGOÀI cache — không phải tổng hợp lại vì đổi số này. Tiếng Anh ngược lại:
+  mỗi mẩu Kokoro mang sẵn ~320 ms lặng đầu và ~500 ms lặng cuối, nên nghỉ hết câu 0,85–1,0 s, đọc ngắt quãng. Nay mép lặng
+  của mỗi mẩu được TỈA còn 120 ms mỗi đầu (`trim_edges`, ngưỡng −45 dB như SDK) → mối nối ≈ 240 ms, cộng 250 ms chèn ≈ 0,5 s,
+  cùng nhịp với tiếng Việt; câu đầu của lượt đọc cũng bớt 0,2 s im lặng lúc bắt đầu.
 - **Số chú thích siêu chỉ số không đọc** — "Tang.³", "người³" là số chú thích cho MẮT; giọng đọc thành "ba" dính vào từ trước là rác. Quét thư viện 02/09: 6/6 siêu chỉ số đều là chú thích, 0 phép toán. Trang giữ nguyên ký hiệu; chỉ lời nói bỏ. Siêu chỉ số đứng ngay sau CHỮ SỐ là luỹ thừa ("10³") nên giữ (`drop_note_marks`, chỉ trong `speakable_text`). **Lỗ đã biết**: đơn vị đo sau chữ cái ("m²", "km²") sẽ bị coi là chú thích — thư viện hiện 0 ca (quét 02/09), gặp thì mới quyết bằng tai, không mở rộng trước.
 - **Tiêu đề đánh số có số 0 đệm nói số, không nói số 0** — "01"…"09" (9 tiêu đề trong 203 tiêu đề số của sách 100 nguyên tắc của chủ). Chứng minh 02/09 trên sách thật, engine cũ → mới: "01" 0,72s → 0,48s, "02" 0,88s → 0,56s — số 0 đúng là được đọc ("không"), bản mới chỉ nói số. Chỉ TIÊU ĐỀ, chỉ số 0 dẫn đầu ngay trước chữ số ("0", "0.5 giây" giữ; đoạn văn "01/09" giữ). Trang giữ "01".
 - **Tiêu đề nghe khác đoạn văn** (chủ, 16/09: "đổi giọng điệu hoặc đọc to hơn một xíu các tiêu đề, thêm

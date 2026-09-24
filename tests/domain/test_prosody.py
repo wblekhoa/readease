@@ -183,12 +183,12 @@ class SentenceSplittingTests(unittest.TestCase):
         )
 
     def test_a_closing_quote_stays_with_the_sentence_it_closes(self):
-        # The colon introducing the quote is its own break; what matters here
-        # is that the question mark keeps its closing quote rather than
-        # stranding it at the head of the next piece.
+        # The colon introducing the quote stays in its sentence (24/09); what
+        # matters here is that the question mark keeps its closing quote
+        # rather than stranding it at the head of the next piece.
         self.assertEqual(
             split_sentences('Anh ấy hỏi: "Đi đâu?" Rồi im lặng.'),
-            ("Anh ấy hỏi:", '"Đi đâu?"', "Rồi im lặng."),
+            ('Anh ấy hỏi: "Đi đâu?"', "Rồi im lặng."),
         )
 
     def test_titles_and_initials_are_not_mistaken_for_full_stops(self):
@@ -239,79 +239,68 @@ class SentenceSplittingTests(unittest.TestCase):
         )
 
 
-class ClauseSplittingTests(unittest.TestCase):
-    """A colon and a dash are breaks the voice will not take on its own."""
+class ClauseMarkTests(unittest.TestCase):
+    """A colon and a dash stay INSIDE their sentence (24/09, audit 23/09
+    item 4). Cut off on their own, each piece reached the Vietnamese SDK
+    without a closing mark, which it forces to a full stop - a falling voice
+    and a sentence's pause where the text only paused. Left in, the SDK reads
+    a spaced dash and a colon as commas; the attached dash it would drop is
+    turned into one first, so "kể—99 xu" still pauses (owner, 02/09)."""
 
-    def test_a_colon_introducing_something_is_a_break(self):
-        self.assertEqual(
-            split_sentences("Chú giải ảnh: Dòng biển báo cùng mũi tên."),
-            ("Chú giải ảnh:", "Dòng biển báo cùng mũi tên."),
-        )
-
-    def test_a_dash_sets_an_aside_apart_even_with_no_spaces(self):
-        self.assertEqual(
-            split_sentences("sơn ngay mép đường—ngắn gọn, đúng lúc."),
-            ("sơn ngay mép đường—", "ngắn gọn, đúng lúc."),
-        )
-
-    def test_a_colon_with_no_gap_after_it_is_not_a_break(self):
+    def test_a_colon_and_a_dash_no_longer_cut_the_sentence(self):
         for text in (
-            "Chuyến bay lúc 10:30 sáng.",
-            "Xem tại https://readease.vn nhé.",
-            "Tỉ lệ 3:1 là hợp lý.",
+            "Chú giải ảnh: Dòng biển báo cùng mũi tên.",
+            "sơn ngay mép đường—ngắn gọn, đúng lúc.",
+            "Anh ấy đến muộn — như mọi lần — nhưng không ai phàn nàn.",
+            "Anh - em cùng đi.",
+            "Giá kể—99 xu, thế là xong.",
         ):
             with self.subTest(text=text):
                 self.assertEqual(split_sentences(text), (text,))
 
-    def test_a_dash_before_a_number_is_still_an_aside(self):
-        """'kể—99 xu': a letter before, a number after. The range guard used
-        to refuse any dash that touched a digit, so the voice ran straight
-        through this one (owner, 2026-09-02)."""
-        self.assertEqual(
-            split_sentences("Giá kể—99 xu, thế là xong."),
-            ("Giá kể—", "99 xu, thế là xong."),
-        )
-        self.assertEqual(
-            split_sentences("Chỉ 3 người—và họ đều đúng."),
-            ("Chỉ 3 người—", "và họ đều đúng."),
-        )
-
-    def test_a_spaced_range_is_still_a_range(self):
-        self.assertEqual(
-            split_sentences("Giai đoạn 1975 — 1980 rất khó."),
-            ("Giai đoạn 1975 — 1980 rất khó.",),
-        )
-
-    def test_a_spaced_hyphen_is_a_dash_but_a_tight_one_is_not(self):
-        self.assertEqual(
-            split_sentences("Anh - em cùng đi."), ("Anh -", "em cùng đi.")
-        )
-        self.assertEqual(split_sentences("Tháng 1-2 rất lạnh."), ("Tháng 1-2 rất lạnh.",))
-        self.assertEqual(split_sentences("Quan hệ Anh-Mỹ bền."), ("Quan hệ Anh-Mỹ bền.",))
-
-    def test_a_dash_between_numbers_is_a_range_not_an_aside(self):
-        self.assertEqual(
-            split_sentences("Giai đoạn 1975—1980 rất khó."),
-            ("Giai đoạn 1975—1980 rất khó.",),
-        )
-
-    def test_a_dash_that_opens_the_line_has_nothing_before_it_to_end(self):
-        self.assertEqual(
-            split_sentences("—Anh đi đâu đấy?"), ("—Anh đi đâu đấy?",)
-        )
-
-    def test_full_stops_and_clause_marks_are_both_honoured_in_one_paragraph(self):
+    def test_full_stops_still_cut_around_them(self):
         self.assertEqual(
             split_sentences(
                 "Chú giải ảnh: Dòng chữ nằm ở mép đường—rất khó bỏ qua. "
                 "Nó từng cứu tôi."
             ),
             (
-                "Chú giải ảnh:",
-                "Dòng chữ nằm ở mép đường—",
-                "rất khó bỏ qua.",
+                "Chú giải ảnh: Dòng chữ nằm ở mép đường—rất khó bỏ qua.",
                 "Nó từng cứu tôi.",
             ),
+        )
+
+    def test_an_attached_dash_becomes_a_comma_the_vietnamese_voice_pauses_at(self):
+        for written, said in (
+            ("Giá kể—99 xu, thế là xong.", "Giá kể, 99 xu, thế là xong."),
+            ("Chỉ 3 người—và họ đều đúng.", "Chỉ 3 người, và họ đều đúng."),
+            ("mép đường–rất khó bỏ qua.", "mép đường, rất khó bỏ qua."),
+        ):
+            with self.subTest(written=written):
+                self.assertEqual(speakable_text(written, language="vi"), said)
+
+    def test_what_the_sdk_already_reads_right_is_left_alone(self):
+        for text in (
+            # A range between digits: the SDK says "đến".
+            "Giai đoạn 1975—1980 rất khó.",
+            "Tháng 1–2 rất lạnh.",
+            # Spaced dashes and colons: the SDK makes them commas itself.
+            "Anh ấy đến muộn — như mọi lần.",
+            "Hôm nay có ba việc: đi chợ, nấu cơm.",
+            # A hyphen joins; a dash that opens a line of dialogue has nothing
+            # before it to pause after.
+            "Quan hệ Anh-Mỹ bền.",
+            "—Anh đi đâu đấy?",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(speakable_text(text, language="vi"), text)
+
+    def test_the_english_voice_keeps_its_dashes(self):
+        # The English G2P keeps "—", attached or not, as a mark Kokoro
+        # pauses at; rewriting it there would only lose the dash.
+        self.assertEqual(
+            speakable_text("He came late—as always—but nobody minded.", language="en"),
+            "He came late—as always—but nobody minded.",
         )
 
 
