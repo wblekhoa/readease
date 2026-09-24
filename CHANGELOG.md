@@ -44,6 +44,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   order. The page now shows the number, the voice says it ("one, …"), and
   VoiceOver reads it. Documents already in the library get this too;
   nothing is imported again.
+- The voice breathes where the text does. A full stop now pauses longer
+  than a comma - about half a second; before, the two were the same
+  length, so sentences ran into each other. A colon or a dash no longer
+  breaks a sentence in two with a falling voice: it pauses like a comma
+  and the voice carries on. The English voice no longer stops for almost
+  a second between sentences; it keeps the same rhythm as the Vietnamese
+  one.
 
 ## 0.1.15
 

@@ -44,7 +44,11 @@ from vieneu_reader.domain.segmenter import normalize_paragraph
 
 from .contracts import SynthesisSettings
 
-ENGINE_VERSION = "kokoro-onnx-1"
+# Part of every cached sentence's key. 2 since the pieces' silent edges are
+# trimmed (`trim_edges`, 24/09): a sentence cached before would otherwise come
+# back with its old 0.3-0.5 s edges and break the new rhythm. Not part of the
+# ready marker's gate, so the model is not fetched again.
+ENGINE_VERSION = "kokoro-onnx-2"
 MODEL_REPO = "onnx-community/Kokoro-82M-v1.0-ONNX"
 MODEL_REVISION = "1939ad2a8e416c0acfeecc08a694d14ef25f2231"
 MODEL_DIRECTORY = "kokoro-82m-v1.0-onnx"
@@ -90,6 +94,15 @@ MAX_TOKENS = 508
 SLICE_SECONDS = 0.3
 STYLE_WIDTH = 256
 INTRA_OP_THREADS = 4
+#: How much of the model's own silence a piece keeps at each edge (HIG 5.1,
+#: 24/09). Kokoro leaves ~320 ms before a piece and ~500 after it, so two
+#: English sentences met across 0.85-1.0 s of nothing (audit 23/09); 120 ms
+#: a side makes the seam the ~250 ms the Vietnamese voice leaves by itself,
+#: and `SENTENCE_PAUSE_MS` then means the same pause in both languages.
+EDGE_KEEP_SECONDS = 0.12
+#: What counts as sound: the VieNeu SDK's own edge threshold, on the mean of
+#: |x| over 10 ms windows.
+_EDGE_THRESHOLD_DB = -45.0
 
 _READY_MARKER = ".kokoro-ready.json"
 _MARKER_GATE = ("model_revision", "lexicon_revision")
@@ -204,6 +217,30 @@ def double_rate(samples: np.ndarray) -> np.ndarray:
     doubled[1:-1:2] = (source[:-1] + source[1:]) / 2.0
     doubled[-1] = source[-1]
     return doubled
+
+
+def trim_edges(
+    samples: np.ndarray,
+    sample_rate: int = MODEL_SAMPLE_RATE,
+    keep_seconds: float = EDGE_KEEP_SECONDS,
+) -> np.ndarray:
+    """The piece with the silence at its two edges cut back to
+    `keep_seconds` each. The cut falls in what is already silence, so it
+    needs no fade; a piece that is all silence is returned as it came."""
+
+    source = np.asarray(samples, dtype=np.float32).reshape(-1)
+    window = max(1, sample_rate // 100)
+    count = source.size // window
+    if count == 0:
+        return source
+    envelope = np.abs(source[: count * window]).reshape(count, window).mean(axis=1)
+    loud = np.flatnonzero(envelope > 10 ** (_EDGE_THRESHOLD_DB / 20))
+    if loud.size == 0:
+        return source
+    keep = int(keep_seconds * sample_rate)
+    start = max(0, int(loud[0]) * window - keep)
+    end = min(source.size, (int(loud[-1]) + 1) * window + keep)
+    return source[start:end]
 
 
 def split_phonemes(phonemes: str, limit: int = MAX_TOKENS) -> list[str]:
@@ -553,7 +590,8 @@ class KokoroSpeechEngine:
         return None
 
     def _synthesize(self, text: str, voice_id: str) -> Iterator[np.ndarray]:
-        """The model's own 24 kHz audio, one piece per window of phonemes."""
+        """The model's own 24 kHz audio, one piece per window of phonemes,
+        its silent edges trimmed to `EDGE_KEEP_SECONDS`."""
 
         if voice_id not in VOICE_IDS:
             raise ValueError(f"unknown English voice: {voice_id!r}")
@@ -570,7 +608,7 @@ class KokoroSpeechEngine:
                 "style": style.astype(np.float32),
                 "speed": np.array([1.0], dtype=np.float32),
             })[0]
-            yield np.asarray(waveform, dtype=np.float32).reshape(-1)
+            yield trim_edges(np.asarray(waveform, dtype=np.float32).reshape(-1))
 
     def stream(
         self,

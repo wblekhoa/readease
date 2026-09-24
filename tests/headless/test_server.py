@@ -1929,10 +1929,11 @@ class ProtocolTests(unittest.TestCase):
             spoken = [text for text, _voice in engine.requests]
             # The annotation is read once, as prose (it is the only
             # description a listener gets); the copy adds nothing spoken.
+            # Its colon stays inside the sentence (HIG 5.1, 24/09).
             self.assertEqual(spoken, [
                 "Đoạn đầu.",
                 "Hình 1.3.", "Sơ đồ.",
-                "Chú giải ảnh:", "Sơ đồ cho thấy ba lớp.",
+                "Chú giải ảnh: Sơ đồ cho thấy ba lớp.",
                 "Đoạn sau.",
                 "Xem hình 2.",
             ])

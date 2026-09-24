@@ -26,6 +26,7 @@ from vieneu_reader.speech.kokoro import (
     KokoroSpeechEngine,
     double_rate,
     split_phonemes,
+    trim_edges,
 )
 
 
@@ -319,3 +320,26 @@ class HelperTests(unittest.TestCase):
         pieces = split_phonemes("a" * 10, limit=4)
 
         self.assertEqual(pieces, ["aaaa", "aaaa", "aa"])
+
+    def test_the_silence_at_a_pieces_edges_is_cut_back_to_what_is_kept(self) -> None:
+        """Kokoro's ~320 ms before a piece and ~500 after made English
+        sentences meet across ~0.9 s (audit 23/09); a side keeps 120 ms."""
+        rate = 24_000
+        speech = np.sin(np.linspace(0, 400, int(0.2 * rate), dtype=np.float32))
+        piece = np.concatenate([
+            np.zeros(int(0.32 * rate), np.float32), speech, np.zeros(int(0.5 * rate), np.float32),
+        ])
+
+        trimmed = trim_edges(piece, rate)
+
+        kept = kokoro.EDGE_KEEP_SECONDS
+        # Within one 10 ms window of speech + 120 ms each side.
+        self.assertAlmostEqual(trimmed.size / rate, 0.2 + 2 * kept, delta=0.011)
+        np.testing.assert_array_equal(trimmed[: int(kept * rate) - rate // 100], 0)
+        self.assertGreater(np.abs(trimmed).max(), 0.5)
+
+    def test_a_piece_that_is_all_silence_or_too_short_comes_back_as_it_was(self) -> None:
+        quiet = np.zeros(24_000, np.float32)
+        self.assertEqual(trim_edges(quiet).size, 24_000)
+        tiny = np.ones(10, np.float32)
+        self.assertEqual(trim_edges(tiny).size, 10)
