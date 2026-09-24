@@ -11,6 +11,8 @@
  * `import.meta.env.DEV`, and the build check greps the bundle to prove it.
  */
 
+import { ENGLISH_BOOK, ENGLISH_TOC } from "./mockEnglishBook";
+import { mockFigureSvgs } from "./mockFigures";
 import { showcaseChapterCopy, showcaseFigureSvg } from "./showcaseFigure";
 
 type Handler = (event: { event: string; id: number; payload: unknown }) => void;
@@ -31,17 +33,6 @@ function emit(event: string, payload: unknown) {
   }
   return (handlers.get(event) ?? []).length;
 }
-
-/* Real pictures, so the figure path can actually be LOOKED at: the fixture
- * used to serve a 2x2 pixel PNG, which proved the plumbing and showed the
- * owner nothing. SVG keeps the file small and stays sharp when the lightbox
- * blows it up. One landscape, one portrait - the two shapes the reader has
- * to lay out differently. */
-const FIGURE_WIDE =
-  "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjYyMCIgdmlld0JveD0iMCAwIDEyMDAgNjIwIj4KPHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjIwIiBmaWxsPSIjRjZGN0Y5Ii8+Cjx0ZXh0IHg9IjYwMCIgeT0iOTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsQXJpYWwiIGZvbnQtc2l6ZT0iNDQiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMyMTI2MkQiPkvhur90IG7hu5FpIHbDoCBwaMOhdCB0cmnhu4NuIG5ow6JuIHTDoGkgdHLDqm4gdG/DoG4gdGjhur8gZ2nhu5tpPC90ZXh0Pgo8dGV4dCB4PSI2MDAiIHk9IjE0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkhlbHZldGljYSxBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzZCNzI4MCI+QmEgbeG6o25nIHPhuqNuIHBo4bqpbSBi4buVIHRy4bujIGNobyBuaGF1PC90ZXh0Pgo8ZyBmb250LWZhbWlseT0iSGVsdmV0aWNhLEFyaWFsIj4KPHJlY3QgeD0iODAiIHk9IjIxMCIgd2lkdGg9IjMyMCIgaGVpZ2h0PSIzMDAiIHJ4PSIyNCIgZmlsbD0iI0ZGRkZGRiIgc3Ryb2tlPSIjQzhDRkQ2IiBzdHJva2Utd2lkdGg9IjIiLz4KPGNpcmNsZSBjeD0iMTQwIiBjeT0iMjcwIiByPSIyMiIgZmlsbD0iI0Q0MjUyNSIvPgo8dGV4dCB4PSIxMTIiIHk9IjM0MCIgZm9udC1zaXplPSIzMCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzIxMjYyRCI+VHJ1ZSBTZWFyY2g8L3RleHQ+Cjx0ZXh0IHg9IjExMiIgeT0iMzg0IiBmb250LXNpemU9IjIxIiBmaWxsPSIjNkI3MjgwIj5Uw6xtIMSRw7puZyBuZ8aw4budaSw8L3RleHQ+Cjx0ZXh0IHg9IjExMiIgeT0iNDE0IiBmb250LXNpemU9IjIxIiBmaWxsPSIjNkI3MjgwIj5raMO0bmcgY2jhu4kgxJHDum5nIGjhu5Mgc8ahLjwvdGV4dD4KPHJlY3QgeD0iNDQwIiB5PSIyMTAiIHdpZHRoPSIzMjAiIGhlaWdodD0iMzAwIiByeD0iMjQiIGZpbGw9IiNGRkZGRkYiIHN0cm9rZT0iI0M4Q0ZENiIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxjaXJjbGUgY3g9IjUwMCIgY3k9IjI3MCIgcj0iMjIiIGZpbGw9IiMxMTlBRDUiLz4KPHRleHQgeD0iNDcyIiB5PSIzNDAiIGZvbnQtc2l6ZT0iMzAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMyMTI2MkQiPlRocml2ZTwvdGV4dD4KPHRleHQgeD0iNDcyIiB5PSIzODQiIGZvbnQtc2l6ZT0iMjEiIGZpbGw9IiM2QjcyODAiPkdp4buvIGNow6JuIGLhurFuZyBs4buZIHRyw6xuaDwvdGV4dD4KPHRleHQgeD0iNDcyIiB5PSI0MTQiIGZvbnQtc2l6ZT0iMjEiIGZpbGw9IiM2QjcyODAiPnBow6F0IHRyaeG7g24gcsO1IHLDoG5nLjwvdGV4dD4KPHJlY3QgeD0iODAwIiB5PSIyMTAiIHdpZHRoPSIzMjAiIGhlaWdodD0iMzAwIiByeD0iMjQiIGZpbGw9IiNGRkZGRkYiIHN0cm9rZT0iI0M4Q0ZENiIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxjaXJjbGUgY3g9Ijg2MCIgY3k9IjI3MCIgcj0iMjIiIGZpbGw9IiMyRTlFNkIiLz4KPHRleHQgeD0iODMyIiB5PSIzNDAiIGZvbnQtc2l6ZT0iMzAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMyMTI2MkQiPlN5bnRoZXNpczwvdGV4dD4KPHRleHQgeD0iODMyIiB5PSIzODQiIGZvbnQtc2l6ZT0iMjEiIGZpbGw9IiM2QjcyODAiPlThu5VuZyBo4bujcCBk4buvIGxp4buHdSB0aMOgbmg8L3RleHQ+Cjx0ZXh0IHg9IjgzMiIgeT0iNDE0IiBmb250LXNpemU9IjIxIiBmaWxsPSIjNkI3MjgwIj5xdXnhur90IMSR4buLbmggdHV54buDbiBk4bulbmcuPC90ZXh0Pgo8L2c+CjxwYXRoIGQ9Ik00MDAgMzYwIEg0NDAgTTc2MCAzNjAgSDgwMCIgc3Ryb2tlPSIjQzhDRkQ2IiBzdHJva2Utd2lkdGg9IjMiLz4KPC9zdmc+";
-
-const FIGURE_TALL =
-  "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MjAiIGhlaWdodD0iOTAwIiB2aWV3Qm94PSIwIDAgNjIwIDkwMCI+CjxyZWN0IHdpZHRoPSI2MjAiIGhlaWdodD0iOTAwIiBmaWxsPSIjRkZGRkZGIi8+CjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI2MjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMjEyNjJEIi8+Cjx0ZXh0IHg9IjQwIiB5PSI3NiIgZm9udC1mYW1pbHk9IkhlbHZldGljYSxBcmlhbCIgZm9udC1zaXplPSIzNCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI0ZGRkZGRiI+SMOsbmggZOG7jWMgLSB0aOG7rSBraHVuZyBjYW88L3RleHQ+CjxnIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsQXJpYWwiPgo8dGV4dCB4PSI0MCIgeT0iMTkwIiBmb250LXNpemU9IjI0IiBmaWxsPSIjNkI3MjgwIj5N4bupYyDEkeG7mSBow6BpIGzDsm5nIHRoZW8gbsSDbTwvdGV4dD4KPGcgZmlsbD0iI0Q0MjUyNSI+CjxyZWN0IHg9IjYwIiB5PSIzMDAiIHdpZHRoPSI3MCIgaGVpZ2h0PSI0MjAiIHJ4PSI4Ii8+CjxyZWN0IHg9IjE2MCIgeT0iMjQwIiB3aWR0aD0iNzAiIGhlaWdodD0iNDgwIiByeD0iOCIvPgo8cmVjdCB4PSIyNjAiIHk9IjM4MCIgd2lkdGg9IjcwIiBoZWlnaHQ9IjM0MCIgcng9IjgiLz4KPHJlY3QgeD0iMzYwIiB5PSIyMDAiIHdpZHRoPSI3MCIgaGVpZ2h0PSI1MjAiIHJ4PSI4Ii8+CjxyZWN0IHg9IjQ2MCIgeT0iMTUwIiB3aWR0aD0iNzAiIGhlaWdodD0iNTcwIiByeD0iOCIvPgo8L2c+CjxwYXRoIGQ9Ik00MCA3MjAgSDU4MCIgc3Ryb2tlPSIjQzhDRkQ2IiBzdHJva2Utd2lkdGg9IjMiLz4KPGcgZm9udC1zaXplPSIyMCIgZmlsbD0iIzZCNzI4MCI+Cjx0ZXh0IHg9IjcyIiB5PSI3NTYiPjIwMjE8L3RleHQ+PHRleHQgeD0iMTcyIiB5PSI3NTYiPjIwMjI8L3RleHQ+PHRleHQgeD0iMjcyIiB5PSI3NTYiPjIwMjM8L3RleHQ+Cjx0ZXh0IHg9IjM3MiIgeT0iNzU2Ij4yMDI0PC90ZXh0Pjx0ZXh0IHg9IjQ3MiIgeT0iNzU2Ij4yMDI1PC90ZXh0Pgo8L2c+Cjx0ZXh0IHg9IjQwIiB5PSI4NDAiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM2QjcyODAiPuG6om5oIGNhbyBoxqFuIGtodW5nIHPhur0gYuG7iyBnaeG7m2kgaOG6oW4gNDZ2aCwgYuG6pW0gxJHhu4MgeGVtIMSR4bunLjwvdGV4dD4KPC9nPgo8L3N2Zz4=";
 
 const PARAGRAPHS = [
   "Năm nào họ cũng chú ý rất tốt đến tính dễ sử dụng (usability), nội dung và chức năng, nhưng lại bỏ qua phần giá trị cộng thêm có thể khiến một tương tác trở nên riêng biệt và đáng nhớ.",
@@ -102,16 +93,20 @@ const CHAPTER_NAMES = [
   ...Array.from({ length: 22 }, (_, index) => String(index + 1).padStart(2, "0")),
 ];
 
-/** Where the pictures sit. Chapter 1 gets one after a paragraph, chapter 2 one
- * BEFORE its first - both placements the reader supports, so both get looked
- * at rather than only the one that happened to be wired. */
+/** Where the pictures sit. Chapter 1 gets two after a paragraph, chapter 3
+ * one BEFORE its first - both placements the reader supports, so both get
+ * looked at rather than only the one that happened to be wired. The pictures
+ * themselves (`mockFigures.ts`) differ in what they are AND in shape - from a
+ * 3.5:1 panorama to a phone screen twice as tall as it is wide, one smaller
+ * than the column and one with no background - because a page lays each of
+ * those out differently, and a harness of two similar landscapes hid that. */
 const FIGURES: Record<number, Array<Record<string, unknown>>> = {
   1: [
     {
       id: "fig-wide",
       anchor_segment_id: "ch-1-seg-3",
       placement: "after",
-      alt: "Ba mảng sản phẩm: True Search, Thrive và Synthesis",
+      alt: "Tháp nhu cầu của trải nghiệm: hoạt động được, tin cậy, dễ dùng, đáng nhớ",
       number: 1,
       alt_is_generic: false,
       // A book that numbers its own figures: the page shows ITS label and
@@ -119,6 +114,15 @@ const FIGURES: Record<number, Array<Record<string, unknown>>> = {
       // itself - no "Hình 1 · …" line repeating it.
       label: "Hình 2.1",
       caption_segment_id: "ch-1-seg-4",
+    },
+    {
+      id: "fig-timeline",
+      anchor_segment_id: "ch-1-seg-6",
+      placement: "after",
+      alt: "Từ chuột và cửa sổ (1984) tới trò chuyện với AI (2022)",
+      number: 2,
+      alt_is_generic: false,
+      label: "Hình 2.2",
     },
   ],
   2: [
@@ -158,14 +162,56 @@ const FIGURES: Record<number, Array<Record<string, unknown>>> = {
       alt_is_generic: true,
     },
   ],
+  4: [
+    {
+      id: "fig-scene",
+      anchor_segment_id: "ch-4-seg-1",
+      placement: "after",
+      alt: "Buổi phỏng vấn người dùng: hai người ngồi hai bên bàn, sau lưng là bảng ghi chú",
+      number: 1,
+      alt_is_generic: false,
+      label: "Hình 5.1",
+    },
+  ],
+  5: [
+    // No label of the book's own and no background of its own: the page
+    // numbers it, and a dark page shows through the sketch.
+    {
+      id: "fig-lineart",
+      anchor_segment_id: "ch-5-seg-0",
+      placement: "after",
+      alt: "Bản phác thảo khung trang chủ, vẽ tay, có ghi chú bằng bút đỏ",
+      number: 1,
+      alt_is_generic: false,
+    },
+  ],
+  6: [
+    {
+      id: "fig-small",
+      anchor_segment_id: "ch-6-seg-2",
+      placement: "after",
+      alt: "Ba trạng thái của một nút: mặc định, rê chuột, đang lưu",
+      number: 1,
+      alt_is_generic: false,
+      label: "Hình 7.1",
+    },
+  ],
+  7: [
+    {
+      id: "fig-chart",
+      anchor_segment_id: "ch-7-seg-1",
+      placement: "after",
+      alt: "Tỷ lệ người dùng còn lại sau mỗi bước đăng ký",
+      number: 1,
+      alt_is_generic: false,
+      label: "Hình 8.1",
+    },
+  ],
 };
 
-const FIGURE_DATA: Record<string, string> = {
-  "fig-wide": FIGURE_WIDE,
-  "fig-tall": FIGURE_TALL,
-  "fig-sample": FIGURE_WIDE,
-  "fig-sample-vi": FIGURE_WIDE,
-};
+const FIGURE_DATA: Record<string, string> = Object.fromEntries(
+  Object.entries(mockFigureSvgs()).map(([id, svg]) => [id, btoa(unescape(encodeURIComponent(svg)))]),
+);
 
 /** The publisher's contents tree the harness answers with (HIG 3.25), laid
  * over the chapters above: front matter, a part holding numbered chapters,
@@ -301,12 +347,12 @@ const LIBRARY: ShelfRow[] = [
   },
   {
     id: "book-four",
-    title: "Quy trình làm việc của nhóm thiết kế 2024",
+    title: ENGLISH_BOOK.title,
     source_format: "epub",
     segment_id: null,
     progress_ratio: null,
     progress_chapter: null,
-    chapters: 23,
+    chapters: ENGLISH_BOOK.chapters.length,
     size_bytes: 45_900_000,
     imported_at: "2026-09-02T10:20:00Z",
     from_apple_books: false,
@@ -338,7 +384,7 @@ function coverSvg(top: string, bottom: string, fill: string, ink: string): strin
 }
 const COVERS: Record<string, string> = {
   "book-ux": coverSvg("Nguyên tắc", "trải nghiệm", "#E8DCC8", "#2B2118"),
-  "book-four": coverSvg("Quy trình", "nhóm thiết kế", "#1F3A5F", "#F4F1EA"),
+  "book-four": coverSvg("The design", "field guide", "#1F3A5F", "#F4F1EA"),
 };
 
 /* The real catalogue, names and all: a panel that lists twenty voices cannot
@@ -628,9 +674,10 @@ function pauseMockReading(paused: boolean) {
   stepReading(1200);
 }
 
-/** Every segment of the fixture book, in reading order. */
-function bookSteps(from: string | null): string[] {
-  const all = BOOK.chapters.flatMap((chapter: { segments: { id: string }[] }) =>
+/** Every segment of the fixture book being read, in reading order. */
+function bookSteps(from: string | null, bookId: unknown): string[] {
+  const book = bookId === ENGLISH_BOOK.id ? ENGLISH_BOOK : BOOK;
+  const all = book.chapters.flatMap((chapter: { segments: { id: string }[] }) =>
     chapter.segments.map((segment) => segment.id));
   const start = from ? all.indexOf(from) : 0;
   return all.slice(start < 0 ? 0 : start);
@@ -834,6 +881,15 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       };
     }
     case "book.open":
+      // The English book is its own document, never started; every other
+      // shelf row opens the Vietnamese sample where it was left.
+      if (params.book_id === ENGLISH_BOOK.id) {
+        return {
+          book: { ...ENGLISH_BOOK, toc: isEmpty("toc") ? [] : ENGLISH_TOC },
+          annotations: [],
+          progress: { segment_id: null },
+        };
+      }
       return {
         book: { ...BOOK, toc: isEmpty("toc") ? [] : TOC },
         annotations: isEmpty("notes") ? [] : ANNOTATIONS,
@@ -846,7 +902,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     case "book.figure":
       return {
         media_type: "image/svg+xml",
-        data: FIGURE_DATA[String(params.figure_id)] ?? FIGURE_WIDE,
+        data: FIGURE_DATA[String(params.figure_id)] ?? FIGURE_DATA["fig-wide"],
       };
     case "model.status":
       return { ...MODEL, installed: { ...MODEL.installed }, english: { ...MODEL.english } };
@@ -1175,7 +1231,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     const heard = LIBRARY.find((row) => row.id === args.bookId);
     if (heard) heard.listened_at = new Date().toISOString();
     const bookRate = mockRate(String(args.voiceId ?? ""));
-    const bookWalk = bookSteps((args.segmentId as string | null) ?? null);
+    const bookWalk = bookSteps((args.segmentId as string | null) ?? null, args.bookId);
     startMockReading(
       bookWalk,
       // ~11.8k characters a chapter, spread over the steps it walks - the
@@ -1297,8 +1353,11 @@ if (showcaseLocale === "vi" || showcaseLocale === "en") {
   const sampler = showcaseChapterCopy(showcaseLocale);
   const encoded = btoa(unescape(encodeURIComponent(showcaseFigureSvg(showcaseLocale))));
   for (const id of ["fig-wide", "fig-sample", "fig-sample-vi"]) FIGURE_DATA[id] = encoded;
+  // Only the pictures that now carry the showcase artwork: every other one
+  // would be relabelled "Hình 3.1" below while still showing its own drawing.
+  const showcased = new Set(["fig-wide", "fig-sample"]);
   BOOK.chapters.forEach((chapter, index) => {
-    chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of);
+    chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of && showcased.has(String(figure.id)));
     if (index === 2) {
       chapter.title = showcaseLocale === "vi" ? "Chương 3 · Những góc nhìn khác nhau" : "Chapter 3 · Different perspectives";
       chapter.segments.forEach((segment, i) => { segment.text = sampler[i]; });
