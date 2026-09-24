@@ -944,6 +944,22 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   ngoặc "(Trần, 2019)", "(Nguyễn & Trần, 2019, tr. 12)", "[12]", "[3–5]" **không đọc** ở mọi chế độ trừ
   `full`; ngoặc là chữ ("(một người bạn cũ)") và năm trong câu giữ nguyên. Chữ trên trang không đổi; ước
   tính chi phí giọng API đi qua cùng hàm nên tính đúng chữ được đọc.
+- **Tiếng Anh: giờ, khoảng số, viết tắt tham chiếu phải thành CHỮ trước khi tới G2P** (audit 23/09, chủ duyệt sửa). G2P
+  của giọng tiếng Anh không có bộ chuẩn hoá: mọi "số:số" và mọi khoảng số nối bằng gạch en/em ra tiếng vô nghĩa — đo trên
+  G2P thật: `10:30`→`ˈæksˌæk`, `5:00`→`ˈæksˌiz`, `3:16`→vô nghĩa, `1:3`→`ˈɛks`, `12–15`→`ˈæksˌæk`,
+  `1990–2000`→`ˌæɡəɡɡˌIkˈɑɡ`; `1990-2000` thiếu "to"; "pp." đọc "pip"; "Jan. 5" bị cắt thành hai câu giữa ngày. Đường
+  tiếng Việt KHÔNG cần (SDK tự đọc "mười giờ ba mươi phút", "…đến…", "một trên ba"), nên luật chỉ chạy khi ngôn ngữ ĐỌC là
+  tiếng Anh (`speak_english_forms`, trong `speakable_text`). Dạng viết lại đã thử trên G2P, đọc đúng:
+  - **Giờ** H:MM (giờ 0–24, phút 00–59): ":00" → "o'clock" ("5:00" → *five o'clock*), trừ khi có a.m./p.m. theo sau
+    ("10:00 a.m." → *ten a.m.*); ":0M" → "oh M" (*ten oh five*); còn lại "H MM" (*ten thirty*; "John 3:16" → *three
+    sixteen*, đúng cách đọc câu Kinh Thánh). H:MM:SS → ba số. "Số:số" không phải giờ (tỉ số, tỷ số) → "N to M".
+  - **Khoảng số** gạch en/em giữa hai chữ số → "to" ("12–15", "1990–2000", "1914–18", "5–10%"); gạch NỐI chỉ khi là
+    khoảng NĂM ("1990-2000", "1914-18") hoặc sau "pp." — "2024-05-01", "COVID-19", "555-1234", "2-1" giữ nguyên.
+  - **Viết tắt tham chiếu trước chữ số** nói nguyên chữ: "pp." → *pages*, "p." → *page*, "vol(s)." → *volume(s)*,
+    "ch."/"chap." → *chapter*, "fig(s)." → *figure(s)*; tháng viết tắt trước ngày → tên tháng ("Jan. 5" → *January 5*).
+    Cùng các viết tắt ấy (tháng, "pp", "vol", "ch", "fig", "ed", "al", "cf", "jr", "sr"…) vào danh sách
+    `_ABBREVIATIONS` để máy cắt câu không cắt sau chúng — danh sách dùng chung hai ngôn ngữ, không từ nào trùng tiếng Việt.
+  Chưa làm: phân số ("1/2" đọc *one two*) — "3/4" cũng là ngày tháng kiểu Mỹ, đoán sai còn tệ hơn để nguyên.
 - **Ký hiệu liệt kê "(a) … (b) …" nói thành chữ cái kèm nghỉ** — chủ chọn bằng tai 02/09 giữa 4 bản render cùng một câu (giữ nguyên · xoá · "một là/hai là" · chữ cái + nghỉ): "khớp với a, nhiệm vụ hiện tại, hoặc b, sở thích cá nhân". Nghỉ đặt TRƯỚC liên từ dẫn vào ký hiệu (hoặc/hay/và/rồi/cũng như). Tham chiếu "mục (b)" → "mục b", không nghỉ. Chỉ chữ thường đơn có khoảng trắng phía trước; "book(s)", "(ii)", "(1)" không đụng (thư viện: 31 ký hiệu, 0 chữ số/hoa/tham chiếu). Test chốt = chính câu chủ duyệt, so khớp từng ký tự với bản render đã nghe.
 
 

@@ -33,6 +33,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   chime, footnotes - and, under a paid voice, how far to read and where to
   stop. They were pop-up buttons with no name; each now takes the words of
   its row.
+- The English voice reads clock times, number ranges and page references.
+  "10:30", "1990–2000", "12–15" and "3:16" used to come out as nonsense
+  sounds, and "pp." as "pip"; they are now "ten thirty", "nineteen ninety
+  to two thousand", "twelve to fifteen", "three sixteen" and "pages". A
+  date like "Jan. 5, 2024" is no longer cut in two after "Jan.".
 
 ## 0.1.15
 

@@ -56,6 +56,12 @@ _ABBREVIATIONS = frozenset(
     {
         "tp", "ts", "gs", "pgs", "ths", "th", "bs", "ks", "cn", "đh", "cđ",
         "vs", "vd", "tr", "st", "mr", "mrs", "ms", "dr", "prof", "no",
+        # English references and months (audit 23/09): "on Jan. 5, 2024"
+        # was cut in two in the middle of a date, "see pp. 12" after "pp.".
+        # One list for both languages - none of these is a Vietnamese word.
+        "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept",
+        "oct", "nov", "dec", "pp", "vol", "vols", "ch", "chap", "fig", "figs",
+        "eq", "eqs", "ed", "eds", "al", "cf", "eg", "ie", "jr", "sr",
     }
 )
 
@@ -351,6 +357,79 @@ def spell_ordinal_marks(
             lambda m: f"number {_english_cardinal(int(m.group(1)))}", text
         )
     return _ORDINAL_MARK.sub(lambda m: ordinal_words(int(m.group(1))), text)
+
+
+# English clock times, ranges and references, written out before the G2P sees
+# them (HIG 5.1, audit 23/09). The English G2P has no normaliser of its own:
+# measured on it, every "digit:digit" and every dash-joined pair of numbers
+# came out as a nonsense word - "10:30" as ˈæksˌæk, "1990–2000" as
+# ˌæɡəɡɡˌIkˈɑɡ - and "pp." as "pip". The Vietnamese voice needs none of this:
+# its SDK already says "mười giờ ba mươi phút" and "đến". Every rewrite below
+# was tried on the G2P and read right.
+_EN_MONTHS = {
+    "Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April",
+    "Jun": "June", "Jul": "July", "Aug": "August", "Sep": "September",
+    "Sept": "September", "Oct": "October", "Nov": "November", "Dec": "December",
+}
+_EN_MONTH_BEFORE_DAY = re.compile(r"\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)\.\s+(?=\d)")
+_EN_REFERENCE_WORDS = {
+    "pp": "pages", "p": "page", "vol": "volume", "vols": "volumes",
+    "ch": "chapter", "chap": "chapter", "fig": "figure", "figs": "figures",
+}
+_EN_REFERENCE = re.compile(r"\b(pp|p|vols|vol|chap|ch|figs|fig)\.\s*(?=\d)", re.IGNORECASE)
+# "pp. 12-15": a hyphen after "pages" is a page range, whatever else a
+# hyphen between two numbers may be.
+_EN_PAGE_RANGE = re.compile(r"\b(pages)\s+(\d+)\s*-\s*(?=\d)", re.IGNORECASE)
+_EN_CLOCK_SECONDS = re.compile(r"(?<![\d:])(\d{1,2}):(\d{2}):(\d{2})(?![\d:])")
+_EN_CLOCK = re.compile(r"(?<![\d:])(\d{1,2}):(\d{2})(?![\d:])(\s*[ap]\.?m\.?(?![a-z]))?", re.IGNORECASE)
+_EN_COLON_PAIR = re.compile(r"(?<![\d:])(\d+):(\d+)(?![\d:])")
+_EN_DASH_RANGE = re.compile(r"(\d)\s*[–—]\s*(?=\d)")
+# A hyphen joins too much to be read as "to" in general - "2024-05-01",
+# "COVID-19", "555-1234", a 2-1 score - so only a span of YEARS is a range.
+_EN_YEAR_RANGE = re.compile(r"(?<![\d-])(1[5-9]\d\d|20\d\d)-(\d{4}|\d{2})(?![\d-])")
+
+
+def _same_case(word: str, written: str) -> str:
+    return word[:1].upper() + word[1:] if written[:1].isupper() else word
+
+
+def _clock(match: re.Match[str]) -> str:
+    hour, minute, meridiem = match.group(1), match.group(2), match.group(3) or ""
+    if int(hour) > 24 or int(minute) > 59:
+        return f"{hour} {minute}{meridiem}"
+    if minute == "00":
+        # "5:00" is "five o'clock", but "10:00 a.m." is "ten a.m.".
+        return f"{hour}{meridiem}" if meridiem else f"{hour} o'clock"
+    if minute.startswith("0"):
+        return f"{hour} oh {minute[1]}{meridiem}"
+    return f"{hour} {minute}{meridiem}"
+
+
+def speak_english_forms(text: str) -> str:
+    """Clock times, number ranges and page references as the English voice
+    says them: "10:30" → "10 30", "12–15" → "12 to 15", "pp. 7" → "pages 7".
+
+    A colon pair that is not a clock reads as two numbers when its second
+    side has two digits or more ("John 3:16" → "3 16", a verse) and as a
+    ratio otherwise ("1:3" → "1 to 3").
+    """
+
+    spoken = _EN_MONTH_BEFORE_DAY.sub(lambda m: f"{_EN_MONTHS[m.group(1)]} ", text)
+    spoken = _EN_REFERENCE.sub(
+        lambda m: f"{_same_case(_EN_REFERENCE_WORDS[m.group(1).lower()], m.group(1))} ", spoken
+    )
+    spoken = _EN_PAGE_RANGE.sub(lambda m: f"{m.group(1)} {m.group(2)} to ", spoken)
+    spoken = _EN_CLOCK_SECONDS.sub(
+        lambda m: f"{m.group(1)} {m.group(2)}" + ("" if m.group(3) == "00" else f" {m.group(3)}"),
+        spoken,
+    )
+    spoken = _EN_CLOCK.sub(_clock, spoken)
+    spoken = _EN_COLON_PAIR.sub(
+        lambda m: f"{m.group(1)} {m.group(2)}" if len(m.group(2)) > 1 else f"{m.group(1)} to {m.group(2)}",
+        spoken,
+    )
+    spoken = _EN_DASH_RANGE.sub(lambda m: f"{m.group(1)} to ", spoken)
+    return _EN_YEAR_RANGE.sub(lambda m: f"{m.group(1)} to {m.group(2)}", spoken)
 
 
 # Footnote numbers set as superscripts. Six in the owner's library, every one a
@@ -835,6 +914,8 @@ def speakable_text(
         # `citations` says the in-text ones may go too - the reader's
         # `note_reading` is anything but "full" (16/09).
         spoken = drop_citations(spoken)
+    if speech_language(language) == "en":
+        spoken = speak_english_forms(spoken)
     spoken = speak_roman_numerals(speak_enumerators(spoken), language)
     spoken = spell_ordinal_marks(unshout(speak_links(spoken, language)), language)
     stripped = spoken.lstrip()
