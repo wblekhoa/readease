@@ -4,7 +4,12 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.16
+
+The voice follows the text: it breathes where the text does, chimes where
+the contents open a chapter or a part, and falls silent at a change of
+scene; the contents show the document's own numbered tree. Installs over
+0.1.15, or lets 0.1.15 install it.
 
 - VoiceOver hears the reading controls as one group - "Reading controls" -
   before it reads the buttons in it.

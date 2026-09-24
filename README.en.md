@@ -21,9 +21,9 @@ ReadEase is a local-first macOS app that reads your **EPUB and PDF files** (text
 
 ## Download ReadEase
 
-### [⬇️ Download ReadEase 0.1.15 for Apple Silicon Macs - 124 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.dmg)
+### [⬇️ Download ReadEase 0.1.16 for Apple Silicon Macs - 124 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.dmg)
 
-One click downloads the `.dmg`. Open it and **drag `ReadEase.app` into Applications** right there. No Terminal, no tools to install. Prefer a `.zip`? [Here](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.zip) (115 MB) - unzip and drag the same way. From this version the app tells you when a newer one exists (ReadEase menu › Check for Updates…). Other versions and release notes: [Releases](https://github.com/wblekhoa/readease/releases).
+One click downloads the `.dmg`. Open it and **drag `ReadEase.app` into Applications** right there. No Terminal, no tools to install. Prefer a `.zip`? [Here](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.zip) (115 MB) - unzip and drag the same way. From this version the app tells you when a newer one exists (ReadEase menu › Check for Updates…). Other versions and release notes: [Releases](https://github.com/wblekhoa/readease/releases).
 
 ### Pick by what you want to do
 
@@ -31,11 +31,11 @@ There is **one** app; the voices are chosen inside it, and the app **downloads o
 
 | You want to | Get | Total | Where |
 | --- | --- | --- | --- |
-| Read **Vietnamese**, small | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.zip) + Vietnamese voice *Standard* | 115 MB + 330 MB | First screen "Choose how to read, to begin" → Vietnamese → **Download and use** on the *Standard · 330 MB* row |
-| Read **Vietnamese**, best quality | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.zip) + Vietnamese voice *Highest* | 115 MB + 625 MB | Same screen → **Download and use** on the *Highest · 625 MB* row (reads ~11 % slower) |
-| Read **English** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.zip) + English voice Kokoro (6 American voices) | 115 MB + 330 MB | First screen (or **Voices & models** on the home screen) → English → **Download** |
-| Read **both languages** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.zip) + Vietnamese + English voices | 115 MB + 660-955 MB | Both steps above; any model can be removed later |
-| Use **paid AI voices** (OpenAI / ElevenLabs), no model download | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.15/ReadEase-0.1.15-arm64.zip) + your API key | 115 MB | **Voices & models → API voices → Add key**; reads both languages, billed per character |
+| Read **Vietnamese**, small | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.zip) + Vietnamese voice *Standard* | 115 MB + 330 MB | First screen "Choose how to read, to begin" → Vietnamese → **Download and use** on the *Standard · 330 MB* row |
+| Read **Vietnamese**, best quality | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.zip) + Vietnamese voice *Highest* | 115 MB + 625 MB | Same screen → **Download and use** on the *Highest · 625 MB* row (reads ~11 % slower) |
+| Read **English** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.zip) + English voice Kokoro (6 American voices) | 115 MB + 330 MB | First screen (or **Voices & models** on the home screen) → English → **Download** |
+| Read **both languages** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.zip) + Vietnamese + English voices | 115 MB + 660-955 MB | Both steps above; any model can be removed later |
+| Use **paid AI voices** (OpenAI / ElevenLabs), no model download | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.16/ReadEase-0.1.16-arm64.zip) + your API key | 115 MB | **Voices & models → API voices → Add key**; reads both languages, billed per character |
 
 > [!NOTE]
 > Releases are signed with an Apple Developer ID certificate and notarized by Apple, so the app opens like any other. Full guide, including the older 0.1.0/0.1.1 builds that macOS blocks: [INSTALL.en.md](INSTALL.en.md).
