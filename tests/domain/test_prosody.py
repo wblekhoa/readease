@@ -200,6 +200,17 @@ class SentenceSplittingTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(split_sentences(text), (text,))
 
+    def test_english_months_and_references_are_not_full_stops(self):
+        # "on Jan. | 5, 2024" was cut in the middle of a date (audit 23/09).
+        for text in (
+            "She arrived on Jan. 5, 2024.",
+            "See pp. 12 and Vol. 3 of the set.",
+            "As Smith et al. 2019 showed, it holds.",
+            "Tools, e.g. Pencils, work.",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(split_sentences(text), (text,))
+
     def test_a_decimal_point_is_not_a_full_stop(self):
         self.assertEqual(
             split_sentences("Giá là 3.5 triệu. Rẻ thật!"),
@@ -302,6 +313,66 @@ class ClauseSplittingTests(unittest.TestCase):
                 "Nó từng cứu tôi.",
             ),
         )
+
+
+class EnglishSpeechFormsTests(unittest.TestCase):
+    """The English G2P read "10:30" and "1990–2000" as nonsense words
+    (audit 23/09); what reaches it now is what it reads right (HIG 5.1)."""
+
+    def spoken(self, text: str) -> str:
+        return speakable_text(text, language="en")
+
+    def test_clock_times_become_words_the_g2p_reads(self):
+        for written, said in (
+            ("at 10:30 today", "at 10 30 today"),
+            ("at 5:00 sharp", "at 5 o'clock sharp"),
+            ("at 10:00 a.m.", "at 10 a.m."),
+            ("at 10:05, not 10:50", "at 10 oh 5, not 10 50"),
+            ("at 9:15 PM", "at 9 15 PM"),
+            ("in 1:30:45", "in 1 30 45"),
+            ("in 0:30:00", "in 0 30"),
+        ):
+            with self.subTest(written=written):
+                self.assertEqual(self.spoken(written), said)
+
+    def test_a_colon_pair_that_is_not_a_clock(self):
+        # A verse keeps its two numbers; a ratio or a score reads "to".
+        self.assertEqual(self.spoken("John 3:16 and Psalm 119:105"), "John 3 16 and Psalm 119 105")
+        self.assertEqual(self.spoken("mix 1:3, won 2:1"), "mix 1 to 3, won 2 to 1")
+
+    def test_dash_ranges_read_to(self):
+        for written, said in (
+            ("from 1990–2000", "from 1990 to 2000"),
+            ("in 1914–18", "in 1914 to 18"),
+            ("rose 5–10%", "rose 5 to 10%"),
+            ("pages 12 — 15", "pages 12 to 15"),
+            ("from 10:30–11:45", "from 10 30 to 11 45"),
+        ):
+            with self.subTest(written=written):
+                self.assertEqual(self.spoken(written), said)
+
+    def test_only_a_span_of_years_reads_a_hyphen_as_to(self):
+        self.assertEqual(self.spoken("the years 1990-2000"), "the years 1990 to 2000")
+        for kept in ("on 2024-05-01", "COVID-19", "call 555-1234", "a 2-1 win", "the 1-2 punch"):
+            with self.subTest(kept=kept):
+                self.assertEqual(self.spoken(kept), kept)
+
+    def test_references_before_a_number_are_said_in_full(self):
+        self.assertEqual(
+            self.spoken("See pp. 12-15, p. 7, vol. 2, ch. 3 and Fig. 4."),
+            "See pages 12 to 15, page 7, volume 2, chapter 3 and Figure 4.",
+        )
+        self.assertEqual(self.spoken("on Jan. 5, 2024 and Sept. 30"), "on January 5, 2024 and September 30")
+
+    def test_words_that_only_look_like_references_are_left(self):
+        for kept in ("Jan. was cold.", "a p. to sign", "the app. 5"):
+            with self.subTest(kept=kept):
+                self.assertEqual(self.spoken(kept), kept)
+
+    def test_the_vietnamese_voice_is_left_to_its_own_normaliser(self):
+        # The SDK already says "mười giờ ba mươi phút" and "đến".
+        text = "Lúc 10:30, trang 12–15, năm 1990-2000, tỷ lệ 1:3."
+        self.assertEqual(speakable_text(text, language="vi"), text)
 
 
 class UnshoutTests(unittest.TestCase):

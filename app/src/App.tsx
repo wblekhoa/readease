@@ -1421,7 +1421,7 @@ export default function App() {
       <Select
         pill
         ghost
-        aria-label={text("aria.language")}
+        label={text("aria.language")}
         value={language}
         onChange={(event) => applyLanguage(event.target.value as Language)}
       >

@@ -29,6 +29,15 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - A slider's knob can be seen in both themes. It was the panel's own
   colour, white on white and dark on dark, and only its shadow showed
   where it was; it now takes the colour of the filled part of the line.
+- VoiceOver names every choice in Voice settings - voice, speed, chapter
+  chime, footnotes - and, under a paid voice, how far to read and where to
+  stop. They were pop-up buttons with no name; each now takes the words of
+  its row.
+- The English voice reads clock times, number ranges and page references.
+  "10:30", "1990–2000", "12–15" and "3:16" used to come out as nonsense
+  sounds, and "pp." as "pip"; they are now "ten thirty", "nineteen ninety
+  to two thousand", "twelve to fifteen", "three sixteen" and "pages". A
+  date like "Jan. 5, 2024" is no longer cut in two after "Jan.".
 - Numbered lists keep their numbers. When an EPUB numbers a list by its
   structure rather than in the words, the numbers were lost - the page
   drew a dot and the voice said nothing, so steps 1, 2, 3 lost their

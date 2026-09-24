@@ -168,7 +168,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 ### 3.5 PlayerBar
 - **Cài đặt = một chip ở GIỮA, chi tiết trong panel (02/09, chủ: "tối giản, tinh tế, đưa vào giữa")**:
   chip ghost `⚙ Thu Hà · 1,25×` nằm giữa footer khi rảnh; bấm → `SettingsPanel` (Surface nổi trên
-  footer, giữa): Giọng · Tốc độ (GroupedRow + Select) · Chất lượng (`ModelChoices`, ruột của ModelPanel
+  footer, giữa): Giọng · Tốc độ (GroupedRow + Select, ô chọn mang tên là tiêu đề hàng — §4.2) · Chất lượng (`ModelChoices`, ruột của ModelPanel
   cũ). Đang đọc: select bị vô hiệu (giọng/tốc độ chỉ đọc lúc bắt đầu). Esc đóng, trừ khi đang tải
   model. Hàng "Giọng": select chỉ mang TÊN giọng (≤ 11rem), mô tả "Nữ · Bắc · Kể chuyện"
   là dòng phụ của hàng — nhãn đầy đủ trong select từng tràn hàng, cắt mất chữ "Giọng" (chủ, 02/09). **Tên dài hơn
@@ -571,7 +571,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   alpha để lộ trang phía sau, qua một hình sáng thì rãnh sáng theo và `ink-mute` tụt dưới 4,5; fill đục giữ tỉ lệ chữ
   không phụ thuộc thứ nằm sau kính. Thang alpha `veil`/`tint` vẫn là của cột bên trên vật liệu macOS (§3.16) — không
   đổi. `band` từ nay chỉ còn nghĩa nội dung (dòng/hình đang đọc, dải bìa thay thế), không còn là rãnh của control.
-  Không cell nào của ma trận render mở bảng này — kiểm bằng axe trên bảng mở (sáng + tối) khi đổi, như lần này.
+  Lúc đó chưa ô nào của ma trận render mở bảng này. Từ #46 có ô `reading_settings` (mở cả Tuỳ chỉnh, `default` và
+  `sidebar`, §4.2), nhưng ở chế độ trang: ô Số cột BỊ KHOÁ (chỉ khi đọc cuộn) vẫn chưa được vẽ, và axe vốn bỏ qua control
+  disabled — nên đổi màu của control thì vẫn kiểm tay trạng thái khoá, sáng + tối, như lần này.
 - Nút mở panel trên toolbar mang `data-popover-trigger` và **blur sau click CHUỘT** (`pressedByPointer()`): tooltip theo
   focus sẽ không treo trên panel vừa mở. Enter/Space thì không blur — tiêu điểm của bàn phím đi vào panel (§4.2 điểm 3).
 - **Divider = `controls.tsx::Divider`**, dựng theo DS `Divider`: kiểu `dotted` là radial-gradient chấm 2px trên nhịp 8px
@@ -869,7 +871,7 @@ có thể đỏ được thì không ai làm (lesson `docs-claim-must-follow-not
 
 | Điểm | Canh bởi | Chưa canh |
 |---|---|---|
-| 1 · tên control | axe (`button-name`, `link-name`, `select-name`…) | dùng `title` thay tên — quét tĩnh 23/09 không thấy chỗ nào |
+| 1 · tên control | axe (`button-name`, `link-name`, `select-name`…) trên các ô của ma trận — từ 23/09 gồm cả hai bảng cài đặt; `Select` bắt buộc `label`/`labelledBy` (TypeScript) | dùng `title` thay tên — quét tĩnh 23/09 không thấy chỗ nào; hàng Chi phí (chỉ dưới giọng trả phí, không ô nào có) — chỉ TypeScript |
 | 1 · nhóm có tên | lượt bàn phím, bước `transport`; `SegmentedControl` bắt buộc `label` (TypeScript) | — |
 | 1 · trạng thái bằng thuộc tính | — | quét 23/09 (heuristic) thấy 2 chỗ, đã sửa; không có cổng |
 | 2 · vùng live | `announce.test.ts` (3 test) | câu nói ra thật — đo tay 22/09 |
@@ -883,6 +885,22 @@ một `div` trần: VoiceOver đọc bốn nút rời, không câu nào nói ch�
 tên. Không ô nào của ma trận đang đọc dở, nên transport chưa từng được nhìn thấy: lượt bàn phím nay bấm Đọc tiếp, kiểm tên
 nhóm, rồi dừng — đỏ trên main ("the transport is not a group"), **15/15** sau khi sửa (`role="group"` + "Điều khiển lượt
 đọc"; `aria-expanded` cho dòng mở/đóng).
+
+**Cùng ngày, sau #45 — sáu `Select` không tên, trong hai bảng axe chưa từng thấy.** Chạy axe tay trên bảng *Cài đặt giọng
+đọc* đang mở (sáng + tối): `select-name` **critical** ×4 — Giọng, Tốc độ, Âm hiệu chương, Chú thích chỉ có chữ ĐỨNG CẠNH
+(tiêu đề của `GroupedRow`), không nối vào ô chọn, nên VoiceOver đọc "nút bật lên" không tên. Dưới một giọng trả phí có
+thêm hai ô ở hàng Chi phí (Đọc tới đâu · Dừng lại khi đã tiêu — `ReadingLimits`, cũng là ruột của bảng *Chi phí và phạm
+vi*): ×6 trên bảng giọng, ×2 trên bảng chi phí. Bản đồ cổng dưới đây từng ghi `select-name` là axe canh — đúng về luật, sai
+về phạm vi: **không ô nào của ma trận mở một bảng cài đặt**, nên axe chưa từng thấy ô chọn nào trong đó. Sửa hai nửa:
+- **`Select` bắt buộc TÊN ở kiểu** (TypeScript), như `SegmentedControl` bắt buộc `label`: hoặc `labelledBy` — id của CHỮ
+  ĐANG HIỆN gọi tên nó, cách được ưu tiên, vì tên VoiceOver đọc khi đó chính là chữ mắt thấy (WCAG 2.5.3) — hoặc `label`,
+  chỉ khi bên cạnh không có chữ nào (pill ngôn ngữ ở chân cột). `aria-label`/`aria-labelledby` thô bị bỏ khỏi kiểu, để
+  chỉ có một cách đặt tên. `GroupedRow` đưa id tiêu đề của nó cho control ở cuối hàng (`trailing` nhận một hàm của id).
+- **Ma trận mở hai bảng**: `player_settings` (Cài đặt giọng đọc) và `reading_settings` (Cài đặt đọc, mở cả Tuỳ chỉnh —
+  thanh trượt và công tắc nằm dưới đó). Không mở ở cả 16 state: nội dung hai bảng chỉ đổi theo mô hình và giọng, nên
+  `player_settings` chạy ở `default` · `sidebar` · `english_missing` · `english_partial` · `vietnamese_missing`, còn
+  `reading_settings` ở `default` · `sidebar` — +28 ô thay vì +120 (~6 phút) nói cùng một điều. Hàng Chi phí vẫn ngoài
+  ma trận (mock không có state nào dùng giọng trả phí): nó chỉ có TypeScript canh, cộng một lần axe tay 23/09.
 
 **Phần máy không đo được — chủ kiểm 10 phút, một lần mỗi khi UI đổi lớn** (AI không bật VoiceOver trên máy chủ):
 ⌘F5 bật VoiceOver, rồi chỉ dùng bàn phím: (1) mở app, nghe tên cửa sổ · (2) đi tới Thư viện, nghe tên tài liệu và
@@ -938,6 +956,22 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   ngoặc "(Trần, 2019)", "(Nguyễn & Trần, 2019, tr. 12)", "[12]", "[3–5]" **không đọc** ở mọi chế độ trừ
   `full`; ngoặc là chữ ("(một người bạn cũ)") và năm trong câu giữ nguyên. Chữ trên trang không đổi; ước
   tính chi phí giọng API đi qua cùng hàm nên tính đúng chữ được đọc.
+- **Tiếng Anh: giờ, khoảng số, viết tắt tham chiếu phải thành CHỮ trước khi tới G2P** (audit 23/09, chủ duyệt sửa). G2P
+  của giọng tiếng Anh không có bộ chuẩn hoá: mọi "số:số" và mọi khoảng số nối bằng gạch en/em ra tiếng vô nghĩa — đo trên
+  G2P thật: `10:30`→`ˈæksˌæk`, `5:00`→`ˈæksˌiz`, `3:16`→vô nghĩa, `1:3`→`ˈɛks`, `12–15`→`ˈæksˌæk`,
+  `1990–2000`→`ˌæɡəɡɡˌIkˈɑɡ`; `1990-2000` thiếu "to"; "pp." đọc "pip"; "Jan. 5" bị cắt thành hai câu giữa ngày. Đường
+  tiếng Việt KHÔNG cần (SDK tự đọc "mười giờ ba mươi phút", "…đến…", "một trên ba"), nên luật chỉ chạy khi ngôn ngữ ĐỌC là
+  tiếng Anh (`speak_english_forms`, trong `speakable_text`). Dạng viết lại đã thử trên G2P, đọc đúng:
+  - **Giờ** H:MM (giờ 0–24, phút 00–59): ":00" → "o'clock" ("5:00" → *five o'clock*), trừ khi có a.m./p.m. theo sau
+    ("10:00 a.m." → *ten a.m.*); ":0M" → "oh M" (*ten oh five*); còn lại "H MM" (*ten thirty*; "John 3:16" → *three
+    sixteen*, đúng cách đọc câu Kinh Thánh). H:MM:SS → ba số. "Số:số" không phải giờ (tỉ số, tỷ số) → "N to M".
+  - **Khoảng số** gạch en/em giữa hai chữ số → "to" ("12–15", "1990–2000", "1914–18", "5–10%"); gạch NỐI chỉ khi là
+    khoảng NĂM ("1990-2000", "1914-18") hoặc sau "pp." — "2024-05-01", "COVID-19", "555-1234", "2-1" giữ nguyên.
+  - **Viết tắt tham chiếu trước chữ số** nói nguyên chữ: "pp." → *pages*, "p." → *page*, "vol(s)." → *volume(s)*,
+    "ch."/"chap." → *chapter*, "fig(s)." → *figure(s)*; tháng viết tắt trước ngày → tên tháng ("Jan. 5" → *January 5*).
+    Cùng các viết tắt ấy (tháng, "pp", "vol", "ch", "fig", "ed", "al", "cf", "jr", "sr"…) vào danh sách
+    `_ABBREVIATIONS` để máy cắt câu không cắt sau chúng — danh sách dùng chung hai ngôn ngữ, không từ nào trùng tiếng Việt.
+  Chưa làm: phân số ("1/2" đọc *one two*) — "3/4" cũng là ngày tháng kiểu Mỹ, đoán sai còn tệ hơn để nguyên.
 - **Ký hiệu liệt kê "(a) … (b) …" nói thành chữ cái kèm nghỉ** — chủ chọn bằng tai 02/09 giữa 4 bản render cùng một câu (giữ nguyên · xoá · "một là/hai là" · chữ cái + nghỉ): "khớp với a, nhiệm vụ hiện tại, hoặc b, sở thích cá nhân". Nghỉ đặt TRƯỚC liên từ dẫn vào ký hiệu (hoặc/hay/và/rồi/cũng như). Tham chiếu "mục (b)" → "mục b", không nghỉ. Chỉ chữ thường đơn có khoảng trắng phía trước; "book(s)", "(ii)", "(1)" không đụng (thư viện: 31 ký hiệu, 0 chữ số/hoa/tham chiếu). Test chốt = chính câu chủ duyệt, so khớp từng ký tự với bản render đã nghe.
 - **Số của `<ol>` nói theo cùng luật: số + phẩy** (24/09) — nhãn dựng từ `<ol>` (§3, "Danh sách `<ol>` mang số của nó")
   đi vào lời nói ở MỘT chỗ, bộ dựng lời của sách (`_book_utterances`), nên ước tính chi phí và lượt đọc đếm cùng chữ.
