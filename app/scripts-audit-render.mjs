@@ -443,6 +443,17 @@ async function main() {
           const group = await evalJs(`(() => { const pause = [...document.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Tạm dừng");
             const g = pause && pause.closest("[role=group]"); return g ? (g.getAttribute("aria-label") || "") : null; })()`);
           expect("transport", !!group, group === null ? "the transport is not a group" : "the transport group has no name");
+          // The bar is at the bottom of the window, so its voice menu opens
+          // up, where it can be seen (owner, 25/09: opened down, it fell out
+          // of the window and nothing showed).
+          if (!(await findAndClick(/^Đổi giọng$/))) expect("transport", false, "no Change voice button while reading");
+          else {
+            const box = await evalJs(`(() => { const m = document.querySelector('[role="menu"]'); if (!m) return null;
+              const r = m.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: innerHeight }; })()`);
+            expect("transport", !!box && box.top >= 0 && box.bottom <= box.height,
+              box ? `the Change voice menu spans ${Math.round(box.top)}-${Math.round(box.bottom)} px of a ${box.height} px window` : "the Change voice menu did not open");
+            await key("Escape");
+          }
           await findAndClick(/^Dừng$/);
         }
         crashed("reader");

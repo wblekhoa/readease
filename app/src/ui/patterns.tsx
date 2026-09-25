@@ -775,7 +775,9 @@ export function useLayerFocus(layer: RefObject<HTMLElement | null>) {
 }
 
 
-/** An icon button that opens a short list of choices under it.
+/** An icon button that opens a short list of choices under it - or over
+ * it, for a button in the bar at the bottom of the window (`side="above"`),
+ * where a menu opened down falls out of the window (owner, 25/09).
  *
  * The first item is the default, marked as such; choosing anything closes
  * the menu, as do Escape and a click elsewhere. Small on purpose: this is
@@ -786,6 +788,7 @@ export function MenuButton({
   items,
   disabled = false,
   align = "right",
+  side = "below",
 }: {
   icon: ReactNode;
   label: string;
@@ -800,6 +803,8 @@ export function MenuButton({
   }[];
   disabled?: boolean;
   align?: "left" | "right";
+  /** Which way it opens: toward the room the button has. */
+  side?: "below" | "above";
 }) {
   const [open, setOpen] = useState(false);
   const holder = useRef<HTMLSpanElement>(null);
@@ -868,7 +873,9 @@ export function MenuButton({
           material="glass"
           radius="menu"
           layer="menu"
-          className={`absolute top-full z-40 mt-[var(--layer-gap)] layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${align === "right" ? "right-0" : "left-0"}`}
+          className={`absolute z-40 layer-capped min-w-[15rem] overflow-y-auto p-2 shadow-lifted ${
+            side === "above" ? "bottom-full mb-[var(--layer-gap)]" : "top-full mt-[var(--layer-gap)]"
+          } ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div ref={list} role="menu" aria-label={label} className="flex flex-col">
             {items.map((item, index) => (

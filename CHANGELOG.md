@@ -10,6 +10,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   When the Mac's output changed while ReadEase was open - headphones
   connected, another speaker chosen - the voice moved with it, but the
   row kept naming the old device until the app was restarted.
+- The Change voice menu in the reading bar opens upward. The bar sits at
+  the bottom of the window and the menu opened down, out of the window,
+  so nothing could be seen or chosen.
 
 ## 0.1.17
 

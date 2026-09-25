@@ -2138,6 +2138,7 @@ export default function App() {
                     icon={<SpeakerIcon />}
                     label={text("voices.switch")}
                     align="left"
+                    side="above"
                     items={[
                       ...offeredVoices(voices, shortlist, voiceId).map((voice) => ({
                         label: voiceName(voice.label) || voice.id,
