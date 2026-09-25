@@ -1313,6 +1313,80 @@ class OrderedListMarkerTests(unittest.TestCase):
         self.assertEqual(labels[-1], "2.")
 
 
+class PrintedContentsTests(unittest.TestCase):
+    """A table of contents printed as an ordinary page of links (HIG 5.1,
+    25/09) stays on the page and is not read aloud: line after line of
+    chapter titles, with nothing to follow along to. Derived on open, like
+    the rest of the overlay; the segments are not touched."""
+
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _unread(self, pages, spine):
+        from tests.importers.epub_fixture import make_structured_epub
+
+        path = make_structured_epub(self.root, name="printed.epub", pages=pages, spine=spine, nav=None)
+        book = import_epub(path)
+        presentation = load_epub_presentation(path, book)
+        unread = {segment_id for c in presentation.chapters for segment_id in c.unread}
+        return [s.text for c in book.chapters for s in c.segments if s.id in unread]
+
+    def test_a_page_of_links_to_the_book_s_own_chapters_is_not_read(self):
+        from tests.importers.epub_fixture import DIVISIONS_PAGES, DIVISIONS_SPINE
+
+        # Its title too: "Mục lục" alone, then silence, announces nothing.
+        self.assertEqual(
+            self._unread(DIVISIONS_PAGES, DIVISIONS_SPINE),
+            ["Mục lục", "Phần Một: Những con đường", "Chương 1. Bến sông"],
+        )
+
+    def test_a_printed_list_with_page_numbers_is_still_the_contents(self):
+        pages = {
+            "toc": ("toc.xhtml", "<h1>Mục lục</h1><ul>"
+                                 '<li><a href="ch1.xhtml">Chương 1. Bến sông</a> 7</li>'
+                                 '<li><a href="ch2.xhtml">Chương 2. Mùa nước nổi</a> 19</li></ul>'),
+            "ch1": ("ch1.xhtml", "<h1>Chương 1</h1><p>Sương còn phủ kín mặt sông.</p>"),
+            "ch2": ("ch2.xhtml", "<h1>Chương 2</h1><p>Đêm đó mưa rất to.</p>"),
+        }
+        self.assertEqual(
+            self._unread(pages, ("toc", "ch1", "ch2")),
+            ["Mục lục", "Chương 1. Bến sông 7", "Chương 2. Mùa nước nổi 19"],
+        )
+
+    def test_a_paragraph_that_points_to_another_chapter_is_read(self):
+        pages = {
+            "ch1": ("ch1.xhtml", "<h1>Chương 1</h1>"
+                                 '<p>Như sẽ kể ở <a href="ch2.xhtml">chương sau</a>, con đường còn dài và nhiều khúc quanh.</p>'
+                                 '<p>Xem thêm <a href="ch2.xhtml">Chương 2</a>.</p>'),
+            "ch2": ("ch2.xhtml", "<h1>Chương 2</h1><p>Đêm đó mưa rất to.</p>"),
+        }
+        # The second paragraph is mostly a link, but one line of links in a
+        # chapter of prose is not a table of contents.
+        self.assertEqual(self._unread(pages, ("ch1", "ch2")), [])
+
+    def test_a_page_of_links_out_of_the_book_is_read(self):
+        pages = {
+            "refs": ("refs.xhtml", "<h1>Đọc thêm</h1>"
+                                   '<p><a href="https://example.org/a">Một bài viết về bến sông</a></p>'
+                                   '<p><a href="https://example.org/b">Một bài khác về mùa nước</a></p>'),
+            "ch1": ("ch1.xhtml", "<h1>Chương 1</h1><p>Sương còn phủ kín mặt sông.</p>"),
+        }
+        self.assertEqual(self._unread(pages, ("refs", "ch1")), [])
+
+    def test_links_to_places_on_the_same_page_do_not_make_a_contents(self):
+        pages = {
+            "ch1": ("ch1.xhtml", "<h1>Chương 1</h1>"
+                                 '<p><a href="#s1">Buổi sáng</a></p><p><a href="#s2">Buổi chiều</a></p>'
+                                 '<h2 id="s1">Buổi sáng</h2><p>Sương còn phủ kín mặt sông.</p>'
+                                 '<h2 id="s2">Buổi chiều</h2><p>Gió đổi hướng.</p>'),
+        }
+        self.assertEqual(self._unread(pages, ("ch1",)), [])
+
+
 class ThematicBreakTests(unittest.TestCase):
     """A `<hr/>` has no words, so the importer never made a segment of it and
     the voice read straight through a change of scene (HIG 5.1, 24/09). It is

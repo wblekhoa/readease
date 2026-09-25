@@ -1009,6 +1009,16 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   chờ chủ nghe) thay cho hai nhịp đoạn. `<hr/>` — importer bỏ vì không có chữ, trước chỉ nghỉ 450 ms như sang đoạn —
   được ghi vào lớp phủ (`ChapterPresentation.breaks`) và nghỉ cùng 1 600 ms. Trang vẫn hiện ký hiệu; đoạn vẫn có vị trí
   (đọc tiếp được từ đó), không tổng hợp, không tính tiền giọng API.
+- **Trang mục lục in sẵn không đọc thành tiếng** (chủ 25/09: "Có bỏ đọc trang 'Mục lục' in sẵn không"). Mục lục
+  gốc của EPUB 3 (`<nav>`) vốn không đọc — importer bỏ thẻ `nav`. Nhưng trang mục lục nhà xuất bản hay bộ chuyển đổi
+  in thành một trang XHTML thường, toàn link tới các tệp khác, thì bị đọc từng dòng (tài liệu thử 5 dòng ≈ 13,6 s;
+  30 chương ≈ 1–2 phút tên chương liền nhau). Nay lớp phủ dựng khi mở (`importers/epub_presentation.py`, không đổi
+  cách nhập, không đổi id) nhận ra trang ấy: một khối mà link NỘI BỘ (tới tệp khác trong sách — không tính `http…`,
+  không tính `#` cùng trang) phủ ≥ 50 % chữ là *khối link*; ≥ 2 khối link và chiếm ≥ 80 % các khối không phải
+  tiêu đề → cả trang, kể cả dòng "Mục lục", là `unread`. Trang vẫn hiện, link vẫn bấm được; giọng đi thẳng qua.
+  Bấm "đọc từ đây" trên một dòng của nó → đọc tiếp từ đoạn có tiếng đầu tiên sau nó (cùng luật với chú thích đã
+  đọc, `_start_at`). Không nhận: đoạn văn có một link tham chiếu ("xem Chương 3"), trang toàn link ra ngoài, PDF
+  (mục lục in trong PDF chỉ là chữ, không có link để nhận).
 - **Chú thích không lê thê** (chủ, 16/09: "tối ưu nội dung khi đọc các ref để tránh dài dòng"). Setting
   `note_reading` ∈ {full, short, off}, mặc định **short**: thân chú thích là *thư mục* (Sđd/Ibid/op. cit.,
   "tr."/"p."/"pp.", năm bốn số + NXB/Press, URL/DOI/ISBN, số tạp chí) → **không đọc**; thân là *bình luận* →

@@ -3612,7 +3612,7 @@ class DivisionReadingTests(unittest.TestCase):
     pages and at a converter's file split; a one-file book never chimed; a
     PDF without bookmarks chimed mid-sentence at every page."""
 
-    def _read(self, make_book, *, chime="marimba"):
+    def _read(self, make_book, *, chime="marimba", start_text=None):
         from tempfile import TemporaryDirectory
         from pathlib import Path
         from vieneu_reader.config import AppPaths
@@ -3627,9 +3627,14 @@ class DivisionReadingTests(unittest.TestCase):
             settings = root / "settings.json"
             settings.write_text(json.dumps({"chapter_chime": chime}), encoding="utf-8")
             engine = FakeEngine(chunks_per_sentence=1)
+            params = {"book_id": stored.id, "voice_id": "adam", "rate": 1.0}
+            if start_text is not None:
+                # "Read from here" on the passage with these words.
+                params["segment_id"] = next(
+                    s.id for c in stored.chapters for s in c.segments if s.text == start_text
+                )
             replies = run_server(
-                [{"id": 1, "method": "read.book",
-                  "params": {"book_id": stored.id, "voice_id": "adam", "rate": 1.0}}],
+                [{"id": 1, "method": "read.book", "params": params}],
                 engine, repository=repository, service=service, settings_path=settings,
             )
         texts = {s.id: s.text for c in stored.chapters for s in c.segments}
@@ -3668,6 +3673,38 @@ class DivisionReadingTests(unittest.TestCase):
         # None between the front-matter pages, none at the file a converter
         # split off chapter 1, and one for a part and its first chapter.
         self.assertEqual(self._opened_by_chime(replies, texts), ["PHẦN MỘT", "Chương 2", "PHẦN HAI"])
+
+    def test_the_printed_contents_page_is_passed_over(self) -> None:
+        """HIG 5.1, 25/09: the page stays; the voice goes straight on."""
+        from tests.importers.epub_fixture import (
+            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+        )
+
+        replies, texts, engine = self._read(lambda root: make_structured_epub(
+            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+        ))
+        # Its three lines are the only passages with these exact words: the
+        # part page says "PHẦN MỘT", chapter 1 says "Chương 1" and "Bến sông".
+        printed = {"Mục lục", "Phần Một: Những con đường", "Chương 1. Bến sông"}
+        followed = [texts[m["segment_id"]] for m in replies if m.get("event") == "position"]
+        self.assertFalse(printed & set(followed))
+        self.assertFalse([t for t, _voice in engine.requests if "Mục lục" in t])
+        # Straight from the copyright page's last line to the first part.
+        at = followed.index("In lần thứ nhất.")
+        self.assertEqual(followed[at + 1], "PHẦN MỘT")
+
+    def test_reading_from_a_line_of_the_printed_contents_starts_after_it(self) -> None:
+        from tests.importers.epub_fixture import (
+            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+        )
+
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+        ), start_text="Chương 1. Bến sông")
+        followed = [texts[m["segment_id"]] for m in replies if m.get("event") == "position"]
+        # Not the top of the book, and not the line itself: the first
+        # passage after it that the voice reads.
+        self.assertEqual(followed[0], "PHẦN MỘT")
 
     def test_a_book_in_one_file_chimes_at_its_chapters(self) -> None:
         from tests.importers.epub_fixture import ONE_FILE_NAV, ONE_FILE_PAGES, make_structured_epub

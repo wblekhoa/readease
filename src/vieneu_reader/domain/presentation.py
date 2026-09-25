@@ -115,6 +115,9 @@ class ChapterPresentation:
     #: the page drew as a rule and the text never carried, so the voice
     #: rests there as it does at "* * *" (HIG 5.1, 24/09).
     breaks: tuple[str, ...] = ()
+    #: Segments the voice passes over although they are on the page: a table
+    #: of contents printed as a page of links (HIG 5.1, 25/09).
+    unread: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
