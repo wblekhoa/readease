@@ -526,6 +526,10 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Menu (`MenuButton`) bo 20 px** (17/09, chủ: "radius của dropdown tròn hơn để tương đồng với item bên trong"): hàng
   menu bo 12 px (`rounded-xl`) đặt trong lót 8 px → góc ngoài đồng tâm = 12 + 8 = 20 (`Surface radius="menu"`); 16 của
   card làm menu vuông hơn chính hàng của nó. Luật chung cho mọi vỏ có hàng bo bên trong: **góc ngoài = góc trong + lót**.
+- **Menu mở về phía có chỗ** (25/09, chủ: "nút đổi giọng đang hiện popover ở dưới và không thể thấy gì"):
+  `MenuButton` mặc định mở XUỐNG — nó sinh ra cho thanh công cụ ở đầu cửa sổ; nút ở thanh DƯỚI (transport lúc đang
+  đọc: "Đổi giọng") mở LÊN (`side="above"`), vì menu mở xuống từ đáy cửa sổ rơi hẳn ra ngoài khung. Chiều cao vẫn
+  `layer-capped`. Kiểm được: lượt bàn phím của render audit đo khung menu "Đổi giọng" lúc đang đọc nằm trọn trong cửa sổ.
 - **Vật liệu = kính của Books** (17/09, chủ đưa hai popover của Apple Books: "tận dụng các thiết kế từ Apple để có
   style glass"): panel nổi và menu dùng `Surface material="glass"` — nền `paper` **74 %** + `backdrop-filter: blur(28px)
   saturate(1.5)`, viền `edge-strong`, bóng `lifted`; trang mờ đi phía sau như popover "Contents"/"Themes & Settings" của
