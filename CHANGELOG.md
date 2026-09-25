@@ -34,6 +34,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   Enter opens it, the picture opened large takes the focus, and Escape
   gives it back to the picture on the page. Nothing changes for the
   mouse.
+- A picture's label speaks the document's language. Under an English
+  document the page said "Hình 1" while the voice said "figure 1"; it
+  now says "Figure 1", and VoiceOver reads the caption in the
+  document's voice. A label the document gives its picture is kept.
 
 ## 0.1.16
 

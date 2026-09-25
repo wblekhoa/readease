@@ -21,7 +21,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { engineMessage, text } from "../i18n";
+import { engineMessage, text, textIn } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
 import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
@@ -115,6 +115,7 @@ function Figure({
   figure,
   cued,
   paged,
+  language,
   onOpen,
 }: {
   bookId: string;
@@ -123,6 +124,8 @@ function Figure({
   cued: boolean;
   /** On a page a picture must fit the page; in a scroll, the viewport. */
   paged: boolean;
+  /** The document's language: its label is the document's word (HIG 3.9). */
+  language?: string;
   onOpen: (source: string, alt: string) => void;
 }) {
   const [source, setSource] = useState<string | null>(null);
@@ -164,7 +167,9 @@ function Figure({
   // A caption on the page says it all; an alt that repeats it under the
   // picture is the same sentence twice (owner, 05/09).
   const alt = figure.alt_is_generic || figure.caption_segment_id ? "" : figure.alt ?? "";
-  const label = figure.label ?? text("reader.figure_label", { n: figure.number });
+  // The document's word, as the voice says it: "Figure 1" under an English
+  // book, whatever language the interface is in (HIG 3.9).
+  const label = figure.label ?? textIn(language, "reader.figure_label", { n: figure.number });
 
   return (
     <figure
@@ -205,7 +210,7 @@ function Figure({
               }`}
             />
           </button>
-          <figcaption className="mt-2 text-center text-xs text-ink-mute">
+          <figcaption lang={language} className="mt-2 text-center text-xs text-ink-mute">
             <span className="font-semibold">{label}</span>
             {alt && <span> · {alt}</span>}
           </figcaption>
@@ -1018,7 +1023,7 @@ export function Reader({
             figure.anchor_segment_id === segment.id &&
             figure.placement === "before")
           .map((figure) => (
-            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
+            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} language={language} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
           ))}
         <p
           data-segment={segment.id}
@@ -1060,7 +1065,7 @@ export function Reader({
             figure.anchor_segment_id === segment.id &&
             figure.placement === "after")
           .map((figure) => (
-            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
+            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} language={language} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
           ))}
       </div>
     ));
