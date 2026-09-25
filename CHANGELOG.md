@@ -10,6 +10,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   voice reads on. Picked mid-listen, it took the page there and the next
   sentence pulled the page back to the voice; now the page stays where
   the reader went, and "Về chỗ đang đọc" brings it back.
+- Change voice in the reading bar, and Manage voices in Voice settings,
+  show a person with a turning arrow instead of a speaker: in a player's
+  bar a speaker reads as volume.
 
 ## 0.1.18
 
