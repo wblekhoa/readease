@@ -295,6 +295,36 @@ DIVISIONS_NAV = """<ol>
   </ol></li>
 </ol>"""
 
+# Sections under chapters (HIG 5.1, 25/09: "Chương dài, mục ngắn"),
+# invented words: a title page, a part; chapter 1 opens straight onto its first section's
+# title (one arrival), then a second section after words, with a subsection
+# under it; chapter 2 speaks before its one section.
+SECTIONS_PAGES = {
+    "title": ("title.xhtml", "<h1>Bến Sông Xa</h1><p>Lê Minh Thư</p>"),
+    "part1": ("part1.xhtml", "<h1>PHẦN MỘT</h1><p>Những con đường</p>"),
+    "ch1": ("ch1.xhtml",
+            '<h2>Chương 1</h2><h3 id="s11">1.1 Bến sông</h3><p>Sương còn phủ kín mặt sông.</p>'
+            '<h3 id="s12">1.2 Con đò</h3><p>Con đò nhỏ chờ ở bến.</p>'
+            '<h4 id="s121">1.2.1 Người lái đò</h4><p>Ông lão chèo thuyền và không nói.</p>'),
+    "ch2": ("ch2.xhtml",
+            '<h2>Chương 2</h2><p>Đêm đó mưa rất to.</p>'
+            '<h3 id="s21">2.1 Mùa nước nổi</h3><p>Sáng ra, nước đã rút.</p>'),
+}
+SECTIONS_SPINE = ("title", "part1", "ch1", "ch2")
+SECTIONS_NAV = """<ol>
+  <li><a href="part1.xhtml">Phần Một: Những con đường</a><ol>
+    <li><a href="ch1.xhtml">Chương 1. Bến sông</a><ol>
+      <li><a href="ch1.xhtml#s11">1.1 Bến sông</a></li>
+      <li><a href="ch1.xhtml#s12">1.2 Con đò</a><ol>
+        <li><a href="ch1.xhtml#s121">1.2.1 Người lái đò</a></li>
+      </ol></li>
+    </ol></li>
+    <li><a href="ch2.xhtml">Chương 2. Mùa nước nổi</a><ol>
+      <li><a href="ch2.xhtml#s21">2.1 Mùa nước nổi</a></li>
+    </ol></li>
+  </ol></li>
+</ol>"""
+
 # The same chapters kept in ONE file, found through the nav's anchors.
 ONE_FILE_PAGES = {
     "book": ("book.xhtml",

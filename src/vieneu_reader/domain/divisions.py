@@ -1,4 +1,4 @@
-"""Where a reading marks a new part or chapter (HIG 5.1, 24/09).
+"""Where a reading marks a new part, chapter or section (HIG 5.1, 24/09).
 
 A book's FILES are not its chapters. Converters split a long chapter into
 two files, the front matter is a string of small ones, a whole book may sit
@@ -28,6 +28,10 @@ from vieneu_reader.domain.prosody import ends_sentence
 PART = "part"
 CHAPTER = "chapter"
 PART_CHAPTER = "part-chapter"
+# A first-level section - the contents line right under the chapter level,
+# "1.1", "1.2" ... - which opens with a short sound (owner, 25/09: "Chương
+# dài, mục ngắn"). Deeper sections are not divisions.
+SECTION = "section"
 SCENE = "scene"
 # The next page of a PDF imported page by page, when the page before ended
 # in the middle of a sentence: the sentence reads on, with no rest.
@@ -119,6 +123,21 @@ def contents_marker(title: str) -> tuple[str, int] | None:
     return kind, number
 
 
+def _chapter_level(
+    entries: Sequence[ContentsEntry], markers: Sequence[tuple[str, int] | None]
+) -> int:
+    """The level the chapters sit at: where "Chương N" lines are most often,
+    else the top."""
+
+    tally: dict[int, int] = {}
+    for entry, found in zip(entries, markers):
+        if found is not None and found[0] == CHAPTER:
+            tally[entry.level] = tally.get(entry.level, 0) + 1
+    if tally:
+        return sorted(tally.items(), key=lambda item: (-item[1], item[0]))[0][0]
+    return min(entry.level for entry in entries)
+
+
 def contents_roles(entries: Sequence[ContentsEntry]) -> list[str]:
     """"part", "chapter" or "section" for each line, by the contents column's
     rule (HIG 3.25): the chapter level is where "Chương N" lines sit most
@@ -127,16 +146,8 @@ def contents_roles(entries: Sequence[ContentsEntry]) -> list[str]:
 
     if not entries:
         return []
-    top = min(entry.level for entry in entries)
     markers = [contents_marker(entry.title) for entry in entries]
-    tally: dict[int, int] = {}
-    for entry, found in zip(entries, markers):
-        if found is not None and found[0] == CHAPTER:
-            tally[entry.level] = tally.get(entry.level, 0) + 1
-    chapter_level = (
-        sorted(tally.items(), key=lambda item: (-item[1], item[0]))[0][0] if tally else None
-    )
-    stops = chapter_level if chapter_level is not None else top
+    stops = _chapter_level(entries, markers)
     roles: list[str] = []
     for index, entry in enumerate(entries):
         found = markers[index]
@@ -161,9 +172,9 @@ def division_plan(
     breaks: Iterable[str] = (),
 ) -> dict[str, str]:
     """What each seam of a reading opens, keyed by the id of the segment it
-    opens: PART, CHAPTER, PART_CHAPTER, SCENE, or CONTINUE for a PDF page
-    that carries on a sentence. A segment not in the map rests the way any
-    block does, even when it starts a new file."""
+    opens: PART, CHAPTER, PART_CHAPTER, SECTION, SCENE, or CONTINUE for a
+    PDF page that carries on a sentence. A segment not in the map rests the
+    way any block does, even when it starts a new file."""
 
     segments = [segment for chapter in book.chapters for segment in chapter.segments]
     plan: dict[str, str] = {}
@@ -172,11 +183,22 @@ def division_plan(
     # chapter's arrival; the NEXT chapter is not "right after the part".
     absorbed: set[str] = set()
     if contents:
+        # "1.1", "1.2" ...: the level right under the chapters. Deeper ones
+        # keep the heading's rest - a document can hold hundreds of sections.
+        first_sections = _chapter_level(
+            contents, [contents_marker(entry.title) for entry in contents]
+        ) + 1
         for entry, role in zip(contents, contents_roles(contents)):
-            if role not in (PART, CHAPTER) or entry.segment_id not in known:
+            if entry.segment_id not in known:
+                continue
+            if role == SECTION:
+                # The lowest of the three: never over a chapter or part line
+                # on the same passage, and never mistaken for one colliding.
+                if entry.level == first_sections and entry.segment_id not in plan:
+                    plan[entry.segment_id] = SECTION
                 continue
             already = plan.get(entry.segment_id)
-            if already is None:
+            if already is None or already == SECTION:
                 plan[entry.segment_id] = role
             elif already != role:
                 # A part line and a chapter line on one passage: it opens the
@@ -222,15 +244,17 @@ def division_plan(
 
     # One arrival, one sound (25/09): a division whose passage follows the
     # previous one with nothing but titles between them - "Chương 1" and its
-    # name as two lines of the contents, a part inside a part - is the same
-    # arrival, and rests like two headings in a row. A short chapter with
-    # words of its own is still a chapter: on the owner's library 19 of 23
-    # close pairs were, and only 2 were headings in a row.
+    # name as two lines of the contents, a part inside a part, a section
+    # whose title stands right under its chapter's - is the same arrival,
+    # and rests like two headings in a row. A short chapter with words of
+    # its own is still a chapter: on the owner's library 19 of 23 close
+    # pairs were, and only 2 were headings in a row. A section is not an
+    # arrival for this rule: a chapter after an empty section still rings.
     arrived = False
     since_titles_only = True
     for segment in segments:
         opens = plan.get(segment.id)
-        if opens in (PART, CHAPTER) and arrived and since_titles_only:
+        if opens in (PART, CHAPTER, SECTION) and arrived and since_titles_only:
             del plan[segment.id]
             # Still a passage: when a line pointed at words, not a title,
             # those words are the chapter's own.

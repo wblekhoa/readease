@@ -720,7 +720,7 @@ export const TEXT = {
      read. Each subtitle states the rule the choice sets (HIG 5.1), so the
      panel explains itself without a help page. */
   "settings.chime": ["Âm hiệu chương", "Chapter chime"],
-  "settings.chime_hint": ["Một âm ngắn khi sang chương mới", "A short sound at each new chapter"],
+  "settings.chime_hint": ["Âm dài khi sang chương, âm ngắn khi sang mục", "A long sound at each chapter, a short one at each section"],
   "settings.chime_off": ["Tắt", "Off"],
   "settings.chime_marimba": ["Marimba", "Marimba"],
   "settings.chime_harp": ["Harp", "Harp"],

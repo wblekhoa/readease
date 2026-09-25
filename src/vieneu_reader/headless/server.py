@@ -65,7 +65,7 @@ from vieneu_reader.domain.language import (
     language_of_text,
     language_of_texts,
 )
-from vieneu_reader.domain.divisions import CHAPTER, PART, PART_CHAPTER, division_plan
+from vieneu_reader.domain.divisions import CHAPTER, PART, PART_CHAPTER, SECTION, division_plan
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.prosody import (
     HEADING_GAIN,
@@ -95,6 +95,8 @@ from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     FIGURE_CUE_PAUSE_MS,
     NOTE_CUE,
     NOTE_CUE_PAUSE_MS,
+    SECTION_LEAD_MS,
+    SECTION_TAIL_MS,
     _FigureCue,
     _Utterance,
     _figure_cues,
@@ -105,7 +107,7 @@ from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     _start_at,
     _text_utterances,
 )
-from vieneu_reader.speech.chimes import chime_choice, load_chime, load_part_chime
+from vieneu_reader.speech.chimes import chime_choice, load_chime, load_part_chime, load_section_chime
 
 #: The language the second local model reads.
 ENGLISH = "en"
@@ -1268,7 +1270,7 @@ class _Session:
             # The division opens on the FIRST utterance of its passage - a
             # figure cue placed before it, when there is one.
             opens = divisions.get(utterance.segment_id or "")
-            if opens in (PART, CHAPTER, PART_CHAPTER) and utterance.segment_id not in opened:
+            if opens in (PART, CHAPTER, PART_CHAPTER, SECTION) and utterance.segment_id not in opened:
                 opened.add(utterance.segment_id or "")
                 utterance = replace(utterance, opens=opens)
             utterances.append(utterance)
@@ -2587,12 +2589,14 @@ class _Session:
         # slower rate (HEADING_RATE), and a stretcher is drained at the end
         # of every utterance anyway, so nothing carries across.
         stretcher: TimeStretcher | None = None
-        # The chime that opens a chapter, if the reader keeps one - only a
-        # book has chapters, and the choice is read once per reading. And the
-        # longer sound that opens a part (HIG 5.1, 25/09): the family's own,
-        # or its chapter chime where it has none.
+        # The chime the reader keeps, if any - only a book has chapters, and
+        # the choice is read once per reading. A part and a chapter open with
+        # the family's LONG sound (its own, or its chime where it has none),
+        # a first-level section with the short one cut from its chime (HIG
+        # 5.1, 25/09: "Chương dài, mục ngắn").
         chime = None
         part_chime = None
+        section_chime = None
         if book_id is not None:
             chosen = chime_choice(document.get("chapter_chime"))
             if chosen is not None:
@@ -2612,6 +2616,12 @@ class _Session:
                         # did before parts had a sound of their own.
                         print(f"part sound for {chosen} could not be loaded: {error}", file=sys.stderr)
                         part_chime = chime
+                    try:
+                        section_chime = load_section_chime(chosen)
+                    except (OSError, ValueError) as error:
+                        # A section then keeps the heading's rest.
+                        print(f"section sound for {chosen} could not be loaded: {error}", file=sys.stderr)
+                        section_chime = None
         seq = 0
         voiced = 0
         stopped = False
@@ -2790,13 +2800,19 @@ class _Session:
                 if is_last:
                     continue
                 opens = utterances[position + 1].opens
+                # Between divisions: a breath, the sound, a breath - in place
+                # of the flat silence. A sound is not stretched (it is not
+                # speech) and not credited to a voice. A part or a chapter
+                # opens with the long sound, a first-level section with the
+                # short one and a shorter breath either side (25/09).
+                cue = None
                 if chime is not None and opens in (PART, CHAPTER):
-                    # Between chapters: a breath, the chime, a breath - in
-                    # place of the flat silence. The chime is not stretched
-                    # (it is not speech) and not credited to a voice. A part
-                    # opens with its own, longer sound.
-                    sound = part_chime if opens == PART and part_chime is not None else chime
-                    emit(_silence(int(CHIME_LEAD_MS / rate)), from_voice=False)
+                    cue = (part_chime if part_chime is not None else chime, CHIME_LEAD_MS, CHIME_TAIL_MS)
+                elif section_chime is not None and opens == SECTION:
+                    cue = (section_chime, SECTION_LEAD_MS, SECTION_TAIL_MS)
+                if cue is not None:
+                    sound, lead_ms, tail_ms = cue
+                    emit(_silence(int(lead_ms / rate)), from_voice=False)
                     for start in range(0, sound.size, SAMPLE_RATE // 2):
                         if self._stop_requested():
                             stopped = True
@@ -2804,7 +2820,7 @@ class _Session:
                         emit(sound[start:start + SAMPLE_RATE // 2].tobytes(), from_voice=False)
                     if stopped:
                         break
-                    emit(_silence(int(CHIME_TAIL_MS / rate)), from_voice=False)
+                    emit(_silence(int(tail_ms / rate)), from_voice=False)
                 elif utterance.pause_after_ms:
                     emit(_silence(int(utterance.pause_after_ms / rate)),
                          from_voice=False)
@@ -2870,7 +2886,7 @@ def _self_test() -> int:
     error, since a missing sound must not stop a reading). One JSON line on
     stdout, exit 0 or 1, so the build script can gate on it.
     """
-    from vieneu_reader.speech.chimes import CHIME_NAMES, load_chime, load_part_chime
+    from vieneu_reader.speech.chimes import CHIME_NAMES, load_chime, load_part_chime, load_section_chime
     from vieneu_reader.speech.english.fallback import Fallback
     from vieneu_reader.speech.english.tagger import tag
 
@@ -2881,6 +2897,8 @@ def _self_test() -> int:
         # The part sounds too: a bundle that lost one would open every part
         # with the chapter chime and say so only on stderr.
         chimes.update({f"part-{name}": len(load_part_chime(name)) for name in CHIME_NAMES})
+        # And the section sounds, cut from the chimes at read time.
+        chimes.update({f"section-{name}": len(load_section_chime(name)) for name in CHIME_NAMES})
     except Exception as error:  # noqa: BLE001 - the whole point is to report
         print(json.dumps({"ok": False, "error": f"{type(error).__name__}: {error}"}))
         return 1

@@ -10,6 +10,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   voice reads on. Picked mid-listen, it took the page there and the next
   sentence pulled the page back to the voice; now the page stays where
   the reader went, and "Về chỗ đang đọc" brings it back.
+- A new chapter opens with the long sound only a part had until now, and
+  a first-level section (1.1, 1.2 ...) with a short, soft sound of its
+  own: the first moment of the chosen chime, quieter. A part and a chapter
+  now sound the same; deeper sections keep the rest a title gets, and a
+  section whose title stands right under its chapter's rings once, with
+  the chapter.
 
 ## 0.1.18
 

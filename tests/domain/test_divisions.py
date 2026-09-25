@@ -130,9 +130,44 @@ class DivisionPlanTests(unittest.TestCase):
         ])
         self.assertEqual(plan, {"c0-s0": "chapter", "c0-s2": "chapter", "c0-s4": "chapter"})
 
-    def test_sections_below_the_chapter_level_are_not_divisions(self) -> None:
-        plan = division_plan(book(SPINE), CONTENTS + [line(3, "Buổi sáng", "c4-s2")])
-        self.assertNotIn("c4-s2", plan)
+    def test_a_line_right_under_the_chapter_level_opens_a_section(self) -> None:
+        # "Chương dài, mục ngắn" (owner, 25/09): 1.1, 1.2 ... get the short
+        # sound. This one points at words after the chapter's own text.
+        plan = division_plan(book(SPINE), CONTENTS + [line(3, "1.2 Chiều xuống", "c5-s0")])
+        self.assertEqual(plan["c5-s0"], "section")
+        self.assertEqual(plan["c4-s0"], "part-chapter")
+
+    def test_sections_deeper_than_the_first_level_are_not_divisions(self) -> None:
+        # Each title after words of its own, so only its LEVEL can keep the
+        # subsection quiet.
+        deep = book([("Chương 1", [
+            ("Chương 1", "heading"), (PARAGRAPH, "paragraph"),
+            ("1.1 Bến sông", "heading"), (PARAGRAPH, "paragraph"),
+            ("1.1.1 Con đò", "heading"), (PARAGRAPH, "paragraph"),
+        ])])
+        plan = division_plan(deep, [
+            line(1, "Chương 1", "c0-s0"), line(2, "1.1 Bến sông", "c0-s2"), line(3, "1.1.1 Con đò", "c0-s4"),
+        ])
+        self.assertEqual(plan, {"c0-s0": "chapter", "c0-s2": "section"})
+
+    def test_a_section_right_under_its_chapter_s_title_is_the_same_arrival(self) -> None:
+        # "Chương 1" · "Bến sông" as its first section's title: the
+        # chapter's sound already said it, so the section does not ring.
+        plan = division_plan(book(SPINE), CONTENTS + [line(3, "1.1 Bến sông", "c4-s1")])
+        self.assertNotIn("c4-s1", plan)
+        self.assertEqual(plan["c4-s0"], "part-chapter")
+
+    def test_a_section_line_never_raises_a_chapter_to_a_part(self) -> None:
+        # Two lines on one passage: the higher one wins, and a section is
+        # the lowest - it must not look like a part line colliding.
+        contents = [
+            line(1, "Phần Một: Những con đường", "c3-s0"),
+            line(2, "Chương 1. Bến sông", "c4-s0"),
+            line(3, "1.9 Trước khi sang chương", "c6-s0"),
+            line(2, "Chương 2. Mùa nước nổi", "c6-s0"),
+        ]
+        plan = division_plan(book(SPINE), contents)
+        self.assertEqual(plan["c6-s0"], "chapter")
 
     def test_two_lines_on_one_passage_count_as_the_higher_one(self) -> None:
         plan = division_plan(book(SPINE), [

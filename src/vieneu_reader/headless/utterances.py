@@ -187,6 +187,12 @@ NOTE_CUE_PAUSE_MS = 450
 # provisional until the owner hears it).
 CHIME_LEAD_MS = 800
 CHIME_TAIL_MS = 700
+# Around the short sound that opens a first-level section (25/09, "Chương
+# dài, mục ngắn"): about the 1 000 ms rest before a heading that it
+# replaces, all told, because sections come thick - a document can hold
+# hundreds. Provisional until the owner hears it.
+SECTION_LEAD_MS = 400
+SECTION_TAIL_MS = 400
 
 
 @dataclass(frozen=True)

@@ -366,10 +366,11 @@ class ProtocolTests(unittest.TestCase):
         """Owner, 16/09: "nhạc chờ ngắn giữa các chương". The chime the
         reader keeps sounds between chapters, in place of the flat rest, as
         frames that are not the voice's; the first chapter of a reading gets
-        none, and "off" brings the 2000 ms rest back."""
+        none, and "off" brings the 2000 ms rest back. Since 25/09 a chapter
+        opens with the family's LONG sound ("Chương dài, mục ngắn")."""
         from tempfile import TemporaryDirectory
         from pathlib import Path
-        from vieneu_reader.speech.chimes import load_chime
+        from vieneu_reader.speech.chimes import load_part_chime
 
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -384,7 +385,7 @@ class ProtocolTests(unittest.TestCase):
             rests = [np.frombuffer(base64.b64decode(r["pcm"]), dtype=np.float32)
                      for r in replies if r.get("event") == "chunk" and not r["from_voice"]]
             sounding = [r for r in rests if np.abs(r).max() > 0]
-            chime = load_chime("marimba")
+            chime = load_part_chime("marimba")
             self.assertEqual(sum(r.size for r in sounding), chime.size)
             self.assertTrue(np.array_equal(np.concatenate(sounding), chime))
             # Exactly one chime: two chapters, one boundary, none at the start
@@ -3721,23 +3722,55 @@ class DivisionReadingTests(unittest.TestCase):
         # passage after it that the voice reads.
         self.assertEqual(followed[0], "PHẦN MỘT")
 
-    def test_a_part_opens_with_its_own_sound_and_a_chapter_with_the_chime(self) -> None:
-        """HIG 5.1, 25/09: the ear can tell a new part from a new chapter."""
-        from vieneu_reader.speech.chimes import load_chime, load_part_chime
+    def test_parts_and_chapters_open_long_and_first_level_sections_short(self) -> None:
+        """HIG 5.1, 25/09 ("Chương dài, mục ngắn"): a part and a chapter open
+        with the long sound, a first-level section with the short one; a
+        section straight under its chapter's title is that chapter's
+        arrival, and a subsection keeps the heading's rest."""
+        from vieneu_reader.speech.chimes import load_chime, load_part_chime, load_section_chime
         from tests.importers.epub_fixture import (
-            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+            SECTIONS_NAV, SECTIONS_PAGES, SECTIONS_SPINE, make_structured_epub,
         )
 
         replies, texts, _engine = self._read(lambda root: make_structured_epub(
-            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+            root, name="sections.epub", pages=SECTIONS_PAGES, spine=SECTIONS_SPINE, nav=SECTIONS_NAV,
         ))
         sounds = self._sounds_before(replies, texts)
-        part, chapter = load_part_chime("marimba"), load_chime("marimba")
-        self.assertGreater(part.size, chapter.size)
-        self.assertEqual(sorted(sounds), ["Chương 2", "PHẦN HAI", "PHẦN MỘT"])
-        self.assertTrue(np.array_equal(sounds["PHẦN MỘT"], part))
-        self.assertTrue(np.array_equal(sounds["PHẦN HAI"], part))
-        self.assertTrue(np.array_equal(sounds["Chương 2"], chapter))
+        long, short = load_part_chime("marimba"), load_section_chime("marimba")
+        self.assertGreater(long.size, load_chime("marimba").size)
+        self.assertLess(short.size, load_chime("marimba").size)
+        self.assertEqual(sorted(sounds), ["1.2 Con đò", "2.1 Mùa nước nổi", "Chương 2", "PHẦN MỘT"])
+        self.assertTrue(np.array_equal(sounds["PHẦN MỘT"], long))
+        self.assertTrue(np.array_equal(sounds["Chương 2"], long))
+        self.assertTrue(np.array_equal(sounds["1.2 Con đò"], short))
+        self.assertTrue(np.array_equal(sounds["2.1 Mùa nước nổi"], short))
+        # A section's sound sits in 400 ms of quiet on each side.
+        self.assertEqual(self._rests(replies).count(SAMPLE_RATE * 400 // 1000), 4)
+
+    def test_every_family_opens_a_section_with_its_own_short_sound(self) -> None:
+        from vieneu_reader.speech.chimes import load_chime, load_section_chime
+        from tests.importers.epub_fixture import (
+            SECTIONS_NAV, SECTIONS_PAGES, SECTIONS_SPINE, make_structured_epub,
+        )
+
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="sections.epub", pages=SECTIONS_PAGES, spine=SECTIONS_SPINE, nav=SECTIONS_NAV,
+        ), chime="harp")
+        sounds = self._sounds_before(replies, texts)
+        # Harp has no longer sound: its chime opens a chapter, as before.
+        self.assertTrue(np.array_equal(sounds["Chương 2"], load_chime("harp")))
+        self.assertTrue(np.array_equal(sounds["1.2 Con đò"], load_section_chime("harp")))
+
+    def test_with_the_chime_off_a_section_rests_like_a_heading(self) -> None:
+        from tests.importers.epub_fixture import (
+            SECTIONS_NAV, SECTIONS_PAGES, SECTIONS_SPINE, make_structured_epub,
+        )
+
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="sections.epub", pages=SECTIONS_PAGES, spine=SECTIONS_SPINE, nav=SECTIONS_NAV,
+        ), chime="off")
+        self.assertEqual(self._sounds_before(replies, texts), {})
+        self.assertNotIn(SAMPLE_RATE * 400 // 1000, self._rests(replies))
 
     def test_a_family_without_a_part_sound_opens_a_part_with_its_chime(self) -> None:
         from vieneu_reader.speech.chimes import load_chime, load_part_chime

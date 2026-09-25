@@ -11,6 +11,10 @@ hears the same sound every time and nothing is fetched.
 A chime is played as a plain frame, the way the silence between paragraphs
 is: not through the time-stretcher (a chime should not speed up with the
 reading), not into the sentence cache, and never billed to a paid voice.
+
+Since 25/09 ("Chương dài, mục ngắn") a chapter opens with the family's LONG
+sound - the one parts had - and a first-level section with a short, soft
+one cut from the family's own chime at read time (`load_section_chime`).
 """
 
 from __future__ import annotations
@@ -22,11 +26,21 @@ import numpy as np
 
 CHIME_NAMES: tuple[str, ...] = ("marimba", "harp", "piano")
 DEFAULT_CHIME = "marimba"
-# The sound that opens a PART (HIG 5.1, owner 25/09): longer than the
-# family's chapter chime and made to go with it, so the ear can tell a new
-# part from a new chapter. Only the families named here have one; the others
-# open a part with their chapter chime.
+# The family's LONG sound (HIG 5.1, owner 25/09): made for parts, and since
+# "Chương dài, mục ngắn" the sound that opens a chapter too. Only the
+# families named here have one; the others open parts and chapters with
+# their chime, which is already two seconds long.
 PART_SOUNDS: dict[str, str] = {"marimba": "part-marimba"}
+# The sound that opens a first-level SECTION (1.1, 1.2 ...): short and soft,
+# because a document can hold hundreds of them (owner, 25/09). Cut from the
+# family's own chime rather than a file of its own - the same instrument as
+# the chapter's sound, nothing to download, no credits. 0.45 s holds
+# marimba's one strike, piano's first chord (its second comes at 0.45 s)
+# and harp's two plucks; the last 80 ms fade to nothing so the cut is not a
+# click; 6 dB under the chime. Provisional until the owner hears it.
+SECTION_SECONDS = 0.45
+SECTION_FADE_SECONDS = 0.08
+SECTION_GAIN_DB = -6.0
 SAMPLE_RATE = 48000
 
 _loaded: dict[str, np.ndarray] = {}
@@ -68,10 +82,31 @@ def load_chime(name: str) -> np.ndarray:
 
 
 def load_part_chime(name: str) -> np.ndarray:
-    """The sound that opens a part for this chime family: its own part
-    sound, or - for a family that has none - its chapter chime."""
+    """The long sound that opens a part - and since 25/09 a chapter - for
+    this chime family: its own part sound, or its chime where it has none."""
 
     if name not in CHIME_NAMES:
         raise ValueError(f"unknown chime: {name!r}")
     stem = PART_SOUNDS.get(name)
     return _load(name) if stem is None else _load(stem)
+
+
+def load_section_chime(name: str) -> np.ndarray:
+    """The short sound that opens a first-level section for this family:
+    the first `SECTION_SECONDS` of its chime, softer, faded out."""
+
+    if name not in CHIME_NAMES:
+        raise ValueError(f"unknown chime: {name!r}")
+    key = f"section-{name}"
+    cached = _loaded.get(key)
+    if cached is not None:
+        return cached
+    length = int(SAMPLE_RATE * SECTION_SECONDS)
+    fade = int(SAMPLE_RATE * SECTION_FADE_SECONDS)
+    cut = _load(name)[:length].copy()
+    if cut.size < length:
+        cut = np.pad(cut, (0, length - cut.size))
+    cut *= np.float32(10 ** (SECTION_GAIN_DB / 20))
+    cut[-fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
+    _loaded[key] = cut
+    return cut
