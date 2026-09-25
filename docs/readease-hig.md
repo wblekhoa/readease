@@ -1657,10 +1657,13 @@ chủ: một màn hình), không log, không báo trang, không error-callback.
 - **Trang**: *Cài đặt giọng đọc* có hàng **Loa** ghi tên thiết bị đang phát; khi không phải mặc định, hàng nói thẳng
   "không phải thiết bị mặc định của hệ" — người dùng Multi-Output thấy ngay giọng đi đâu, và phép thử A/B (đổi output
   khi app đang chạy / chọn trước rồi mở app) trả lời bằng một dòng chữ thay vì bằng tai.
-- **Chưa làm, có điều kiện**: đi theo thiết bị mặc định KHI NÓ ĐỔI lúc app đang chạy (listener
-  `kAudioHardwarePropertyDefaultOutputDevice` → mở lại sink, bài đọc dở đọc lại từ vị trí vừa báo). cpal mở thiết bị
-  mặc định bằng unit `DefaultOutput` nhưng ghim `CurrentDevice`; Apple không nói unit có còn theo mặc định không — chỉ
-  phép thử A trên bản cài trả lời được (đổi output mặc định của máy là cài đặt hệ thống, AI không đụng). A hỏng → làm.
+- **Phép thử A đã trả lời (chủ 25/09, trên bản cài)**: đổi loa mặc định lúc đang đọc → **giọng THEO loa mới** (unit
+  `DefaultOutput` của cpal đi theo mặc định), nhưng hàng **Loa** vẫn ghi loa cũ — tên được chụp một lần lúc mở app, và
+  `audio:device` chỉ bắn lúc đó. Nên KHÔNG mở lại sink; chỉ nhãn phải theo: khi sink đang theo mặc định
+  (`default: true`), engine hỏi lại tên loa mặc định mỗi **2 s** (`audio.rs::watch_default_output`, không listener
+  CoreAudio, không thêm thư viện) và bắn `audio:device` khi tên đổi; lệnh `audio_output` trả tên hiện tại. Sink rơi
+  sang thiết bị khác (`default: false`) thì nhãn giữ nguyên — âm thanh của nó cũng không đi theo. Luồng theo dõi giữ
+  tham chiếu yếu tới trạng thái của engine: engine khởi động lại thì nó tự dừng.
 
 ### 3.22 Nhật ký — "Báo lỗi" có gì để gửi (21/09)
 
