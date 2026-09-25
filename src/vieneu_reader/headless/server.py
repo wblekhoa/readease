@@ -1223,6 +1223,14 @@ class _Session:
                 for chapter in presentation.chapters
                 for segment_id in getattr(chapter, "spoken_elsewhere", ())
             }
+            # A printed table of contents (HIG 5.1, 25/09) is passed over the
+            # same way: on the page, never in the voice. "Read from here" on
+            # one of its lines carries on from the next passage that speaks.
+            already_said.update(
+                segment_id
+                for chapter in presentation.chapters
+                for segment_id in getattr(chapter, "unread", ())
+            )
             if already_said:
                 # A chapter that WAS the notes has nothing left to say. Its
                 # title alone, spoken into the silence at the end of a book,

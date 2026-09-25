@@ -4,6 +4,15 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- A table of contents printed as a page is shown, not read aloud. The
+  voice used to read it line by line - a list of chapter titles with
+  nothing to follow, a minute or two in a long document. The page stays,
+  and its links still work; "read from here" on one of its lines starts
+  at the first passage after it. A sentence that points to another
+  chapter, or a page of links out of the document, is read as before.
+
 ## 0.1.16
 
 The voice follows the text: it breathes where the text does, chimes where

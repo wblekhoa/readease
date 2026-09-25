@@ -103,6 +103,9 @@ class _TextEvent:
     marker: tuple[str, str] | None = None
     #: A `<hr/>` came between the previous block and this one.
     after_break: bool = False
+    #: At least half its words are a link to ANOTHER page of the book - a
+    #: line of a printed table of contents (HIG 5.1, 25/09).
+    linked: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -261,6 +264,7 @@ def _list_markers(ordered: ElementTree.Element) -> dict[int, tuple[str, str]]:
 def _chapter_events(
     root: ElementTree.Element,
     spoken_blocks: frozenset[int] = frozenset(),
+    content_member: str | None = None,
 ) -> tuple[_Event, ...]:
     """Every readable block in one chapter, in order.
 
@@ -343,6 +347,10 @@ def _chapter_events(
                         else None
                     ),
                     after_break=take_break(),
+                    linked=(
+                        content_member is not None
+                        and _linked_share(element, content_member) >= 0.5
+                    ),
                 ))
                 waiting.clear()
             else:
@@ -620,6 +628,44 @@ def _strip_sentinels(text: str) -> tuple[str, tuple[tuple[int, int], ...]]:
     return "".join(clean), tuple(marks)
 
 
+def _link_target(content_member: str, href: str) -> str | None:
+    """The page of the book a link opens - None for a place on the same
+    page, a link out of the book, or one that cannot be read."""
+
+    try:
+        parsed = urlsplit(href)
+    except ValueError:
+        return None
+    if parsed.scheme or parsed.netloc or not parsed.path:
+        return None
+    decoded = unquote(parsed.path).replace("\\", "/")
+    base = PurePosixPath(content_member).parent.as_posix()
+    target = posixpath.normpath(posixpath.join(base, decoded))
+    return None if target == content_member else target
+
+
+def _linked_share(element: ElementTree.Element, content_member: str) -> float:
+    """How much of a block's words sit inside links to another page of the
+    book: a line of a printed contents is nearly all link ("Chương 1. Bến
+    sông", sometimes a page number after it); a sentence that points to a
+    chapter is mostly its own words."""
+
+    total = len("".join(_visible_inner_text(element).split()))
+    if not total:
+        return 0.0
+    linked = 0
+    for node in element.iter():
+        if node is element or _local_name(node.tag) != "a":
+            continue
+        href = next(
+            (value for key, value in node.attrib.items() if _local_name(key) == "href"),
+            "",
+        )
+        if href and _link_target(content_member, href) is not None:
+            linked += len("".join(_visible_inner_text(node).split()))
+    return linked / total
+
+
 def _resolve_image_href(content_member: str, href: str) -> str:
     try:
         parsed = urlsplit(href)
@@ -699,7 +745,7 @@ def _prepared_events(
     spoken_blocks: frozenset[int] = frozenset(),
 ) -> tuple[_PreparedEvent, ...]:
     prepared: list[_PreparedEvent] = []
-    for event in _chapter_events(content_root, spoken_blocks):
+    for event in _chapter_events(content_root, spoken_blocks, content_member):
         if isinstance(event, _TextEvent):
             prepared.append(event)
             continue
@@ -825,6 +871,8 @@ def _chapter_presentation(
     anchor_indexes: dict[str, int] = {}
     marker_indexes: list[tuple[int, tuple[str, str]]] = []
     break_indexes: list[int] = []
+    # (first segment, mostly a link to another page) for every block.
+    blocks: list[tuple[int, bool]] = []
     previous_segment_index: int | None = None
     for event in events:
         if isinstance(event, _TextEvent):
@@ -871,6 +919,7 @@ def _chapter_presentation(
                     marker_indexes.append((base, event.marker))
                 if event.after_break:
                     break_indexes.append(base)
+                blocks.append((base, event.linked))
             generated_text.extend(parts)
             if parts:
                 previous_segment_index = len(generated_text) - 1
@@ -881,6 +930,18 @@ def _chapter_presentation(
         raise CorruptBookError(
             "Nội dung hình ảnh EPUB không còn khớp với bản đã nhập."
         )
+    # A table of contents printed as a page (HIG 5.1, 25/09): two or more
+    # lines, and four in five of everything that is not a heading, are links
+    # to other pages of the book. The page stays; the voice passes over all
+    # of it, its title too - "Mục lục" said alone into a silence announces
+    # nothing. The book's own nav was never read (the importer skips <nav>).
+    body = [linked for base, linked in blocks if chapter.segments[base].kind != "heading"]
+    lines = sum(body)
+    unread = (
+        tuple(segment.id for segment in chapter.segments)
+        if lines >= 2 and lines >= 0.8 * len(body)
+        else ()
+    )
 
     figures: list[FigureRef] = []
     next_number = first_figure_number
@@ -975,6 +1036,7 @@ def _chapter_presentation(
                 for index, (label, spoken) in marker_indexes
             ),
             tuple(chapter.segments[index].id for index in break_indexes),
+            unread,
         ),
         next_number,
     )
