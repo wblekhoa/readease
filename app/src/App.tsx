@@ -219,10 +219,12 @@ export default function App() {
   }, []);
   const updater = useUpdater(appVersion);
   /** Where the voice goes (HIG 3.21): asked once the page is up, then
-   * followed by the host's `audio:device` whenever it changes. */
+   * followed by the host's `audio:device` whenever it changes. Any host
+   * that answers is asked - the mock in a browser too, which `IN_WINDOW`
+   * leaves out, so the named row can be seen outside the window. */
   const [audioOutput, setAudioOutput] = useState<{ name: string; default: boolean } | null>(null);
   useEffect(() => {
-    if (!IN_WINDOW) return;
+    if (!("__TAURI_INTERNALS__" in window)) return;
     invoke<{ name: string; default: boolean }>("audio_output").then(setAudioOutput).catch(() => undefined);
     const heard = listen<{ name: string; default: boolean }>("audio:device", (event) => setAudioOutput(event.payload));
     return () => { heard.then((unlisten) => unlisten()).catch(() => undefined); };

@@ -585,6 +585,19 @@ async function main() {
       }
       await evalJs(`localStorage.removeItem("readease.reading-mode")`);
 
+      // The Speaker row names where the voice goes (HIG 3.21), asked of the
+      // host once the page is up. The mock answers the way the host does, so
+      // a row still saying "Chưa biết" means the page never asked (campaign
+      // 26/09: no gate had ever shown the named row).
+      if (!(await goto(SCREENS.player_settings))) expect("speaker", false, "could not open Voice settings");
+      else {
+        const row = await evalJs(`(() => { const title = [...document.querySelectorAll('[role="dialog"] *')].find((e) => !e.childElementCount && e.textContent.trim() === "Loa");
+          return title ? title.parentElement.textContent.trim() : null; })()`);
+        expect("speaker", row === "LoaMock speakers · Thiết bị ra âm mặc định của hệ",
+          `the Speaker row reads ${JSON.stringify(row)}, not "Loa" / "Mock speakers · Thiết bị ra âm mặc định của hệ"`);
+        crashed("speaker");
+      }
+
       if (!(await goto([]))) expect("menu", false, "home did not load");
       else {
         if (!(await focusOn(/^Đổi chế độ$/))) expect("menu", false, "no mode switch");
