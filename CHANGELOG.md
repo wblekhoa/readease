@@ -4,7 +4,12 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.17
+
+Clearer seams for the ear: a breath around the chapter chime, a sound
+of its own for a part, one sound for one arrival, and no printed
+contents read aloud; pictures that show on the dark page and open from
+the keyboard. Installs over 0.1.16, or lets 0.1.16 install it.
 
 - A chapter settles before its chime. The silence before the chime is
   now about 0.8 s and the breath after it 0.7 s - they were 0.3 and 0.5,
