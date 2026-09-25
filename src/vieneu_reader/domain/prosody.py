@@ -20,7 +20,10 @@ SENTENCE_ENDINGS = frozenset(".!?…")
 _TRAILING_CLOSERS = frozenset("\"'”’»›)]}")
 _BULLET_GLYPHS = frozenset("•◦▪●‣·*")
 
-CHAPTER_PAUSE_MS = 1200
+# A new chapter or part with the chime off (HIG 5.1). It was 1200 - only
+# 200 more than the rest before any heading, so a new chapter sounded like
+# a new section (tier 2, 25/09; provisional until the owner hears it).
+CHAPTER_PAUSE_MS = 2000
 LINE_PAUSE_MS = 250
 # One sentence to the next inside a paragraph. The voice is asked to read each
 # sentence on its own, which leaves about 250 ms at the seam by itself; this
@@ -78,6 +81,10 @@ _ABBREVIATIONS = frozenset(
 # the same audio either way.
 HEADING_RATE = 0.92
 HEADING_GAIN = 1.26  # +2 dB
+
+# Two headings in a row are one name read in two breaths - "Chương 1",
+# then its title - not two sections (tier 2, 25/09; provisional).
+HEADING_PAIR_MS = 500
 
 _AFTER_KIND_MS = {
     "heading": 850,
@@ -201,6 +208,8 @@ def split_sentences(text: str) -> tuple[str, ...]:
 
 
 def _block_pause_ms(current_kind: str, next_kind: str) -> int:
+    if current_kind == "heading" and next_kind == "heading":
+        return HEADING_PAIR_MS
     after = _AFTER_KIND_MS[current_kind]
     if current_kind == "list_item" and next_kind != "list_item":
         # Leaving a list closes a block, not just one more item.

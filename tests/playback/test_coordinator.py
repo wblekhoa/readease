@@ -1124,7 +1124,7 @@ class StructurePauseTests(unittest.TestCase):
                 SENTENCE_PAUSE_MS,  # split at a finished sentence
                 450,                # paragraph block -> list
                 300,                # one list item to the next
-                1200,               # chapter change
+                2000,               # chapter change (25/09: 1200 before)
             ],
         )
 

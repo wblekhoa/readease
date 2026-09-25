@@ -956,11 +956,15 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   (`HEADING_RATE` 0,92 nhân với tốc độ đang chọn) và **to hơn 2 dB** (`HEADING_GAIN` 1,26, kẹp ±1), nghỉ
   **1 000 ms trước / 850 ms sau** (đoạn văn 800/700). Áp cho MỌI heading vì `Segment` chưa có cấp; áp SAU
   cache câu (cache lưu PCM gốc của giọng), nên đổi số không phát lại bản cũ và không bump `READING_REVISION`.
-  Không có tick âm cho tiêu đề: chủ nghe bốn mẫu 16/09 và không chọn.
+  Không có tick âm cho tiêu đề: chủ nghe bốn mẫu 16/09 và không chọn. **Hai tiêu đề liền nhau** (số chương rồi tên
+  chương: "Chương 1" · "Bến sông") nghỉ **500 ms** (`HEADING_PAIR_MS`, 25/09 tầng 2, số tạm chờ chủ nghe): hai dòng
+  ấy là MỘT cái tên đọc làm hai hơi — 1 000 ms cũ tách chúng xa như hai mục khác nhau.
 - **Chuyển chương có nhạc chờ** (chủ, 16/09: "sound effect dạng nhạc chờ ngắn giữa các chương"). Ba âm sinh
   bằng ElevenLabs rồi hạ mono 48 kHz, −14 dBFS, đóng vào gói `speech/chimes/` (marimba 0,9 s · harp 2 s ·
-  piano 2 s; nguồn ghi ở `THIRD_PARTY_NOTICES.md`, audit công khai ghim hash). Thay chỗ 1 200 ms im lặng
-  bằng **300 ms → âm → 500 ms**; chỉ ở chỗ MỞ một chương hoặc phần (bullet kế tiếp), không ở câu đầu; phát như khung im lặng
+  piano 2 s; nguồn ghi ở `THIRD_PARTY_NOTICES.md`, audit công khai ghim hash). Thay chỗ khoảng lặng chương
+  bằng **800 ms → âm → 700 ms** (25/09 tầng 2, số tạm chờ chủ nghe; 16/09 là 300 → âm → 500: chuông chen vào ngay sau
+  chữ cuối, chương cũ chưa kịp lắng — nay lặng trước âm dài gần gấp đôi hết đoạn 450, và một hơi thở trước tên chương);
+  chỉ ở chỗ MỞ một chương hoặc phần (bullet kế tiếp), không ở câu đầu; phát như khung im lặng
   (`from_voice=False`: không stretch theo tốc độ, không vào cache, không tính tiền giọng API). Setting
   `chapter_chime` ∈ {off, marimba, harp, piano}, mặc định **marimba** (ngắn nhất); setting chưa từng ghi =
   mặc định, không phải tắt.
@@ -981,7 +985,8 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
     hết câu ở cuối trang nghỉ như hết đoạn. Có bookmark → mỗi bookmark là một chương.
   - **Phần chỉ một âm**: chuông vang trước tên phần; chương đầu tiên đứng ngay sau tên phần (≤ 80 chữ ở giữa: tên,
     phụ đề, đề từ) KHÔNG vang lần hai mà nghỉ **1 500 ms** (`PART_TO_CHAPTER_MS`, số tạm chờ chủ nghe). Tắt chuông:
-    chương và phần đều 1 200 ms như cũ.
+    chương và phần **2 000 ms** (`CHAPTER_PAUSE_MS`, 25/09 tầng 2, số tạm; 1 200 cũ chỉ hơn khoảng trước một tiêu đề
+    200 ms nên tai không nghe ra đã sang chương); phần → chương đầu vẫn 1 500 ms — tên phần vừa đọc đã báo.
   - Tệp mới mà không phải chương (trang đầu sách, tệp bị tách) → nhịp khối thường (đoạn 450, trước tiêu đề 1 000).
   - Rủi ro đã biết, chưa đo: mục lục PHẲNG liệt kê cả mục nhỏ ở cấp ngoài cùng sẽ vang chuông ở mỗi mục — cột Mục lục
     cũng đánh số chúng như chương nên tai và mắt vẫn khớp; chưa đếm trên thư viện của chủ (chưa được phép quét).
@@ -1036,8 +1041,8 @@ của từng số nằm ở bullet §5.1 và ở chú thích ngay cạnh hằng 
 | 5. Chữ cho tai | `domain/prosody.py` `speakable_text` (+ `speak_english_forms`, `speak_attached_dashes`) | hạ chữ hét, "#N", gạch, giờ và khoảng số tiếng Anh, ngắt cảnh → "" | §5.1 · `test_prosody.py` |
 | 6. Cắt câu | `domain/prosody.py` `split_sentences` | chỉ cắt ở dấu kết câu; viết tắt, tên viết tắt không cắt | §5.1 · `test_prosody.py` |
 | 7. Giọng | `speech/vieneu.py` + SDK VieNeu (tự chuẩn hoá chữ) · `speech/kokoro.py` (G2P + ONNX) | VI: lượt ≤ 3 chữ đi `infer`; EN: tỉa mép lặng còn 120 ms | §5.1 · `test_kokoro.py` |
-| 8. Nhịp nghỉ chèn | `domain/prosody.py` `pause_after_ms`, `headless/utterances.py` | câu 250 · dòng 250 · đoạn 450 · danh sách 300 · trích dẫn 550 · tiêu đề trước 1 000 / sau 850 · ngắt cảnh 1 600 · chương, phần 1 200 · phần → chương 1 500 | §5.1 · `test_prosody.py` |
-| 9. Tiêu đề và chuông | `headless/server.py` `_speak`, `speech/chimes.py` | tiêu đề 0,92× và +2 dB · chuông 300 → âm → 500 ms, không stretch | §5.1 · `THIRD_PARTY_NOTICES.md` |
+| 8. Nhịp nghỉ chèn | `domain/prosody.py` `pause_after_ms`, `headless/utterances.py` | câu 250 · dòng 250 · đoạn 450 · danh sách 300 · trích dẫn 550 · tiêu đề trước 1 000 / sau 850 · hai tiêu đề liền 500 · ngắt cảnh 1 600 · chương, phần (tắt chuông) 2 000 · phần → chương 1 500 | §5.1 · `test_prosody.py` |
+| 9. Tiêu đề và chuông | `headless/server.py` `_speak`, `speech/chimes.py` | tiêu đề 0,92× và +2 dB · chuông 800 → âm → 700 ms, không stretch | §5.1 · `THIRD_PARTY_NOTICES.md` |
 | 10. Tốc độ và ống âm thanh | `playback/time_stretch.py`, `playback/pace.py`, shell Rust | mọi khoảng lặng chia theo tốc độ; khung `from_voice` | §3.23, §3.24 |
 
 `docs/reading-intelligence-audit.md`, `docs/reading-flow-proposal.md`, `docs/english-reading-2026-09.md` là ĐỀ XUẤT

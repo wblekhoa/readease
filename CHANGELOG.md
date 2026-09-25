@@ -4,6 +4,16 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- A chapter settles before its chime. The silence before the chime is
+  now about 0.8 s and the breath after it 0.7 s - they were 0.3 and 0.5,
+  so the chime came in on the heels of the last word. With the chime
+  off, a new chapter or part rests 2 s instead of 1.2, clearly longer
+  than the rest before a heading. A chapter's number and its title, two
+  headings in a row, are half a second apart instead of a full second:
+  one name read in two breaths.
+
 ## 0.1.16
 
 The voice follows the text: it breathes where the text does, chimes where

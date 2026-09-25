@@ -180,10 +180,13 @@ NOTE_CUE_PAUSE_MS = 450
 
 # Around the chime that opens a chapter (owner, 16/09): the previous
 # chapter's last words settle, the chime, then a breath before the title.
-# Together with a 0.9-2.0 s chime this replaces the 1.2 s of plain silence
-# a chapter boundary used to get; with the chime off, the silence stays.
-CHIME_LEAD_MS = 300
-CHIME_TAIL_MS = 500
+# Together with a 0.9-2.0 s chime this replaces the plain silence a chapter
+# boundary gets with the chime off. 300 and 500 until 25/09: the chime
+# came in on the heels of the last word, before the chapter had settled;
+# now the silence before it is nearly twice a paragraph's (tier 2,
+# provisional until the owner hears it).
+CHIME_LEAD_MS = 800
+CHIME_TAIL_MS = 700
 
 
 @dataclass(frozen=True)
