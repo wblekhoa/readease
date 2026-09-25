@@ -93,6 +93,15 @@ const SCREENS = {
   player_settings: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
   reading_settings: [...OPEN_BOOK, ["click", /^Cài đặt đọc$|^Reading settings$/], ["wait", /^Cài đặt đọc$|^Reading settings$/, "[role=dialog]"],
     ["click", /^Tuỳ chỉnh$|^Customize$/], ["wait", /^Giãn dòng$|^Line spacing$/, "input"]],
+  // A picture opened large (HIG 3.10). Its ground is black in both themes,
+  // where line art on a transparent ground disappears - so the cell exists
+  // to measure the sheet the picture sits on (25/09). The picture is opened
+  // the way its click handler is reached, not by where it happens to be on
+  // the page: every chapter's figures are in the DOM, most off-page.
+  // Reached through the contents, like a reader would: the sample's sketch
+  // on a transparent ground sits in "Chương 6 Bài tập 02".
+  lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
+    ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
 // A panel is opened only in the states that change what is in it. The two
 // settings panels follow the models and the voice, not the library's
@@ -101,6 +110,7 @@ const SCREENS = {
 const ONLY_IN = {
   player_settings: ["default", "sidebar", "english_missing", "english_partial", "vietnamese_missing"],
   reading_settings: ["default", "sidebar"],
+  lightbox: ["default"],
 };
 const STATES = {
   default: "",
@@ -163,6 +173,20 @@ async function main() {
     // reached nothing - one cell in 216 read as unreachable on the second
     // full run, and three re-probes with a wait in front reached it every
     // time.
+    // A picture of the document, opened large: its images arrive a
+    // tick after the text, so wait for one before clicking it.
+    const openFigure = async () => {
+      // The sketch on a transparent ground - the picture the sheet exists
+      // for - and only when it never arrives, the first picture there is.
+      for (const selector of ['[data-figure="fig-lineart"] img', "[data-figure] img"]) {
+        for (let i = 0; i < 40; i++) {
+          const opened = await evalJs(`(() => { const img = document.querySelector(${JSON.stringify(selector)}); if (!img) return false; img.click(); return true; })()`);
+          if (opened) { await sleep(350); return true; }
+          await sleep(150);
+        }
+      }
+      return false;
+    };
     const findAndClick = async (re, patience = 4000) => {
       await waitFor(re, patience);
       // The first VISIBLE match, as a hand would find it: the folded column
@@ -243,6 +267,7 @@ async function main() {
             for (const [kind, re, within] of steps) {
               const ok = kind === "click" ? await findAndClick(re)
                 : kind === "click?" ? (await findAndClick(re, 600), true)
+                : kind === "open-figure" ? await openFigure()
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -264,7 +289,10 @@ async function main() {
               const over = [...document.querySelectorAll("*")].filter((e) => { const s = getComputedStyle(e); return e.scrollWidth > e.clientWidth + 1 && s.overflowX !== "auto" && s.overflowX !== "scroll" && s.overflowX !== "hidden" && e.clientWidth > 0; })
                 .map((e) => e.tagName.toLowerCase() + (e.className && typeof e.className === "string" ? "." + e.className.split(" ").slice(0, 2).join(".") : "")).slice(0, 4);
               let voice; try { voice = JSON.parse(localStorage.getItem("readease.mock-settings") || "{}").voice; } catch {}
-              return { leaked, over, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang }; })()`);
+              const plates = [...document.querySelectorAll("[data-figure] img")].map((img) => getComputedStyle(img).backgroundColor);
+              const large = document.querySelector("[data-lightbox] img");
+              const lightboxPlate = large ? getComputedStyle(large).backgroundColor : null;
+              return { leaked, over, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
             for (const k of probe.leaked) if (KEYS.has(k)) findings.push({ cell, kind: "i18n-leak", detail: k });
             // No cell picks a voice, so the saved one (the mock's "Thu Hà")
             // must still be the saved one after the walk. Start-up once
@@ -278,6 +306,14 @@ async function main() {
             // language it claims if the page agrees.
             if (probe.htmlLang !== lang) findings.push({ cell, kind: "lang", detail: `<html lang="${probe.htmlLang}">, wanted ${lang}` });
             if (probe.textLen < 20) findings.push({ cell, kind: "blank", detail: `only ${probe.textLen} chars of text` });
+            // Pictures sit on a sheet of paper where their ground is dark
+            // (HIG 3.9, 3.10): on the dark page, and in the lightbox in both
+            // themes. Line art on a transparent ground was drawn for white.
+            const PAPER = "rgb(255, 255, 255)";
+            const bare = theme === "dark" ? probe.plates.filter((c) => c !== PAPER) : [];
+            if (bare.length) findings.push({ cell, kind: "figure-plate", detail: `${bare.length}/${probe.plates.length} pictures on the dark page have no sheet (${bare[0]})` });
+            if (probe.lightboxPlate !== null && probe.lightboxPlate !== PAPER) findings.push({ cell, kind: "figure-plate", detail: `the picture in the lightbox has no sheet (${probe.lightboxPlate})` });
+            if (screen === "lightbox" && probe.lightboxPlate === null) findings.push({ cell, kind: "figure-plate", detail: "the lightbox did not open" });
             if (AXE) {
               // Injected per navigation (the page was reloaded for this cell),
               // then run against the whole document. `axe.run` resolves with

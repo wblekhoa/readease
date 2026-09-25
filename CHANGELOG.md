@@ -4,6 +4,15 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- Line drawings can be seen in the dark theme and when a picture is
+  opened large. A sketch or a diagram on a transparent ground was drawn
+  for white paper, and on the dark page - or the black behind a picture
+  opened large, in either theme - its lines all but disappeared. A
+  picture now sits on a white sheet there, exactly its own size; a
+  photo covers the sheet and looks the same as before.
+
 ## 0.1.16
 
 The voice follows the text: it breathes where the text does, chimes where
