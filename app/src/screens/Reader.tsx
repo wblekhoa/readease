@@ -642,8 +642,9 @@ export function Reader({
     if (ids.length) setShown(ids);
     setPageIndex({ page, pages });
     if (opened) setSeenChapter(opened.book.chapters[chapterIndex]?.id ?? null);
-    // Only the reader's own hand counts as wandering off from the voice.
-    if (reason === "turn" && currentSegment) setFollowing(ids.includes(currentSegment));
+    // Only the reader's own hand counts as wandering off from the voice: a
+    // page turned, or a place picked to look at.
+    if ((reason === "turn" || reason === "look") && currentSegment) setFollowing(ids.includes(currentSegment));
   }, [opened, chapterIndex, currentSegment]);
 
   // The chapter in front of the reader - the page's own on pages, the one
@@ -1118,7 +1119,10 @@ export function Reader({
   /* Search, the column's third tab. A hit shows its place the way a
    * contents row does; the column stays so the next hit is one click away,
    * and the reading is not disturbed - looking something up mid-listen is
-   * the whole point of having it here. */
+   * the whole point of having it here. So the page STAYS on the hit while
+   * the voice reads on: it is the reader's own move, like a turned page
+   * (owner, 25/09: the next sentence pulled the page back to the voice).
+   * In a scroll the same comes from the spoken line leaving the view. */
   const search = sidebarTab === "search" && (
     <SearchPanel
       chapters={opened.book.chapters}
@@ -1126,7 +1130,7 @@ export function Reader({
       onJump={(hit) => {
         if (paged) {
           setChapterIndex(hit.chapterIndex);
-          setTarget({ segmentId: hit.segmentId, source: "contents" });
+          setTarget({ segmentId: hit.segmentId, source: "look" });
         } else {
           jumpTo(hit.segmentId);
         }
@@ -1135,14 +1139,15 @@ export function Reader({
   );
 
   /* Beside the contents, and under the same rule: a row jumps to the place,
-   * it never starts speaking. */
+   * it never starts speaking - and, like a search hit, the page stays there
+   * while the voice reads on. */
   const notes = showNotes && (
     <NotesPanel
       chapters={opened.book.chapters}
       annotations={opened.annotations ?? []}
       focusId={notesFocus}
       onNavigate={(segmentId) => {
-        showSegment(segmentId, "contents");
+        showSegment(segmentId, "look");
       }}
       error={noteError}
       onDelete={(annotationId) => {

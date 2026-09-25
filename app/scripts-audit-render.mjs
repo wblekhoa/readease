@@ -454,6 +454,55 @@ async function main() {
               box ? `the Change voice menu spans ${Math.round(box.top)}-${Math.round(box.bottom)} px of a ${box.height} px window` : "the Change voice menu did not open");
             await key("Escape");
           }
+          // A search hit or a note is a place the reader went to LOOK at,
+          // and the page stays there while the voice reads on in another
+          // chapter; "Về chỗ đang đọc" is the way back (owner, 25/09: the
+          // page was pulled back to the voice the next time it moved on).
+          // Pages hold one chapter at a time and the side column's rows
+          // carry no data-segment, so the chapters in the document are the
+          // page's. The mock moves the voice every 1.2 s: 3 s is two
+          // chances to snap back - once it is MOVING. Warming up it holds
+          // no place, and a page nobody pulls back proves nothing.
+          const chapterShown = () => evalJs(`[...new Set([...document.querySelectorAll("[data-segment]")]
+            .map((e) => e.dataset.segment.replace(/-seg-.*$/, "")))].join(",")`);
+          const spoken = () => evalJs(`document.querySelector('[aria-current="true"][data-segment]')?.dataset.segment ?? null`);
+          const moving = async () => {
+            const first = await spoken();
+            for (let i = 0; i < 40; i++) { await sleep(250); const now = await spoken(); if (now && now !== first) return true; }
+            return false;
+          };
+          const stays = async (leg, go) => {
+            if (!(await moving())) return expect("look", false, `${leg}: the voice never moved on`);
+            const before = await chapterShown();
+            if (!(await go())) return;
+            await sleep(400);
+            const landed = await chapterShown();
+            expect("look", landed !== before, `${leg}: 0.4 s after the click the page was in ${before} again (or never left it)`);
+            await sleep(3000);
+            const after = await chapterShown();
+            expect("look", after === landed, `${leg}: the page went back to the voice within 3 s (${landed} -> ${after})`);
+            expect("look", await waitFor(/^Về chỗ đang đọc$/, 500, "button"), `${leg}: no "Về chỗ đang đọc" while the page is away from the voice`);
+          };
+          await stays("search hit", async () => {
+            if (!(await findAndClick(/^Tìm trong tài liệu$/))) return expect("look", false, "no search button while reading");
+            await send("Input.insertText", { text: "hoạt động" });
+            await sleep(600);
+            // The last hit: the far end of the document, never the voice's chapter.
+            const hit = await evalJs(`(() => { const rows = [...document.querySelectorAll("button mark[data-search]")].map((m) => m.closest("button"));
+              if (!rows.length) return false; rows[rows.length - 1].click(); return true; })()`);
+            if (!hit) expect("look", false, 'searching "hoạt động" found nothing to go to');
+            return hit;
+          });
+          // Back with the voice (the pill, if the first leg left one), then
+          // the same from a note - one in a chapter the voice is NOT in:
+          // the mock reads from the top, and its notes sit in chapters 1-2.
+          await findAndClick(/^Về chỗ đang đọc$/, 500);
+          await stays("note", async () => {
+            if (!(await findAndClick(/^Highlight và ghi chú$/))) return expect("look", false, "no Highlights and notes button while reading");
+            const elsewhere = (await spoken() ?? "").startsWith("ch-0-") ? /những phương án đầu tiên/ : /sản phẩm phải hoạt động/;
+            if (!(await findAndClick(elsewhere))) return expect("look", false, "no note row to go to");
+            return true;
+          });
           await findAndClick(/^Dừng$/);
         }
         crashed("reader");

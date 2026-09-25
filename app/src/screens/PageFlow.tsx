@@ -14,9 +14,11 @@ import { text } from "../i18n";
 import { EdgeZone } from "../ui/patterns";
 import { columnAt, layoutPages, viewCount, viewStart, type Columns, type PageLayout } from "../ui/pageLayout";
 
-/** Why a page came on screen. "turn" is the reader's own hand; everything
- * else is the app taking them somewhere, which never counts as wandering. */
-export type PageReason = "open" | "voice" | "contents" | "figure" | "turn" | "reflow" | "idle";
+/** Why a page came on screen. "turn" and "look" are the reader's own hand -
+ * a page turned, or a place picked to look at (a search hit, a note) while
+ * the voice reads on elsewhere; everything else is the app taking them
+ * somewhere, which never counts as wandering. */
+export type PageReason = "open" | "voice" | "contents" | "figure" | "turn" | "look" | "reflow" | "idle";
 /** "__end__" as the segment id opens the chapter on its last page. A
  * `figureId` aims at the picture itself: its anchor paragraph can end one
  * page while the picture opens the next, and "Xem hình" with no picture in

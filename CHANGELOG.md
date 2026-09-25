@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- A search result, a highlight or a note stays on the page while the
+  voice reads on. Picked mid-listen, it took the page there and the next
+  sentence pulled the page back to the voice; now the page stays where
+  the reader went, and "Về chỗ đang đọc" brings it back.
+
 ## 0.1.18
 
 Two things that were in the way while listening: the Speaker row now
