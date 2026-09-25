@@ -782,11 +782,11 @@ const PLAN_ITEMS = [
 const APPLE_SHELF: Array<{ asset_id: string; title: string; status: string; book_id: string | null; paired_title: string | null; highlights: number }> = [
   { asset_id: "ab-1", title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo", status: "linked", book_id: "book-ux", paired_title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo", highlights: 3 },
   { asset_id: "ab-2", title: "Ghi chép đọc hằng tuần", status: "importable", book_id: null, paired_title: null, highlights: 5 },
-  { asset_id: "ab-3", title: "The Daily Stoic", status: "encrypted", book_id: null, paired_title: null, highlights: 1 },
-  { asset_id: "ab-4", title: "101 Essays That Will Change The Way You Think", status: "importable", book_id: null, paired_title: null, highlights: 0 },
+  { asset_id: "ab-3", title: "Morning Notes on Patience", status: "encrypted", book_id: null, paired_title: null, highlights: 1 },
+  { asset_id: "ab-4", title: "Forty Small Essays on Changing Your Mind Slowly", status: "importable", book_id: null, paired_title: null, highlights: 0 },
   { asset_id: "ab-5", title: "Cẩm nang usability cho đội sản phẩm", status: "linked", book_id: "book-three", paired_title: "Cẩm nang usability cho đội sản phẩm — bản nháp thứ ba, có ghi chú của cả nhóm", highlights: 0 },
-  { asset_id: "ab-6", title: "The Ultimate Guide to iPhone Photography", status: "too_large", book_id: null, paired_title: null, highlights: 3 },
-  { asset_id: "ab-7", title: "The Designer's Guide to Figma", status: "importable", book_id: null, paired_title: null, highlights: 0 },
+  { asset_id: "ab-6", title: "A Pocket Guide to Photographs in Low Light", status: "too_large", book_id: null, paired_title: null, highlights: 3 },
+  { asset_id: "ab-7", title: "Field Notes on Shared Design Canvases", status: "importable", book_id: null, paired_title: null, highlights: 0 },
 ];
 /* Enough of them, spread widely enough, to judge the notes panel at real
  * density: three chapters, one paragraph carrying TWO highlights, one note

@@ -21,13 +21,13 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { engineMessage, text } from "../i18n";
+import { engineMessage, text, textIn } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
 import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
 import { matchRanges } from "../ui/textSearch";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
-import { ListRow } from "../ui/patterns";
+import { ListRow, pressedByPointer, useLayerFocus } from "../ui/patterns";
 import { contentsRows, currentRow, type ContentsRow, type TocEntry } from "../ui/contents";
 import { Presence, scrollBehavior } from "../ui/motion";
 import type { SidebarTab } from "../ui/sidebarState";
@@ -115,6 +115,7 @@ function Figure({
   figure,
   cued,
   paged,
+  language,
   onOpen,
 }: {
   bookId: string;
@@ -123,6 +124,8 @@ function Figure({
   cued: boolean;
   /** On a page a picture must fit the page; in a scroll, the viewport. */
   paged: boolean;
+  /** The document's language: its label is the document's word (HIG 3.9). */
+  language?: string;
   onOpen: (source: string, alt: string) => void;
 }) {
   const [source, setSource] = useState<string | null>(null);
@@ -164,7 +167,9 @@ function Figure({
   // A caption on the page says it all; an alt that repeats it under the
   // picture is the same sentence twice (owner, 05/09).
   const alt = figure.alt_is_generic || figure.caption_segment_id ? "" : figure.alt ?? "";
-  const label = figure.label ?? text("reader.figure_label", { n: figure.number });
+  // The document's word, as the voice says it: "Figure 1" under an English
+  // book, whatever language the interface is in (HIG 3.9).
+  const label = figure.label ?? textIn(language, "reader.figure_label", { n: figure.number });
 
   return (
     <figure
@@ -179,18 +184,33 @@ function Figure({
       )}
       {source && (
         <>
-          <img
-            src={source}
-            alt={alt || label}
+          {/* A button, not an <img> with a click handler: Tab reaches it and
+              Enter opens it (HIG 3.10, 25/09). Its name says what the
+              picture is, so the picture inside is not read a second time. */}
+          <button
+            type="button"
+            aria-label={`${text("reader.figure_open")}: ${alt || label}`}
             title={text("reader.figure_open")}
-            onClick={() => onOpen(source, alt || label)}
-            onError={() => { setSource(null); setFailed(true); }}
-            draggable={false}
-            className={`mx-auto max-w-full cursor-zoom-in rounded-2xl dark:bg-figure-plate ${
-              paged ? "max-h-[calc(var(--page-h)-6rem)]" : "max-h-[46vh]"
-            }`}
-          />
-          <figcaption className="mt-2 text-center text-xs text-ink-mute">
+            onClick={(event) => {
+              onOpen(source, alt || label);
+              // After a mouse press it lets go of the focus, like every
+              // opener: a focused button would take the next Space - the
+              // reader's pause - and open the picture again.
+              if (pressedByPointer()) event.currentTarget.blur();
+            }}
+            className="mx-auto block max-w-full cursor-zoom-in rounded-2xl"
+          >
+            <img
+              src={source}
+              alt=""
+              onError={() => { setSource(null); setFailed(true); }}
+              draggable={false}
+              className={`mx-auto max-w-full rounded-2xl dark:bg-figure-plate ${
+                paged ? "max-h-[calc(var(--page-h)-6rem)]" : "max-h-[46vh]"
+              }`}
+            />
+          </button>
+          <figcaption lang={language} className="mt-2 text-center text-xs text-ink-mute">
             <span className="font-semibold">{label}</span>
             {alt && <span> · {alt}</span>}
           </figcaption>
@@ -1003,7 +1023,7 @@ export function Reader({
             figure.anchor_segment_id === segment.id &&
             figure.placement === "before")
           .map((figure) => (
-            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
+            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} language={language} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
           ))}
         <p
           data-segment={segment.id}
@@ -1045,7 +1065,7 @@ export function Reader({
             figure.anchor_segment_id === segment.id &&
             figure.placement === "after")
           .map((figure) => (
-            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
+            <Figure key={figure.id} bookId={bookId} figure={figure} paged={paged} language={language} cued={figure.id === currentFigure} onOpen={(source, alt) => setZoomed({ source, alt })} />
           ))}
       </div>
     ));
@@ -1337,30 +1357,46 @@ export function Reader({
         </div>
       )}
 
-      {zoomed && (
-        <div
-          data-lightbox
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-8"
-          onClick={() => setZoomed(null)}
-        >
-          <img
-            src={zoomed.source}
-            alt={zoomed.alt}
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-full max-w-full rounded-2xl bg-figure-plate"
-          />
-          <div className="absolute right-4 top-4">
-            <IconButton
-              onClick={() => setZoomed(null)}
-              aria-label={text("reader.figure_close")}
-              title={text("reader.figure_close")}
-              className="bg-paper"
-            >
-              <CloseIcon />
-            </IconButton>
-          </div>
-        </div>
-      )}
+      {zoomed && <Lightbox source={zoomed.source} alt={zoomed.alt} onClose={() => setZoomed(null)} />}
     </section>
+  );
+}
+
+/** A picture opened large (HIG 3.10): a named modal dialog, so the keyboard
+ * that opened it lands inside it, Tab stays there, and Escape - handled by
+ * the reader, which closes it - hands the focus back to the picture
+ * (`useLayerFocus`). Opened by the mouse, nothing moves. Its own component,
+ * so the hook lives above any early return. */
+function Lightbox({ source, alt, onClose }: { source: string; alt: string; onClose: () => void }) {
+  const layer = useRef<HTMLDivElement>(null);
+  useLayerFocus(layer);
+  return (
+    <div
+      ref={layer}
+      data-lightbox
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
+      tabIndex={-1}
+      className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-8"
+      onClick={onClose}
+    >
+      <img
+        src={source}
+        alt={alt}
+        onClick={(event) => event.stopPropagation()}
+        className="max-h-full max-w-full rounded-2xl bg-figure-plate"
+      />
+      <div className="absolute right-4 top-4">
+        <IconButton
+          onClick={onClose}
+          aria-label={text("reader.figure_close")}
+          title={text("reader.figure_close")}
+          className="bg-paper"
+        >
+          <CloseIcon />
+        </IconButton>
+      </div>
+    </div>
   );
 }

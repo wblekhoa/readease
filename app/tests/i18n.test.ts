@@ -2,7 +2,7 @@
  * test_i18n carried, ported to the web shell where the strings now live. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { setLanguage, text, TEXT, type TextKey } from "../src/i18n.ts";
+import { setLanguage, text, textIn, TEXT, type TextKey } from "../src/i18n.ts";
 
 const KEYS = Object.keys(TEXT) as TextKey[];
 
@@ -62,5 +62,20 @@ test("câu nghe thử đủ ngắn để lời hứa 'chưa tới $0,01' còn đ
       );
     }
   }
+  setLanguage("vi");
+});
+
+test("chữ của tài liệu theo ngôn ngữ tài liệu, không theo giao diện (HIG 3.9)", () => {
+  // An English document under a Vietnamese interface: the picture's label is
+  // the document's word, as the voice says it.
+  setLanguage("vi");
+  assert.equal(textIn("en", "reader.figure_label", { n: 1 }), "Figure 1");
+  assert.equal(textIn("vi", "reader.figure_label", { n: 2 }), "Hình 2");
+  // No language, or one the table does not have: the interface's.
+  assert.equal(textIn(undefined, "reader.figure_label", { n: 3 }), "Hình 3");
+  assert.equal(textIn("fr", "reader.figure_label", { n: 4 }), "Hình 4");
+  setLanguage("en");
+  assert.equal(textIn("vi", "reader.figure_label", { n: 5 }), "Hình 5");
+  assert.equal(text("reader.figure_label", { n: 6 }), "Figure 6");
   setLanguage("vi");
 });

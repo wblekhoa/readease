@@ -377,6 +377,11 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   CẢ HAI theme): đúng khung ảnh, cùng bo góc, không viền, không đệm — ảnh đục che kín nó nên ảnh chụp KHÔNG đổi, chỉ
   phần trong suốt hiện ra trắng như trang in. Theme sáng: không đổi (trang đã trắng; hình đang được báo vẫn thấy nền
   `band` xuyên qua). Không làm tối ảnh, không đảo màu: đổi màu hình là sửa nội dung của sách.
+- **Nhãn của hình theo ngôn ngữ TÀI LIỆU** (25/09): "Hình N" là chữ của tài liệu, không phải của giao diện — tài
+  liệu Anh dưới giao diện Việt hiện "Figure N", đúng câu giọng báo ("See figure N", theo ngôn ngữ đọc) — trước đó
+  mắt thấy "Hình 1" trong khi tai nghe "figure 1". Chú thích mang `lang` của tài liệu, nên VoiceOver đọc nó bằng
+  giọng của tài liệu. Nhãn riêng của sách ("Figure 1.1") giữ nguyên; chữ của giao diện quanh hình (nút "Xem ảnh
+  lớn", "Không tải được hình") vẫn theo giao diện. `textIn(ngôn ngữ, key)` trong `i18n.ts`.
 - **Don't sống**: ✗ sidebar không dấu vị trí (audit 01/09) · ✗ đếm "Chương X/Y" cho PDF không có
   mục lục (mỗi TRANG là một "chương") · ✗ hai hàng chrome chồng nhau trên đầu màn đọc.
 
@@ -633,6 +638,12 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Usage**: hình trong sách hiển thị vừa phải trong dòng chảy đọc; muốn xem kỹ thì mở lớn.
 - **Behavior**: bấm ảnh để mở · **Esc** hoặc bấm nền để đóng (listener gắn khi mở, gỡ khi đóng)
   · nút đóng là `IconButton`, không phải chữ "✕" tự vẽ.
+- **Bàn phím** (25/09; trước đó ảnh là `<img onClick>` — không vai trò, không tiêu điểm: chỉ chuột mở được, trái
+  §4.2): ảnh trong trang là một NÚT tên "Xem ảnh lớn: Hình N" (Tab tới, Enter/Space mở); lightbox là `role="dialog"`
+  `aria-modal` có tên, qua `useLayerFocus` — mở bằng phím thì nhận tiêu điểm, Tab ở yên bên trong, Esc đóng và trả
+  tiêu điểm về đúng ảnh; mở bằng chuột thì không kéo tiêu điểm, và nút ảnh tự nhả tiêu điểm sau cú bấm chuột
+  (`pressedByPointer`) — kẻo phím Space kế tiếp mở lại ảnh thay vì tạm dừng giọng. Kiểm được: lượt bàn phím của
+  render audit (`keys/figure`).
 - **Ảnh lớn luôn nằm trên tấm giấy** (25/09): nền lightbox là đen 70 % ở CẢ HAI theme, nên nét đen nền trong suốt
   chìm hẳn ở đó kể cả theme sáng. Ảnh trong lightbox có nền `figure-plate` ở cả hai theme (cùng luật §3.9).
   Kiểm được: render audit đo `background-color` thật của ảnh (`figure-plate`, ô `lightbox`).
@@ -739,7 +750,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   đoạn nó bắt đầu. Tách trong `ui/highlight.ts` (test node: ngoặc cong, NBSP, khoảng trắng đôi, tràn đoạn, nhiều highlight một đoạn — §3.14 cuối).
 - **Thư viện chủ (02/09, đếm, không đọc chữ)**: 7 cuốn Apple Books, tất cả là thư mục; 2 ghép theo tiêu
   đề với bản đã có; 1 quá lớn (230 MB, 3 highlight — không đồng bộ được); 4 nhập được; highlight thật
-  khớp 1/1 trên «101 Essays». Nhập cuốn 1,4 MB mất 0,2 s.
+  khớp 1/1 trên một cuốn thử. Nhập cuốn 1,4 MB mất 0,2 s.
 - **Parking lot**: màu highlight theo Apple (cột `ZANNOTATIONSTYLE` CHƯA đọc — ba test cũ canh "một truy vấn,
   một bản sao" của `_rows`; đọc thêm cột = cập nhật fixture có chủ đích; `style` lưu 0) · nâng cap 200 MB · sách tệp `.epub`
   đơn (đã hỗ trợ đường đi, chưa gặp ca thật).
@@ -845,6 +856,13 @@ VoiceOver chọn giọng theo nó, và trang từng ghi cứng `en`, nên giao d
 văn của tài liệu mang `lang` của TÀI LIỆU (`LibraryBook.language`, đã tính cả lựa chọn của người đọc), không phải của
 giao diện: tài liệu tiếng Anh dưới giao diện tiếng Việt vẫn được đọc bằng giọng Anh. axe không bắt được lỗi này — nó
 chỉ kiểm `lang` có hợp lệ hay không, không biết trang thật sự viết bằng tiếng gì.
+
+**Mức chủ chọn: CƠ BẢN** (chủ 25/09: "cứ làm ở mức cơ bản … để user tải tài liệu, chọn được tài liệu và đọc").
+Ba việc phải làm được chỉ bằng bàn phím, mỗi bước có tên để VoiceOver đọc: **nhập** một tài liệu ("Mở PDF hoặc
+EPUB"), **chọn** một tài liệu trên kệ ("Mở {tên}"), **đọc** rồi tạm dừng — và vùng live nói ra "đang đọc" /
+"tạm dừng". Kiểm tự động bằng hành trình `keys/journey` của render audit: Tab (không đặt tiêu điểm bằng mã) tới
+được từng control, control có tên, Enter/Space làm đúng việc, vùng live đổi chữ. Checklist VoiceOver 10 phút của
+chủ thành TUỲ CHỌN; phần WebKit/VoiceOver thật (giọng đọc của VoiceOver, menu macOS) vẫn là chưa đo.
 
 **Cổng đo được** (`scripts-audit-render.mjs`, `--no-axe` để bỏ qua): axe-core 4.13 chạy trong từng ô đã tới được của
 render audit (620 ô), luật `wcag2a wcag2aa`; **vi phạm mức serious/critical là ĐỎ**, moderate/minor được liệt kê để
@@ -1004,6 +1022,11 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
     chương và phần **2 000 ms** (`CHAPTER_PAUSE_MS`, 25/09 tầng 2, số tạm; 1 200 cũ chỉ hơn khoảng trước một tiêu đề
     200 ms nên tai không nghe ra đã sang chương); phần → chương đầu vẫn 1 500 ms — tên phần vừa đọc đã báo.
   - Tệp mới mà không phải chương (trang đầu sách, tệp bị tách) → nhịp khối thường (đoạn 450, trước tiêu đề 1 000).
+  - **Một lần đến, một âm** (25/09): dòng chương/phần mà giữa nó và dòng chia trước CHỈ có tiêu đề — hai dòng mục lục
+    trỏ hai tiêu đề liền nhau ("Chương 1" · "Bến sông"), phần lồng trong phần không một chữ ở giữa — là CÙNG một lần
+    đến: không vang lần hai, nghỉ như hai tiêu đề liền (500 ms). Có chữ thật ở giữa thì vẫn là chương mới và vẫn vang:
+    đếm trên thư viện của chủ (25/09, chỉ số), 23 cặp chuông cách nhau ≤ 80 chữ thì 19 là chương ngắn THẬT (21–80 chữ),
+    2 là đoạn ≤ 20 chữ, chỉ 2 là tiêu đề liền — nên luật cắt theo "chỉ tiêu đề", không theo số chữ.
   - Rủi ro đã biết, chưa đo: mục lục PHẲNG liệt kê cả mục nhỏ ở cấp ngoài cùng sẽ vang chuông ở mỗi mục — cột Mục lục
     cũng đánh số chúng như chương nên tai và mắt vẫn khớp; chưa đếm trên thư viện của chủ (chưa được phép quét).
   - Không đổi: phạm vi "N chương" của giọng trả phí (`scope_end`) và danh sách chương vẫn theo tệp.

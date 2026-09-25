@@ -220,6 +220,29 @@ def division_plan(
         if part_at is not None:
             spoken_since += _words(segment.text)
 
+    # One arrival, one sound (25/09): a division whose passage follows the
+    # previous one with nothing but titles between them - "Chương 1" and its
+    # name as two lines of the contents, a part inside a part - is the same
+    # arrival, and rests like two headings in a row. A short chapter with
+    # words of its own is still a chapter: on the owner's library 19 of 23
+    # close pairs were, and only 2 were headings in a row.
+    arrived = False
+    since_titles_only = True
+    for segment in segments:
+        opens = plan.get(segment.id)
+        if opens in (PART, CHAPTER) and arrived and since_titles_only:
+            del plan[segment.id]
+            # Still a passage: when a line pointed at words, not a title,
+            # those words are the chapter's own.
+            opens = None
+        if opens in (PART, CHAPTER, PART_CHAPTER):
+            arrived = True
+            # A division that opens on words - a PDF bookmark, a line of
+            # the contents pointing at a paragraph - has said something.
+            since_titles_only = segment.kind == "heading"
+        elif segment.kind != "heading":
+            since_titles_only = False
+
     for segment_id in breaks:
         if segment_id in known and segment_id not in plan:
             plan[segment_id] = SCENE

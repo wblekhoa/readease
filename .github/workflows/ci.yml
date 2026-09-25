@@ -1,15 +1,20 @@
-# The gates every pull request has to pass, run where no one has to
-# remember to run them (plan 21/09, Phase 1). The same commands as
-# scripts/verify.sh and `pnpm build`, split in two so a Rust failure and a
-# Python failure are named apart. No sidecar is built here: Tauri only
-# needs the resource directory to exist, and the 260 MB PyInstaller bundle
-# is a release-time artefact. No secrets are used or needed.
+# The gates every commit has to pass, run where no one has to remember to
+# run them (plan 21/09, Phase 1). The same commands as scripts/verify.sh and
+# `pnpm build`, split in two so a Rust failure and a Python failure are named
+# apart. No sidecar is built here: Tauri only needs the resource directory to
+# exist, and the 260 MB PyInstaller bundle is a release-time artefact. No
+# secrets are used or needed.
+#
+# On every push, not only pull requests (owner, 25/09: "commit push thẳng
+# lên ... khỏi tạo PR"): `main` accepts a commit only once `app` and
+# `engine` have passed on it, so work is pushed to a branch first and the
+# same commit, green, is pushed to `main` - no pull request in between.
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: ["**"]
 
 concurrency:
   group: ci-${{ github.ref }}

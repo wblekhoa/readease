@@ -866,7 +866,17 @@ export function decimal(value: number, places = 2): string {
 
 export function text(key: TextKey,
                      values: Record<string, string | number> = {}): string {
-  let result: string = TEXT[key][current === "vi" ? 0 : 1];
+  return textIn(current, key, values);
+}
+
+/** A string in a given language rather than the interface's: the words the
+ * page shows as part of a DOCUMENT follow the document, as the voice does - a
+ * picture's "Figure 1" under an English book (HIG 3.9). A language the table
+ * does not have, or none: the interface's. */
+export function textIn(language: string | null | undefined, key: TextKey,
+                       values: Record<string, string | number> = {}): string {
+  const chosen = language === "vi" || language === "en" ? language : current;
+  let result: string = TEXT[key][chosen === "vi" ? 0 : 1];
   for (const [name, value] of Object.entries(values)) {
     result = result.replace(`{${name}}`, String(value));
   }

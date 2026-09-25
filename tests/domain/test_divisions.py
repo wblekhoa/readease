@@ -178,6 +178,42 @@ class DivisionPlanTests(unittest.TestCase):
         ], source_format="pdf")
         self.assertEqual(division_plan(bookmarked, []), {"c0-s0": "chapter", "c1-s0": "chapter"})
 
+    def test_two_lines_on_headings_in_a_row_are_one_arrival(self) -> None:
+        # "Chương 1" and its title, each a line of the contents at the
+        # chapter level: one sound for one arrival, not two (25/09).
+        titled = book([
+            ("Chương 1", [("Chương 1", "heading"), ("Bến sông", "heading"), (PARAGRAPH, "paragraph")]),
+            ("Chương 2", [("Chương 2", "heading"), ("Mùa nước nổi", "heading"), (PARAGRAPH, "paragraph")]),
+        ])
+        plan = division_plan(titled, [
+            line(1, "Chương 1", "c0-s0"), line(1, "Bến sông", "c0-s1"),
+            line(1, "Chương 2", "c1-s0"), line(1, "Mùa nước nổi", "c1-s1"),
+        ])
+        self.assertEqual(plan, {"c0-s0": "chapter", "c1-s0": "chapter"})
+
+    def test_a_short_chapter_with_words_of_its_own_still_chimes(self) -> None:
+        # Real short chapters stood between most close chimes in the
+        # owner's library: they are chapters, and they keep their sound.
+        short = book([
+            ("Chương 1", [("Chương 1", "heading"), ("Một câu ngắn thôi.", "paragraph")]),
+            ("Chương 2", [("Chương 2", "heading"), (PARAGRAPH, "paragraph")]),
+        ])
+        plan = division_plan(short, [line(1, "Chương 1", "c0-s0"), line(1, "Chương 2", "c1-s0")])
+        self.assertEqual(plan, {"c0-s0": "chapter", "c1-s0": "chapter"})
+
+    def test_a_part_inside_a_part_with_no_words_between_is_one_arrival(self) -> None:
+        nested = book([
+            ("Phần Một", [("PHẦN MỘT", "heading")]),
+            ("Quyển Một", [("QUYỂN MỘT", "heading")]),
+            ("Chương 1", [("Chương 1", "heading"), (PARAGRAPH, "paragraph")]),
+        ])
+        plan = division_plan(nested, [
+            line(1, "Phần Một", "c0-s0"), line(2, "Quyển Một", "c1-s0"), line(3, "Chương 1", "c2-s0"),
+        ])
+        # One sound at the outer part; the inner part's title and the first
+        # chapter follow it as titles do.
+        self.assertEqual(plan, {"c0-s0": "part", "c2-s0": "part-chapter"})
+
     def test_a_thematic_break_marks_the_passage_after_it(self) -> None:
         plan = division_plan(book(SPINE), CONTENTS, breaks=["c4-s2", "c6-s0"])
         self.assertEqual(plan["c4-s2"], "scene")
