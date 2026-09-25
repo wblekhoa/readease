@@ -105,7 +105,7 @@ from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     _start_at,
     _text_utterances,
 )
-from vieneu_reader.speech.chimes import chime_choice, load_chime
+from vieneu_reader.speech.chimes import chime_choice, load_chime, load_part_chime
 
 #: The language the second local model reads.
 ENGLISH = "en"
@@ -2588,8 +2588,11 @@ class _Session:
         # of every utterance anyway, so nothing carries across.
         stretcher: TimeStretcher | None = None
         # The chime that opens a chapter, if the reader keeps one - only a
-        # book has chapters, and the choice is read once per reading.
+        # book has chapters, and the choice is read once per reading. And the
+        # longer sound that opens a part (HIG 5.1, 25/09): the family's own,
+        # or its chapter chime where it has none.
         chime = None
+        part_chime = None
         if book_id is not None:
             chosen = chime_choice(document.get("chapter_chime"))
             if chosen is not None:
@@ -2601,6 +2604,14 @@ class _Session:
                     # ships as "the chime just does not play".
                     print(f"chapter chime {chosen} could not be loaded: {error}", file=sys.stderr)
                     chime = None
+                if chime is not None:
+                    try:
+                        part_chime = load_part_chime(chosen)
+                    except (OSError, ValueError) as error:
+                        # A part then opens with the chapter chime, as it
+                        # did before parts had a sound of their own.
+                        print(f"part sound for {chosen} could not be loaded: {error}", file=sys.stderr)
+                        part_chime = chime
         seq = 0
         voiced = 0
         stopped = False
@@ -2778,16 +2789,19 @@ class _Session:
                 is_last = position + 1 == len(utterances)
                 if is_last:
                     continue
-                if chime is not None and utterances[position + 1].opens in (PART, CHAPTER):
+                opens = utterances[position + 1].opens
+                if chime is not None and opens in (PART, CHAPTER):
                     # Between chapters: a breath, the chime, a breath - in
                     # place of the flat silence. The chime is not stretched
-                    # (it is not speech) and not credited to a voice.
+                    # (it is not speech) and not credited to a voice. A part
+                    # opens with its own, longer sound.
+                    sound = part_chime if opens == PART and part_chime is not None else chime
                     emit(_silence(int(CHIME_LEAD_MS / rate)), from_voice=False)
-                    for start in range(0, chime.size, SAMPLE_RATE // 2):
+                    for start in range(0, sound.size, SAMPLE_RATE // 2):
                         if self._stop_requested():
                             stopped = True
                             break
-                        emit(chime[start:start + SAMPLE_RATE // 2].tobytes(), from_voice=False)
+                        emit(sound[start:start + SAMPLE_RATE // 2].tobytes(), from_voice=False)
                     if stopped:
                         break
                     emit(_silence(int(CHIME_TAIL_MS / rate)), from_voice=False)
@@ -2856,7 +2870,7 @@ def _self_test() -> int:
     error, since a missing sound must not stop a reading). One JSON line on
     stdout, exit 0 or 1, so the build script can gate on it.
     """
-    from vieneu_reader.speech.chimes import CHIME_NAMES, load_chime
+    from vieneu_reader.speech.chimes import CHIME_NAMES, load_chime, load_part_chime
     from vieneu_reader.speech.english.fallback import Fallback
     from vieneu_reader.speech.english.tagger import tag
 
@@ -2864,6 +2878,9 @@ def _self_test() -> int:
         tagged = tag("The quick brown fox reads.")
         phonemes = Fallback().phonemes("Kowalczyk")
         chimes = {name: len(load_chime(name)) for name in CHIME_NAMES}
+        # The part sounds too: a bundle that lost one would open every part
+        # with the chapter chime and say so only on stderr.
+        chimes.update({f"part-{name}": len(load_part_chime(name)) for name in CHIME_NAMES})
     except Exception as error:  # noqa: BLE001 - the whole point is to report
         print(json.dumps({"ok": False, "error": f"{type(error).__name__}: {error}"}))
         return 1
