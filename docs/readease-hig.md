@@ -1818,7 +1818,7 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
 - **Chọn** (`VoicesPanel`, sheet 32rem) — nghe thử + bật vào danh sách. Mỗi hàng `GroupedRow roomy`:
   tên (+ "đang dùng"), một dòng mô tả `Nữ · Bắc · Phong cách kể chuyện` tách từ nhãn engine, `IconButton`
   loa để nghe thử, `Switch` (control mới trong kit) để đưa vào danh sách. Chân sheet đếm "Đã chọn N giọng".
-- **Đổi** (`MenuButton` loa ở thanh transport, chỉ hiện khi đang phát) — chỉ liệt kê **danh sách đã bật**
+- **Đổi** (`MenuButton` hình người ở thanh transport — không phải loa, xem nút Đổi giọng ở §3 thanh dưới; chỉ hiện khi đang phát) — chỉ liệt kê **danh sách đã bật**
   + giọng đang dùng + "Quản lý giọng…". Đây đúng là định nghĩa của danh sách: giọng đáng với tay khi đang nghe.
 - `SettingsPanel`: select giọng cũng **chỉ liệt kê danh sách đã bật** (chủ chốt lại 03/09 — một danh sách
   thì là một danh sách ở mọi nơi; hàng ngay dưới nó là lối thêm vào), và **không còn khoá khi đang đọc**.
