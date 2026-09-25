@@ -999,8 +999,10 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
 - **Phần có âm riêng** (chủ 25/09: "âm riêng cho Phần", duyệt 640 credit ElevenLabs): chỗ MỞ một PHẦN phát âm Phần
   của họ âm đang chọn — dài hơn chuông chương, cùng họ nhạc cụ, để tai nghe ra "một phần mới" khác "một chương mới";
   khoảng lặng quanh nó như chuông chương (800 → âm → 700 ms), chương đầu của phần vẫn không vang lần hai (1 500 ms).
-  Hiện chỉ **marimba** có âm Phần (`speech/chimes/part-marimba.wav`; 4 mẫu sinh 25/09 cùng họ marimba, chủ chọn một
-  bằng tai trong ngữ cảnh); harp và piano mở phần bằng chính chuông chương của chúng — sinh thêm cần credit, hỏi trước.
+  Hiện chỉ **marimba** có âm Phần: `speech/chimes/part-marimba.wav`, một hợp âm marimba nở ra rồi tắt dần, 2,7 s, đỉnh
+  −14 dBFS (4 mẫu sinh 25/09 — 640 credit; chủ duyệt số 2 "theo đề xuất": số 1 chạm trần 4 s và có tiếng xì ở nửa sau,
+  số 3 chưa tắt hẳn khi hết, số 2 ấm và tắt êm nhất); harp và piano mở phần bằng chính chuông chương của chúng — sinh
+  thêm cần credit, hỏi trước.
   Self-test của engine nạp cả âm Phần, nên bundle thiếu nó không qua được bước build.
 - **Chương và phần là của MỤC LỤC, không phải của tệp** (chủ 24/09: "tiếp tục phân tích và nâng cấp 'pipeline đọc' …
   ngắt nghỉ và nhạc nền giữa các chương/phần"; phân tích: plan `readease-chapter-transitions-2026-09-24`). Trước đây

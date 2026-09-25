@@ -45,6 +45,7 @@ PUBLIC_MODEL_ASSETS = {
     "src/vieneu_reader/speech/chimes/marimba.wav": "68e78813a7487b44f9851738b836cc4c3551582aaf09da31b713d68b0bbff137",
     "src/vieneu_reader/speech/chimes/harp.wav": "c47dcf36966ac8a6a0a6cda37e1e24655c47bcb13456221711c9618a7e83db45",
     "src/vieneu_reader/speech/chimes/piano.wav": "a1dfb65859aef7f9fbaae912450b26c79d6c7ff6b1ef3ed00a6bfed953ccc702",
+    "src/vieneu_reader/speech/chimes/part-marimba.wav": "d7c69099fe1e202568724305054e00d8dc4dfdb94d657ec749d2cb7391d1d7d0",
 }
 FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",

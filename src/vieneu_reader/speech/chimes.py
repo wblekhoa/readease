@@ -4,9 +4,9 @@ ngắn giữa các chương").
 Three of them, chosen by ear from a batch generated with ElevenLabs'
 sound-effects model, then downmixed to mono at the pipe's 48 kHz, trimmed
 of silence and levelled to -14 dBFS so they sit under speech (which peaks
-around -3 to -6) rather than over it. They are package data - about 470 KB
-for the three - not something the engine synthesises, so the reader hears
-the same sound every time and nothing is fetched.
+around -3 to -6) rather than over it. They are package data - about 730 KB
+with the part sound - not something the engine synthesises, so the reader
+hears the same sound every time and nothing is fetched.
 
 A chime is played as a plain frame, the way the silence between paragraphs
 is: not through the time-stretcher (a chime should not speed up with the
