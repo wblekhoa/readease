@@ -508,6 +508,52 @@ async function main() {
         crashed("reader");
       }
 
+      // A starred voice stands first (HIG 3.13; owner, 25/09). Starred in
+      // the voices sheet, its row stays where it is while the sheet is
+      // open; the next time the sheet opens it heads the list under "Yêu
+      // thích"; the voice select lists it first; and it is still starred
+      // after a reload (the mock keeps its settings across one, as the
+      // engine keeps settings.json). "Thái Sơn" is one of the five switched
+      // on from the start, so the select offers it.
+      const VOICES_SHEET = [["click", /^Cài đặt giọng đọc$/], ["click", /^Quản lý giọng/], ["wait", /^Danh sách giọng đọc$/]];
+      const heads = () => evalJs(`[...document.querySelectorAll('[role="dialog"] h3')].map((h) => h.textContent.trim())`);
+      // Where the row stands is its place among the rows, not its pixels:
+      // clicking scrolls the list to put the button in view.
+      const star = () => evalJs(`(() => { const rows = [...document.querySelectorAll('[role="dialog"] button[aria-label^="Yêu thích "]')];
+        const at = rows.findIndex((e) => e.getAttribute("aria-label") === "Yêu thích Thái Sơn");
+        return at < 0 ? null : { pressed: rows[at].getAttribute("aria-pressed"), at }; })()`);
+      const firstStar = () => evalJs(`document.querySelector('[role="dialog"] button[aria-label^="Yêu thích "]')?.getAttribute("aria-label") ?? null`);
+      const starredGroup = async () => {
+        const [, first] = await heads();
+        return first === "Yêu thích (1)" && (await firstStar()) === "Yêu thích Thái Sơn";
+      };
+      if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("favorite", false, "could not open the voices sheet");
+      else {
+        const before = await star();
+        if (!before) expect("favorite", false, 'no star on "Thái Sơn" in the voices sheet');
+        else {
+          await findAndClick(/^Yêu thích Thái Sơn$/);
+          const after = await star();
+          expect("favorite", before.pressed === "false" && after?.pressed === "true", `the star went ${before.pressed} -> ${after?.pressed}`);
+          expect("favorite", after?.at === before.at, `the row moved from place ${before.at} to ${after?.at} while the sheet was open`);
+          await key("Escape");
+          for (const [, re] of VOICES_SHEET.slice(0, 2)) await findAndClick(re);
+          expect("favorite", await starredGroup(), `reopened, the sheet starts ${JSON.stringify((await heads()).slice(1, 2))} / ${await firstStar()}, not "Yêu thích (1)" / Thái Sơn`);
+          await key("Escape");
+          await findAndClick(/^Cài đặt giọng đọc$/);
+          const select = await evalJs(`(() => { const s = [...document.querySelectorAll("select")].find((e) => [...e.options].some((o) => o.textContent === "Thái Sơn"));
+            const group = s && s.querySelector("optgroup"); return group ? [group.label, group.querySelector("option")?.textContent] : null; })()`);
+          expect("favorite", select?.[0] === "Yêu thích" && select?.[1] === "Thái Sơn", `the voice select starts ${JSON.stringify(select)}, not Yêu thích / Thái Sơn`);
+          await key("Escape");
+          if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("favorite", false, "could not reopen the voices sheet after a reload");
+          else {
+            expect("favorite", await starredGroup(), "after a reload the voice is no longer starred first");
+            await findAndClick(/^Yêu thích Thái Sơn$/);
+          }
+        }
+        crashed("favorite");
+      }
+
       if (!(await goto([]))) expect("menu", false, "home did not load");
       else {
         if (!(await focusOn(/^Đổi chế độ$/))) expect("menu", false, "no mode switch");

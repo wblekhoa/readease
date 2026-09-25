@@ -25,6 +25,8 @@ import {
 import { VoicesPanel } from "./ui/VoicesPanel";
 import {
   canSpeak,
+  favoritesFirst,
+  initialFavorites,
   initialShortlist,
   offeredVoices,
   serializeShortlist,
@@ -189,6 +191,8 @@ export default function App() {
    * still being asked (the list only filters at display time), but its
    * MODEL can only be brought up to date against the full catalogue. */
   const storedShortlist = useRef<{ value: string | null; touched: boolean }>({ value: null, touched: false });
+  /** The same, for the starred voices (HIG 3.13). */
+  const storedFavorites = useRef<{ value: string | null; touched: boolean }>({ value: null, touched: false });
   const [rate, setRate] = useState(1.0);
   /** The sound between chapters and how much of a footnote is read - the
    * engine's own settings, mirrored here for the panel (owner, 16/09). */
@@ -197,6 +201,10 @@ export default function App() {
   /** The voices worth offering mid-reading, in the person's own words:
    * twenty is a catalogue, this is the handful they switch between. */
   const [shortlist, setShortlist] = useState<string[]>([]);
+  /** The voices starred ★ (owner, 25/09): listed first wherever voices are
+   * listed. A second mark beside the shortlist, not a part of it - the
+   * shortlist decides what is offered, the star decides the order. */
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [voicesOpen, setVoicesOpen] = useState(false);
   /** What the menu asked the shelf to do (HIG 4.1): the picker or the Apple
    * Books sheet live in `Library`, which may not even be on screen when the
@@ -601,6 +609,11 @@ export default function App() {
     // chapter is being read - which is exactly when the list gets edited.
     remember("voice_shortlist", serializeShortlist(ids));
   }, [remember]);
+  const rememberFavorites = useCallback((ids: string[]) => {
+    storedFavorites.current.touched = true;
+    setFavorites(ids);
+    remember("voice_favorites", serializeShortlist(ids));
+  }, [remember]);
 
   /* Nothing here moves the voice when a book opens. It did, for a day: a
      book opened in a voice made for its language, and the effect re-ran on
@@ -738,6 +751,12 @@ export default function App() {
         ).catch(() => null);
         storedShortlist.current = { value: kept?.result.value ?? null, touched: false };
         setShortlist(initialShortlist(kept?.result.value, list));
+        const starred = await invoke<{ result: { value: string | null } }>(
+          "engine_request",
+          { method: "config.get", params: { key: "voice_favorites" } },
+        ).catch(() => null);
+        storedFavorites.current = { value: starred?.result.value ?? null, touched: false };
+        setFavorites(initialFavorites(starred?.result.value, list));
         const wanted = saved?.result.value;
         // A remembered voice that this build no longer ships must not leave
         // the picker empty - fall back to the first one, as the Qt shell did.
@@ -871,6 +890,9 @@ export default function App() {
           // edited the list since, in which case their edit stands.
           if (!storedShortlist.current.touched) {
             setShortlist(initialShortlist(storedShortlist.current.value, list));
+          }
+          if (!storedFavorites.current.touched) {
+            setFavorites(initialFavorites(storedFavorites.current.value, list));
           }
           const wish = stillWanted.current;
           if (wish && list.some((voice) => voice.id === wish.id)) {
@@ -2140,7 +2162,7 @@ export default function App() {
                     align="left"
                     side="above"
                     items={[
-                      ...offeredVoices(voices, shortlist, voiceId).map((voice) => ({
+                      ...favoritesFirst(offeredVoices(voices, shortlist, voiceId), favorites).map((voice) => ({
                         label: voiceName(voice.label) || voice.id,
                         hint: voice.id === voiceId ? text("voices.in_use") : undefined,
                         onSelect: () => switchVoice(voice.id),
@@ -2292,6 +2314,7 @@ export default function App() {
              lý giọng). */
           voices={voices}
           shortlist={shortlist}
+          favorites={favorites}
           voiceId={voiceId}
           rate={rate}
           rates={RATES}
@@ -2359,6 +2382,7 @@ export default function App() {
           error={voicesError}
           voices={voices}
           shortlist={shortlist}
+          favorites={favorites}
           voiceId={voiceId}
           reading={reading !== "idle" && previewing === null}
           previewing={previewing}
@@ -2366,6 +2390,7 @@ export default function App() {
           detectedLanguage={openBook?.language_detected ?? null}
           onSetLanguage={setBookLanguage}
           onToggle={(id) => rememberShortlist(toggleShortlist(shortlist, id))}
+          onFavorite={(id) => rememberFavorites(toggleShortlist(favorites, id))}
           onPreview={previewVoice}
           onStopPreview={stopPreview}
           onClose={() => {

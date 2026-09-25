@@ -1950,6 +1950,9 @@ class _Session:
         # result, crashed its own voice-loading chain, and blamed the
         # catalogue it had already loaded (owner, 05/09).
         "voice_shortlist",
+        # The voices starred ★ (25/09): listed first wherever voices are
+        # listed. A second mark beside the shortlist, stored the same way.
+        "voice_favorites",
         # The language the reader chose to read in, and the voice last
         # picked under each language (15/09, with the English voice): the
         # settings panel opens on that language and switching it brings

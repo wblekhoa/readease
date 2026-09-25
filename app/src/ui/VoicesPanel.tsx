@@ -19,7 +19,7 @@ import {
 import { Cluster, GroupedSection, useDismiss } from "./patterns";
 import {
   CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SlidersIcon, SpeakerIcon,
-  StopIcon, WomanIcon,
+  StarIcon, StarOutlineIcon, StopIcon, WomanIcon,
 } from "./icons";
 import { useShortWindow } from "./useShortWindow";
 import {
@@ -55,10 +55,16 @@ function VoiceMark({ glyph, name }: { glyph: string; name: string }) {
   );
 }
 
+/** The starred group's key. A constant rather than a `key: "…"` literal:
+ * the engine's config-key test reads that shape as a setting the shell
+ * asks for. */
+const STARRED = "starred";
+
 export function VoicesPanel({
   voices,
   error,
   shortlist,
+  favorites,
   voiceId,
   reading,
   previewing,
@@ -66,6 +72,7 @@ export function VoicesPanel({
   detectedLanguage,
   onSetLanguage,
   onToggle,
+  onFavorite,
   onPreview,
   onStopPreview,
   onClose,
@@ -74,6 +81,8 @@ export function VoicesPanel({
   /** Why the catalogue is empty, when it is empty because we could not ask. */
   error?: string | null;
   shortlist: string[];
+  /** The voices starred ★ (HIG 3.13): listed first, in a group of their own. */
+  favorites: string[];
   voiceId: string;
   /** Something is being read, so the engine cannot also speak a sample. */
   reading: boolean;
@@ -93,11 +102,18 @@ export function VoicesPanel({
   /** `null` withdraws the decision and lets the text speak for itself. */
   onSetLanguage?: (language: string | null) => void;
   onToggle: (id: string) => void;
+  onFavorite: (id: string) => void;
   onPreview: (id: string) => void;
   onStopPreview: () => void;
   onClose: () => void;
 }) {
   const panel = useDismiss(onClose);
+  /* The favourites as they were when the sheet opened. A star pressed now
+     changes the star, not the row's place: a row that jumped to the top
+     under the pointer would be lost to the eye, and a mistaken press could
+     not be pressed again. The group regroups the next time the sheet opens -
+     "để lần sau có thể thấy" (owner, 25/09; HIG 3.13). */
+  const [pinned] = useState(() => new Set(favorites));
   const [query, setQuery] = useState("");
   // Folded away by default; the button in the header opens it.
   const [searching, setSearching] = useState(false);
@@ -158,22 +174,31 @@ export function VoicesPanel({
       matchesVoiceFilters(voice, query, sourceOf(voice.id), activeProvider, "all")
       && voiceGender(voice, sourceOf(voice.id) === "local") === null,
   ).length;
-  const groups = providerOrder
-    .map((key) => ({
-      key,
-      title: key === "local"
-        ? text("voices.group_local")
-        : PROVIDERS.find((provider) => provider.id === key)?.label ?? key,
-      voices: matched
-        .filter((voice) => sourceOf(voice.id) === key)
-        // The ones the provider vouches for in Vietnamese come first: in
-        // an account of forty-five English character voices, those are
-        // the handful this reader is looking for. Alphabetical after.
-        .sort((a, b) =>
-          Number(speaksVietnamese(b)) - Number(speaksVietnamese(a))
-          || tidyName(a.label).localeCompare(tidyName(b.label), "vi")),
-    }))
-    .filter((group) => group.voices.length > 0);
+  // The ones the provider vouches for in Vietnamese come first: in an
+  // account of forty-five English character voices, those are the handful
+  // this reader is looking for. Alphabetical after.
+  const inGroupOrder = (a: Voice, b: Voice) =>
+    Number(speaksVietnamese(b)) - Number(speaksVietnamese(a))
+    || tidyName(a.label).localeCompare(tidyName(b.label), "vi");
+  // The starred ones stand first, across providers (HIG 3.13), each
+  // provider's in its usual order; the groups below hold the rest.
+  const starred = providerOrder.flatMap((key) => matched
+    .filter((voice) => sourceOf(voice.id) === key && pinned.has(voice.id))
+    .sort(inGroupOrder));
+  const groups = [
+    ...(starred.length ? [{ key: STARRED, title: text("voices.group_favorites"), voices: starred }] : []),
+    ...providerOrder
+      .map((key) => ({
+        key,
+        title: key === "local"
+          ? text("voices.group_local")
+          : PROVIDERS.find((provider) => provider.id === key)?.label ?? key,
+        voices: matched
+          .filter((voice) => sourceOf(voice.id) === key && !pinned.has(voice.id))
+          .sort(inGroupOrder),
+      }))
+      .filter((group) => group.voices.length > 0),
+  ];
   const found = groups.reduce((total, group) => total + group.voices.length, 0);
 
   return (
@@ -413,13 +438,14 @@ export function VoicesPanel({
           {/* Said once at the head of the group rather than on every row: it
               is true of all of them, and twenty copies of it is a warning
               nobody reads. The group on this Mac never shows it. */}
-          {group.key !== "local" && (
+          {(group.key === STARRED ? group.voices.some((voice) => isPaidVoice(voice.id)) : group.key !== "local") && (
             <p className="mb-3 text-xs text-ink-mute">
               {text("voices.paid_preview")}
             </p>
           )}
           {group.voices.map((voice) => {
             const inList = shortlist.includes(voice.id);
+            const favorite = favorites.includes(voice.id);
             const playing = previewing === voice.id;
             return (
               <div key={voice.id} className="flex items-center gap-4 py-3">
@@ -472,6 +498,18 @@ export function VoicesPanel({
                   className={playing ? "text-brand-600" : ""}
                 >
                   {playing ? <StopIcon /> : <SpeakerIcon />}
+                </IconButton>
+                {/* Two shapes for the two states, not two colours of one
+                    (HIG 3.13): outline = not yet, solid yellow = starred. */}
+                <IconButton
+                  onClick={() => onFavorite(voice.id)}
+                  aria-pressed={favorite}
+                  aria-label={text("voices.favorite", { name: tidyName(voice.label) || voice.id })}
+                  title={text(favorite ? "voices.favorite_remove" : "voices.favorite_add")}
+                >
+                  {/* The colour sits on the star itself: the button's own
+                      ink-mute would win a class-order contest on the button. */}
+                  {favorite ? <StarIcon className="text-favorite" /> : <StarOutlineIcon />}
                 </IconButton>
                 <Switch
                   checked={inList}

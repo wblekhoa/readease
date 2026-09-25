@@ -137,6 +137,12 @@ export const TEXT = {
   "voices.stop_preview": ["Dừng nghe thử", "Stop preview"],
   "voices.preview_while_reading": ["Đang đọc nên không nghe thử được - máy đọc mỗi lúc một giọng.", "No preview while reading - the engine speaks one thing at a time."],
   "voices.in_switcher": ["Đưa {name} vào danh sách đổi nhanh", "Keep {name} in the quick switcher"],
+  // The star beside the switch (HIG 3.13, owner 25/09): its name stays put
+  // and aria-pressed says whether it is on; the tip says what a press does.
+  "voices.favorite": ["Yêu thích {name}", "Favorite {name}"],
+  "voices.favorite_add": ["Yêu thích: đưa giọng này lên đầu danh sách", "Favorite: list this voice first"],
+  "voices.favorite_remove": ["Bỏ yêu thích", "Remove from favorites"],
+  "voices.group_favorites": ["Yêu thích", "Favorites"],
   "voices.marked": ["Đã chọn {count} giọng để đổi nhanh.", "{count} voices marked for quick switching."],
   "voices.paid": ["Trả phí", "Paid"],
   /* The banknote says WHICH voices bill; this says that pressing "Nghe thử"

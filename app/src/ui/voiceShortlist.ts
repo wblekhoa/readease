@@ -303,6 +303,37 @@ function rehomed(id: string, catalogue: readonly Voice[]): string {
   return moved ? moved.id : id;
 }
 
+/** The voices marked ★ (owner, 25/09: "đánh dấu voice favorite để lần sau
+ * có thể thấy khi select voice").
+ *
+ * A second mark beside the switcher's, and independent of it (the owner
+ * chose a star of its own over folding it into the switch): ★ decides
+ * ORDER - a favourite stands first wherever voices are listed - while the
+ * switch still decides what the switcher and the settings select offer.
+ * Nothing is seeded: a favourite is only ever one the person chose. A paid
+ * voice keeps its star when its provider moves it to a new model, the way
+ * it keeps its place in the switcher.
+ */
+export function initialFavorites(
+  stored: string | null | undefined,
+  catalogue: readonly Voice[],
+): string[] {
+  return parseShortlist(stored).map((id) => rehomed(id, catalogue));
+}
+
+/** The favourites first, each part keeping the order it came in. Order
+ * only: a favourite that is not in `voices` is not added to it. */
+export function favoritesFirst<T extends Pick<Voice, "id">>(
+  voices: readonly T[],
+  favorites: readonly string[],
+): T[] {
+  const starred = new Set(favorites);
+  return [
+    ...voices.filter((voice) => starred.has(voice.id)),
+    ...voices.filter((voice) => !starred.has(voice.id)),
+  ];
+}
+
 /** Read the stored list. Anything unreadable is an empty list, never a
  * throw: a settings value is not worth a broken window. */
 export function parseShortlist(stored: string | null | undefined): string[] {

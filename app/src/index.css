@@ -122,6 +122,10 @@
      transparent ground was drawn for white paper; on the dark page or the
      lightbox's black it all but disappears. An opaque picture covers it. */
   --app-figure-plate: var(--white-w100);
+  /* A starred voice (HIG 3.13): the DS's bold warning yellow, which the DS
+     itself turns lighter on the dark ground - so one name holds in both
+     themes, and the star stays legible on the sheet in each. */
+  --app-favorite: var(--fill-warning-bold);
 }
 [data-theme="dark"] {
   --app-dot: var(--border-color-neutral-soft);
@@ -198,6 +202,7 @@
   --color-panel: var(--app-panel);
   --color-column: var(--app-column);
   --color-figure-plate: var(--app-figure-plate);
+  --color-favorite: var(--app-favorite);
   /* The DS's own layered lift, which flips with the theme: a wide soft pass
      plus a tight contact pass. Tailwind's shadow-sm is a single hard offset -
      next to this it reads as a printed line under the element. */

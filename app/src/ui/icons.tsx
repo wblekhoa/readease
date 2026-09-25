@@ -591,6 +591,29 @@ export function VoiceSwitchIcon({ className }: { className?: string }) {
   );
 }
 
+/** The favourite mark's two states (HIG 3.13): the source's `star` in its
+ * outline style, and that same outline filled. Not bulk, on purpose: the
+ * bulk star is already half solid and half light, and half a star does not
+ * answer "is this a favourite?". Filled rather than the source's solid
+ * style, which splits the star with a diagonal cut - at 20px that reads as
+ * a star struck through, the sign for NOT a favourite. Two shapes for two
+ * states, so the state never rests on colour alone. */
+export function StarOutlineIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} fill="none" className={className}>
+      <path d="M13.73 3.51063L15.49 7.03063C15.73 7.52063 16.37 7.99063 16.91 8.08063L20.1 8.61062C22.14 8.95062 22.62 10.4306 21.15 11.8906L18.67 14.3706C18.25 14.7906 18.02 15.6006 18.15 16.1806L18.86 19.2506C19.42 21.6806 18.13 22.6206 15.98 21.3506L12.99 19.5806C12.45 19.2606 11.56 19.2606 11.01 19.5806L8.02003 21.3506C5.88003 22.6206 4.58003 21.6706 5.14003 19.2506L5.85003 16.1806C5.98003 15.6006 5.75003 14.7906 5.33003 14.3706L2.85003 11.8906C1.39003 10.4306 1.86003 8.95062 3.90003 8.61062L7.09003 8.08063C7.62003 7.99063 8.26003 7.52063 8.50003 7.03063L10.26 3.51063C11.22 1.60063 12.78 1.60063 13.73 3.51063Z" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path d="M13.73 3.51063L15.49 7.03063C15.73 7.52063 16.37 7.99063 16.91 8.08063L20.1 8.61062C22.14 8.95062 22.62 10.4306 21.15 11.8906L18.67 14.3706C18.25 14.7906 18.02 15.6006 18.15 16.1806L18.86 19.2506C19.42 21.6806 18.13 22.6206 15.98 21.3506L12.99 19.5806C12.45 19.2606 11.56 19.2606 11.01 19.5806L8.02003 21.3506C5.88003 22.6206 4.58003 21.6706 5.14003 19.2506L5.85003 16.1806C5.98003 15.6006 5.75003 14.7906 5.33003 14.3706L2.85003 11.8906C1.39003 10.4306 1.86003 8.95062 3.90003 8.61062L7.09003 8.08063C7.62003 7.99063 8.26003 7.52063 8.50003 7.03063L10.26 3.51063C11.22 1.60063 12.78 1.60063 13.73 3.51063Z" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /** The read button's glyph: the source's speaker with a sparkle at its
  * foot, from the owner's own "ai-speaker" frame (14/09). The one composed
  * glyph in the file, and composed rather than drawn: the speaker and its
