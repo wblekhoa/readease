@@ -371,6 +371,12 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   CHUNG hàng đợi vị trí nên hình được cuộn tới + nháy `band` đúng lúc tai nghe, không phải lúc
   model dựng. Dưới hình hiện "Hình N · chú thích"; alt rác kiểu "Image" (`alt_is_generic`) bị
   ẩn, không hiện không đọc.
+- **Hình nằm trên tấm giấy sáng** (25/09; lộ ra khi harness có hình phác thảo nền trong suốt, #50). Hình trong sách
+  được vẽ cho GIẤY TRẮNG: nét đen trên nền trong suốt (sơ đồ, phác thảo PNG/SVG — `book.figure` giữ nguyên alpha)
+  gần như biến mất trên trang tối. Ở theme tối, ảnh trong trang có nền `figure-plate` = `--white-w100` của DS (trắng ở
+  CẢ HAI theme): đúng khung ảnh, cùng bo góc, không viền, không đệm — ảnh đục che kín nó nên ảnh chụp KHÔNG đổi, chỉ
+  phần trong suốt hiện ra trắng như trang in. Theme sáng: không đổi (trang đã trắng; hình đang được báo vẫn thấy nền
+  `band` xuyên qua). Không làm tối ảnh, không đảo màu: đổi màu hình là sửa nội dung của sách.
 - **Don't sống**: ✗ sidebar không dấu vị trí (audit 01/09) · ✗ đếm "Chương X/Y" cho PDF không có
   mục lục (mỗi TRANG là một "chương") · ✗ hai hàng chrome chồng nhau trên đầu màn đọc.
 
@@ -627,7 +633,11 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Usage**: hình trong sách hiển thị vừa phải trong dòng chảy đọc; muốn xem kỹ thì mở lớn.
 - **Behavior**: bấm ảnh để mở · **Esc** hoặc bấm nền để đóng (listener gắn khi mở, gỡ khi đóng)
   · nút đóng là `IconButton`, không phải chữ "✕" tự vẽ.
+- **Ảnh lớn luôn nằm trên tấm giấy** (25/09): nền lightbox là đen 70 % ở CẢ HAI theme, nên nét đen nền trong suốt
+  chìm hẳn ở đó kể cả theme sáng. Ảnh trong lightbox có nền `figure-plate` ở cả hai theme (cùng luật §3.9).
+  Kiểm được: render audit đo `background-color` thật của ảnh (`figure-plate`, ô `lightbox`).
 - **Don't**: ✗ ảnh to hết cỡ ngay trong dòng đọc (đẩy chữ đi, mà vẫn không đủ to để xem chi tiết).
+  ✗ nét vẽ nền trong suốt đặt thẳng lên nền tối (trang tối, lightbox).
 
 ### 3.11 `BookGrid` + `BookCard` + `BookCover` - kệ sách (02/09)
 
