@@ -13,6 +13,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   than the rest before a heading. A chapter's number and its title, two
   headings in a row, are half a second apart instead of a full second:
   one name read in two breaths.
+- Line drawings can be seen in the dark theme and when a picture is
+  opened large. A sketch or a diagram on a transparent ground was drawn
+  for white paper, and on the dark page - or the black behind a picture
+  opened large, in either theme - its lines all but disappeared. A
+  picture now sits on a white sheet there, exactly its own size; a
+  photo covers the sheet and looks the same as before.
 
 ## 0.1.16
 

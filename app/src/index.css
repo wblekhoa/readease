@@ -117,6 +117,11 @@
      faded on the white pill, beside the padlock that says why (owner,
      06/09). */
   --app-locked-choice: var(--text-color-neutral-secondary);
+  /* The sheet a book's picture sits on where its ground is dark (HIG 3.9,
+     3.10): the DS white, which is white in BOTH themes. Line art on a
+     transparent ground was drawn for white paper; on the dark page or the
+     lightbox's black it all but disappears. An opaque picture covers it. */
+  --app-figure-plate: var(--white-w100);
 }
 [data-theme="dark"] {
   --app-dot: var(--border-color-neutral-soft);
@@ -192,6 +197,7 @@
      group instead of an outlined white box lost on a white page. */
   --color-panel: var(--app-panel);
   --color-column: var(--app-column);
+  --color-figure-plate: var(--app-figure-plate);
   /* The DS's own layered lift, which flips with the theme: a wide soft pass
      plus a tight contact pass. Tailwind's shadow-sm is a single hard offset -
      next to this it reads as a printed line under the element. */
