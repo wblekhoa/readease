@@ -1012,6 +1012,24 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   số 3 chưa tắt hẳn khi hết, số 2 ấm và tắt êm nhất); harp và piano mở phần bằng chính chuông chương của chúng — sinh
   thêm cần credit, hỏi trước.
   Self-test của engine nạp cả âm Phần, nên bundle thiếu nó không qua được bước build.
+  (Chiều 25/09 CHƯƠNG cũng mở bằng âm này — bullet kế tiếp; phân biệt phần/chương ở trên gộp lại.)
+- **Chương dài, mục ngắn** (chủ 25/09: "âm khác nhau giữa việc chuyển chương lớn và chuyển phần nhỏ hơn. chuyển
+  chương lớn thì nhạc sẽ dài hơn" → chọn "Chương dài, mục ngắn"; bản nghe thử gửi chủ trước khi lên main):
+  - Chỗ mở **chương** phát âm DÀI của họ âm: marimba = hợp âm 2,7 s (`part-marimba.wav`, trước chỉ phần mới có); harp,
+    piano vốn đã 2 s nên giữ chuông của chúng. Phần và chương nay CÙNG một âm — tài liệu có phần vẫn nghe tên phần
+    đọc lên. Lặng quanh vẫn 800 → âm → 700 ms. Mỗi lần sang chương dài ra ~1,8 s (2,4 → 4,2 s) với marimba.
+  - Chỗ mở **mục cấp một** (dòng mục lục ngay dưới cấp chương — "1.1", "1.2"…) phát **âm mục**: 0,45 s đầu của chuông
+    họ âm đang chọn, vuốt tắt 80 ms cuối, nhỏ hơn 6 dB (đỉnh −20 dBFS) — marimba ra một tiếng gõ nhẹ, piano ra hợp âm
+    đầu, harp ra hai tiếng gảy. CẮT từ chuông có sẵn lúc đọc (`load_section_chime`), không phải tệp âm mới: không tốn
+    credit, cùng chất nhạc cụ với âm chương, không thêm hash hay notice. Lặng quanh **400 → âm → 400 ms**
+    (`SECTION_LEAD_MS`/`SECTION_TAIL_MS`, số tạm chờ chủ nghe): cả cụm ~1,25 s, gần bằng 1 000 ms nghỉ trước tiêu đề mà
+    nó thay — mục dày (có tài liệu 366 mục), nên âm phải nhẹ và ngắn.
+  - Mục sâu hơn ("1.1.1") không âm, giữ nhịp tiêu đề. Tắt chuông: mục nghỉ như mọi tiêu đề (không đổi).
+  - "Một lần đến, một âm" áp cả cho mục: mục đứng ngay sau tên chương (chỉ tiêu đề ở giữa — "Chương 1" · "Bến sông" ·
+    "1.1 Mở đầu") không vang, âm chương đã báo. Mục không làm "đến" cho luật đó: chương sau một mục rỗng vẫn vang.
+  - Hai dòng trỏ cùng một đoạn: bậc cao thắng (phần > chương > mục); một dòng mục không bao giờ đẩy dòng chương thành
+    phần.
+  - Phương án khác nếu tai chủ không ưng: dùng nguyên chuông marimba 0,9 s cũ (to như chuông chương cũ) cho mục.
 - **Chương và phần là của MỤC LỤC, không phải của tệp** (chủ 24/09: "tiếp tục phân tích và nâng cấp 'pipeline đọc' …
   ngắt nghỉ và nhạc nền giữa các chương/phần"; phân tích: plan `readease-chapter-transitions-2026-09-24`). Trước đây
   "chương" của giọng = một tệp trong spine, hoặc một TRANG của PDF không bookmark: tài liệu thử 3 chương / 2 phần vang
@@ -1021,8 +1039,9 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   id đoạn) nói mỗi chỗ nối là gì, và CẢ khoảng nghỉ lẫn chuông đọc từ nó:
   - **Có mục lục**: vai của từng dòng theo ĐÚNG luật cột Mục lục (§3.25, `app/src/ui/contents.ts`): cấp chương = cấp có
     nhiều dòng "Chương N / Chapter N" nhất (không có thì cấp ngoài cùng); trên cấp đó, dòng có dòng con hoặc mang
-    "Phần/Part/Quyển N" là **phần**; dưới là mục. Chuông vang ở dòng **chương** và **phần**; mục giữ nhịp tiêu đề. Tai
-    nghe chuông đúng chỗ mắt thấy một dòng chương/phần ở cột. Hai dòng trỏ cùng một đoạn → lấy bậc cao (phần).
+    "Phần/Part/Quyển N" là **phần**; dưới là mục. Âm dài vang ở dòng **chương** và **phần**, âm mục ở **mục cấp một**
+    (bullet trên); mục sâu hơn giữ nhịp tiêu đề. Tai nghe âm đúng chỗ mắt thấy một dòng ở cột. Hai dòng trỏ cùng một
+    đoạn → lấy bậc cao (phần > chương > mục).
   - **Không mục lục (EPUB)**: tệp mới chỉ là chương khi nó MỞ bằng tiêu đề (tệp tách giữa chương mở bằng đoạn văn → không
     chuông); tiêu đề "Phần/Part N" → phần.
   - **PDF**: không bookmark (chương = trang) → sang trang KHÔNG phải chuyển chương: câu vắt trang nối liền (0 ms chèn),
