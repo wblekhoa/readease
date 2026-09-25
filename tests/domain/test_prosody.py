@@ -94,7 +94,9 @@ class PauseAfterTests(unittest.TestCase):
             ("paragraph", "paragraph", 450),
             ("paragraph", "heading", 1000),
             ("heading", "paragraph", 850),
-            ("heading", "heading", 1000),
+            # One name read in two breaths - "Chapter 1", then its title
+            # (25/09, tier 2): half the rest before a new heading.
+            ("heading", "heading", 500),
             ("list_item", "list_item", 300),
             ("list_item", "paragraph", 450),
             ("paragraph", "list_item", 450),
@@ -843,6 +845,16 @@ class DivisionPauseTests(unittest.TestCase):
         self.assertEqual(pause_after_ms(end, after_break, divisions={after_break.id: "scene"}), SCENE_PAUSE_MS)
         # No plan: the file is the chapter, as it always was.
         self.assertEqual(pause_after_ms(end, opening), CHAPTER_PAUSE_MS)
+
+    def test_with_the_chime_off_a_chapter_is_a_rest_the_ear_can_tell(self) -> None:
+        # 25/09, tier 2: 1200 ms was only 200 more than the rest before any
+        # heading, so a new chapter sounded like a new section. The chapter
+        # that follows its part's title stays shorter: the title just said it.
+        end = _segment("Mọi thứ đã khác.", chapter_id="c1")
+        opening = _segment("Chương 2", kind="heading", chapter_id="c2")
+        self.assertEqual(pause_after_ms(end, opening, divisions={opening.id: "chapter"}), 2000)
+        self.assertEqual(pause_after_ms(end, opening, divisions={opening.id: "part"}), 2000)
+        self.assertEqual(pause_after_ms(end, opening, divisions={opening.id: "part-chapter"}), 1500)
 
     def test_a_file_that_is_not_a_division_rests_like_a_block(self) -> None:
         # A converter's split, a front-matter page: a new file that opens no

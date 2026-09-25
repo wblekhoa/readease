@@ -366,7 +366,7 @@ class ProtocolTests(unittest.TestCase):
         """Owner, 16/09: "nhạc chờ ngắn giữa các chương". The chime the
         reader keeps sounds between chapters, in place of the flat rest, as
         frames that are not the voice's; the first chapter of a reading gets
-        none, and "off" brings the 1200 ms rest back."""
+        none, and "off" brings the 2000 ms rest back."""
         from tempfile import TemporaryDirectory
         from pathlib import Path
         from vieneu_reader.speech.chimes import load_chime
@@ -388,11 +388,12 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(sum(r.size for r in sounding), chime.size)
             self.assertTrue(np.array_equal(np.concatenate(sounding), chime))
             # Exactly one chime: two chapters, one boundary, none at the start
-            # - one 300 ms breath before it and one 500 ms after, both silent.
+            # - an 800 ms settling before it and a 700 ms breath after, both
+            # silent (25/09, tier 2; 300 and 500 before).
             silent = [r.size for r in rests if np.abs(r).max() == 0]
-            self.assertEqual(silent.count(SAMPLE_RATE * 300 // 1000), 1)
-            self.assertEqual(silent.count(SAMPLE_RATE * 500 // 1000), 1)
-            self.assertNotIn(SAMPLE_RATE * 1200 // 1000, silent)
+            self.assertEqual(silent.count(SAMPLE_RATE * 800 // 1000), 1)
+            self.assertEqual(silent.count(SAMPLE_RATE * 700 // 1000), 1)
+            self.assertNotIn(SAMPLE_RATE * 2000 // 1000, silent)
 
     def test_read_book_walks_positions_pauses_and_progress(self) -> None:
         from vieneu_reader.domain.prosody import pause_after_ms

@@ -186,7 +186,7 @@ function Figure({
             onClick={() => onOpen(source, alt || label)}
             onError={() => { setSource(null); setFailed(true); }}
             draggable={false}
-            className={`mx-auto max-w-full cursor-zoom-in rounded-2xl ${
+            className={`mx-auto max-w-full cursor-zoom-in rounded-2xl dark:bg-figure-plate ${
               paged ? "max-h-[calc(var(--page-h)-6rem)]" : "max-h-[46vh]"
             }`}
           />
@@ -1347,7 +1347,7 @@ export function Reader({
             src={zoomed.source}
             alt={zoomed.alt}
             onClick={(event) => event.stopPropagation()}
-            className="max-h-full max-w-full rounded-2xl"
+            className="max-h-full max-w-full rounded-2xl bg-figure-plate"
           />
           <div className="absolute right-4 top-4">
             <IconButton
