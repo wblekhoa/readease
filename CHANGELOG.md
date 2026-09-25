@@ -25,6 +25,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   and its links still work; "read from here" on one of its lines starts
   at the first passage after it. A sentence that points to another
   chapter, or a page of links out of the document, is read as before.
+- One arrival, one sound. When two lines of the contents point at two
+  headings in a row - a chapter's number and its name, or a part inside
+  a part - the chime now rings once, and the second title follows like a
+  heading. A short chapter with words of its own still gets its chime.
 - A picture opens large from the keyboard too. It could only be clicked:
   Tab never reached it. It is now a button named after the picture;
   Enter opens it, the picture opened large takes the focus, and Escape
