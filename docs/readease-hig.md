@@ -1019,7 +1019,8 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
     piano vốn đã 2 s nên giữ chuông của chúng. Phần và chương nay CÙNG một âm — tài liệu có phần vẫn nghe tên phần
     đọc lên. Lặng quanh vẫn 800 → âm → 700 ms. Mỗi lần sang chương dài ra ~1,8 s (2,4 → 4,2 s) với marimba.
   - Chỗ mở **mục cấp một** (dòng mục lục ngay dưới cấp chương — "1.1", "1.2"…) phát **âm mục**: 0,45 s đầu của chuông
-    họ âm đang chọn, vuốt tắt 80 ms cuối, nhỏ hơn 6 dB (đỉnh −20 dBFS) — marimba ra một tiếng gõ nhẹ, piano ra hợp âm
+    họ âm đang chọn, vuốt tắt 80 ms cuối, đỉnh đặt ở −20 dBFS (6 dB dưới mức chuông; cắt cứng −6 dB thì hợp âm đầu vốn
+    nhỏ của piano chỉ còn −26) — marimba ra một tiếng gõ nhẹ, piano ra hợp âm
     đầu, harp ra hai tiếng gảy. CẮT từ chuông có sẵn lúc đọc (`load_section_chime`), không phải tệp âm mới: không tốn
     credit, cùng chất nhạc cụ với âm chương, không thêm hash hay notice. Lặng quanh **400 → âm → 400 ms**
     (`SECTION_LEAD_MS`/`SECTION_TAIL_MS`, số tạm chờ chủ nghe): cả cụm ~1,25 s, gần bằng 1 000 ms nghỉ trước tiêu đề mà

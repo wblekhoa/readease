@@ -26,9 +26,13 @@ class SectionSoundTests(unittest.TestCase):
                 # 0.45 s: marimba's one strike, piano's first chord (its
                 # second comes at 0.45 s), harp's two plucks.
                 self.assertEqual(section.size, int(SAMPLE_RATE * 0.45))
-                # 6 dB softer, untouched until the fade begins.
+                # The chime's own shape, one gain for all of it, until the
+                # fade begins - and a peak at -20 dBFS in every family (a fixed
+                # -6 dB left piano's soft first chord at -26).
                 steady = int(SAMPLE_RATE * 0.37)
-                np.testing.assert_allclose(section[:steady], chime[:steady] * 10 ** (-6 / 20), atol=1e-6)
+                gain = float(np.abs(section).max() / np.abs(chime[:section.size]).max())
+                np.testing.assert_allclose(section[:steady], chime[:steady] * gain, atol=1e-6)
+                self.assertAlmostEqual(20 * np.log10(float(np.abs(section).max())), -20.0, places=2)
                 # Faded to nothing, so the cut is not a click.
                 self.assertLess(abs(float(section[-1])), 1e-4)
 

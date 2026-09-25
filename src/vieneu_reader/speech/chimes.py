@@ -37,10 +37,12 @@ PART_SOUNDS: dict[str, str] = {"marimba": "part-marimba"}
 # the chapter's sound, nothing to download, no credits. 0.45 s holds
 # marimba's one strike, piano's first chord (its second comes at 0.45 s)
 # and harp's two plucks; the last 80 ms fade to nothing so the cut is not a
-# click; 6 dB under the chime. Provisional until the owner hears it.
+# click. Its peak is set to -20 dBFS, 6 dB under the chimes: a fixed cut in
+# dB would leave piano's first chord - softer than its later ones - at -26.
+# Provisional until the owner hears it.
 SECTION_SECONDS = 0.45
 SECTION_FADE_SECONDS = 0.08
-SECTION_GAIN_DB = -6.0
+SECTION_PEAK_DBFS = -20.0
 SAMPLE_RATE = 48000
 
 _loaded: dict[str, np.ndarray] = {}
@@ -93,7 +95,8 @@ def load_part_chime(name: str) -> np.ndarray:
 
 def load_section_chime(name: str) -> np.ndarray:
     """The short sound that opens a first-level section for this family:
-    the first `SECTION_SECONDS` of its chime, softer, faded out."""
+    the first `SECTION_SECONDS` of its chime, peaking at `SECTION_PEAK_DBFS`,
+    faded out."""
 
     if name not in CHIME_NAMES:
         raise ValueError(f"unknown chime: {name!r}")
@@ -106,7 +109,9 @@ def load_section_chime(name: str) -> np.ndarray:
     cut = _load(name)[:length].copy()
     if cut.size < length:
         cut = np.pad(cut, (0, length - cut.size))
-    cut *= np.float32(10 ** (SECTION_GAIN_DB / 20))
+    peak = float(np.abs(cut).max())
+    if peak > 0:
+        cut *= np.float32(10 ** (SECTION_PEAK_DBFS / 20) / peak)
     cut[-fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
     _loaded[key] = cut
     return cut
