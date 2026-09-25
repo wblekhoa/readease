@@ -25,6 +25,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   and its links still work; "read from here" on one of its lines starts
   at the first passage after it. A sentence that points to another
   chapter, or a page of links out of the document, is read as before.
+- A picture opens large from the keyboard too. It could only be clicked:
+  Tab never reached it. It is now a button named after the picture;
+  Enter opens it, the picture opened large takes the focus, and Escape
+  gives it back to the picture on the page. Nothing changes for the
+  mouse.
 
 ## 0.1.16
 

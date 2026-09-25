@@ -27,7 +27,7 @@ import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
 import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
 import { matchRanges } from "../ui/textSearch";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
-import { ListRow } from "../ui/patterns";
+import { ListRow, pressedByPointer, useLayerFocus } from "../ui/patterns";
 import { contentsRows, currentRow, type ContentsRow, type TocEntry } from "../ui/contents";
 import { Presence, scrollBehavior } from "../ui/motion";
 import type { SidebarTab } from "../ui/sidebarState";
@@ -179,17 +179,32 @@ function Figure({
       )}
       {source && (
         <>
-          <img
-            src={source}
-            alt={alt || label}
+          {/* A button, not an <img> with a click handler: Tab reaches it and
+              Enter opens it (HIG 3.10, 25/09). Its name says what the
+              picture is, so the picture inside is not read a second time. */}
+          <button
+            type="button"
+            aria-label={`${text("reader.figure_open")}: ${alt || label}`}
             title={text("reader.figure_open")}
-            onClick={() => onOpen(source, alt || label)}
-            onError={() => { setSource(null); setFailed(true); }}
-            draggable={false}
-            className={`mx-auto max-w-full cursor-zoom-in rounded-2xl dark:bg-figure-plate ${
-              paged ? "max-h-[calc(var(--page-h)-6rem)]" : "max-h-[46vh]"
-            }`}
-          />
+            onClick={(event) => {
+              onOpen(source, alt || label);
+              // After a mouse press it lets go of the focus, like every
+              // opener: a focused button would take the next Space - the
+              // reader's pause - and open the picture again.
+              if (pressedByPointer()) event.currentTarget.blur();
+            }}
+            className="mx-auto block max-w-full cursor-zoom-in rounded-2xl"
+          >
+            <img
+              src={source}
+              alt=""
+              onError={() => { setSource(null); setFailed(true); }}
+              draggable={false}
+              className={`mx-auto max-w-full rounded-2xl dark:bg-figure-plate ${
+                paged ? "max-h-[calc(var(--page-h)-6rem)]" : "max-h-[46vh]"
+              }`}
+            />
+          </button>
           <figcaption className="mt-2 text-center text-xs text-ink-mute">
             <span className="font-semibold">{label}</span>
             {alt && <span> · {alt}</span>}
@@ -1337,30 +1352,46 @@ export function Reader({
         </div>
       )}
 
-      {zoomed && (
-        <div
-          data-lightbox
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-8"
-          onClick={() => setZoomed(null)}
-        >
-          <img
-            src={zoomed.source}
-            alt={zoomed.alt}
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-full max-w-full rounded-2xl bg-figure-plate"
-          />
-          <div className="absolute right-4 top-4">
-            <IconButton
-              onClick={() => setZoomed(null)}
-              aria-label={text("reader.figure_close")}
-              title={text("reader.figure_close")}
-              className="bg-paper"
-            >
-              <CloseIcon />
-            </IconButton>
-          </div>
-        </div>
-      )}
+      {zoomed && <Lightbox source={zoomed.source} alt={zoomed.alt} onClose={() => setZoomed(null)} />}
     </section>
+  );
+}
+
+/** A picture opened large (HIG 3.10): a named modal dialog, so the keyboard
+ * that opened it lands inside it, Tab stays there, and Escape - handled by
+ * the reader, which closes it - hands the focus back to the picture
+ * (`useLayerFocus`). Opened by the mouse, nothing moves. Its own component,
+ * so the hook lives above any early return. */
+function Lightbox({ source, alt, onClose }: { source: string; alt: string; onClose: () => void }) {
+  const layer = useRef<HTMLDivElement>(null);
+  useLayerFocus(layer);
+  return (
+    <div
+      ref={layer}
+      data-lightbox
+      role="dialog"
+      aria-modal="true"
+      aria-label={alt}
+      tabIndex={-1}
+      className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-8"
+      onClick={onClose}
+    >
+      <img
+        src={source}
+        alt={alt}
+        onClick={(event) => event.stopPropagation()}
+        className="max-h-full max-w-full rounded-2xl bg-figure-plate"
+      />
+      <div className="absolute right-4 top-4">
+        <IconButton
+          onClick={onClose}
+          aria-label={text("reader.figure_close")}
+          title={text("reader.figure_close")}
+          className="bg-paper"
+        >
+          <CloseIcon />
+        </IconButton>
+      </div>
+    </div>
   );
 }

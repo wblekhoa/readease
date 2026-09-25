@@ -408,6 +408,10 @@ async function main() {
       else {
         await inAndBack("reading-settings", /^Cài đặt đọc$/);
         await inAndBack("voice-settings", /^Cài đặt giọng đọc$/);
+        // A picture opens large from the keyboard and hands the focus back
+        // (HIG 3.10, 25/09): it was an <img> with a click handler, which
+        // Tab never reached.
+        await inAndBack("figure", /^Xem ảnh lớn/);
         // A panel opened from a row of another, which closes as it opens.
         if (!(await focusOn(/^Cài đặt giọng đọc$/))) expect("manage-voices", false, "no voice settings button");
         else {
