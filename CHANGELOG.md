@@ -4,7 +4,12 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.18
+
+Two things that were in the way while listening: the Speaker row now
+names the device the voice is on, and the Change voice menu in the
+reading bar opens where it can be seen. Installs over 0.1.17, or lets
+0.1.17 install it.
 
 - The Speaker row in Voice settings names the device the voice is on.
   When the Mac's output changed while ReadEase was open - headphones
