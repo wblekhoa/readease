@@ -21,7 +21,7 @@ ReadEase is a local-first macOS app that reads your **EPUB and PDF files** (text
 
 ## Download ReadEase
 
-### [⬇️ Download ReadEase 0.1.17 for Apple Silicon Macs - 124 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.17/ReadEase-0.1.17-arm64.dmg)
+### [⬇️ Download ReadEase 0.1.17 for Apple Silicon Macs - 125 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.17/ReadEase-0.1.17-arm64.dmg)
 
 One click downloads the `.dmg`. Open it and **drag `ReadEase.app` into Applications** right there. No Terminal, no tools to install. Prefer a `.zip`? [Here](https://github.com/wblekhoa/readease/releases/download/v0.1.17/ReadEase-0.1.17-arm64.zip) (115 MB) - unzip and drag the same way. From this version the app tells you when a newer one exists (ReadEase menu › Check for Updates…). Other versions and release notes: [Releases](https://github.com/wblekhoa/readease/releases).
 
