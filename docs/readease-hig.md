@@ -998,6 +998,11 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
     chương và phần **2 000 ms** (`CHAPTER_PAUSE_MS`, 25/09 tầng 2, số tạm; 1 200 cũ chỉ hơn khoảng trước một tiêu đề
     200 ms nên tai không nghe ra đã sang chương); phần → chương đầu vẫn 1 500 ms — tên phần vừa đọc đã báo.
   - Tệp mới mà không phải chương (trang đầu sách, tệp bị tách) → nhịp khối thường (đoạn 450, trước tiêu đề 1 000).
+  - **Một lần đến, một âm** (25/09): dòng chương/phần mà giữa nó và dòng chia trước CHỈ có tiêu đề — hai dòng mục lục
+    trỏ hai tiêu đề liền nhau ("Chương 1" · "Bến sông"), phần lồng trong phần không một chữ ở giữa — là CÙNG một lần
+    đến: không vang lần hai, nghỉ như hai tiêu đề liền (500 ms). Có chữ thật ở giữa thì vẫn là chương mới và vẫn vang:
+    đếm trên thư viện của chủ (25/09, chỉ số), 23 cặp chuông cách nhau ≤ 80 chữ thì 19 là chương ngắn THẬT (21–80 chữ),
+    2 là đoạn ≤ 20 chữ, chỉ 2 là tiêu đề liền — nên luật cắt theo "chỉ tiêu đề", không theo số chữ.
   - Rủi ro đã biết, chưa đo: mục lục PHẲNG liệt kê cả mục nhỏ ở cấp ngoài cùng sẽ vang chuông ở mỗi mục — cột Mục lục
     cũng đánh số chúng như chương nên tai và mắt vẫn khớp; chưa đếm trên thư viện của chủ (chưa được phép quét).
   - Không đổi: phạm vi "N chương" của giọng trả phí (`scope_end`) và danh sách chương vẫn theo tệp.
