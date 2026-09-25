@@ -486,6 +486,66 @@ async function main() {
         }
         crashed("sheet");
       }
+
+      // The basic journey, the level the owner chose (HIG 4.2, 25/09): import
+      // a document, choose one, read and pause - from the library, by Tab,
+      // Enter and Space alone. The focus is moved by Tab, never set by the
+      // script, so a control Tab cannot reach fails here even with a name.
+      const nameOf = () => evalJs(`(() => { const a = document.activeElement;
+        if (!a || a === document.body) return "";
+        return (a.getAttribute("aria-label") || a.textContent || "").trim().replace(/\\s+/g, " "); })()`);
+      const tabTo = async (re, most = 80) => {
+        for (let i = 0; i < most; i++) {
+          await key("Tab", { pause: 40 });
+          if (re.test(await nameOf())) return true;
+        }
+        return false;
+      };
+      const liveSays = () => evalJs(`(() => { const live = document.querySelector('.sr-only[aria-live="polite"]');
+        return live ? live.textContent.trim() : null; })()`);
+      const shelfCount = () => evalJs(`document.querySelectorAll('button[aria-label^="Mở "]:not([aria-label^="Mở PDF"])').length`);
+      const space = async () => {
+        const base = { key: " ", code: "Space", windowsVirtualKeyCode: 32 };
+        await send("Input.dispatchKeyEvent", { type: "keyDown", ...base, text: " " });
+        await send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
+        await sleep(500);
+      };
+      if (!(await goto([...UNFOLD, ["click", /^Thư viện$|^Library$/]]))) expect("journey", false, "could not reach the library");
+      else {
+        await evalJs(`document.activeElement && document.activeElement.blur()`);
+        const before = await shelfCount();
+        if (!(await tabTo(/^Mở PDF hoặc EPUB$/))) expect("journey", false, 'Tab never reached "Mở PDF hoặc EPUB"');
+        else {
+          await key("Enter", { pause: 1200 });
+          const after = await shelfCount();
+          expect("journey", after > before, `Enter on "Mở PDF hoặc EPUB" imported nothing (${before} -> ${after} documents)`);
+        }
+        await evalJs(`document.activeElement && document.activeElement.blur()`);
+        if (!(await tabTo(/^Mở (?!PDF)/))) expect("journey", false, "Tab never reached a document on the shelf");
+        else {
+          const chosen = await nameOf();
+          await key("Enter", { pause: 600 });
+          const opened = await waitFor(/^Quay lại thư viện$/, 6000);
+          expect("journey", opened, `Enter on "${chosen}" did not open it`);
+          if (opened) {
+            if (!(await tabTo(/^Đọc tiếp$|^Đọc từ đầu$/))) expect("journey", false, "Tab never reached the read button");
+            else {
+              await key("Enter", { pause: 400 });
+              const reading = await waitFor(/^Tạm dừng$/, 8000, "button");
+              expect("journey", reading, "Enter on the read button did not start the reading");
+              const started = await liveSays();
+              expect("journey", /chuẩn bị|Bắt đầu đọc/.test(started || ""), `the live region said "${started}" when the reading started`);
+              if (reading) {
+                await space();
+                const paused = await liveSays();
+                expect("journey", paused === "Đã tạm dừng", `Space during the reading left the live region at "${paused}", not "Đã tạm dừng"`);
+                await findAndClick(/^Dừng$/);
+              }
+            }
+          }
+        }
+        crashed("journey");
+      }
     }
 
     ws.close();
