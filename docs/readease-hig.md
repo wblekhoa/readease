@@ -1070,8 +1070,11 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
     đến: không vang lần hai, nghỉ như hai tiêu đề liền (500 ms). Có chữ thật ở giữa thì vẫn là chương mới và vẫn vang:
     đếm trên thư viện của chủ (25/09, chỉ số), 23 cặp chuông cách nhau ≤ 80 chữ thì 19 là chương ngắn THẬT (21–80 chữ),
     2 là đoạn ≤ 20 chữ, chỉ 2 là tiêu đề liền — nên luật cắt theo "chỉ tiêu đề", không theo số chữ.
-  - Rủi ro đã biết, chưa đo: mục lục PHẲNG liệt kê cả mục nhỏ ở cấp ngoài cùng sẽ vang chuông ở mỗi mục — cột Mục lục
-    cũng đánh số chúng như chương nên tai và mắt vẫn khớp; chưa đếm trên thư viện của chủ (chưa được phép quét).
+  - Rủi ro mục lục PHẲNG (liệt kê cả mục nhỏ ở cấp ngoài cùng → vang âm dài ở mỗi mục) — ĐÃ ĐO 26/09 trên thư viện của
+    chủ (chỉ số, 10 EPUB, 75,8 giờ đọc): hai tài liệu mục lục phẳng 104 dòng, trung vị ~4 270 ký tự (~4,7 phút nghe) giữa hai
+    âm dài — là chương/bài thật, không phải mục. Theo luật "chương dài, mục ngắn", âm chuyển chiếm 0,90 % thời lượng nghe
+    (0.1.18: 0,51 %); nặng nhất một tài liệu 188 chương/phần, âm dài cách trung vị ~1,6 phút, 2,8 %. Cột Mục lục đánh số
+    chúng như chương nên tai và mắt vẫn khớp.
   - Không đổi: phạm vi "N chương" của giọng trả phí (`scope_end`) và danh sách chương vẫn theo tệp.
 - **Ngắt cảnh là khoảng lặng, không phải chữ** (24/09). Dòng chỉ gồm ký hiệu ngắt cảnh ("* * *", "***", "⁂", "❖ ❖ ❖",
   "---", "• • •") hay kiểu "o0o" ("-o0o-", "~oOo~") trước đây bị ĐỌC: SDK Việt nói "sao sao sao", "ô không ô", "khoảng
