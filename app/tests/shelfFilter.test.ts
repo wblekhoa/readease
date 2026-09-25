@@ -13,9 +13,9 @@ test("accents do not matter when searching", () => {
 });
 
 test("status words narrow the shelf without a separate control", () => {
-  assert.ok(matchesQuery(item("The Daily Stoic", "encrypted"), "drm"));
-  assert.ok(matchesQuery(item("101 Essays", "importable", 1), "ghi chú"));
-  assert.ok(!matchesQuery(item("101 Essays", "importable", 0), "ghi chú"));
+  assert.ok(matchesQuery(item("Morning Notes on Patience", "encrypted"), "drm"));
+  assert.ok(matchesQuery(item("Forty Small Essays", "importable", 1), "ghi chú"));
+  assert.ok(!matchesQuery(item("Forty Small Essays", "importable", 0), "ghi chú"));
   assert.ok(matchesQuery(item("Anything", "linked"), ""));
 });
 

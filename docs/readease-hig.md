@@ -739,7 +739,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   đoạn nó bắt đầu. Tách trong `ui/highlight.ts` (test node: ngoặc cong, NBSP, khoảng trắng đôi, tràn đoạn, nhiều highlight một đoạn — §3.14 cuối).
 - **Thư viện chủ (02/09, đếm, không đọc chữ)**: 7 cuốn Apple Books, tất cả là thư mục; 2 ghép theo tiêu
   đề với bản đã có; 1 quá lớn (230 MB, 3 highlight — không đồng bộ được); 4 nhập được; highlight thật
-  khớp 1/1 trên «101 Essays». Nhập cuốn 1,4 MB mất 0,2 s.
+  khớp 1/1 trên một cuốn thử. Nhập cuốn 1,4 MB mất 0,2 s.
 - **Parking lot**: màu highlight theo Apple (cột `ZANNOTATIONSTYLE` CHƯA đọc — ba test cũ canh "một truy vấn,
   một bản sao" của `_rows`; đọc thêm cột = cập nhật fixture có chủ đích; `style` lưu 0) · nâng cap 200 MB · sách tệp `.epub`
   đơn (đã hỗ trợ đường đi, chưa gặp ca thật).
