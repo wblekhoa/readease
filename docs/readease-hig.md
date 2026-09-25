@@ -331,9 +331,13 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   (tối thiểu 40 px, rộng ra khi trang hẹp hơn hộp), KHÔNG BAO GIỜ phủ lên cột chữ — click và kéo-chọn
   trên chữ vẫn là của việc đọc; mũi tên mờ, đậm khi rê, ẩn khi không còn chỗ đi. Click đoạn = đọc từ đây.
 - **Giọng theo trang**: giọng sang đoạn ngoài trang → tự lật (nếu đang theo). Chỉ TAY người đọc
-  (lật/phím) mới tính là "đi chỗ khác" → `following=false` + viên "Về chỗ đang đọc"; app tự đưa đi
-  (mở, mục lục, giọng, báo hình, phân trang lại) không bao giờ tính. Báo hình "Xem hình N" → lật tới
-  trang có hình.
+  mới tính là "đi chỗ khác" → `following=false` + viên "Về chỗ đang đọc": lật trang (chuột/phím),
+  hoặc bấm một chỗ để XEM trong lúc giọng đọc tiếp ở chỗ khác — kết quả tìm, highlight/ghi chú
+  (`PageReason` "look"; chủ 25/09: câu kế tiếp kéo trang về chỗ đang đọc). Phép phân biệt: cú bấm
+  kéo giọng theo nó (mục lục khi đang đọc → đọc từ đó) không tính; cú bấm để giọng đọc tiếp nơi
+  khác là người đọc đi xem. App tự đưa đi (mở, giọng, báo hình, phân trang lại, "chỗ đọc tiếp")
+  không bao giờ tính. Chế độ cuộn không có nhánh riêng: `following` đo lại sau mỗi lần cuộn, theo
+  câu đang đọc còn trong khung hay không. Báo hình "Xem hình N" → lật tới trang có hình.
 - **Mục lục = bảng nổi ở CẢ HAI chế độ** (`Surface` bên trái; chủ chốt 02/09 sau khi thấy overlay
   "quá tối ưu"): mặc định ĐÓNG (mở sẵn thì che sách); bấm chương → nhảy và đóng. Trong chế độ cuộn
   panel bắt đầu dưới header (`top = --shell-top-h + 0.5rem`); cột mục lục cố định đã bỏ.
