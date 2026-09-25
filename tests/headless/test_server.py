@@ -1676,14 +1676,14 @@ class ProtocolTests(unittest.TestCase):
                     id="fig-a", number=41, chapter_id=book.chapters[0].id,
                     anchor_segment_id=first.id, placement="after",
                     media_type="image/png", alt_text="Image",
-                    alt_is_generic=True, asset_path="a.png",
+                    alt_is_generic=True, asset_path="a.png", width=None, height=None,
                     label=None, caption_segment_id=None, duplicate_of=None,
                 ),
                 SimpleNamespace(
                     id="fig-b", number=42, chapter_id=book.chapters[0].id,
                     anchor_segment_id=second.id, placement="before",
                     media_type="image/png", alt_text="Sơ đồ thật",
-                    alt_is_generic=False, asset_path="b.png",
+                    alt_is_generic=False, asset_path="b.png", width=None, height=None,
                     label=None, caption_segment_id=None, duplicate_of=None,
                 ),
             )
@@ -1809,7 +1809,7 @@ class ProtocolTests(unittest.TestCase):
                     id="fig-a", number=1, chapter_id=book.chapters[0].id,
                     anchor_segment_id=prose.id, placement="after",
                     media_type="image/png", alt_text="Hình 1.1. Sơ đồ thứ nhất.",
-                    alt_is_generic=False, asset_path="a.png",
+                    alt_is_generic=False, asset_path="a.png", width=None, height=None,
                     label="Hình 1.1", caption_segment_id=caption.id,
                     duplicate_of=None,
                 ),
@@ -1817,7 +1817,7 @@ class ProtocolTests(unittest.TestCase):
                     id="fig-b", number=2, chapter_id=book.chapters[0].id,
                     anchor_segment_id=more.id, placement="after",
                     media_type="image/png", alt_text="Hình 1.2. Không có chú thích.",
-                    alt_is_generic=False, asset_path="b.png",
+                    alt_is_generic=False, asset_path="b.png", width=None, height=None,
                     label="Hình 1.2", caption_segment_id=None,
                     duplicate_of=None,
                 ),
@@ -1889,21 +1889,21 @@ class ProtocolTests(unittest.TestCase):
                     id="fig-orig", number=1, chapter_id=book.chapters[0].id,
                     anchor_segment_id=prose.id, placement="after",
                     media_type="image/png", alt_text="Hình 1.3. Sơ đồ.",
-                    alt_is_generic=False, asset_path="a.png",
+                    alt_is_generic=False, asset_path="a.png", width=None, height=None,
                     label="Hình 1.3", caption_segment_id=caption.id, duplicate_of=None,
                 ),
                 SimpleNamespace(
                     id="fig-copy", number=2, chapter_id=book.chapters[0].id,
                     anchor_segment_id=caption.id, placement="after",
                     media_type="image/png", alt_text="Hình 1.3 đã Việt hóa.",
-                    alt_is_generic=False, asset_path="a.vi.png",
+                    alt_is_generic=False, asset_path="a.vi.png", width=None, height=None,
                     label="Hình 1.3", caption_segment_id=caption.id, duplicate_of="fig-orig",
                 ),
                 SimpleNamespace(
                     id="fig-next", number=3, chapter_id=book.chapters[0].id,
                     anchor_segment_id=after.id, placement="after",
                     media_type="image/png", alt_text="Image",
-                    alt_is_generic=True, asset_path="b.png",
+                    alt_is_generic=True, asset_path="b.png", width=None, height=None,
                     label=None, caption_segment_id=None, duplicate_of=None,
                 ),
             )
@@ -2249,6 +2249,7 @@ class ProtocolTests(unittest.TestCase):
                 # Deliberately NOT the id: a fixture where the two are the
                 # same string cannot tell a correct lookup from the wrong one.
                 asset_path="OEBPS/images/one.png",
+                width=1200, height=800,
             )
             presentation = SimpleNamespace(
                 contents=(),
@@ -2283,6 +2284,9 @@ class ProtocolTests(unittest.TestCase):
             "placement": "after", "alt": "Sơ đồ",
             "number": 1, "alt_is_generic": False,
             "label": None, "caption_segment_id": None, "duplicate_of": None,
+            # Its size, read off the image at import: the page keeps the
+            # room before the bytes arrive (campaign 26/09).
+            "width": 1200, "height": 800,
         }])
         served = replies[1]["result"]
         self.assertEqual(served["media_type"], "image/png")

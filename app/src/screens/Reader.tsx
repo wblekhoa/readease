@@ -81,6 +81,9 @@ type BookFigure = {
   /** A translated copy of the picture just before it. Shown, so the two
    * can be compared; it shares that picture's number and label. */
   duplicate_of?: string | null;
+  /** Its size, read off the image at import; absent when unreadable. */
+  width?: number | null;
+  height?: number | null;
 };
 type BookChapter = {
   id: string;
@@ -170,6 +173,17 @@ function Figure({
   // The document's word, as the voice says it: "Figure 1" under an English
   // book, whatever language the interface is in (HIG 3.9).
   const label = figure.label ?? textIn(language, "reader.figure_label", { n: figure.number });
+  // The picture's room, kept before its bytes arrive: its own size, under the
+  // same limits the image gets (the column's width; the page, or 46vh in a
+  // scroll). A picture loading mid-scroll pushed everything below it down -
+  // a jump through nine of them stopped 2 771 px short of where it was aimed
+  // (campaign 26/09). No size known: nothing held, as before.
+  const room = !source && !failed && figure.width && figure.height
+    ? {
+      width: `min(${figure.width}px, 100%, calc(${paged ? "(var(--page-h) - 6rem)" : "46vh"} * ${figure.width} / ${figure.height}))`,
+      aspectRatio: `${figure.width} / ${figure.height}`,
+    }
+    : null;
 
   return (
     <figure
@@ -182,6 +196,7 @@ function Figure({
           {text("reader.figure_unavailable")}
         </p>
       )}
+      {room && <div aria-hidden className="mx-auto rounded-2xl" style={room} />}
       {source && (
         <>
           {/* A button, not an <img> with a click handler: Tab reaches it and
@@ -210,11 +225,14 @@ function Figure({
               }`}
             />
           </button>
-          <figcaption lang={language} className="mt-2 text-center text-xs text-ink-mute">
-            <span className="font-semibold">{label}</span>
-            {alt && <span> · {alt}</span>}
-          </figcaption>
         </>
+      )}
+      {/* With the picture, or with its room: known before the bytes are. */}
+      {(source || room) && (
+        <figcaption lang={language} className="mt-2 text-center text-xs text-ink-mute">
+          <span className="font-semibold">{label}</span>
+          {alt && <span> · {alt}</span>}
+        </figcaption>
       )}
     </figure>
   );

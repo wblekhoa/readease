@@ -25,6 +25,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   now sound the same; deeper sections keep the rest a title gets, and a
   section whose title stands right under its chapter's rings once, with
   the chapter.
+- In a scroll, a jump far down the document - a search result, a note,
+  a line of the contents - lands where it was aimed. Pictures above it
+  loaded on the way and pushed the page down, so the first jump through
+  them could stop short with the result out of sight; each picture now
+  keeps its room before it arrives.
 
 ## 0.1.18
 

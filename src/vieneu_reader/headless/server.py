@@ -2163,6 +2163,12 @@ class _Session:
                         # (a reader may want to compare), numbered with the
                         # original, never announced twice.
                         "duplicate_of": figure.duplicate_of,
+                        # Its size, read off the image at import, or None.
+                        # The page keeps the room before the bytes arrive: a
+                        # jump through a scroll of pictures loading on the
+                        # way stopped 2 771 px short (campaign 26/09).
+                        "width": figure.width,
+                        "height": figure.height,
                     }
                     for figure, number in _figure_numbers(chapter.figures)
                 ]

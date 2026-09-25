@@ -565,6 +565,26 @@ async function main() {
         crashed("favorite");
       }
 
+      // In a scroll, a jump far down the document lands where it was aimed
+      // even when pictures above load on the way (campaign 26/09: the first
+      // jump stopped 2 771 px short - nine pictures grew under the scroll).
+      // The pictures keep their room before their bytes arrive.
+      await evalJs(`localStorage.setItem("readease.reading-mode", "scroll")`);
+      if (!(await goto([...OPEN_BOOK, ["click", /^Tìm trong tài liệu$/]]))) expect("scroll-jump", false, "could not open search in a scroll");
+      else {
+        await send("Input.insertText", { text: "hoạt động" });
+        await sleep(600);
+        const clicked = await evalJs(`(() => { const rows = [...document.querySelectorAll("button mark[data-search]")].map((m) => m.closest("button"));
+          if (!rows.length) return false; rows[rows.length - 1].click(); return true; })()`);
+        await sleep(3000);
+        const where = await evalJs(`(() => { const m = document.querySelector('[data-segment] mark[data-search="current"]');
+          return m ? Math.round(m.getBoundingClientRect().top) : null; })()`);
+        expect("scroll-jump", clicked && where !== null && where > 0 && where < H,
+          clicked ? `the hit's mark ended at ${where} px after the jump, not in the ${H} px window` : "no search hit to jump to");
+        crashed("scroll-jump");
+      }
+      await evalJs(`localStorage.removeItem("readease.reading-mode")`);
+
       if (!(await goto([]))) expect("menu", false, "home did not load");
       else {
         if (!(await focusOn(/^Đổi chế độ$/))) expect("menu", false, "no mode switch");

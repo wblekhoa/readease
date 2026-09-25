@@ -209,6 +209,26 @@ const FIGURES: Record<number, Array<Record<string, unknown>>> = {
   ],
 };
 
+/* The size the engine reads off each image at import, taken from the SVG
+   this harness serves, so the two can never disagree (campaign 26/09). */
+const FIGURE_SIZE: Record<string, { width: number; height: number }> = Object.fromEntries(
+  Object.entries(mockFigureSvgs()).flatMap(([id, svg]) => {
+    const size = svg.match(/width="(\d+)" height="(\d+)"/);
+    return size ? [[id, { width: Number(size[1]), height: Number(size[2]) }]] : [];
+  }),
+);
+function sized<T extends { chapters: { figures: object[] }[] }>(book: T): T {
+  return {
+    ...book,
+    chapters: book.chapters.map((chapter) => ({
+      ...chapter,
+      figures: chapter.figures.map((figure) => ({
+        ...figure,
+        ...FIGURE_SIZE[String((figure as { id?: unknown }).id)],
+      })),
+    })),
+  } as T;
+}
 const FIGURE_DATA: Record<string, string> = Object.fromEntries(
   Object.entries(mockFigureSvgs()).map(([id, svg]) => [id, btoa(unescape(encodeURIComponent(svg)))]),
 );
@@ -885,13 +905,13 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       // shelf row opens the Vietnamese sample where it was left.
       if (params.book_id === ENGLISH_BOOK.id) {
         return {
-          book: { ...ENGLISH_BOOK, toc: isEmpty("toc") ? [] : ENGLISH_TOC },
+          book: { ...sized(ENGLISH_BOOK), toc: isEmpty("toc") ? [] : ENGLISH_TOC },
           annotations: [],
           progress: { segment_id: null },
         };
       }
       return {
-        book: { ...BOOK, toc: isEmpty("toc") ? [] : TOC },
+        book: { ...sized(BOOK), toc: isEmpty("toc") ? [] : TOC },
         annotations: isEmpty("notes") ? [] : ANNOTATIONS,
         progress: { segment_id: "ch-2-seg-1" },
       };
