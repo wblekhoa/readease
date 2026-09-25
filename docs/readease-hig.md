@@ -27,6 +27,7 @@ diệt mơ hồ "token này áp vào đâu") · **Behavior** (trạng thái + b�
 | Kéo dữ liệu từ app khác, một chiều | Sheet `Surface radius="sheet"` + `BookTile` (§3.12) | Từ Apple Books |
 | Tuỳ chọn phụ sau một hành động | `MenuButton` (icon → danh sách ngắn, mục đầu = mặc định) | Nhập/đồng bộ trong sheet Apple Books |
 | Bật/tắt một mục vào danh sách | `Switch` (role=switch, ô gạt) | Chọn giọng cho danh sách đổi nhanh |
+| Đánh dấu một mục đứng đầu danh sách | `IconButton` + `aria-pressed`, sao viền ↔ sao đặc (§3.13) | ★ giọng yêu thích |
 | Nút nhỏ nằm giữa dòng chữ | `InlineIconButton` (co theo cỡ chữ, tự chặn click của đoạn) | Icon ghi chú trong đoạn |
 | Danh sách bất kỳ | `GroupedSection` + `GroupedRow` (kẻ chấm, không thẻ) | Cài đặt · Chất lượng · Transfer · danh sách giọng |
 | Xin quyền hệ thống | PermissionCard | Quét đọc |
@@ -1828,6 +1829,23 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
   chuyện mỗi giới (thứ một cuốn sách hay cần). Giọng nào bản dựng này không có thì bỏ, không mời.
   **"Chưa từng chọn" khác "đã chọn là rỗng"**, và chỉ cái đầu được mồi — nếu không, người tự tay tắt hết
   sẽ thấy chúng bật lại nguyên si ở lần mở app sau (`initialShortlist`, 3 test).
+- **★ Yêu thích — dấu thứ hai, độc lập với công tắc** (chủ 25/09: "đánh dấu voice favorite để lần sau có thể
+  thấy khi select voice"; chủ chọn "thêm ★ riêng, giữ công tắc"). ★ quyết **THỨ TỰ**: giọng yêu thích đứng
+  **đầu** mọi nơi liệt kê giọng — nhóm **Yêu thích (N)** trên cùng Danh sách giọng, nhóm **Yêu thích** đầu select
+  Giọng, đầu menu Đổi giọng. Công tắc vẫn quyết giọng **có mặt** ở select + menu. Hai dấu không kéo nhau: bấm ★
+  không bật công tắc, tắt công tắc không bỏ ★ — giọng ★ mà công tắc tắt chỉ đứng đầu Danh sách giọng.
+- **Nút ★ trên mỗi hàng**, giữa nghe thử và công tắc: `IconButton` + `aria-pressed`, tên "Yêu thích {tên}". Hai
+  trạng thái là hai **dáng**, không chỉ hai màu: sao viền (`linear` của bộ nguồn, `ink-mute`) = chưa; chính đường
+  viền ấy **tô kín**, màu `favorite` = `--fill-warning-bold` (đo 3,6:1 nền sáng, 6,9:1 nền tối) = rồi. Ngoại lệ có
+  lý do của bộ bulk: sao bulk vốn nửa đặc nửa nhạt — "nửa ngôi sao" không trả lời được câu "có phải yêu thích
+  không"; còn sao đặc (`bold`) của bộ nguồn có một vết cắt chéo, ở 20px đọc thành sao **gạch bỏ**, tức nghĩa
+  ngược lại. Màu đặt trên chính SVG: `IconButton` tự mang `ink-mute`, và lớp màu truyền vào nút thua thứ tự CSS.
+- **Nhóm Yêu thích xếp lại ở LẦN MỞ SAU** ("để lần sau có thể thấy"): trong lúc sheet đang mở, bấm ★ chỉ đổi
+  dáng sao, hàng đứng yên — hàng nhảy lên đầu ngay dưới con trỏ là mất dấu nó, và bấm nhầm thì không kịp bấm lại.
+- **Nhớ qua lần mở app**: khoá `voice_favorites` (JSON các id), cùng đường với `voice_shortlist` — engine chỉ nhận
+  khoá có trong danh sách cho phép, và test `test_every_config_key_the_shell_asks_for_is_a_known_key` đỏ nếu
+  thiếu. Không mồi sẵn: yêu thích chỉ là cái người đọc tự chọn. Id giọng trả phí đổi model thì dời theo, như
+  danh sách đổi nhanh (`initialFavorites`).
 - Một lớp nổi tại một thời điểm: bấm chip cài đặt ở footer **đóng** sheet giọng (nếu không, panel cài đặt
   mở NGAY DƯỚI sheet, nơi không ai với tới).
 
