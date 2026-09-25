@@ -548,6 +548,17 @@ async function main() {
           if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("favorite", false, "could not reopen the voices sheet after a reload");
           else {
             expect("favorite", await starredGroup(), "after a reload the voice is no longer starred first");
+            // While reading, Change voice lists it first, with its star -
+            // which carries the word for a screen reader.
+            await key("Escape");
+            if ((await findAndClick(/^Đọc tiếp$/)) && (await waitFor(/^Tạm dừng$/, 6000, "button"))) {
+              await findAndClick(/^Đổi giọng$/);
+              const first = await evalJs(`document.querySelector('[role="menu"] [role="menuitem"]')?.textContent.trim() ?? null`);
+              expect("favorite", /^Thái Sơn\s*Yêu thích/.test(first ?? ""), `Change voice starts with ${JSON.stringify(first)}, not the starred "Thái Sơn"`);
+              await key("Escape");
+              await findAndClick(/^Dừng$/);
+            } else expect("favorite", false, "could not start a reading to open Change voice");
+            for (const [, re] of VOICES_SHEET.slice(0, 2)) await findAndClick(re);
             await findAndClick(/^Yêu thích Thái Sơn$/);
           }
         }

@@ -70,6 +70,7 @@ import {
   CursorTextIcon,
   TransferIcon,
   VoiceSwitchIcon,
+  StarIcon,
   ArrowSwapIcon,
   SidebarIcon,
 } from "./ui/icons";
@@ -2164,6 +2165,13 @@ export default function App() {
                     items={[
                       ...favoritesFirst(offeredVoices(voices, shortlist, voiceId), favorites).map((voice) => ({
                         label: voiceName(voice.label) || voice.id,
+                        // Starred voices come first; the star says why (HIG 3.13).
+                        mark: favorites.includes(voice.id) ? (
+                          <>
+                            <StarIcon className="text-favorite" />
+                            <span className="sr-only">{text("voices.group_favorites")}</span>
+                          </>
+                        ) : undefined,
                         hint: voice.id === voiceId ? text("voices.in_use") : undefined,
                         onSelect: () => switchVoice(voice.id),
                       })),

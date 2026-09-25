@@ -1832,7 +1832,8 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
 - **★ Yêu thích — dấu thứ hai, độc lập với công tắc** (chủ 25/09: "đánh dấu voice favorite để lần sau có thể
   thấy khi select voice"; chủ chọn "thêm ★ riêng, giữ công tắc"). ★ quyết **THỨ TỰ**: giọng yêu thích đứng
   **đầu** mọi nơi liệt kê giọng — nhóm **Yêu thích (N)** trên cùng Danh sách giọng, nhóm **Yêu thích** đầu select
-  Giọng, đầu menu Đổi giọng. Công tắc vẫn quyết giọng **có mặt** ở select + menu. Hai dấu không kéo nhau: bấm ★
+  Giọng, đầu menu Đổi giọng (mỗi dòng ★ có sao nhỏ sau tên — `MenuButton` item `mark`, kèm chữ "Yêu thích" `sr-only`
+  cho VoiceOver; thiếu sao thì hai dòng đầu chỉ là "đứng đầu" mà không ai biết vì sao). Công tắc vẫn quyết giọng **có mặt** ở select + menu. Hai dấu không kéo nhau: bấm ★
   không bật công tắc, tắt công tắc không bỏ ★ — giọng ★ mà công tắc tắt chỉ đứng đầu Danh sách giọng.
 - **Nút ★ trên mỗi hàng**, giữa nghe thử và công tắc: `IconButton` + `aria-pressed`, tên "Yêu thích {tên}". Hai
   trạng thái là hai **dáng**, không chỉ hai màu: sao viền (`linear` của bộ nguồn, `ink-mute`) = chưa; chính đường

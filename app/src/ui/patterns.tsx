@@ -798,6 +798,10 @@ export function MenuButton({
      * "thêm icon cho các tính năng"). 16px, `ink-mute`. */
     icon?: ReactNode;
     label: string;
+    /** A small glyph right after the label that says something about the
+     * item - the star on a favourite voice (HIG 3.13). Give it words for a
+     * screen reader inside (`sr-only`); the glyph itself is aria-hidden. */
+    mark?: ReactNode;
     hint?: string;
     onSelect: () => void;
   }[];
@@ -906,7 +910,12 @@ export function MenuButton({
                 {item.icon && (
                   <span className="shrink-0 text-ink-mute [&_svg]:h-4 [&_svg]:w-4">{item.icon}</span>
                 )}
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1">
+                  {item.label}
+                  {item.mark && (
+                    <span className="ml-1.5 inline-flex align-[-0.125em] [&_svg]:h-3.5 [&_svg]:w-3.5">{item.mark}</span>
+                  )}
+                </span>
                 {/* Mute, not faint: the hint says something ("Đang mở",
                     "⌥⌘S") and faint is the disabled shade - on the dark menu
                     it measured under 2:1 (owner, 17/09: "mờ quá"). */}
