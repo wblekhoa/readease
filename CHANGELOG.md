@@ -38,6 +38,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   document the page said "Hình 1" while the voice said "figure 1"; it
   now says "Figure 1", and VoiceOver reads the caption in the
   document's voice. A label the document gives its picture is kept.
+- A part opens with a sound of its own. With the marimba chime, a new
+  part now opens with a warm marimba chord that blooms and fades,
+  longer than a chapter's two notes, so the ear can tell a new part
+  from a new chapter. The harp and piano chimes open a part with their
+  chapter sound, as before.
 
 ## 0.1.16
 

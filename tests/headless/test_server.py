@@ -3654,6 +3654,21 @@ class DivisionReadingTests(unittest.TestCase):
         return opened
 
     @staticmethod
+    def _sounds_before(replies, texts):
+        """{passage: the sound played just before it} - the chime or the
+        part's own sound, joined from the half-second frames it is sent in."""
+        sounds, pending = {}, []
+        for message in replies:
+            if message.get("event") == "chunk" and not message["from_voice"]:
+                pcm = np.frombuffer(base64.b64decode(message["pcm"]), dtype=np.float32)
+                if np.abs(pcm).max() > 0:
+                    pending.append(pcm)
+            elif message.get("event") == "position" and pending:
+                sounds[texts[message["segment_id"]]] = np.concatenate(pending)
+                pending = []
+        return sounds
+
+    @staticmethod
     def _rests(replies):
         return [
             np.frombuffer(base64.b64decode(m["pcm"]), dtype=np.float32).size
@@ -3705,6 +3720,38 @@ class DivisionReadingTests(unittest.TestCase):
         # Not the top of the book, and not the line itself: the first
         # passage after it that the voice reads.
         self.assertEqual(followed[0], "PHẦN MỘT")
+
+    def test_a_part_opens_with_its_own_sound_and_a_chapter_with_the_chime(self) -> None:
+        """HIG 5.1, 25/09: the ear can tell a new part from a new chapter."""
+        from vieneu_reader.speech.chimes import load_chime, load_part_chime
+        from tests.importers.epub_fixture import (
+            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+        )
+
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+        ))
+        sounds = self._sounds_before(replies, texts)
+        part, chapter = load_part_chime("marimba"), load_chime("marimba")
+        self.assertGreater(part.size, chapter.size)
+        self.assertEqual(sorted(sounds), ["Chương 2", "PHẦN HAI", "PHẦN MỘT"])
+        self.assertTrue(np.array_equal(sounds["PHẦN MỘT"], part))
+        self.assertTrue(np.array_equal(sounds["PHẦN HAI"], part))
+        self.assertTrue(np.array_equal(sounds["Chương 2"], chapter))
+
+    def test_a_family_without_a_part_sound_opens_a_part_with_its_chime(self) -> None:
+        from vieneu_reader.speech.chimes import load_chime, load_part_chime
+        from tests.importers.epub_fixture import (
+            DIVISIONS_NAV, DIVISIONS_PAGES, DIVISIONS_SPINE, make_structured_epub,
+        )
+
+        self.assertTrue(np.array_equal(load_part_chime("harp"), load_chime("harp")))
+        replies, texts, _engine = self._read(lambda root: make_structured_epub(
+            root, name="divisions.epub", pages=DIVISIONS_PAGES, spine=DIVISIONS_SPINE, nav=DIVISIONS_NAV,
+        ), chime="harp")
+        sounds = self._sounds_before(replies, texts)
+        self.assertTrue(np.array_equal(sounds["PHẦN MỘT"], load_chime("harp")))
+        self.assertTrue(np.array_equal(sounds["Chương 2"], load_chime("harp")))
 
     def test_a_book_in_one_file_chimes_at_its_chapters(self) -> None:
         from tests.importers.epub_fixture import ONE_FILE_NAV, ONE_FILE_PAGES, make_structured_epub

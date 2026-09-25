@@ -108,16 +108,20 @@ It reads the English words the lexicon does not have.
 ### Sounds (inside the bundle)
 
 Three short chimes mark a chapter's start when the reader leaves that
-setting on (`src/vieneu_reader/speech/chimes/`, about 470 KB together):
+setting on, and a longer sound opens a part (`src/vieneu_reader/speech/chimes/`,
+about 730 KB together):
 
 | File | Length | Generated from |
 |---|---|---|
 | `marimba.wav` | 0.9 s | "A soft, warm two-note marimba chime for an audiobook chapter transition, gentle and clean, quiet, no long reverb tail" |
 | `harp.wav` | 2.0 s | "A short calm harp arpeggio of three rising notes, intimate and quiet, an audiobook chapter interlude" |
 | `piano.wav` | 2.0 s | "Two soft felt piano notes forming a gentle major fifth, slow and quiet, a new chapter begins" |
+| `part-marimba.wav` | 2.7 s | "A soft warm marimba chord that blooms slowly and fades gently, spacious and calm, marking the start of a new part of an audiobook" |
 
-They were generated on 16/09/2026 with **ElevenLabs'** sound-effects model
-(`eleven_text_to_sound_v2`) from the maintainer's own account, then
+The three chimes were generated on 16/09/2026 and the part sound on
+25/09/2026 (one of four candidates, chosen by the maintainer), with
+**ElevenLabs'** sound-effects model (`eleven_text_to_sound_v2`) from the
+maintainer's own account, then
 downmixed to mono 48 kHz, trimmed of silence and levelled to −14 dBFS here.
 They are not recordings of anyone and not a model; ElevenLabs' terms in
 force at generation govern what the account holder may do with generated
