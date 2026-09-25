@@ -4,6 +4,8 @@ import {
   STARTING_VOICES,
   canSpeak,
   chipName,
+  favoritesFirst,
+  initialFavorites,
   initialShortlist,
   matchesVoice,
   matchesVoiceFilters,
@@ -372,4 +374,25 @@ test("a stored paid voice keeps its place while its provider is still being aske
   // And once the whole catalogue is in, the same call re-homes a moved model.
   const full: Voice[] = [...partial, { id: "elevenlabs:eleven_v3:nhu", label: "Nhu · ElevenLabs", languages: ["vi"] }];
   assert.deepEqual(initialShortlist(stored, full), ["Adam", "elevenlabs:eleven_v3:nhu"]);
+});
+
+test("yêu thích không mồi sẵn: chưa từng đánh dấu là rỗng", () => {
+  // Unlike the switcher's list, nothing is starred on a fresh install: a
+  // favourite is only ever one the person chose (owner, 25/09).
+  assert.deepEqual(initialFavorites(null, CATALOGUE), []);
+  assert.deepEqual(initialFavorites("", CATALOGUE), []);
+  assert.deepEqual(initialFavorites('["b"]', CATALOGUE), ["b"]);
+  assert.deepEqual(initialFavorites("not json", CATALOGUE), []);
+});
+
+test("giọng trả phí yêu thích theo model mới, như danh sách đổi nhanh", () => {
+  const catalogue = [{ id: "openai:gpt-4o-mini-tts:alloy", label: "Alloy · OpenAI" }];
+  assert.deepEqual(initialFavorites('["openai:tts-1:alloy"]', catalogue), ["openai:gpt-4o-mini-tts:alloy"]);
+});
+
+test("giọng yêu thích đứng đầu, mỗi phần giữ thứ tự vốn có", () => {
+  assert.deepEqual(favoritesFirst(CATALOGUE, ["c", "b"]).map((voice) => voice.id), ["b", "c", "a"]);
+  assert.deepEqual(favoritesFirst(CATALOGUE, []).map((voice) => voice.id), ["a", "b", "c"]);
+  // Order only: a favourite the list does not hold is not added to it.
+  assert.deepEqual(favoritesFirst(CATALOGUE.slice(0, 2), ["c"]).map((voice) => voice.id), ["a", "b"]);
 });

@@ -10,6 +10,15 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   voice reads on. Picked mid-listen, it took the page there and the next
   sentence pulled the page back to the voice; now the page stays where
   the reader went, and "Về chỗ đang đọc" brings it back.
+- Change voice in the reading bar, and Manage voices in Voice settings,
+  show a person with a turning arrow instead of a speaker: in a player's
+  bar a speaker reads as volume.
+- A voice can be starred in the voice list, and a starred voice stands
+  first wherever voices are listed: in a Favorites group at the top of the
+  voice list (regrouped the next time the list opens, so no row jumps
+  under the pointer), first in the Voice select and in Change voice. The
+  switch beside it still decides which voices those two offer. Stars are
+  kept across launches.
 - A new chapter opens with the long sound only a part had until now, and
   a first-level section (1.1, 1.2 ...) with a short, soft sound of its
   own: the first moment of the chosen chime, quieter. A part and a chapter

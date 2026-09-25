@@ -30,7 +30,7 @@
 import { text } from "../i18n";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
 import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
-import { CloseIcon, SpeakerIcon } from "./icons";
+import { CloseIcon, VoiceSwitchIcon } from "./icons";
 import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
 import { ModelProgress, ModelRows } from "./ModelPanel";
@@ -67,6 +67,7 @@ export function languageName(language: ReadingLanguage): string {
 export function SettingsPanel({
   voices,
   shortlist,
+  favorites,
   voiceId,
   rate,
   rates,
@@ -98,6 +99,9 @@ export function SettingsPanel({
   /** The whole catalogue; what each tab offers is decided here. */
   voices: Voice[];
   shortlist: readonly string[];
+  /** The voices starred ★: first in the select, under their own group
+   * (HIG 3.13). Order only - the switch still decides what is offered. */
+  favorites: readonly string[];
   voiceId: string;
   rate: number;
   rates: readonly number[];
@@ -144,8 +148,10 @@ export function SettingsPanel({
   const offered = offeredFor(voices, shortlist, voiceId, readingLanguage);
   const current = voices.find((voice) => voice.id === voiceId);
   const chosen = offered.some((voice) => voice.id === voiceId) ? voiceId : "";
-  const local = offered.filter((voice) => !isPaidVoice(voice.id));
-  const paid = offered.filter((voice) => isPaidVoice(voice.id));
+  const starred = offered.filter((voice) => favorites.includes(voice.id));
+  const local = offered.filter((voice) => !isPaidVoice(voice.id) && !favorites.includes(voice.id));
+  const paid = offered.filter((voice) => isPaidVoice(voice.id) && !favorites.includes(voice.id));
+  const optionName = (voice: Voice) => (isPaidVoice(voice.id) ? voice.label : name(voice.label) || voice.id);
   const paidVoice = isPaidVoice(voiceId);
 
   return (
@@ -278,7 +284,31 @@ export function SettingsPanel({
                     {!chosen && (
                       <option value="" disabled>{text("voices.pick")}</option>
                     )}
-                    {local.length > 0 && paid.length > 0 ? (
+                    {/* Starred first, under their own name; the groups
+                        below are the rest, as they were (HIG 3.13). */}
+                    {starred.length > 0 ? (
+                      <>
+                        <optgroup label={text("voices.group_favorites")}>
+                          {starred.map((voice) => (
+                            <option key={voice.id} value={voice.id}>{optionName(voice)}</option>
+                          ))}
+                        </optgroup>
+                        {local.length > 0 && (
+                          <optgroup label={text("voices.group_local")}>
+                            {local.map((voice) => (
+                              <option key={voice.id} value={voice.id}>{optionName(voice)}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {paid.length > 0 && (
+                          <optgroup label={text("voices.source_api")}>
+                            {paid.map((voice) => (
+                              <option key={voice.id} value={voice.id}>{optionName(voice)}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    ) : local.length > 0 && paid.length > 0 ? (
                       <>
                         <optgroup label={text("voices.group_local")}>
                           {local.map((voice) => (
@@ -311,9 +341,9 @@ export function SettingsPanel({
                 subtitle={text("voices.marked", { count: shortlisted })}
                 trailing={
                   <Button size="sm" onClick={onManageVoices}>
-                    {/* The same glyph the transport's switcher wears, so the
-                        speaker reads as "voices" wherever it turns up. */}
-                    <SpeakerIcon />
+                    {/* The same glyph the transport's switcher wears, so a
+                        person reads as "voices" wherever it turns up. */}
+                    <VoiceSwitchIcon />
                     {text("voices.manage")}
                   </Button>
                 }
