@@ -215,6 +215,11 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   không quay lại được bằng một cú bấm như tạm dừng. Đo: 5.14:1 trên desk ở cả hai theme.
   Không đụng brand: brand là CTA "Đọc", mà CTA không hiện lúc đang đọc nên hai màu không bao giờ đứng
   cạnh nhau (và từ 21/09 brand là xanh — §7 — nên chúng khác hẳn nhau ngay cả khi đứng cạnh).
+- **Nút Đổi giọng mang hình NGƯỜI, không phải cái loa** (chủ 25/09: loa "sẽ hiểu nhầm là chỉnh âm
+  lượng"): glyph `convert-contact` của bộ nguồn — một người và mũi tên xoay vòng — vì mỗi giọng ở đây là
+  một người có tên (Thu Hà, Phạm Tuyên), còn cái loa đứng trong thanh phát là ký hiệu chung của âm lượng.
+  Nút "Quản lý giọng…" trong Cài đặt giọng đọc mang cùng glyph: cùng một ý "giọng". Cái loa ở lại những
+  chỗ thật sự nói về âm thanh: Nghe thử một giọng, hàng Loa (thiết bị phát).
 - **Dòng trạng thái không được xuống dòng**: "Đang chuẩn bị giọng đọc…" từng vỡ thành 5 dòng dựng
   đứng giữa thanh (chủ bắt 01/09) → `whitespace-nowrap` + truncate.
 - **Thanh transport trả lời NGÓN TAY, không trả lời engine** (02/09): bấm Dừng/Tạm dừng thì
