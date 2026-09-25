@@ -41,3 +41,11 @@ tauri-plugin-updater = "2.12.0"
 tauri-plugin-process = "2.3.1"
 libc = "0.2"
 
+
+# Build scripts and proc-macros only - never the app binary. With Tauri's
+# MACOSX_DEPLOYMENT_TARGET set, a proc-macro dylib stripped by the Xcode 27
+# toolchain is refused by macOS 27's dyld ("mis-aligned LINKEDIT string
+# pool") and rustc reports it as "can't find crate": every fresh target/
+# failed that way on 25/09. They run at compile time and never ship.
+[profile.release.build-override]
+strip = "none"
