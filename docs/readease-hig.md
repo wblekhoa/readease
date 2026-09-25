@@ -377,6 +377,11 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   CẢ HAI theme): đúng khung ảnh, cùng bo góc, không viền, không đệm — ảnh đục che kín nó nên ảnh chụp KHÔNG đổi, chỉ
   phần trong suốt hiện ra trắng như trang in. Theme sáng: không đổi (trang đã trắng; hình đang được báo vẫn thấy nền
   `band` xuyên qua). Không làm tối ảnh, không đảo màu: đổi màu hình là sửa nội dung của sách.
+- **Nhãn của hình theo ngôn ngữ TÀI LIỆU** (25/09): "Hình N" là chữ của tài liệu, không phải của giao diện — tài
+  liệu Anh dưới giao diện Việt hiện "Figure N", đúng câu giọng báo ("See figure N", theo ngôn ngữ đọc) — trước đó
+  mắt thấy "Hình 1" trong khi tai nghe "figure 1". Chú thích mang `lang` của tài liệu, nên VoiceOver đọc nó bằng
+  giọng của tài liệu. Nhãn riêng của sách ("Figure 1.1") giữ nguyên; chữ của giao diện quanh hình (nút "Xem ảnh
+  lớn", "Không tải được hình") vẫn theo giao diện. `textIn(ngôn ngữ, key)` trong `i18n.ts`.
 - **Don't sống**: ✗ sidebar không dấu vị trí (audit 01/09) · ✗ đếm "Chương X/Y" cho PDF không có
   mục lục (mỗi TRANG là một "chương") · ✗ hai hàng chrome chồng nhau trên đầu màn đọc.
 
