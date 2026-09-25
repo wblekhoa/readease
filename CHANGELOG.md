@@ -6,6 +6,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- A chapter settles before its chime. The silence before the chime is
+  now about 0.8 s and the breath after it 0.7 s - they were 0.3 and 0.5,
+  so the chime came in on the heels of the last word. With the chime
+  off, a new chapter or part rests 2 s instead of 1.2, clearly longer
+  than the rest before a heading. A chapter's number and its title, two
+  headings in a row, are half a second apart instead of a full second:
+  one name read in two breaths.
 - Line drawings can be seen in the dark theme and when a picture is
   opened large. A sketch or a diagram on a transparent ground was drawn
   for white paper, and on the dark page - or the black behind a picture
