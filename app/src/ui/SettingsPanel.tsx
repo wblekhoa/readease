@@ -30,7 +30,7 @@
 import { text } from "../i18n";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
 import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
-import { CloseIcon, SpeakerIcon } from "./icons";
+import { CloseIcon, VoiceSwitchIcon } from "./icons";
 import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
 import { ModelProgress, ModelRows } from "./ModelPanel";
@@ -311,9 +311,9 @@ export function SettingsPanel({
                 subtitle={text("voices.marked", { count: shortlisted })}
                 trailing={
                   <Button size="sm" onClick={onManageVoices}>
-                    {/* The same glyph the transport's switcher wears, so the
-                        speaker reads as "voices" wherever it turns up. */}
-                    <SpeakerIcon />
+                    {/* The same glyph the transport's switcher wears, so a
+                        person reads as "voices" wherever it turns up. */}
+                    <VoiceSwitchIcon />
                     {text("voices.manage")}
                   </Button>
                 }

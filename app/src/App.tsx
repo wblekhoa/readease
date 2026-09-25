@@ -67,7 +67,7 @@ import {
   NoteIcon,
   CursorTextIcon,
   TransferIcon,
-  SpeakerIcon,
+  VoiceSwitchIcon,
   ArrowSwapIcon,
   SidebarIcon,
 } from "./ui/icons";
@@ -2135,7 +2135,7 @@ export default function App() {
                 )}
                 {speechSettings && previewing === null && (
                   <MenuButton
-                    icon={<SpeakerIcon />}
+                    icon={<VoiceSwitchIcon />}
                     label={text("voices.switch")}
                     align="left"
                     side="above"

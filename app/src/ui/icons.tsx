@@ -575,6 +575,22 @@ export function SpeakerIcon({ className }: { className?: string }) {
   );
 }
 
+/** The voice switcher's glyph: the source's `convert-contact` (users set)
+ * - a person and a turning arrow - as drawn there. It replaced the speaker
+ * on "Đổi giọng", which in a player's bar reads as volume (owner, 25/09);
+ * a voice here is a person with a name, so choosing one is changing who
+ * reads. "Quản lý giọng…" wears it too. */
+export function VoiceSwitchIcon({ className }: { className?: string }) {
+  return (
+    <svg {...bulk} className={className}>
+      <path opacity={MASS} d="M9.5 2.77002C6.82 2.77002 4.63 4.95002 4.63 7.64002C4.63 10.32 6.81 12.51 9.5 12.51C12.19 12.51 14.37 10.33 14.37 7.64002C14.37 4.95002 12.18 2.77002 9.5 2.77002Z" />
+      <path d="M17 21.48C16.59 21.48 16.25 21.14 16.25 20.73C16.25 17.77 13.22 15.37 9.5 15.37C5.78 15.37 2.75 17.78 2.75 20.73C2.75 21.14 2.41 21.48 2 21.48C1.59 21.48 1.25 21.14 1.25 20.73C1.25 16.95 4.95 13.87 9.5 13.87C14.05 13.87 17.75 16.95 17.75 20.73C17.75 21.15 17.41 21.48 17 21.48Z" />
+      <path d="M19.09 15.86C18.1 15.86 17.11 15.48 16.36 14.73C16.18 14.55 16.1001 14.28 16.1601 14.03C16.2201 13.78 16.4001 13.57 16.6501 13.49L17.3901 13.24C17.7801 13.11 18.21 13.32 18.34 13.71C18.4 13.89 18.39 14.07 18.33 14.23C19.15 14.51 20.1101 14.33 20.7701 13.67C21.2101 13.23 21.45 12.65 21.46 12.03C21.46 11.62 21.8 11.29 22.21 11.29H22.22C22.63 11.29 22.97 11.63 22.96 12.05C22.95 13.06 22.55 14.02 21.83 14.73C21.07 15.48 20.08 15.86 19.09 15.86Z" />
+      <path d="M16 12.9C15.61 12.9 15.27 12.59 15.25 12.19C15.19 11.1 15.6 10.04 16.37 9.26001C17.88 7.76001 20.33 7.76001 21.83 9.26001C22.01 9.44001 22.0901 9.71001 22.0301 9.96001C21.9701 10.21 21.7901 10.42 21.5401 10.5L20.8001 10.75C20.4001 10.88 19.98 10.67 19.85 10.28C19.79 10.1 19.8 9.92001 19.87 9.76001C19.04 9.48001 18.0901 9.66001 17.4301 10.32C16.9601 10.79 16.71 11.44 16.75 12.1C16.77 12.51 16.4601 12.87 16.0401 12.89C16.0301 12.9 16.02 12.9 16 12.9Z" />
+    </svg>
+  );
+}
+
 /** The read button's glyph: the source's speaker with a sparkle at its
  * foot, from the owner's own "ai-speaker" frame (14/09). The one composed
  * glyph in the file, and composed rather than drawn: the speaker and its
