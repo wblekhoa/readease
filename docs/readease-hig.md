@@ -996,6 +996,14 @@ ký tự đầu dòng, tiêu đề thêm dấu chấm, "Xem hình N." tại ch�
   (`from_voice=False`: không stretch theo tốc độ, không vào cache, không tính tiền giọng API). Setting
   `chapter_chime` ∈ {off, marimba, harp, piano}, mặc định **marimba** (ngắn nhất); setting chưa từng ghi =
   mặc định, không phải tắt.
+- **Phần có âm riêng** (chủ 25/09: "âm riêng cho Phần", duyệt 640 credit ElevenLabs): chỗ MỞ một PHẦN phát âm Phần
+  của họ âm đang chọn — dài hơn chuông chương, cùng họ nhạc cụ, để tai nghe ra "một phần mới" khác "một chương mới";
+  khoảng lặng quanh nó như chuông chương (800 → âm → 700 ms), chương đầu của phần vẫn không vang lần hai (1 500 ms).
+  Hiện chỉ **marimba** có âm Phần: `speech/chimes/part-marimba.wav`, một hợp âm marimba nở ra rồi tắt dần, 2,7 s, đỉnh
+  −14 dBFS (4 mẫu sinh 25/09 — 640 credit; chủ duyệt số 2 "theo đề xuất": số 1 chạm trần 4 s và có tiếng xì ở nửa sau,
+  số 3 chưa tắt hẳn khi hết, số 2 ấm và tắt êm nhất); harp và piano mở phần bằng chính chuông chương của chúng — sinh
+  thêm cần credit, hỏi trước.
+  Self-test của engine nạp cả âm Phần, nên bundle thiếu nó không qua được bước build.
 - **Chương và phần là của MỤC LỤC, không phải của tệp** (chủ 24/09: "tiếp tục phân tích và nâng cấp 'pipeline đọc' …
   ngắt nghỉ và nhạc nền giữa các chương/phần"; phân tích: plan `readease-chapter-transitions-2026-09-24`). Trước đây
   "chương" của giọng = một tệp trong spine, hoặc một TRANG của PDF không bookmark: tài liệu thử 3 chương / 2 phần vang
@@ -1085,7 +1093,7 @@ của từng số nằm ở bullet §5.1 và ở chú thích ngay cạnh hằng 
 | 6. Cắt câu | `domain/prosody.py` `split_sentences` | chỉ cắt ở dấu kết câu; viết tắt, tên viết tắt không cắt | §5.1 · `test_prosody.py` |
 | 7. Giọng | `speech/vieneu.py` + SDK VieNeu (tự chuẩn hoá chữ) · `speech/kokoro.py` (G2P + ONNX) | VI: lượt ≤ 3 chữ đi `infer`; EN: tỉa mép lặng còn 120 ms | §5.1 · `test_kokoro.py` |
 | 8. Nhịp nghỉ chèn | `domain/prosody.py` `pause_after_ms`, `headless/utterances.py` | câu 250 · dòng 250 · đoạn 450 · danh sách 300 · trích dẫn 550 · tiêu đề trước 1 000 / sau 850 · hai tiêu đề liền 500 · ngắt cảnh 1 600 · chương, phần (tắt chuông) 2 000 · phần → chương 1 500 | §5.1 · `test_prosody.py` |
-| 9. Tiêu đề và chuông | `headless/server.py` `_speak`, `speech/chimes.py` | tiêu đề 0,92× và +2 dB · chuông 800 → âm → 700 ms, không stretch | §5.1 · `THIRD_PARTY_NOTICES.md` |
+| 9. Tiêu đề và chuông | `headless/server.py` `_speak`, `speech/chimes.py` | tiêu đề 0,92× và +2 dB · chuông 800 → âm → 700 ms (phần: âm Phần của marimba), không stretch | §5.1 · `THIRD_PARTY_NOTICES.md` |
 | 10. Tốc độ và ống âm thanh | `playback/time_stretch.py`, `playback/pace.py`, shell Rust | mọi khoảng lặng chia theo tốc độ; khung `from_voice` | §3.23, §3.24 |
 
 `docs/reading-intelligence-audit.md`, `docs/reading-flow-proposal.md`, `docs/english-reading-2026-09.md` là ĐỀ XUẤT
