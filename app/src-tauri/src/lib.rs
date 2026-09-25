@@ -82,7 +82,7 @@ struct OpenedFiles(std::sync::Mutex<Vec<String>>);
 /// since the audio thread's own event fired before there was a page.
 #[tauri::command]
 fn audio_output(slot: tauri::State<EngineSlot>) -> audio::AudioOutput {
-    client_of(&slot).output.clone()
+    client_of(&slot).output.lock().unwrap().clone()
 }
 
 #[tauri::command]

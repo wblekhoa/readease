@@ -26,7 +26,8 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
 use crate::audio::{
-    should_rewind, spawn_audio, AudioOutput, AudioSink, Feedback, Frame, Shell, ENGINE_WINDOW,
+    default_output_name, should_rewind, spawn_audio, watch_default_output, AudioOutput, AudioSink,
+    Feedback, Frame, Shell, DEFAULT_OUTPUT_POLL, ENGINE_WINDOW,
 };
 
 // The Objective-C bridge, statically linked by build.rs. Returns 0 with a
@@ -103,8 +104,10 @@ pub struct EngineClient {
     tray: Arc<Mutex<Option<tauri::tray::TrayIcon>>>,
     voice_started: Arc<std::sync::atomic::AtomicBool>,
     /// Where the voice goes (HIG 3.21), for the page to ask after it has
-    /// loaded - the `audio:device` event fires before it exists.
-    pub output: AudioOutput,
+    /// loaded - the `audio:device` event fires before it exists. Kept current
+    /// by the watcher: the voice follows a new default output, so the name
+    /// does too.
+    pub output: Arc<Mutex<AudioOutput>>,
     /// Requests whose reply nobody waits for. Only these may surface as
     /// `engine:orphan_reply`; a superseded reading's late reply is dropped
     /// instead of being broadcast at whatever listener happens to be mounted.
@@ -357,6 +360,10 @@ impl EngineClient {
             Arc::new(StdinFeedback { stdin: stdin.clone() });
         let (audio, player, output) =
             spawn_audio(epoch.clone(), paused.clone(), rewind.clone(), shell.clone(), feedback)?;
+        // The voice follows a new default output and the Loa row now does too
+        // (HIG 3.21, the owner's test A, 25/09).
+        let output = Arc::new(Mutex::new(output));
+        watch_default_output(shell.clone(), Arc::downgrade(&output), default_output_name, DEFAULT_OUTPUT_POLL);
 
         let client = Arc::new(Self {
             stdin,

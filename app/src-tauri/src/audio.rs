@@ -549,9 +549,115 @@ pub(crate) fn open_output() -> Result<(rodio::MixerDeviceSink, AudioOutput), Str
     Err(first_error.unwrap_or_else(|| "no output device".to_string()))
 }
 
+/// How often the Loa row asks which device is the system's default now.
+pub(crate) const DEFAULT_OUTPUT_POLL: Duration = Duration::from_secs(2);
+
+/// The label the page should show once the system's default output is
+/// `now` - or None when nothing it shows has changed. Only an output that
+/// FOLLOWS the default moves with it: cpal opens the default device through
+/// Apple's DefaultOutput unit, and the owner's test A (25/09) heard the
+/// voice move to a new default while the row kept the old name. A fallback
+/// device (`default: false`) stays put, and so does its name.
+pub(crate) fn followed_output(shown: &AudioOutput, now: Option<String>) -> Option<AudioOutput> {
+    match now {
+        Some(name) if shown.default && name != shown.name => Some(AudioOutput { name, default: true }),
+        _ => None,
+    }
+}
+
+/// Keeps the Loa row on the device the voice reaches (HIG 3.21): looks at
+/// the system's default every `every` and, on a change, tells the page
+/// (`audio:device`) and keeps the name for `audio_output`. It holds the
+/// engine's output weakly, so an engine that restarts leaves no watcher
+/// running behind it. No CoreAudio listener and no new dependency: a name
+/// asked for every two seconds is cheap, and it is the same call
+/// `open_output` makes.
+pub(crate) fn watch_default_output(
+    shell: Arc<dyn Shell>,
+    shown: std::sync::Weak<std::sync::Mutex<AudioOutput>>,
+    look: impl Fn() -> Option<String> + Send + 'static,
+    every: Duration,
+) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(every);
+        let Some(output) = shown.upgrade() else { return };
+        let current = output.lock().unwrap().clone();
+        if let Some(next) = followed_output(&current, look()) {
+            eprintln!("[audio] the system's default output is now \"{}\"", next.name);
+            shell.emit("audio:device", json!({ "name": next.name, "default": next.default }));
+            *output.lock().unwrap() = next;
+        }
+    });
+}
+
+/// The system's default output device, by name - what `open_output` opens
+/// first, asked again.
+pub(crate) fn default_output_name() -> Option<String> {
+    use rodio::cpal::traits::{DeviceTrait, HostTrait};
+    rodio::cpal::default_host()
+        .default_output_device()
+        .and_then(|device| device.description().ok().map(|d| d.name().to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The Loa row follows the voice (HIG 3.21, the owner's test A on
+    /// 25/09): an output that follows the system's default takes the
+    /// default's new name; a fallback device keeps its own, since its sound
+    /// does not move either.
+    #[test]
+    fn the_speaker_label_follows_the_default_only_when_the_voice_does() {
+        let following = AudioOutput { name: "Built-in".into(), default: true };
+        let moved = followed_output(&following, Some("Headphones".into())).expect("the label follows");
+        assert_eq!(moved.name, "Headphones");
+        assert!(moved.default);
+        assert!(followed_output(&following, Some("Built-in".into())).is_none());
+        assert!(followed_output(&following, None).is_none());
+        let fallback = AudioOutput { name: "Monitor".into(), default: false };
+        assert!(followed_output(&fallback, Some("Headphones".into())).is_none());
+    }
+
+    /// The watcher says so to the page once per change, keeps the name for
+    /// whoever asks later (`audio_output`), and stops with the engine.
+    #[test]
+    fn the_watcher_tells_the_page_when_the_default_changes() {
+        use std::sync::Mutex;
+        struct Recorder(Mutex<Vec<(String, Value)>>);
+        impl Shell for Recorder {
+            fn emit(&self, event: &str, payload: Value) {
+                self.0.lock().unwrap().push((event.to_string(), payload));
+            }
+            fn tray(&self, _visible: bool) {}
+        }
+        let recorder = Arc::new(Recorder(Mutex::new(Vec::new())));
+        let shown = Arc::new(Mutex::new(AudioOutput { name: "Built-in".into(), default: true }));
+        // The system's default as the watcher would find it on each look:
+        // unchanged, then the headphones, then the headphones again.
+        let looks = Arc::new(Mutex::new(vec!["Built-in", "Headphones", "Headphones", "Headphones"]));
+        let script = looks.clone();
+        watch_default_output(
+            recorder.clone(),
+            Arc::downgrade(&shown),
+            move || {
+                let mut left = script.lock().unwrap();
+                Some(if left.len() > 1 { left.remove(0) } else { left[0] }.to_string())
+            },
+            Duration::from_millis(5),
+        );
+        std::thread::sleep(Duration::from_millis(120));
+        let said = recorder.0.lock().unwrap().clone();
+        assert_eq!(said.len(), 1, "one change, one event: {said:?}");
+        assert_eq!(said[0].0, "audio:device");
+        assert_eq!(said[0].1, json!({ "name": "Headphones", "default": true }));
+        assert_eq!(shown.lock().unwrap().name, "Headphones");
+        // The engine goes; the watcher sees nothing more to keep.
+        drop(shown);
+        std::thread::sleep(Duration::from_millis(40));
+        let after = recorder.0.lock().unwrap().len();
+        assert_eq!(after, 1);
+    }
 
     /// Only a break earns a rewind; a breath resumes in place. And the
     /// clock is the wall clock, so a Mac asleep through the pause counts.
