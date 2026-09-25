@@ -387,6 +387,13 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   CẢ HAI theme): đúng khung ảnh, cùng bo góc, không viền, không đệm — ảnh đục che kín nó nên ảnh chụp KHÔNG đổi, chỉ
   phần trong suốt hiện ra trắng như trang in. Theme sáng: không đổi (trang đã trắng; hình đang được báo vẫn thấy nền
   `band` xuyên qua). Không làm tối ảnh, không đảo màu: đổi màu hình là sửa nội dung của sách.
+- **Hình giữ chỗ trước khi nạp** (26/09, chiến dịch): trong chế độ cuộn hình nạp lười khi tới gần, và mỗi hình nạp xong
+  đẩy mọi thứ bên dưới xuống — một cú nhảy xa (kết quả tìm, ghi chú, mục lục) qua chín hình chưa nạp dừng hụt **2 771 px**,
+  đúng bằng phần hình nở ra, nên kết quả nằm ngoài khung. Nay engine gửi kích thước thật của hình (đọc từ ảnh lúc nhập,
+  `width`/`height` trong `book.open`) và trang giữ sẵn khung trong suốt cùng tỉ lệ, dưới đúng giới hạn của ảnh
+  (`min(rộng thật, 100 %, cao tối đa × tỉ lệ)`, cao tối đa = trang − 6rem hoặc 46vh); chú thích hiện cùng khung. Hình
+  không đọc được kích thước: không giữ gì, như cũ. Kiểm được: lượt bàn phím của render audit nhảy tới kết quả cuối ở chế
+  độ cuộn và đo dấu kết quả nằm trong khung (đỏ trước: 2 771 px; đột biến bỏ khung giữ chỗ → đỏ lại).
 - **Nhãn của hình theo ngôn ngữ TÀI LIỆU** (25/09): "Hình N" là chữ của tài liệu, không phải của giao diện — tài
   liệu Anh dưới giao diện Việt hiện "Figure N", đúng câu giọng báo ("See figure N", theo ngôn ngữ đọc) — trước đó
   mắt thấy "Hình 1" trong khi tai nghe "figure 1". Chú thích mang `lang` của tài liệu, nên VoiceOver đọc nó bằng
