@@ -633,6 +633,12 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Usage**: hình trong sách hiển thị vừa phải trong dòng chảy đọc; muốn xem kỹ thì mở lớn.
 - **Behavior**: bấm ảnh để mở · **Esc** hoặc bấm nền để đóng (listener gắn khi mở, gỡ khi đóng)
   · nút đóng là `IconButton`, không phải chữ "✕" tự vẽ.
+- **Bàn phím** (25/09; trước đó ảnh là `<img onClick>` — không vai trò, không tiêu điểm: chỉ chuột mở được, trái
+  §4.2): ảnh trong trang là một NÚT tên "Xem ảnh lớn: Hình N" (Tab tới, Enter/Space mở); lightbox là `role="dialog"`
+  `aria-modal` có tên, qua `useLayerFocus` — mở bằng phím thì nhận tiêu điểm, Tab ở yên bên trong, Esc đóng và trả
+  tiêu điểm về đúng ảnh; mở bằng chuột thì không kéo tiêu điểm, và nút ảnh tự nhả tiêu điểm sau cú bấm chuột
+  (`pressedByPointer`) — kẻo phím Space kế tiếp mở lại ảnh thay vì tạm dừng giọng. Kiểm được: lượt bàn phím của
+  render audit (`keys/figure`).
 - **Ảnh lớn luôn nằm trên tấm giấy** (25/09): nền lightbox là đen 70 % ở CẢ HAI theme, nên nét đen nền trong suốt
   chìm hẳn ở đó kể cả theme sáng. Ảnh trong lightbox có nền `figure-plate` ở cả hai theme (cùng luật §3.9).
   Kiểm được: render audit đo `background-color` thật của ảnh (`figure-plate`, ô `lightbox`).
