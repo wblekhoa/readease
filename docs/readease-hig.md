@@ -857,6 +857,13 @@ văn của tài liệu mang `lang` của TÀI LIỆU (`LibraryBook.language`, đ
 giao diện: tài liệu tiếng Anh dưới giao diện tiếng Việt vẫn được đọc bằng giọng Anh. axe không bắt được lỗi này — nó
 chỉ kiểm `lang` có hợp lệ hay không, không biết trang thật sự viết bằng tiếng gì.
 
+**Mức chủ chọn: CƠ BẢN** (chủ 25/09: "cứ làm ở mức cơ bản … để user tải tài liệu, chọn được tài liệu và đọc").
+Ba việc phải làm được chỉ bằng bàn phím, mỗi bước có tên để VoiceOver đọc: **nhập** một tài liệu ("Mở PDF hoặc
+EPUB"), **chọn** một tài liệu trên kệ ("Mở {tên}"), **đọc** rồi tạm dừng — và vùng live nói ra "đang đọc" /
+"tạm dừng". Kiểm tự động bằng hành trình `keys/journey` của render audit: Tab (không đặt tiêu điểm bằng mã) tới
+được từng control, control có tên, Enter/Space làm đúng việc, vùng live đổi chữ. Checklist VoiceOver 10 phút của
+chủ thành TUỲ CHỌN; phần WebKit/VoiceOver thật (giọng đọc của VoiceOver, menu macOS) vẫn là chưa đo.
+
 **Cổng đo được** (`scripts-audit-render.mjs`, `--no-axe` để bỏ qua): axe-core 4.13 chạy trong từng ô đã tới được của
 render audit (620 ô), luật `wcag2a wcag2aa`; **vi phạm mức serious/critical là ĐỎ**, moderate/minor được liệt kê để
 theo dõi. Kết quả gộp theo (luật × phần tử) và chỉ in một lần kèm ô đầu tiên thấy nó — 620 ô nhân lên sẽ không đọc
