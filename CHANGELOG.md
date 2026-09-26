@@ -54,6 +54,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   characters" and "1 chapters"; they now say $0.04, 11,800 characters
   and 1 chapter. In either language the day the price was quoted is
   written out (10 September 2026) instead of 2026-09-10.
+- The English interface agrees with its numbers wherever a count can be
+  one: 1 highlight, 1 result, 1 chapter, 1 voice, "Added 1 document",
+  "The other 1 is not copied" - it said "1 highlights" and the like.
 
 ## 0.1.19
 

@@ -187,9 +187,7 @@ export function CostPanel({
                 })
               : text("cost.detail", {
                   chars: formatCount(estimate.chars),
-                  chapters: estimate.chapters === 1
-                    ? text("cost.chapter_one")
-                    : text("cost.scope_chapters", { count: estimate.chapters }),
+                  chapters: estimate.chapters,
                   date: formatDay(estimate.price_dated) ?? estimate.price_dated,
                 })}
       </Notice>

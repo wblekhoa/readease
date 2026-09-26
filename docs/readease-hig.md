@@ -978,11 +978,17 @@ có `Esc` · tự cuộn kéo con trỏ VoiceOver đi · sửa cho axe xanh bằ
 - Nhãn nút = hành động cụ thể ("Đọc nội dung", "Chép sang") — không "OK/Có".
 - Thông điệp lỗi = chuyện gì + làm gì tiếp ("…Hãy thoát Apple Books rồi thử lại.").
 - Placeholder {x} phải khớp giữa hai ngôn ngữ (test canh).
+- **Chữ theo số** (27/09): `{count|highlight|highlights}` là chữ đầu khi số là 1, chữ sau khi khác; con số vẫn là một
+  `{count}` thường đứng cạnh. Tiếng Anh cần nó — `1 highlights`, `Added 1 documents`, `The other 1 are not copied` từng
+  hiện ở mọi chỗ một số đếm có thể bằng 1 (~20 chuỗi, cả động từ và đại từ: `is/are`, `it/them`); tiếng Việt không dùng
+  (chữ Việt không đổi theo số). Test canh: tên trong dạng đó phải có mặt như placeholder thường của cùng chuỗi, và render
+  với 1 lẫn 2 không để lọt `{`, `|` ra màn. Để ngoài, có lý do: chuỗi mà số là hằng (`paste.count`, `search_capped`) hoặc
+  đã rẽ nhánh riêng cho 1 (`drop_many`, `scope_chapters`), và đếm ký tự/đơn vị (chỉ bằng 1 với văn bản dài 1 ký tự).
 - Metadata thiếu → ẩn mục đó, không bao giờ render "undefined"/"null".
 - **Số, tiền và ngày theo ngôn ngữ giao diện** (27/09). Tiếng Việt viết `$0,04` · `11.800`; tiếng Anh viết `$0.04` ·
   `11,800`. Ngày là chữ, không phải chuỗi máy lưu: `10 tháng 9, 2026` · `10 September 2026`, không `2026-09-10` — và
   nằm trọn một dòng (khoảng trắng không ngắt): gãy sau con số, `giá tham khảo 10 / tháng 9, 2026` đọc như giá 10. Đếm 1
-  là số ít (`1 chapter`, không `1 chapters`). Gốc duy nhất: `decimal()` (i18n), `formatCount`/`formatUsd`
+  là số ít (`1 chapter`, không `1 chapters` — dạng chữ theo số ở trên). Gốc duy nhất: `decimal()` (i18n), `formatCount`/`formatUsd`
   (`readingCost.ts`), `formatDay` (`format.ts`, cả ngày phát hành của sheet cập nhật đi qua đây); một ngày trơn đọc
   theo UTC, vì `Date` coi nó là nửa đêm UTC - ở múi giờ phía tây Greenwich thành hôm trước. Một control không tự viết
   số. Bảng *Chi phí và phạm vi* bằng tiếng Anh đã in cả bốn lỗi (`$0,04` · `11.800` · `1 chapters` · ngày ISO) vì

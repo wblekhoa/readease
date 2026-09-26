@@ -79,3 +79,42 @@ test("chữ của tài liệu theo ngôn ngữ tài liệu, không theo giao di�
   assert.equal(text("reader.figure_label", { n: 6 }), "Figure 6");
   setLanguage("vi");
 });
+
+/* A word that agrees with its number (27/09). The English interface said
+   "1 highlights", "1 results", "Added 1 documents", "The other 1 are not
+   copied" wherever a count could be one. `{count|one|many}` picks the word;
+   the number itself stays a plain `{count}`. */
+test("a count of one takes the singular in English", () => {
+  const en = (key: TextKey, values: Record<string, string | number>) => textIn("en", key, values);
+  assert.equal(en("notes.count", { count: 1 }), "1 highlight");
+  assert.equal(en("notes.count", { count: 2 }), "2 highlights");
+  // A count may arrive already written for the screen.
+  assert.equal(en("library.chapter_count", { count: "1" }), "1 chapter");
+  assert.equal(en("reader.search_count", { n: 1 }), "1 result");
+  assert.equal(en("library.chapter_count", { count: 1 }), "1 chapter");
+  assert.equal(en("voices.marked", { count: 1 }), "1 voice marked for quick switching.");
+  assert.equal(en("library.imported_many", { added: 1, existing: 2 }), "Added 1 document; 2 already in the library.");
+  assert.equal(en("apple.summary", { imported: 1, matched: 3, unmatched: 0 }),
+    "1 document imported · 3 highlights matched · 0 not found in the text");
+  assert.equal(en("transfer.left_out", { count: 1 }), "The other 1 is not copied.");
+  assert.equal(en("outcome.all_already_there", { count: 1 }), "The 1 item is already in the other copy; there is nothing to copy.");
+  assert.equal(en("cost.detail", { chars: "11,800", chapters: 1, date: "10 September 2026" }),
+    "At most 11,800 characters · 1 chapter · price quoted 10 September 2026");
+  // Vietnamese words do not change with a number.
+  assert.equal(textIn("vi", "notes.count", { count: 1 }), TEXT["notes.count"][0].replace("{count}", "1"));
+});
+
+test("a word chosen by a number names a number its string shows, and never reaches the screen", () => {
+  for (const key of KEYS) {
+    const [vi, en] = TEXT[key];
+    assert.doesNotMatch(vi, /\{\w+\|/, `${key}: Vietnamese words do not change with a number`);
+    const chosen = [...en.matchAll(/\{(\w+)\|[^|}]*\|[^}]*\}/g)].map((match) => match[1]);
+    for (const name of chosen) assert.ok(en.includes(`{${name}}`), `${key}: {${name}|…} without the number {${name}}`);
+    if (!chosen.length) continue;
+    for (const n of [1, 2]) {
+      const values = Object.fromEntries([...en.matchAll(/\{(\w+)[}|]/g)].map((match) => [match[1], n]));
+      const said = textIn("en", key, values);
+      assert.doesNotMatch(said, /[{}|]/, `${key} with ${n}: ${said}`);
+    }
+  }
+});

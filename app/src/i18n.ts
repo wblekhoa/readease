@@ -53,7 +53,7 @@ export const TEXT = {
   "reader.search_placeholder": ["Tìm từ hoặc câu…", "Find a word or phrase…"],
   "reader.search_hint": ["Gõ ít nhất 2 chữ. Không cần dấu.", "Type at least 2 characters."],
   "reader.search_none": ["Không thấy trong tài liệu này.", "Nothing in this document."],
-  "reader.search_count": ["{n} kết quả", "{n} results"],
+  "reader.search_count": ["{n} kết quả", "{n} {n|result|results}"],
   "reader.search_capped": ["Hiện {n} kết quả đầu - gõ rõ hơn để thu hẹp.", "Showing the first {n} - type more to narrow down."],
   "settings.text_size": ["Cỡ chữ", "Text size"],
   "settings.text_size_level": ["Cỡ chữ - mức {n}/{total}", "Text size - level {n} of {total}"],
@@ -115,7 +115,7 @@ export const TEXT = {
   "notes.remove": ["Xoá", "Delete"],
   "notes.remove_confirm": ["Xoá hẳn, đồng bộ lại cũng không quay về?", "Delete for good, even on a re-sync?"],
   "notes.open": ["Highlight và ghi chú", "Highlights and notes"],
-  "notes.count": ["{count} highlight", "{count} highlights"],
+  "notes.count": ["{count} highlight", "{count} {count|highlight|highlights}"],
   "reader.note_open": ["Xem ghi chú", "Read this note"],
   "reader.note_edit": ["Sửa ghi chú", "Edit this note"],
   "reader.note_placeholder": ["Ghi chú của bạn…", "Your note…"],
@@ -143,7 +143,7 @@ export const TEXT = {
   "voices.favorite_add": ["Yêu thích: đưa giọng này lên đầu danh sách", "Favorite: list this voice first"],
   "voices.favorite_remove": ["Bỏ yêu thích", "Remove from favorites"],
   "voices.group_favorites": ["Yêu thích", "Favorites"],
-  "voices.marked": ["Đã chọn {count} giọng để đổi nhanh.", "{count} voices marked for quick switching."],
+  "voices.marked": ["Đã chọn {count} giọng để đổi nhanh.", "{count} {count|voice|voices} marked for quick switching."],
   "voices.paid": ["Trả phí", "Paid"],
   /* The banknote says WHICH voices bill; this says that pressing "Nghe thử"
      is itself one of the presses that bills (owner, 10/09). "Chưa tới $0,01"
@@ -172,7 +172,7 @@ export const TEXT = {
      still all three facts - how many, whose silence it is, where to look. */
   "voices.gender_unknown": [
     "{count} giọng nhà cung cấp chưa ghi nam/nữ - chọn \"Tất cả giới tính\" để thấy.",
-    "{count} voices carry no male/female label from the provider - pick \"All genders\" to see them.",
+    "{count} {count|voice carries|voices carry} no male/female label from the provider - pick \"All genders\" to see {count|it|them}.",
   ],
   "voices.gender_male": ["Nam", "Male"],
   "voices.gender_female": ["Nữ", "Female"],
@@ -214,7 +214,7 @@ export const TEXT = {
   "voices.source_api": ["API", "API"],
   "voices.source": ["Giọng đọc bằng", "Read with"],
   "key.set": ["Đã có khoá", "Key saved"],
-  "key.set_voices": ["Đã có khoá · {count} giọng", "Key saved · {count} voices"],
+  "key.set_voices": ["Đã có khoá · {count} giọng", "Key saved · {count} {count|voice|voices}"],
   "key.unset": ["Chưa có khoá", "No key yet"],
   "key.add": ["Thêm khoá", "Add key"],
   "key.change": ["Đổi khoá", "Change key"],
@@ -261,10 +261,9 @@ export const TEXT = {
   "cost.scope_one": ["Chương này", "This chapter"],
   "cost.scope_all": ["Hết tài liệu", "To the end"],
   "cost.detail": [
-    "Nhiều nhất {chars} ký tự · {chapters} · giá tham khảo {date}",
-    "At most {chars} characters · {chapters} · price quoted {date}",
+    "Nhiều nhất {chars} ký tự · {chapters} chương · giá tham khảo {date}",
+    "At most {chars} characters · {chapters} {chapters|chapter|chapters} · price quoted {date}",
   ],
-  "cost.chapter_one": ["1 chương", "1 chapter"],
   "cost.detail_text": [
     "{chars} ký tự · giá tham khảo {date}",
     "{chars} characters · price quoted {date}",
@@ -400,7 +399,7 @@ export const TEXT = {
   // counts, so a re-dropped folder says what it did and what it skipped.
   "library.imported_many": [
     "Đã thêm {added} tài liệu; {existing} đã có sẵn trong thư viện.",
-    "Added {added} documents; {existing} already in the library.",
+    "Added {added} {added|document|documents}; {existing} already in the library.",
   ],
   // The overlay while something is dragged over the window. It says what
   // the drop will do - how many books are in hand - so nobody has to drop
@@ -415,9 +414,9 @@ export const TEXT = {
   "library.drop_invite": ["Hoặc kéo tệp PDF, EPUB từ Finder thả vào cửa sổ này.", "Or drag PDF or EPUB files from Finder into this window."],
   "library.import_failed_some": [
     "Đã thêm {added} tài liệu; {failed} tệp không nhập được. {error}",
-    "Added {added} documents; {failed} could not be imported. {error}",
+    "Added {added} {added|document|documents}; {failed} could not be imported. {error}",
   ],
-  "library.chapter_count": ["{count} chương", "{count} chapters"],
+  "library.chapter_count": ["{count} chương", "{count} {count|chapter|chapters}"],
   "library.imported_on": ["Nhập {date}", "Imported {date}"],
   "library.in_progress": ["Đang đọc dở", "In progress"],
   "library.progress": ["Đã đọc {percent}%", "{percent}% read"],
@@ -460,7 +459,7 @@ export const TEXT = {
   "apple.group_importable": ["Nhập được", "Ready to import"],
   "apple.group_linked": ["Đã có trong thư viện", "Already in the library"],
   "apple.group_blocked": ["Không nhập được", "Cannot be imported"],
-  "apple.sync_count": ["Đồng bộ {count} mục", "Sync {count} items"],
+  "apple.sync_count": ["Đồng bộ {count} mục", "Sync {count} {count|item|items}"],
   "apple.nothing_to_do": ["Mọi thứ đã đồng bộ.", "Everything is in sync."],
   "apple.ready_summary": ["{importable} nhập được · {linked} đã có · {blocked} không nhập được", "{importable} to import · {linked} in library · {blocked} blocked"],
   "apple.sync_all": ["Đồng bộ tất cả", "Sync everything"],
@@ -476,7 +475,7 @@ export const TEXT = {
   "apple.sync_both": ["Highlight và ghi chú", "Highlights and notes"],
   "apple.default": ["mặc định", "default"],
   "apple.sync_notes": ["Đồng bộ ghi chú", "Sync highlights"],
-  "apple.highlights": ["{count} ghi chú", "{count} highlights"],
+  "apple.highlights": ["{count} ghi chú", "{count} {count|highlight|highlights}"],
   "apple.no_highlights": ["Chưa có ghi chú", "No highlights"],
   "apple.status_linked": ["Đã có trong thư viện", "In the library"],
   "apple.paired": ["Ghép với: {title}", "Paired with: {title}"],
@@ -486,7 +485,7 @@ export const TEXT = {
   "apple.working": ["{done}/{total} · {title}", "{done}/{total} · {title}"],
   "apple.summary": [
     "Đã nhập {imported} tài liệu · {matched} ghi chú khớp · {unmatched} không tìm thấy trong tài liệu",
-    "{imported} documents imported · {matched} highlights matched · {unmatched} not found in the text",
+    "{imported} {imported|document|documents} imported · {matched} {matched|highlight|highlights} matched · {unmatched} not found in the text",
   ],
   "apple.empty": ["Apple Books chưa có mục nào.", "Apple Books has nothing yet."],
   "apple.error.not_permitted": [
@@ -620,17 +619,17 @@ export const TEXT = {
   "transfer.verdict_same": ["Chuyển được nguyên vẹn", "Carries over as-is"],
   "transfer.verdict_review": ["Chương này khác nhau", "That chapter differs"],
   "transfer.verdict_already": ["Đã có ở bản kia", "Already in the other copy"],
-  "transfer.count": ["Sẽ chép {count} mục.", "{count} items would be copied."],
+  "transfer.count": ["Sẽ chép {count} mục.", "{count} {count|item|items} would be copied."],
   "transfer.truncated": ["Đang hiện {shown} mục đầu.", "Showing the first {shown}."],
   "transfer.left_out": [
     "{count} mục còn lại không được chép.",
-    "The other {count} are not copied.",
+    "The other {count} {count|is|are} not copied.",
   ],
   "transfer.copy": ["Chép sang", "Copy across"],
   "transfer.confirm_title": ["Chép ghi chú sang bản kia?", "Copy notes across?"],
   "transfer.confirm_body": [
     "ReadEase sẽ chép {count} mục sang “{book}”. Cuốn nguồn giữ nguyên, và bản sao lưu dữ liệu Apple Books được tạo trước khi ghi.",
-    "ReadEase will copy {count} items into “{book}”. The book they came from is left untouched, and your Apple Books data is backed up before anything is written.",
+    "ReadEase will copy {count} {count|item|items} into “{book}”. The book {count|it|they} came from is left untouched, and your Apple Books data is backed up before anything is written.",
   ],
   "transfer.confirm_icloud": [
     "Nếu bạn bật đồng bộ iCloud cho Apple Books, các ghi chú này sẽ xuất hiện trên những thiết bị khác.",
@@ -639,7 +638,7 @@ export const TEXT = {
   "transfer.keep": ["Chưa chép", "Not yet"],
   "outcome.copied": [
     "Đã chép {count} mục sang “{book}”. Mở Apple Books để kiểm tra.",
-    "Copied {count} items into “{book}”. Open Apple Books to check them.",
+    "Copied {count} {count|item|items} into “{book}”. Open Apple Books to check {count|it|them}.",
   ],
   "outcome.no_notes": [
     "Cuốn này chưa có ghi chú hay đoạn bôi màu nào trong Apple Books.",
@@ -647,7 +646,7 @@ export const TEXT = {
   ],
   "outcome.all_already_there": [
     "Cả {count} mục đều đã có ở bản kia, không còn gì để chép.",
-    "All {count} are already in the other copy; there is nothing to copy.",
+    "The {count} {count|item is|items are} already in the other copy; there is nothing to copy.",
   ],
   "outcome.already_there": [
     "Những ghi chú này đã có sẵn ở bản kia rồi, nên không chép thêm gì.",
@@ -700,9 +699,9 @@ export const TEXT = {
   ],
   "hub.readable": ["Đọc được", "Can read"],
   "hub.unreadable": ["Chưa đọc được", "Cannot read yet"],
-  "hub.local_vi": ["Mô hình VieNeu trên máy · {count} giọng", "VieNeu model on this Mac · {count} voices"],
-  "hub.local_en": ["Mô hình Kokoro trên máy · {count} giọng", "Kokoro model on this Mac · {count} voices"],
-  "hub.api_voices": ["API · {count} giọng", "API · {count} voices"],
+  "hub.local_vi": ["Mô hình VieNeu trên máy · {count} giọng", "VieNeu model on this Mac · {count} {count|voice|voices}"],
+  "hub.local_en": ["Mô hình Kokoro trên máy · {count} giọng", "Kokoro model on this Mac · {count} {count|voice|voices}"],
+  "hub.api_voices": ["API · {count} giọng", "API · {count} {count|voice|voices}"],
   "hub.how_to_read": ["Tải mô hình về máy, hoặc nhập khoá API bên dưới.", "Download a model, or add an API key below."],
   "hub.section_api": ["Giọng API", "API voices"],
   "hub.api_note": [
@@ -886,6 +885,13 @@ export function textIn(language: string | null | undefined, key: TextKey,
                        values: Record<string, string | number> = {}): string {
   const chosen = language === "vi" || language === "en" ? language : current;
   let result: string = TEXT[key][chosen === "vi" ? 0 : 1];
+  // A word that agrees with its number: "{count|highlight|highlights}" is the
+  // first word when count is 1 and the second otherwise, and the number itself
+  // stays a plain {count}. English needs it ("1 highlights", 27/09);
+  // Vietnamese words do not change with a number. A count may arrive already
+  // written ("11,800"), so it is compared as it would be printed.
+  result = result.replace(/\{(\w+)\|([^|}]*)\|([^}]*)\}/g,
+    (_, name: string, one: string, many: string) => (String(values[name]) === "1" ? one : many));
   for (const [name, value] of Object.entries(values)) {
     result = result.replace(`{${name}}`, String(value));
   }
