@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buttonCost, costPhrase, formatCount, formatUsd, isPaidVoice, providerOf, PROVIDERS, SCOPES, type Estimate } from "../src/ui/readingCost.ts";
+import { setLanguage } from "../src/i18n.ts";
 
 const paid = (usd: number, over: Partial<Estimate & { paid: true }> = {}): Estimate => ({
   paid: true, provider: "elevenlabs", model: "eleven_flash_v2_5", chars: 1000,
@@ -78,4 +79,20 @@ test("each provider names the settings key its credential lives under", () => {
     PROVIDERS.map((provider) => provider.settingsKey),
     ["openai_api_key", "elevenlabs_api_key"],
   );
+});
+
+/* Money and counts in the reader's language (27/09): the English
+   interface said "$0,04" and "11.800 characters". */
+test("money and counts follow the interface language", () => {
+  setLanguage("en");
+  try {
+    assert.equal(formatUsd(0.04), "$0.04");
+    assert.equal(formatUsd(0.004), "<$0.01");
+    assert.equal(formatUsd(1.2), "$1.20");
+    assert.equal(formatCount(11800), "11,800");
+  } finally {
+    setLanguage("vi");
+  }
+  assert.equal(formatUsd(0.04), "$0,04");
+  assert.equal(formatCount(11800), "11.800");
 });

@@ -957,8 +957,10 @@ về phạm vi: **không ô nào của ma trận mở một bảng cài đặt**
 - **Ma trận mở hai bảng**: `player_settings` (Cài đặt giọng đọc) và `reading_settings` (Cài đặt đọc, mở cả Tuỳ chỉnh —
   thanh trượt và công tắc nằm dưới đó). Không mở ở cả 16 state: nội dung hai bảng chỉ đổi theo mô hình và giọng, nên
   `player_settings` chạy ở `default` · `sidebar` · `english_missing` · `english_partial` · `vietnamese_missing`, còn
-  `reading_settings` ở `default` · `sidebar` — +28 ô thay vì +120 (~6 phút) nói cùng một điều. Hàng Chi phí vẫn ngoài
-  ma trận (mock không có state nào dùng giọng trả phí): nó chỉ có TypeScript canh, cộng một lần axe tay 23/09.
+  `reading_settings` ở `default` · `sidebar` — +28 ô thay vì +120 (~6 phút) nói cùng một điều. Hàng Chi phí từng ở
+  ngoài ma trận (mock không có state nào dùng giọng trả phí), chỉ có TypeScript canh cộng một lần axe tay 23/09 — **đến
+  27/09**: state `paid` (`voice=paid`, mock tạm coi như đã có khoá, không ghi gì) mở nó trong `player_settings`, cùng
+  bảng *Chi phí và phạm vi* (`cost`) và màn đọc có nút đồng xu (`reader`), có axe.
 
 **Phần máy không đo được — chủ kiểm 10 phút, một lần mỗi khi UI đổi lớn** (AI không bật VoiceOver trên máy chủ):
 ⌘F5 bật VoiceOver, rồi chỉ dùng bàn phím: (1) mở app, nghe tên cửa sổ · (2) đi tới Thư viện, nghe tên tài liệu và
@@ -977,6 +979,14 @@ có `Esc` · tự cuộn kéo con trỏ VoiceOver đi · sửa cho axe xanh bằ
 - Thông điệp lỗi = chuyện gì + làm gì tiếp ("…Hãy thoát Apple Books rồi thử lại.").
 - Placeholder {x} phải khớp giữa hai ngôn ngữ (test canh).
 - Metadata thiếu → ẩn mục đó, không bao giờ render "undefined"/"null".
+- **Số, tiền và ngày theo ngôn ngữ giao diện** (27/09). Tiếng Việt viết `$0,04` · `11.800`; tiếng Anh viết `$0.04` ·
+  `11,800`. Ngày là chữ, không phải chuỗi máy lưu: `10 tháng 9, 2026` · `10 September 2026`, không `2026-09-10` — và
+  nằm trọn một dòng (khoảng trắng không ngắt): gãy sau con số, `giá tham khảo 10 / tháng 9, 2026` đọc như giá 10. Đếm 1
+  là số ít (`1 chapter`, không `1 chapters`). Gốc duy nhất: `decimal()` (i18n), `formatCount`/`formatUsd`
+  (`readingCost.ts`), `formatDay` (`format.ts`, cả ngày phát hành của sheet cập nhật đi qua đây); một ngày trơn đọc
+  theo UTC, vì `Date` coi nó là nửa đêm UTC - ở múi giờ phía tây Greenwich thành hôm trước. Một control không tự viết
+  số. Bảng *Chi phí và phạm vi* bằng tiếng Anh đã in cả bốn lỗi (`$0,04` · `11.800` · `1 chapters` · ngày ISO) vì
+  chưa ô nào của ma trận mở nó; nay keys `words` mở nó bằng tiếng Anh và đếm bốn dạng đó bằng không.
 
 ### 5.1 Luật CHỮ cho TAI (giọng đọc), khác luật chữ cho mắt
 Chữ trên trang giữ nguyên; chỉ lời NÓI được chỉnh trong `speakable_text`. Đã có: hạ chữ hét, bỏ

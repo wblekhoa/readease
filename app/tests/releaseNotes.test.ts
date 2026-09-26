@@ -59,6 +59,6 @@ test("code marks and links read as their words", () => {
 });
 
 test("the release date is written in the reader's language", () => {
-  assert.equal(releaseDate("2026-09-27T02:00:00Z", "en"), "27 September 2026");
-  assert.match(releaseDate("2026-09-27T02:00:00Z", "vi"), /tháng 9/);
+  assert.equal(releaseDate("2026-09-27T02:00:00Z", "en"), "27\u00a0September\u00a02026");
+  assert.match(releaseDate("2026-09-27T02:00:00Z", "vi"), /tháng\u00a09/);
 });

@@ -261,9 +261,10 @@ export const TEXT = {
   "cost.scope_one": ["Chương này", "This chapter"],
   "cost.scope_all": ["Hết tài liệu", "To the end"],
   "cost.detail": [
-    "Nhiều nhất {chars} ký tự · {chapters} chương · giá tham khảo {date}",
-    "At most {chars} characters · {chapters} chapters · price quoted {date}",
+    "Nhiều nhất {chars} ký tự · {chapters} · giá tham khảo {date}",
+    "At most {chars} characters · {chapters} · price quoted {date}",
   ],
+  "cost.chapter_one": ["1 chương", "1 chapter"],
   "cost.detail_text": [
     "{chars} ký tự · giá tham khảo {date}",
     "{chars} characters · price quoted {date}",

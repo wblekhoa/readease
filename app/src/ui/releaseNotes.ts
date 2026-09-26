@@ -2,6 +2,8 @@
  * The release notes as the update sheet shows them (HIG 3.20). Pure, so
  * the node tests can read it without React or the Tauri plugins.
  */
+import { formatDay } from "./format.ts";
+
 /** Markdown is what the release notes are written in, hard-wrapped at 72
  * columns; on this sheet the wraps are undone (a line that is not a bullet
  * continues the one before it), headings are dropped and emphasis stripped, and a
@@ -55,7 +57,5 @@ function half(notes: string, language?: "vi" | "en"): string {
 /** The manifest's `pub_date` (RFC 3339) as a short local date; the raw
  * string when it will not parse. */
 export function releaseDate(iso: string, locale = "vi"): string {
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return iso;
-  return when.toLocaleDateString(locale === "vi" ? "vi-VN" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return formatDay(iso, locale === "vi" ? "vi" : "en") ?? iso;
 }

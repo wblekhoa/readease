@@ -42,13 +42,18 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   instead of running past its edge.
 - Clicking an icon button puts its tooltip away until the pointer leaves,
   as the Mac's help tags do: it could come back over the sheet the button
-  had just opened (the gear for Voices & models). Voice settings and
-  Voices & models also let go of the focus after a click, like the other
-  buttons that open panels.
+  had just opened (the gear for Voices & models). Voice settings,
+  Voices & models and a paid voice's Cost and scope also let go of the
+  focus after a click, like the other buttons that open panels.
 - In the Apple Books sheet, a book that cannot come in (too large, DRM)
   stands back by its cover and title only: dimmed as a whole, its reason
   was too faint to read comfortably. The reason now comes first on its
   line, so a long one is no longer the part the ellipsis cuts.
+- A paid voice's cost reads the way the interface's language writes it.
+  In English the panel and the read button said "$0,04", "11.800
+  characters" and "1 chapters"; they now say $0.04, 11,800 characters
+  and 1 chapter. In either language the day the price was quoted is
+  written out (10 September 2026) instead of 2026-09-10.
 
 ## 0.1.19
 

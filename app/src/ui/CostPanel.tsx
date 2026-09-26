@@ -16,6 +16,7 @@ import { IconButton, Notice, Select, Surface } from "./controls";
 import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
 import { CloseIcon } from "./icons";
 import { SCOPES, formatCount, formatUsd, type Estimate } from "./readingCost";
+import { formatDay } from "./format";
 
 /** The ceilings offered. Not a free-text box: a number typed into a money
  * field is a way to mistype a decimal point, and every one of these is a
@@ -182,12 +183,14 @@ export function CostPanel({
               // rather than as the absence of a thing.
               ? text("cost.detail_text", {
                   chars: formatCount(estimate.chars),
-                  date: estimate.price_dated,
+                  date: formatDay(estimate.price_dated) ?? estimate.price_dated,
                 })
               : text("cost.detail", {
                   chars: formatCount(estimate.chars),
-                  chapters: estimate.chapters,
-                  date: estimate.price_dated,
+                  chapters: estimate.chapters === 1
+                    ? text("cost.chapter_one")
+                    : text("cost.scope_chapters", { count: estimate.chapters }),
+                  date: formatDay(estimate.price_dated) ?? estimate.price_dated,
                 })}
       </Notice>
       {paid && estimate?.paid && (

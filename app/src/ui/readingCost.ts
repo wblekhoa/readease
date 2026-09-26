@@ -11,6 +11,7 @@
  * running total and the date the price was quoted all live behind the
  * settings button beside it.
  */
+import { currentLanguage, decimal } from "../i18n.ts";
 
 /** The engine's answer. `paid: false` is the local model - free, and the
  * button says nothing extra. */
@@ -83,14 +84,14 @@ export function isPaidVoice(voiceId: string): boolean {
  */
 export function formatUsd(usd: number): string {
   if (usd <= 0) return "$0";
-  if (usd < 0.01) return "<$0,01";
-  if (usd < 1) return `$${usd.toFixed(2).replace(".", ",")}`;
-  return `$${usd.toFixed(2).replace(".", ",")}`;
+  if (usd < 0.01) return `<$${decimal(0.01)}`;
+  return `$${decimal(usd)}`;
 }
 
-/** Thousands the way Vietnamese writes them: 12.400. */
+/** Thousands the way the interface's language writes them: 12.400 in
+ * Vietnamese, 12,400 in English. */
 export function formatCount(value: number): string {
-  return value.toLocaleString("vi-VN");
+  return value.toLocaleString(currentLanguage() === "vi" ? "vi-VN" : "en-US");
 }
 
 /** What the button carries, or "" for a voice that costs nothing. */

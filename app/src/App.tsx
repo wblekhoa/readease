@@ -2142,7 +2142,10 @@ export default function App() {
                     nhiều thông tin ra ngoài, nếu cần thì ẩn chúng đi"). */}
                 {pricing && (
                   <IconButton
-                    onClick={() => {
+                    onClick={(event) => {
+                      // An opener lets go of the focus after a mouse press
+                      // (HIG 4.2), like the others (27/09).
+                      if (pressedByPointer()) event.currentTarget.blur();
                       // One floating layer at a time. The settings panel and
                       // this one both stand over the book in the same place,
                       // so opening this on top of that put a panel where the

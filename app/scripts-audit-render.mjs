@@ -105,6 +105,9 @@ const SCREENS = {
   // the page: every chapter's figures are in the DOM, most off-page.
   // Reached through the contents, like a reader would: the sample's sketch
   // on a transparent ground sits in "Chương 6 Bài tập 02".
+  // The paid voice's cost and scope panel, from the coin by the read
+  // button: never opened by any cell until 27/09.
+  cost: [...OPEN_BOOK, ["click", /^Chi phí và phạm vi$|^Cost and scope$/], ["wait", /^Giọng trả phí$|^Paid voice$/, "[role=dialog]"]],
   // The Apple Books sheet (HIG 3.12), from the shelf's own button: until
   // 27/09 no cell had opened it - the coverage map listed it at zero.
   apple_books: [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Từ Apple Books$|^From Apple Books$/],
@@ -127,11 +130,12 @@ const SCREENS = {
 // states: opened in all sixteen they would add 120 cells (~6 min of a
 // ~31 min run) saying the same thing, for these 28.
 const ONLY_IN = {
-  player_settings: ["default", "sidebar", "english_missing", "english_partial", "vietnamese_missing"],
+  player_settings: ["default", "sidebar", "english_missing", "english_partial", "vietnamese_missing", "paid"],
   voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
   apple_books: ["default", "empty"],
+  cost: ["paid"],
   update_available: ["default"],
   update_none: ["default"],
   update_failed: ["default"],
@@ -159,10 +163,13 @@ const STATES = {
   // Names as long as the owner's library has them (27/09, counted numbers
   // only: a 98-character title, a 133-character contents line).
   long: "long=1",
+  // A paid voice in use: the cost button and its panel exist only here.
+  paid: "voice=paid",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
   long: ["shelf", "reader", "contents", "book_notes", "search"],
+  paid: ["reader", "cost", "player_settings"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -443,10 +450,10 @@ async function main() {
           tip: !!document.querySelector("[role=tooltip]") }; })()`);
       const said = (w) => w.body ? "the page itself" : w.item ? `menu item "${w.item}"` : w.dialog ? `the panel "${w.dialog}"` : w.opener ? "the opener" : "some other control";
       const expect = (scenario, ok, detail) => { keyChecks++; if (!ok) findings.push({ cell: `keys/${scenario}`, kind: "keys", detail }); };
-      const goto = async (steps, lang = "vi") => {
+      const goto = async (steps, lang = "vi", query = "") => {
         events.length = 0;
         await seedLanguage(lang);
-        await send("Page.navigate", { url: `http://localhost:${PORT}/?` });
+        await send("Page.navigate", { url: `http://localhost:${PORT}/?${query}` });
         await sleep(900);
         await evalJs(`localStorage.removeItem("readease.theme")`);
         for (const [kind, re, within] of steps) {
@@ -513,10 +520,14 @@ async function main() {
         // sheet it had opened - the owner's 06/09 and 16/09 complaint, back
         // through a button the one-opener check never pressed. Each is
         // pressed on a fresh page and read after the tooltip's own delay.
-        const openers = await evalJs(`[...document.querySelectorAll("button[aria-haspopup][aria-label]")]
-          .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("[inert]") && !b.disabled).map((b) => b.getAttribute("aria-label"))`);
-        for (const name of openers ?? []) {
-          if (!(await goto(OPEN_BOOK))) { expect("mouse", false, "could not reopen the document"); break; }
+        // And with a paid voice in use, where the coin that opens the cost
+        // panel exists.
+        const openersIn = async (query) => { if (!(await goto(OPEN_BOOK, "vi", query))) return [];
+          return (await evalJs(`[...document.querySelectorAll("button[aria-haspopup][aria-label]")]
+          .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("[inert]") && !b.disabled).map((b) => b.getAttribute("aria-label"))`)) ?? []; };
+        const openers = [...(await openersIn("")).map((name) => ["", name]), ...(await openersIn("voice=paid")).filter((name) => name === "Chi phí và phạm vi").map((name) => ["voice=paid", name])];
+        for (const [query, name] of openers) {
+          if (!(await goto(OPEN_BOOK, "vi", query))) { expect("mouse", false, "could not reopen the document"); break; }
           if (!(await clickAt(`button[aria-label="${name}"]`))) { expect("mouse", false, `no opener named ${name}`); continue; }
           await sleep(900);
           const after = await evalJs(`(() => { const b = document.querySelector('button[aria-label="${name}"]');
@@ -1029,9 +1040,23 @@ async function main() {
         // Vietnamese half runs at 20-25 %, the English one under 1 %.
         const letters = (said ?? "").match(/\p{L}/gu)?.length ?? 0;
         const marked = ((said ?? "").match(/[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/giu) ?? []).length;
-        const dated = /Released \d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December) \d{4}/.test(said ?? "");
+        const dated = /Released \d{1,2}\s(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}/.test(said ?? "");
         expect("words", said !== null && letters > 0 && marked / letters < 0.03 && dated && !said.includes("`"),
           said === null ? "the English update sheet did not open" : `the English update sheet: ${(100 * marked / Math.max(letters, 1)).toFixed(1)} % Vietnamese-marked letters, date ${dated ? "in English" : "not in English"}, ${said.split("`").length - 1} backticks - ${JSON.stringify(said.slice(0, 100))}`);
+        crashed("words");
+      }
+      // The paid voice's cost panel in English (27/09): money, counts and the
+      // price's day were written the Vietnamese way - "$0,04", "11.800
+      // characters", "1 chapters", a raw "2026-09-10" - and so was the read
+      // button's figure beside it.
+      if (!(await goto(SCREENS.cost, "en", STATES.paid))) expect("words", false, "could not open the paid voice's cost panel in English");
+      else {
+        const said = await evalJs(`(() => { const d = [...document.querySelectorAll('[role="dialog"]')].find((e) => e.getAttribute("aria-label") === "Paid voice");
+          const read = [...document.querySelectorAll("button")].map((b) => b.textContent ?? "").find((t) => t.includes("$"));
+          return d ? d.textContent + " | " + (read ?? "") : null; })()`);
+        const wrong = [/\$\d+,\d{2}/, /\b\d{1,3}\.\d{3}\b/, /\b1 chapters\b/, /\d{4}-\d{2}-\d{2}/].filter((re) => re.test(said ?? "")).map(String);
+        expect("words", said !== null && said.includes("$") && wrong.length === 0,
+          said === null ? "the English cost panel did not open" : `the English cost panel writes ${wrong.join(" ")} - ${JSON.stringify(said.slice(0, 200))}`);
         crashed("words");
       }
 

@@ -737,7 +737,12 @@ const SETTINGS: Record<string, string | number | null> = {
   })(),
 };
 
+/* `?voice=paid` (below) changes the settings for one page only: remembered,
+   they would follow every later cell of the audit. */
+const EPHEMERAL = new URLSearchParams(window.location.search).get("voice") === "paid";
+
 function rememberSettings() {
+  if (EPHEMERAL) return;
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS));
   } catch {
@@ -783,6 +788,13 @@ if (new URLSearchParams(window.location.search).get("model") === "missing") {
   MODEL.installed = {};
   MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
   for (const key of Object.keys(SETTINGS)) if (key.endsWith("_api_key")) delete SETTINGS[key];
+}
+/* `?voice=paid`: a paid voice in use - the one state with the cost button
+   and its panel ("Giọng trả phí"), which no cell had opened until 27/09.
+   The key is only a "set" mark: the harness never hands a value back. */
+if (EPHEMERAL) {
+  SETTINGS.openai_api_key = "set";
+  SETTINGS.voice = "openai:gpt-4o-mini-tts:marin";
 }
 if (new URLSearchParams(window.location.search).get("vietnamese") === "missing") {
   MODEL.ready = false;
