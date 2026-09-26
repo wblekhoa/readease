@@ -330,9 +330,9 @@ function PickerRows({
   return (
     <>
       {groups.map((group) => (
-        <div key={group.key}>
-          {group.key !== "all" && (
-            <h3 className="m-0 px-3 pb-1 pt-2 text-xs font-semibold text-ink-mute">{text(GROUP_TITLE[group.key])}</h3>
+        <div key={group.kind}>
+          {group.kind !== "all" && (
+            <h3 className="m-0 px-3 pb-1 pt-2 text-xs font-semibold text-ink-mute">{text(GROUP_TITLE[group.kind])}</h3>
           )}
           {group.voices.map((voice) => {
             const name = shown(voice);

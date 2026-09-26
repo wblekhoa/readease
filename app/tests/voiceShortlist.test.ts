@@ -402,7 +402,7 @@ test("giọng yêu thích đứng đầu, mỗi phần giữ thứ tự vốn c�
    select had - favourites, then this Mac, then the paid ones - and a group
    is only named when there is more than one. */
 const ALLOY = { id: "openai:gpt-4o-mini-tts:alloy", label: "Alloy · OpenAI" };
-const grouped = (groups: ReturnType<typeof voiceGroups>) => groups.map((group) => [group.key, group.voices.map((voice) => voice.id)]);
+const grouped = (groups: ReturnType<typeof voiceGroups>) => groups.map((group) => [group.kind, group.voices.map((voice) => voice.id)]);
 
 test("ô chọn giọng: yêu thích một nhóm trên cùng, rồi trên máy, rồi API", () => {
   assert.deepEqual(grouped(voiceGroups([...CATALOGUE, ALLOY], ["c"])), [

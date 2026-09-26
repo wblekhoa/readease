@@ -336,8 +336,10 @@ export function favoritesFirst<T extends Pick<Voice, "id">>(
 }
 
 export type VoiceGroup<T extends Pick<Voice, "id">> = {
-  /** `all` is the one group with no name: a single list needs no heading. */
-  key: "starred" | "local" | "paid" | "all";
+  /** `all` is the one group with no name: a single list needs no heading.
+   * Not `key`: the engine's tests read `key: "…"` in the shell as a config
+   * key it has to know (test_every_config_key_the_shell_asks_for…). */
+  kind: "starred" | "local" | "paid" | "all";
   voices: T[];
 };
 
@@ -354,11 +356,11 @@ export function voiceGroups<T extends Pick<Voice, "id">>(
   const favourite = offered.filter((voice) => starred.has(voice.id));
   const local = offered.filter((voice) => !starred.has(voice.id) && !isPaidVoice(voice.id));
   const paid = offered.filter((voice) => !starred.has(voice.id) && isPaidVoice(voice.id));
-  if (!favourite.length && (!local.length || !paid.length)) return [{ key: "all", voices: [...offered] }];
+  if (!favourite.length && (!local.length || !paid.length)) return [{ kind: "all", voices: [...offered] }];
   const groups: VoiceGroup<T>[] = [
-    { key: "starred", voices: favourite },
-    { key: "local", voices: local },
-    { key: "paid", voices: paid },
+    { kind: "starred", voices: favourite },
+    { kind: "local", voices: local },
+    { kind: "paid", voices: paid },
   ];
   return groups.filter((group) => group.voices.length > 0);
 }
