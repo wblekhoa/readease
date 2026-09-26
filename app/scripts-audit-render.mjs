@@ -900,6 +900,13 @@ async function main() {
         const opener = await evalJs(`(() => { const b = document.querySelector('button[aria-label="Cài đặt đọc"][aria-expanded="true"]') || [...document.querySelectorAll("button")].find((e) => e.getAttribute("aria-label") === "Cài đặt đọc");
           return b ? getComputedStyle(b).color : null; })()`);
         expect("ink", opener === tone.ink, `the Reading settings button, its panel open, is ${opener} - not ink ${tone.ink} (mute is ${tone.mute})`);
+        // Faint is the locked shade (owner 17/09: "mờ quá"): a button that
+        // can be pressed never wears it, now that a colour passed in shows.
+        const faint = await evalJs(`(() => { const probe = document.createElement("span"); probe.className = "text-ink-faint"; document.body.append(probe);
+          const shade = getComputedStyle(probe).color; probe.remove();
+          return [...document.querySelectorAll(".icon-button")].filter((b) => !b.disabled && b.getBoundingClientRect().width > 0 && !b.closest("[inert]") && getComputedStyle(b).color === shade)
+            .map((b) => b.getAttribute("aria-label")); })()`);
+        expect("ink", faint.length === 0, `enabled icon buttons in the locked shade: ${faint.join(", ")}`);
         crashed("ink");
       }
       if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("ink", false, "could not open the voices sheet");

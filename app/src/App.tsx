@@ -1672,7 +1672,11 @@ export default function App() {
                    the line under them rather than a truncation. */
                 <IconButton
                   aria-label={text("reader.page_info")}
-                  className="shrink-0 text-ink-faint hover:text-ink"
+                  /* Mute at rest, like every icon button: faint is the locked
+                     shade (owner, 17/09: "mờ quá"). It asked for faint here
+                     all along, and only showed mute because an icon button's
+                     own colour beat the one it was given (fixed 26/09). */
+                  className="shrink-0 hover:text-ink"
                   title={
                     <span className="block">
                       <span className="block">
