@@ -491,6 +491,21 @@ async function main() {
           expect("mouse", !w.tip, "a tooltip hangs over the panel a mouse click opened");
           await findAndClick(/^Cài đặt đọc$/);
         }
+        // Every opener, not one (27/09): the hub's gear in the column's foot
+        // kept the focus after a mouse press, so its tooltip hung over the
+        // sheet it had opened - the owner's 06/09 and 16/09 complaint, back
+        // through a button the one-opener check never pressed. Each is
+        // pressed on a fresh page and read after the tooltip's own delay.
+        const openers = await evalJs(`[...document.querySelectorAll("button[aria-haspopup][aria-label]")]
+          .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("[inert]") && !b.disabled).map((b) => b.getAttribute("aria-label"))`);
+        for (const name of openers ?? []) {
+          if (!(await goto(OPEN_BOOK))) { expect("mouse", false, "could not reopen the document"); break; }
+          if (!(await clickAt(`button[aria-label="${name}"]`))) { expect("mouse", false, `no opener named ${name}`); continue; }
+          await sleep(900);
+          const after = await evalJs(`(() => { const b = document.querySelector('button[aria-label="${name}"]');
+            return { kept: !!b && document.activeElement === b, tip: document.querySelector("[role=tooltip]")?.textContent ?? null }; })()`);
+          expect("mouse", !after.kept && after.tip === null, `${name}: after a mouse press the opener ${after.kept ? "kept the focus" : "let go"}${after.tip ? `, and the tooltip "${after.tip}" hangs over what it opened` : ""}`);
+        }
         // The transport is a named group (HIG 4.2, point 1): VoiceOver says
         // what the buttons are FOR before it reads them one by one. No cell
         // of the matrix is mid-reading, so this is the only place it is seen.

@@ -864,7 +864,9 @@ panel bên dưới. `Esc` — hay ✕ bấm bằng bàn phím — đóng và **t
 (bấm ra ngoài là đóng) nên Tab được đi ra. **Chuột giữ nguyên hành vi cũ**: nút mở vẫn tự `blur()` sau một cú bấm
 CHUỘT (`pressedByPointer()`) — để Space vẫn là tạm dừng/tiếp tục chứ không bấm lại chính nút ấy (bộ bắt Space bỏ qua mọi
 thứ có `value`, và nút có) và để tooltip không treo trên panel vừa mở (chủ 06/09, 16/09); sau một cú chuột, tiêu điểm
-không bị kéo vào panel cũng không bị trả về nút. "Chuột" = lần nhập gần nhất là một `pointerdown` thật. Cú bấm của
+không bị kéo vào panel cũng không bị trả về nút. "Chuột" = lần nhập gần nhất là một `pointerdown` thật. Kiểm keys bấm chuột vào MỌI nút mở có
+`aria-haspopup` trên màn đọc (27/09 — bánh răng Giọng đọc & mô hình ở chân cột và chip Cài đặt giọng đọc từng giữ
+focus: tooltip treo trên sheet, và Space bấm lại chip thay vì tạm dừng). Cú bấm của
 VoiceOver (`⌃⌥Space`) **dự kiến** tới trang như một click trần, không kèm phím hay con trỏ, nên sẽ được tính cùng bàn
 phím — đúng người nó dành cho; dự kiến, CHƯA đo: đó là hành vi của WebKit, và mục 6 trong checklist của chủ là phép
 kiểm. Luật này đã có một nửa trong §3.17 (`[data-state="closed"] * { pointer-events: none }`) — nửa còn lại là bàn phím.

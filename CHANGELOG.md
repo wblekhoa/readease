@@ -40,6 +40,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   longer show markdown's backticks, they can be scrolled from the
   keyboard, and a failed check's long web address wraps inside the sheet
   instead of running past its edge.
+- After Voice settings or Voices & models is opened with the mouse, Space
+  pauses the reading again - it used to press the button once more - and
+  the gear's tooltip no longer hangs over the sheet it opened.
 
 ## 0.1.19
 

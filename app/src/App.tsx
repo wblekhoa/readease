@@ -1442,7 +1442,12 @@ export default function App() {
   const chrome = (
     <>
       <IconButton
-        onClick={() => { setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true); }}
+        onClick={(event) => {
+          // Lets go of the focus after a mouse press, like every opener (HIG
+          // 4.2): kept, its tooltip hung over the sheet it opened (27/09).
+          if (pressedByPointer()) event.currentTarget.blur();
+          setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true);
+        }}
         aria-label={text("hub.title")}
         title={text("hub.title")}
         aria-haspopup="dialog"
@@ -2242,7 +2247,11 @@ export default function App() {
             {speechSettings && (
               <Button
                 variant="ghost"
-                onClick={() => {
+                onClick={(event) => {
+                  // An opener lets go of the focus after a mouse press (HIG
+                  // 4.2): kept, the next Space pressed this chip again instead
+                  // of pausing the reading (27/09).
+                  if (pressedByPointer()) event.currentTarget.blur();
                   // One floating layer at a time: the voices sheet sits above
                   // this panel, so opening settings under it would put a
                   // panel where nobody can reach it.
