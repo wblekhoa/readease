@@ -78,6 +78,7 @@ const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
 const SHELF = [...UNFOLD, ["click", /^Thư viện$|^Library$/]];
+const APPLE = [...SHELF, ["click", /^Từ Apple Books$|^From Apple Books$/], ["wait", /^Tài liệu trong Apple Books$|^Items in Apple Books$/, "[role=dialog]"]];
 const SEARCH = [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]];
 const HUB = [...SHELF, ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]];
 const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/],
@@ -137,8 +138,13 @@ const SCREENS = {
   cost: [...OPEN_BOOK, ["click", /^Chi phí và phạm vi$|^Cost and scope$/], ["wait", /^Giọng trả phí$|^Paid voice$/, "[role=dialog]"]],
   // The Apple Books sheet (HIG 3.12), from the shelf's own button: until
   // 27/09 no cell had opened it - the coverage map listed it at zero.
-  apple_books: [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Từ Apple Books$|^From Apple Books$/],
-    ["wait", /^Tài liệu trong Apple Books$|^Items in Apple Books$/, "[role=dialog]"]],
+  apple_books: APPLE,
+  // The sheet's two menus and what an import says when done (HIG 3.12):
+  // until 27/09 no cell had opened either menu or run anything from them.
+  apple_import_menu: [...APPLE, ["click", /^Tuỳ chọn nhập$|^Import options$/], ["wait", /^Chỉ nhập tài liệu|^Document only/, "[role=menuitem]"]],
+  apple_imported: [...APPLE, ["click", /^Tuỳ chọn nhập$|^Import options$/], ["wait", /^Chỉ nhập tài liệu|^Document only/, "[role=menuitem]"],
+    ["click", /^Chỉ nhập tài liệu|^Document only/], ["wait", /^Đã nhập \d+ tài liệu|^\d+ documents? imported/, "p"]],
+  apple_sync_menu: [...APPLE, ["click", /^Đồng bộ ghi chú$|^Sync highlights$/], ["wait", /^Highlight và ghi chú|^Highlights and notes/, "[role=menuitem]"]],
   // The update sheet (HIG 3.20), the way every reader reaches a new version:
   // opened through the dispatcher "Kiểm tra bản mới…" calls, in its four
   // resting states - a new version, already the latest, the check failing,
@@ -202,6 +208,9 @@ const ONLY_IN = {
   key_form: ["default"],
   search_none: ["default"],
   paste_over: ["default"],
+  apple_import_menu: ["default"],
+  apple_imported: ["default"],
+  apple_sync_menu: ["default"],
   search_capped: ["default"],
   key_refused: ["keyfail"],
   shelf_duplicate: ["default"],
@@ -1252,6 +1261,16 @@ async function main() {
           return b.top >= a.bottom - 1 ? 99 : Math.round(b.left - a.right); })()`);
         expect("paste-words", gap !== null && gap >= 4, gap === null ? "no over-limit line" : `the count and the over-limit line are ${gap}px apart`);
         crashed("paste-words");
+      }
+      // What an Apple Books import says when done is read whole (27/09): the
+      // footer cut it to one line - "1 document imported · 0 highlights
+      // matched · 0 not fou…" - at the window's floor.
+      if (!(await goto(SCREENS.apple_imported, "en"))) expect("apple-summary", false, "could not import from the Apple Books sheet");
+      else {
+        const cut = await evalJs(`(() => { const p = [...document.querySelectorAll("[role=dialog] p")].find((e) => /documents? imported/.test(e.textContent));
+          return p ? { wide: p.scrollWidth > p.clientWidth + 1, tall: p.scrollHeight > p.clientHeight + 1, said: p.textContent } : null; })()`);
+        expect("apple-summary", cut !== null && !cut.wide && !cut.tall, cut === null ? "no summary after the import" : `the import summary is clipped (${cut.wide ? "width" : "height"}): ${JSON.stringify(cut.said)}`);
+        crashed("apple-summary");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

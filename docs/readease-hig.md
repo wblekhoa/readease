@@ -758,7 +758,10 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   có qua `useCover` dùng chung, ô `band` + glyph khi chưa nhập, khoá + mờ khi chặn), tên tối đa 2 dòng,
   một dòng dữ kiện "N ghi chú · Đã có / Ghép với «…» / lý do chặn" — ô bị chặn **lùi lại bằng bìa mờ và tên màu mute,
   KHÔNG làm mờ cả ô**: dòng lý do ("Quá lớn…", DRM) là thứ người đọc cần đọc nhất, giữ `ink-mute` đạt AA (27/09 — lần
-  render đầu của sheet: cả ô `opacity-70` kéo dòng lý do dưới AA, axe `color-contrast` serious); hành động = **icon bên phải**
+  render đầu của sheet: cả ô `opacity-70` kéo dòng lý do dưới AA, axe `color-contrast` serious); **câu kết quả ở chân sheet
+  đọc được trọn** (27/09, lần đầu ma trận chạy một lệnh nhập — `apple_import_menu` · `apple_imported` · `apple_sync_menu`):
+  một dòng `truncate` cắt nó ở sàn cửa sổ ("0 not fou…"); nay tối đa 2 dòng, dài hơn thì rê chuột thấy đủ chữ (keys
+  `apple-summary`); hành động = **icon bên phải**
   (`MenuButton`): nhập (mũi tên vào khay) mở tuỳ chọn *Chỉ nhập sách (mặc định) · kèm highlight · kèm
   ghi chú · kèm cả hai*; đồng bộ (hai mũi tên) mở *Highlight và ghi chú (mặc định) · chỉ highlight ·
   chỉ ghi chú*. Engine: `applebooks.sync_notes {mode}` — highlights = bỏ ghi chú, notes = chỉ đoạn có ghi

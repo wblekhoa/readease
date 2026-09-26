@@ -78,6 +78,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - Pasted text past the limit: the character count and the line saying
   to trim it no longer run together - they read "charactersLonger than
   the limit".
+- After an import or sync from Apple Books, the sheet's summary of what
+  happened is shown whole on up to two lines. In a small window it was
+  cut off mid-word.
 
 ## 0.1.19
 

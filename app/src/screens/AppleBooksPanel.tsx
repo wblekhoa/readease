@@ -243,7 +243,13 @@ export function AppleBooksPanel({
           {working ? (
             <Notice className="truncate">{text("apple.working", working)}</Notice>
           ) : notice ? (
-            <Notice tone={notice.tone} className="truncate">{notice.message}</Notice>
+            /* What an action came to is read whole: on one line it lost its
+               tail at the window's floor ("0 not fou…", 27/09). Two lines
+               hold a summary; a longer list of failures keeps its words on
+               hover, as every clipped line does. */
+            <Notice tone={notice.tone} className="line-clamp-2">
+              <span title={notice.message}>{notice.message}</span>
+            </Notice>
           ) : shelf ? (
             <Notice className="truncate">
               {actionable.length
