@@ -234,6 +234,21 @@ export const TEXT = {
     "Khoá này chưa dùng được - nhà cung cấp không trả về giọng nào.",
     "That key does not work yet - the provider returned no voices.",
   ],
+  /* The same refusals as a reading's (voiceerr.*), said where the key is
+     typed: the next step is this form, not the voice settings or the read
+     button (27/09). */
+  "key.refused_bad_key": [
+    "Nhà cung cấp từ chối khoá này. Kiểm tra lại rồi dán lại vào đây.",
+    "The provider refused this key. Check it and paste it here again.",
+  ],
+  "key.refused_rate_limit": [
+    "Gửi hơi nhanh. Đợi một chút rồi bấm Lưu lại.",
+    "Too fast for them. Wait a moment and press Save again.",
+  ],
+  "key.refused_network": [
+    "Không nối được tới nhà cung cấp - chưa tốn gì cả. Kiểm tra mạng rồi bấm Lưu lại.",
+    "Could not reach the provider - nothing was charged. Check the connection and press Save again.",
+  ],
   "key.none_yet": [
     "Thêm khoá của một nhà cung cấp để chọn giọng của họ. Giá hiện ngay trong nút đọc.",
     "Add a provider's key to pick their voices. The price shows in the read button.",

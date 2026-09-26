@@ -11,11 +11,21 @@
  * mid-chapter, in the middle of a reading somebody was waiting for.
  */
 import { useState } from "react";
-import { text } from "../i18n";
+import { text, type TextKey } from "../i18n";
 import { readingFault, faultKey } from "./voiceFault";
 import { Button, Input, Notice } from "./controls";
 import { GroupedRow, GroupedSection } from "./patterns";
 import { PROVIDERS } from "./readingCost";
+
+/** The refusals whose reading sentence points away from this form - "check
+ * it in the voice settings" (this is them), "press read again" (this form
+ * saves). Here the next step is here (27/09). The others - out of credit,
+ * the provider down, a blocked account - read the same in both places. */
+const REFUSED_HERE: Record<string, TextKey> = {
+  bad_key: "key.refused_bad_key",
+  rate_limit: "key.refused_rate_limit",
+  network: "key.refused_network",
+};
 
 export function ProviderKeys({
   title,
@@ -102,6 +112,8 @@ export function ProviderKeys({
             {refused === provider.id && (
               <Notice tone="error">
                 {(() => {
+                  const here = REFUSED_HERE[why ?? ""];
+                  if (here) return text(here);
                   const fault = readingFault(`voice_failed: ${why ?? ""}`);
                   const named = faultKey(fault);
                   return named ? text(named) : text("key.refused");

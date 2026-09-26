@@ -78,6 +78,7 @@ const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
 const SHELF = [...UNFOLD, ["click", /^Thư viện$|^Library$/]];
+const HUB = [...SHELF, ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]];
 const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/],
   ["click", /những phương án đầu tiên của họ/], ["click-at", "button.note-nudge"], ["wait", /^Sửa ghi chú$|^Edit this note$/, "textarea"]];
 const SCREENS = {
@@ -150,6 +151,13 @@ const SCREENS = {
   // written, and no cell had pressed read - so none of them had been on a
   // screen. The states below pick the failure.
   reading_failed: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /./, "[role=alert]"], ["rest"]],
+  // Adding a provider's key (HIG 3.13): the form, and a key the provider
+  // refuses (`keyfail=bad_key`). The words typed are a made-up test string
+  // on the mock, which answers locally and hands no key back. Until 27/09
+  // no cell had opened the form, so none of it had been on a screen.
+  key_form: [...HUB, ["click", /^Thêm khoá$|^Add key$/], ["wait", /^Lưu$|^Save$/]],
+  key_refused: [...HUB, ["click", /^Thêm khoá$|^Add key$/], ["wait", /^Lưu$|^Save$/], ["type", "khoa-thu-nghiem"],
+    ["click", /^Lưu$|^Save$/], ["wait", /./, "[role=alert]"], ["rest"]],
   // The shelf's own changes (HIG 3.11): a document added through the open
   // panel (the mock answers it with one path), the same file added again,
   // and a removal - asked, then done. Until 27/09 no cell had pressed
@@ -181,6 +189,8 @@ const ONLY_IN = {
   reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
   note_editor: ["default"],
   shelf_import: ["default"],
+  key_form: ["default"],
+  key_refused: ["keyfail"],
   shelf_duplicate: ["default"],
   shelf_remove: ["default"],
   shelf_removed: ["default"],
@@ -1201,6 +1211,19 @@ async function main() {
         expect("note-caret", said !== null && said.endsWith(" thêm"),
           said === null ? "no note editor" : `typing into an opened note wrote ${JSON.stringify(said)} - not at its end`);
         crashed("note-caret");
+      }
+      // A refused key is told what to do HERE (27/09): the key form reused
+      // the reading's sentences, which send a person "to the voice
+      // settings" (they are in them) or to "press read again".
+      for (const [lang, code, wanted, wrong] of [
+        ["vi", "bad_key", /dán lại vào đây/, /trong phần giọng đọc/],
+        ["en", "network", /press Save again/, /press read again/],
+      ]) {
+        if (!(await goto([...HUB, ["click", /^Thêm khoá$|^Add key$/], ["wait", /^Lưu$|^Save$/], ["type", "khoa-thu-nghiem"],
+          ["click", /^Lưu$|^Save$/], ["wait", /./, "[role=alert]"]], lang, `keyfail=${code}`))) { expect("key-words", false, `no refusal for keyfail=${code}`); continue; }
+        const said = await evalJs(`(() => { const a = document.querySelector("[role=alert]"); return a ? a.textContent : null; })()`);
+        expect("key-words", said !== null && wanted.test(said) && !wrong.test(said), `a ${code} refusal in the key form (${lang}) says ${JSON.stringify(said)}`);
+        crashed("key-words");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

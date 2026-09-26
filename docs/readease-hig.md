@@ -287,7 +287,10 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
   được" · subtitle "Mô hình X trên máy · N giọng · API · M giọng" hoặc "Tải mô hình về máy, hoặc nhập
   khoá API bên dưới"), rồi hàng mô hình (`ModelRows`: tiếng Việt hai bản Tải về / Dùng bản này / Tải và
   dùng / Xoá; tiếng Anh một hàng Tải về / Tải tiếp / Xoá), rồi nhóm **Giọng API** (`ProviderKeys`, subtitle
-  "Đã có khoá · N giọng"); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
+  "Đã có khoá · N giọng"; **lời từ chối nói việc làm NGAY Ở ĐÂY** — 27/09, lần đầu ma trận mở form khoá (`key_form`,
+  `key_refused`): nó mượn câu của lần đọc thất bại, nên khoá sai bảo "kiểm tra lại khoá trong phần giọng đọc" (đang ở
+  đó) và mất mạng bảo "bấm đọc lại" (form này Lưu); ba mã chỉ đường sai — `bad_key` · `rate_limit` · `network` — có câu
+  riêng `key.refused_*`, các mã còn lại đọc như nhau ở hai nơi; keys `key-words`); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
   `useModels` (trạng thái + lượt tải + hành động), để màn đầu, sheet và bảng giọng đọc không cãi nhau.
   **Huỷ tải là lời riêng của lượt tải** (`model.cancel`, 16/09), không phải Dừng của giọng đọc: trước đó
   cả hai là một lệnh `stop`, nên bấm Đọc trong lúc đang tải rồi Dừng (hoặc bấm Đọc lần nữa) là huỷ luôn

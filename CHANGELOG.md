@@ -69,6 +69,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   opens again when the pointer comes back.
 - Opening a note to edit it puts the cursor at its end, so what you type
   is added to the note. It went in front of the words already there.
+- A key the provider turns down says what to do in the form itself: a
+  wrong key asked you to check it "in the voice settings" - where you
+  already were - and a lost connection to "press read again". They now
+  say to paste the key again, or to press Save again.
 
 ## 0.1.19
 
