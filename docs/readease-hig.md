@@ -916,6 +916,10 @@ của mình chặn trước khi hỏi nhà cung cấp) = 16 ô. Hai quy ước m
 chối có chủ đích (mọi lỗi đã bắt đều `console.error`), nên đúng dạng `voice_failed:`/`voice_unavailable:` không phải lỗi;
 ngoại lệ (exception) thì không bao giờ được tha.
 
+**Kệ sách thay đổi** (27/09): `shelf_import` (hộp chọn tệp — mock trả một đường dẫn), `shelf_duplicate` (thêm lại
+cùng tệp), `shelf_remove` (hỏi) và `shelf_removed` (đã xoá) = 16 ô: chưa ô nào từng bấm hai nút đó. Lần đầu: 0 phát
+hiện, ảnh ổn (câu hỏi xoá thay chỗ tên trong thẻ, bìa vẫn nói thẻ nào; câu báo đứng trên lưới).
+
 **Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
 placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào
 từng hiện, theo vùng (bỏ 46 khoá macOS tự vẽ: `menu.*`, `now_playing.*`). Khớp đúng hoa/thường (nhãn "Lưu" không phải

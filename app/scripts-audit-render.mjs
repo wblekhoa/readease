@@ -77,6 +77,7 @@ const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^
 const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
+const SHELF = [...UNFOLD, ["click", /^Thư viện$|^Library$/]];
 const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/],
   ["click", /những phương án đầu tiên của họ/], ["click-at", "button.note-nudge"], ["wait", /^Sửa ghi chú$|^Edit this note$/, "textarea"]];
 const SCREENS = {
@@ -149,6 +150,16 @@ const SCREENS = {
   // written, and no cell had pressed read - so none of them had been on a
   // screen. The states below pick the failure.
   reading_failed: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /./, "[role=alert]"], ["rest"]],
+  // The shelf's own changes (HIG 3.11): a document added through the open
+  // panel (the mock answers it with one path), the same file added again,
+  // and a removal - asked, then done. Until 27/09 no cell had pressed
+  // either button, so none of what they say had been on a screen.
+  shelf_import: [...SHELF, ["click", /^Mở PDF hoặc EPUB$|^Open PDF or EPUB$/], ["wait", /^Đã thêm tài liệu vào thư viện\.$|^Document added to the library\.$/, "p"]],
+  shelf_duplicate: [...SHELF, ["click", /^Mở PDF hoặc EPUB$|^Open PDF or EPUB$/], ["wait", /^Đã thêm tài liệu vào thư viện\.$|^Document added to the library\.$/, "p"],
+    ["click", /^Mở PDF hoặc EPUB$|^Open PDF or EPUB$/], ["wait", /^Tài liệu này đã có trong thư viện\.$|^This document is already in the library\.$/, "p"]],
+  shelf_remove: [...SHELF, ["click", /^Xoá$|^Remove$/], ["wait", /^Giữ lại$|^Keep$/]],
+  shelf_removed: [...SHELF, ["click", /^Xoá$|^Remove$/], ["wait", /^Giữ lại$|^Keep$/],
+    ["click", /^Xoá$|^Remove$/], ["wait", /^Đã xoá khỏi thư viện\.$|^Removed from the library\.$/, "p"]],
   // Writing a note where it sits (HIG 3.14): until 27/09 no cell had
   // opened the editor. Reached the way a reader would - the notes list
   // jumps to a highlight, and its note button opens the editor on the page.
@@ -169,6 +180,10 @@ const ONLY_IN = {
   lightbox: ["default"],
   reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
   note_editor: ["default"],
+  shelf_import: ["default"],
+  shelf_duplicate: ["default"],
+  shelf_remove: ["default"],
+  shelf_removed: ["default"],
   note_save_failed: ["note_fail"],
   transfer_plan: ["default"],
   transfer_confirm: ["default"],
