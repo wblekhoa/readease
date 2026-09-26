@@ -28,6 +28,7 @@ diệt mơ hồ "token này áp vào đâu") · **Behavior** (trạng thái + b�
 | Tuỳ chọn phụ sau một hành động | `MenuButton` (icon → danh sách ngắn, mục đầu = mặc định) | Nhập/đồng bộ trong sheet Apple Books |
 | Bật/tắt một mục vào danh sách | `Switch` (role=switch, ô gạt) | Chọn giọng cho danh sách đổi nhanh |
 | Đánh dấu một mục đứng đầu danh sách | `IconButton` + `aria-pressed`, sao viền ↔ sao đặc (§3.13) | ★ giọng yêu thích |
+| Chọn một giọng, nghe thử và ★ ngay trong danh sách chọn | `VoicePicker` (nút dáng select → lớp `menu` kính qua portal; mỗi dòng: chọn · nghe thử · ★; §3.13) | Ô Giọng trong Cài đặt giọng đọc |
 | Nút nhỏ nằm giữa dòng chữ | `InlineIconButton` (co theo cỡ chữ, tự chặn click của đoạn) | Icon ghi chú trong đoạn |
 | Danh sách bất kỳ | `GroupedSection` + `GroupedRow` (kẻ chấm, không thẻ) | Cài đặt · Chất lượng · Transfer · danh sách giọng |
 | Xin quyền hệ thống | PermissionCard | Quét đọc |
@@ -854,8 +855,12 @@ khi lượt đọc bắt đầu. Lỗi đọc dùng `role="alert"` (assertive) v
 **3. Lớp nổi giữ được tiêu điểm — cho bàn phím; chuột không đổi gì.** Mở bằng bàn phím (hay VoiceOver) thì tiêu điểm
 vào trong lớp. Panel và sheet là `role="dialog"` mang tên (chính tiêu đề của nó) và nhận tiêu điểm ở chính nó
 (`tabIndex=-1`, không vẽ viền — VoiceOver đọc tên dialog là đủ, Tab đi tiếp vào các control); menu thì tiêu điểm vào
-mục đầu, ↑ ↓ Home End đi giữa các mục, Tab đóng menu. `Esc` — hay ✕ bấm bằng bàn phím — đóng và **trả tiêu điểm về nút
-đã mở nó**. Sheet nằm trên scrim là thật sự chặn: `aria-modal="true"` và Tab vòng trong sheet; popover thì không chặn
+mục đầu, ↑ ↓ Home End đi giữa các mục, Tab đóng menu. Ô chọn giọng (`VoicePicker`, §3.13) mở bằng Enter/Space/↓/↑,
+tiêu điểm vào dòng giọng **đang dùng** (như select của hệ); ↑ ↓ sang dòng kề **cùng cột** (chọn · nghe thử · ★), ← →
+đi trong dòng, Home End tới dòng đầu/cuối; Tab vòng TRONG lớp — lớp vẽ ở cuối trang nên Tab ra ngoài chẳng tới đâu, và
+Tab là lối tự nhiên tới nút nghe thử/★ của một dòng; chọn một giọng thì lớp đóng. Nó là `role="dialog"` "Chọn giọng"
+chứa các nút, KHÔNG `listbox`/`menu`: hai vai đó cấm nút lồng bên trong. `Esc` của nó chỉ đóng chính nó, không đóng
+panel bên dưới. `Esc` — hay ✕ bấm bằng bàn phím — đóng và **trả tiêu điểm về nút đã mở nó**. Sheet nằm trên scrim là thật sự chặn: `aria-modal="true"` và Tab vòng trong sheet; popover thì không chặn
 (bấm ra ngoài là đóng) nên Tab được đi ra. **Chuột giữ nguyên hành vi cũ**: nút mở vẫn tự `blur()` sau một cú bấm
 CHUỘT (`pressedByPointer()`) — để Space vẫn là tạm dừng/tiếp tục chứ không bấm lại chính nút ấy (bộ bắt Space bỏ qua mọi
 thứ có `value`, và nút có) và để tooltip không treo trên panel vừa mở (chủ 06/09, 16/09); sau một cú chuột, tiêu điểm
@@ -1877,6 +1882,22 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
   khoá có trong danh sách cho phép, và test `test_every_config_key_the_shell_asks_for_is_a_known_key` đỏ nếu
   thiếu. Không mồi sẵn: yêu thích chỉ là cái người đọc tự chọn. Id giọng trả phí đổi model thì dời theo, như
   danh sách đổi nhanh (`initialFavorites`).
+- **Ô Giọng trong Cài đặt giọng đọc nghe thử và ★ được ngay trong danh sách chọn** (chủ 26/09: "nâng cấp dropdown
+  chọn giọng cũng có thể preview voice và favorite luôn"). `<select>` gốc không chứa được nút — menu của hệ chỉ có
+  dòng chữ — nên ô này là `VoicePicker`: một nút trông y như select (30px, viền control, cùng mũi tên, tên cắt ba
+  chấm), bấm mở một lớp `menu` kính ngay dưới nó, hoặc ngay trên nó khi dưới không đủ chỗ cho cả danh sách; cả hai
+  phía đều không đủ (cửa sổ thấp — panel đứng trên footer) thì lớp **phủ lên chính nút, dòng giọng đang dùng nằm ngang
+  nút**, như pop-up của Mac, thay vì cuộn trong một khe hẹp giấu mất các dòng cuối (đo 26/09 ở 960×600: dưới 246px,
+  trên 281px, danh sách 6 giọng cần ~330px). Rộng bằng panel (26rem) để "Phong cách kể chuyện" không bị cắt — kiểu
+  giọng là chỗ phân biệt hai giọng. Vẽ qua **portal** vì panel cắt phần tràn và tự cuộn (cùng lý do tooltip đi portal). Mỗi dòng: dấu ✓ ở giọng đang dùng + tên + dòng mô tả — bấm vào đó là
+  **chọn**, lớp đóng; rồi nút **nghe thử** (loa ↔ ô vuông dừng) và nút **★** — đúng hai nút của Danh sách giọng, cùng
+  tên, cùng dáng. Nhóm như select cũ: Yêu thích · Trên máy · API, chỉ đặt tên nhóm khi có hơn một nhóm.
+  **Nhóm chốt lúc mở**: bấm ★ chỉ đổi dáng sao, dòng đứng yên; lần mở sau mới xếp lại (cùng luật với sheet).
+  **Nghe thử khoá khi đang đọc** (luật dưới đây); chân lớp nói câu giải thích, vì nút bị khoá không hiện tooltip.
+  Đang nghe thử thì KHÔNG khoá — nút dừng và nút của giọng khác phải bấm được. **Đóng lớp là dừng câu mẫu** (chọn,
+  Esc, bấm ra ngoài), như đóng sheet; đóng cả panel cũng dừng. Giọng trả phí: chân lớp nhắc nghe thử tốn tiền, như
+  sheet. Bàn phím: xem §4.2 điểm 3. Menu **Đổi giọng** ở thanh đọc giữ nguyên: nó chỉ hiện khi đang đọc, lúc nghe thử
+  bị khoá — một nút nghe thử ở đó sẽ luôn tắt; còn ★ ở đó đã là dấu sao sau tên.
 - Một lớp nổi tại một thời điểm: bấm chip cài đặt ở footer **đóng** sheet giọng (nếu không, panel cài đặt
   mở NGAY DƯỚI sheet, nơi không ai với tới).
 

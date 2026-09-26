@@ -11,7 +11,7 @@
  * nội dung liên quan đến ngôn ngữ đó"). Switching the language switches the
  * voice to the one last used for it - a tab that only filtered while the
  * other language's voice kept speaking would be a half-state nobody asked
- * for. Under the tab, a paid voice and a local one sit in the same select,
+ * for. Under the tab, a paid voice and a local one sit in the same picker,
  * grouped by where they come from.
  *
  * Above the voices, when the text in front of the reader is in a language
@@ -44,9 +44,9 @@ import {
 import type { Models } from "./useModels";
 import {
   voiceDescription as describe,
-  voiceName as name,
   type Voice,
 } from "./voiceShortlist";
+import { VoicePicker } from "./VoicePicker";
 
 export type { Voice };
 
@@ -86,6 +86,10 @@ export function SettingsPanel({
   onScope,
   onBudget,
   onVoice,
+  previewing,
+  onPreview,
+  onStopPreview,
+  onFavorite,
   onRate,
   chime,
   noteReading,
@@ -99,7 +103,7 @@ export function SettingsPanel({
   /** The whole catalogue; what each tab offers is decided here. */
   voices: Voice[];
   shortlist: readonly string[];
-  /** The voices starred ★: first in the select, under their own group
+  /** The voices starred ★: first in the Voice picker, under their own group
    * (HIG 3.13). Order only - the switch still decides what is offered. */
   favorites: readonly string[];
   voiceId: string;
@@ -129,6 +133,13 @@ export function SettingsPanel({
   onScope: (chapters: number | null) => void;
   onBudget: (usd: number | null) => void;
   onVoice: (voiceId: string) => void;
+  /** The voice whose sample is playing - its row in the Voice picker
+   * offers Stop (HIG 3.13). */
+  previewing: string | null;
+  onPreview: (voiceId: string) => void;
+  onStopPreview: () => void;
+  /** ★ from the Voice picker: the same list the voice list stars into. */
+  onFavorite: (voiceId: string) => void;
   onRate: (rate: number) => void;
   chime: Chime;
   noteReading: NoteReading;
@@ -148,10 +159,6 @@ export function SettingsPanel({
   const offered = offeredFor(voices, shortlist, voiceId, readingLanguage);
   const current = voices.find((voice) => voice.id === voiceId);
   const chosen = offered.some((voice) => voice.id === voiceId) ? voiceId : "";
-  const starred = offered.filter((voice) => favorites.includes(voice.id));
-  const local = offered.filter((voice) => !isPaidVoice(voice.id) && !favorites.includes(voice.id));
-  const paid = offered.filter((voice) => isPaidVoice(voice.id) && !favorites.includes(voice.id));
-  const optionName = (voice: Voice) => (isPaidVoice(voice.id) ? voice.label : name(voice.label) || voice.id);
   const paidVoice = isPaidVoice(voiceId);
 
   return (
@@ -271,64 +278,25 @@ export function SettingsPanel({
                     : describe(current?.label)
                 }
                 trailing={(titleId) => (
-                  <Select
+                  /* Pick, hear and star in one place (HIG 3.13, owner 26/09).
+                     When the voice in use is not one of this language's,
+                     nothing is ticked and the button says "Chọn giọng…" -
+                     named rather than blank, which would read as broken. */
+                  <VoicePicker
                     labelledBy={titleId}
+                    voices={offered}
+                    favorites={favorites}
                     value={chosen}
+                    /* A sample is itself a reading, and its own Stop must
+                       stay pressable - the voice list's rule. */
+                    locked={reading && previewing === null}
+                    previewing={previewing}
                     className="max-w-[11rem]"
-                    onChange={(event) => onVoice(event.target.value)}
-                  >
-                    {/* The voice in use is not one of this language's, so
-                        none is chosen here. The empty slot is NAMED rather
-                        than blank: a select showing nothing reads as broken,
-                        where "Chọn giọng…" reads as an invitation. */}
-                    {!chosen && (
-                      <option value="" disabled>{text("voices.pick")}</option>
-                    )}
-                    {/* Starred first, under their own name; the groups
-                        below are the rest, as they were (HIG 3.13). */}
-                    {starred.length > 0 ? (
-                      <>
-                        <optgroup label={text("voices.group_favorites")}>
-                          {starred.map((voice) => (
-                            <option key={voice.id} value={voice.id}>{optionName(voice)}</option>
-                          ))}
-                        </optgroup>
-                        {local.length > 0 && (
-                          <optgroup label={text("voices.group_local")}>
-                            {local.map((voice) => (
-                              <option key={voice.id} value={voice.id}>{optionName(voice)}</option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {paid.length > 0 && (
-                          <optgroup label={text("voices.source_api")}>
-                            {paid.map((voice) => (
-                              <option key={voice.id} value={voice.id}>{optionName(voice)}</option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </>
-                    ) : local.length > 0 && paid.length > 0 ? (
-                      <>
-                        <optgroup label={text("voices.group_local")}>
-                          {local.map((voice) => (
-                            <option key={voice.id} value={voice.id}>{name(voice.label) || voice.id}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label={text("voices.source_api")}>
-                          {paid.map((voice) => (
-                            <option key={voice.id} value={voice.id}>{voice.label}</option>
-                          ))}
-                        </optgroup>
-                      </>
-                    ) : (
-                      offered.map((voice) => (
-                        <option key={voice.id} value={voice.id}>
-                          {isPaidVoice(voice.id) ? voice.label : name(voice.label) || voice.id}
-                        </option>
-                      ))
-                    )}
-                  </Select>
+                    onChoose={onVoice}
+                    onPreview={onPreview}
+                    onStopPreview={onStopPreview}
+                    onFavorite={onFavorite}
+                  />
                 )}
               />
               {voicesError && (

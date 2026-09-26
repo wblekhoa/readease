@@ -19,6 +19,7 @@ import {
   voiceDescription,
   voiceDescriptionShown,
   voiceGender,
+  voiceGroups,
   voiceName,
   vouchedFor,
 } from "../src/ui/voiceShortlist.ts";
@@ -395,4 +396,42 @@ test("giọng yêu thích đứng đầu, mỗi phần giữ thứ tự vốn c�
   assert.deepEqual(favoritesFirst(CATALOGUE, []).map((voice) => voice.id), ["a", "b", "c"]);
   // Order only: a favourite the list does not hold is not added to it.
   assert.deepEqual(favoritesFirst(CATALOGUE.slice(0, 2), ["c"]).map((voice) => voice.id), ["a", "b"]);
+});
+
+/* The Voice picker's groups (HIG 3.13, owner 26/09): the same three the
+   select had - favourites, then this Mac, then the paid ones - and a group
+   is only named when there is more than one. */
+const ALLOY = { id: "openai:gpt-4o-mini-tts:alloy", label: "Alloy · OpenAI" };
+const grouped = (groups: ReturnType<typeof voiceGroups>) => groups.map((group) => [group.key, group.voices.map((voice) => voice.id)]);
+
+test("ô chọn giọng: yêu thích một nhóm trên cùng, rồi trên máy, rồi API", () => {
+  assert.deepEqual(grouped(voiceGroups([...CATALOGUE, ALLOY], ["c"])), [
+    ["starred", ["c"]],
+    ["local", ["a", "b"]],
+    ["paid", [ALLOY.id]],
+  ]);
+});
+
+test("ô chọn giọng: nhóm rỗng thì không có, kể cả khi mọi giọng trả phí đều là yêu thích", () => {
+  assert.deepEqual(grouped(voiceGroups([...CATALOGUE, ALLOY], ["c", ALLOY.id])), [
+    ["starred", ["c", ALLOY.id]],
+    ["local", ["a", "b"]],
+  ]);
+  assert.deepEqual(grouped(voiceGroups(CATALOGUE, ["a", "b", "c"])), [["starred", ["a", "b", "c"]]]);
+});
+
+test("ô chọn giọng: không yêu thích, một nguồn thì một danh sách không tên nhóm", () => {
+  assert.deepEqual(grouped(voiceGroups(CATALOGUE, [])), [["all", ["a", "b", "c"]]]);
+  assert.deepEqual(grouped(voiceGroups([...CATALOGUE, ALLOY], [])), [
+    ["local", ["a", "b", "c"]],
+    ["paid", [ALLOY.id]],
+  ]);
+});
+
+test("ô chọn giọng: yêu thích giữ thứ tự danh sách, và yêu thích không có mặt thì không thêm vào", () => {
+  assert.deepEqual(grouped(voiceGroups(CATALOGUE, ["c", "a"])), [
+    ["starred", ["a", "c"]],
+    ["local", ["b"]],
+  ]);
+  assert.deepEqual(grouped(voiceGroups(CATALOGUE.slice(0, 2), ["c"])), [["all", ["a", "b"]]]);
 });

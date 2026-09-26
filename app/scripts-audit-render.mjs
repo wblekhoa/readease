@@ -91,6 +91,11 @@ const SCREENS = {
   // and four of their selects had no name. The reading panel opens its finer
   // choices too, or the sliders and switches under "Tuỳ chỉnh" stay unseen.
   player_settings: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
+  // The Voice picker open over its panel (HIG 3.13, owner 26/09): its rows,
+  // their two buttons, and where it lands in a 600px window - over its own
+  // button, since neither side of it holds the whole list.
+  voice_picker: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"],
+    ["click-at", '[role="dialog"] [aria-haspopup="dialog"]'], ["wait", /^Chọn giọng$|^Choose a voice$/, "[role=dialog]"]],
   reading_settings: [...OPEN_BOOK, ["click", /^Cài đặt đọc$|^Reading settings$/], ["wait", /^Cài đặt đọc$|^Reading settings$/, "[role=dialog]"],
     ["click", /^Tuỳ chỉnh$|^Customize$/], ["wait", /^Giãn dòng$|^Line spacing$/, "input"]],
   // A picture opened large (HIG 3.10). Its ground is black in both themes,
@@ -109,6 +114,7 @@ const SCREENS = {
 // ~31 min run) saying the same thing, for these 28.
 const ONLY_IN = {
   player_settings: ["default", "sidebar", "english_missing", "english_partial", "vietnamese_missing"],
+  voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
 };
@@ -204,6 +210,25 @@ async function main() {
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
       await sleep(350); return true;
     };
+    // A control found by WHERE it is rather than by a name: the Voice
+    // picker's button is named by its row ("Giọng") plus the voice it shows,
+    // which changes as the checks pick voices. Pressed at its centre, with
+    // the mouse, the way findAndClick presses.
+    const clickAt = async (selector, patience = 4000) => {
+      const until = Date.now() + patience;
+      while (Date.now() < until) {
+        const box = await evalJs(`(() => {
+          const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((e) => !e.closest("[inert]") && e.getBoundingClientRect().width > 0);
+          if (!el) return null; el.scrollIntoView({ block: "nearest" }); const r = el.getBoundingClientRect();
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+        if (box) {
+          for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
+          await sleep(350); return true;
+        }
+        await sleep(150);
+      }
+      return false;
+    };
     // A name is an aria-label, a placeholder (an input's name) or the text;
     // a radio counts only while CHECKED, so waiting on a tab's name proves
     // the tab is the one showing, not merely that the row of tabs exists.
@@ -268,6 +293,7 @@ async function main() {
               const ok = kind === "click" ? await findAndClick(re)
                 : kind === "click?" ? (await findAndClick(re, 600), true)
                 : kind === "open-figure" ? await openFigure()
+                : kind === "click-at" ? await clickAt(re)
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -347,7 +373,7 @@ async function main() {
     // (owner, 06/09 and 16/09). Vietnamese, light, the default state.
     let keyChecks = 0;
     if (KEYS_ONLY || !ONLY) {
-      const CODES = { Enter: 13, Escape: 27, Tab: 9, ArrowDown: 40, ArrowUp: 38 };
+      const CODES = { Enter: 13, Escape: 27, Tab: 9, ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Home: 36, End: 35 };
       const key = async (name, { shift = false, pause = 350 } = {}) => {
         const base = { key: name, code: name, windowsVirtualKeyCode: CODES[name], modifiers: shift ? 8 : 0 };
         await send("Input.dispatchKeyEvent", { type: "keyDown", ...base, ...(name === "Enter" ? { text: "\r" } : {}) });
@@ -384,6 +410,7 @@ async function main() {
         for (const [kind, re, within] of steps) {
           const ok = kind === "click" ? await findAndClick(re)
             : kind === "click?" ? (await findAndClick(re, 600), true)
+            : kind === "click-at" ? await clickAt(re)
             : await waitFor(re, 6000, within);
           if (!ok) return false;
         }
@@ -540,10 +567,15 @@ async function main() {
           for (const [, re] of VOICES_SHEET.slice(0, 2)) await findAndClick(re);
           expect("favorite", await starredGroup(), `reopened, the sheet starts ${JSON.stringify((await heads()).slice(1, 2))} / ${await firstStar()}, not "Yêu thích (1)" / Thái Sơn`);
           await key("Escape");
+          // The Voice picker in the settings panel (HIG 3.13 - a select until
+          // 26/09) opens on its Favourites group, the starred voice first.
           await findAndClick(/^Cài đặt giọng đọc$/);
-          const select = await evalJs(`(() => { const s = [...document.querySelectorAll("select")].find((e) => [...e.options].some((o) => o.textContent === "Thái Sơn"));
-            const group = s && s.querySelector("optgroup"); return group ? [group.label, group.querySelector("option")?.textContent] : null; })()`);
-          expect("favorite", select?.[0] === "Yêu thích" && select?.[1] === "Thái Sơn", `the voice select starts ${JSON.stringify(select)}, not Yêu thích / Thái Sơn`);
+          await clickAt('[role="dialog"] [aria-haspopup="dialog"]');
+          const listed = await evalJs(`(() => { const box = document.querySelector('[role="dialog"][aria-label="Chọn giọng"]'); if (!box) return null;
+            return [box.querySelector("h3")?.textContent.trim() ?? null,
+              box.querySelector("[data-voice-row] button[aria-pressed]")?.getAttribute("aria-label") ?? null]; })()`);
+          expect("favorite", listed?.[0] === "Yêu thích" && listed?.[1] === "Yêu thích Thái Sơn", `the Voice picker starts ${JSON.stringify(listed)}, not Yêu thích / Thái Sơn`);
+          await key("Escape");
           await key("Escape");
           if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("favorite", false, "could not reopen the voices sheet after a reload");
           else {
@@ -597,6 +629,138 @@ async function main() {
           `the Speaker row reads ${JSON.stringify(row)}, not "Loa" / "Mock speakers · Thiết bị ra âm mặc định của hệ"`);
         crashed("speaker");
       }
+
+      // The Voice picker (HIG 3.13 and 4.2, owner 26/09: "nâng cấp dropdown
+      // chọn giọng cũng có thể preview voice và favorite luôn"). The keyboard
+      // goes in onto the voice in use and comes back to the button; ↑ ↓ keep
+      // the column; Escape closes the picker and not the panel under it; a
+      // star changes the star, not where the row stands; a sample shows Stop
+      // and ends when the picker closes; while something is read no sample
+      // can start, and the picker says why; a pick closes it and the button
+      // names the new voice.
+      const PICKER = '[role="dialog"][aria-label="Chọn giọng"]';
+      const TRIGGER = '[role="dialog"] [aria-haspopup="dialog"]';
+      const picked = () => evalJs(`(() => {
+        const button = document.querySelector('${TRIGGER}');
+        const box = document.querySelector('${PICKER}');
+        const rows = box ? [...box.querySelectorAll("[data-voice-row]")] : [];
+        const a = document.activeElement;
+        const row = a && a.closest ? a.closest("[data-voice-row]") : null;
+        return {
+          open: button?.getAttribute("aria-expanded") === "true",
+          panel: !!document.querySelector('[role="dialog"][aria-label="Cài đặt giọng đọc"]'),
+          shows: button?.textContent.trim() ?? null,
+          names: rows.map((r) => r.querySelector("button[aria-pressed]").getAttribute("aria-label").replace(/^Yêu thích /, "")),
+          stars: rows.map((r) => r.querySelector("button[aria-pressed]").getAttribute("aria-pressed")),
+          heads: box ? [...box.querySelectorAll("h3")].map((h) => h.textContent.trim()) : [],
+          current: rows.findIndex((r) => r.querySelector('button[aria-current="true"]')),
+          at: row ? rows.indexOf(row) : -1,
+          column: row ? [...row.querySelectorAll("button")].indexOf(a) : -1,
+          back: !!(a && a.hasAttribute && a.hasAttribute("data-audit-opener")),
+          stopping: rows.findIndex((r) => r.querySelectorAll("button")[1].getAttribute("aria-label") === "Dừng nghe thử"),
+          locked: rows.length > 0 && rows.every((r) => r.querySelectorAll("button")[1].disabled),
+          why: !!box && box.textContent.includes("Đang đọc nên không nghe thử được"),
+          reading: [...document.querySelectorAll("button")].some((b) => (b.getAttribute("aria-label") || b.textContent || "").trim() === "Tạm dừng"),
+        }; })()`);
+      // Press a row's button - 0 the voice, 1 hear, 2 star - with the mouse.
+      const pressIn = async (row, column) => {
+        const box = await evalJs(`(() => { const rows = [...document.querySelectorAll('${PICKER} [data-voice-row]')];
+          const b = rows[${row}] && rows[${row}].querySelectorAll("button")[${column}]; if (!b) return null;
+          b.scrollIntoView({ block: "nearest" }); const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+        if (!box) return false;
+        for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
+        await sleep(450); return true;
+      };
+      if (!(await goto(SCREENS.player_settings))) expect("picker", false, "could not open Voice settings");
+      else {
+        const marked = await evalJs(`(() => { const el = document.querySelector('${TRIGGER}'); if (!el) return false;
+          document.querySelectorAll("[data-audit-opener]").forEach((e) => e.removeAttribute("data-audit-opener"));
+          el.setAttribute("data-audit-opener", ""); el.focus(); return true; })()`);
+        if (!marked) expect("picker", false, "no Voice picker button in Voice settings");
+        else {
+          const shownBefore = (await picked()).shows;
+          await key("Enter");
+          let p = await picked();
+          expect("picker", p.open && p.current >= 0 && p.at === p.current && p.column === 0,
+            `Enter left the focus on row ${p.at}, column ${p.column} - not on the voice in use (row ${p.current})`);
+          const rows = p.names.length;
+          await key("ArrowDown");
+          p = await picked();
+          expect("picker", p.at === (p.current + 1) % rows && p.column === 0, `ArrowDown went to row ${p.at}, column ${p.column}`);
+          await key("Tab");
+          p = await picked();
+          expect("picker", p.at === (p.current + 1) % rows && p.column === 1, `Tab went to row ${p.at}, column ${p.column}, not to that row's Nghe thử`);
+          await key("ArrowUp");
+          p = await picked();
+          expect("picker", p.at === p.current && p.column === 1, `ArrowUp went to row ${p.at}, column ${p.column}, not up the same column`);
+          await key("Escape");
+          p = await picked();
+          expect("picker", !p.open && p.panel && p.back, `Escape left the picker ${p.open ? "open" : "closed"}, the panel ${p.panel ? "open" : "closed"}, the focus ${p.back ? "on the button" : "elsewhere"}`);
+
+          // A star from the picker: the star changes, the row stays; the
+          // next opening has a Favourites group with that voice first.
+          await clickAt(TRIGGER);
+          p = await picked();
+          const other = (p.current + 1) % rows;
+          const name = p.names[other];
+          const before = p.names.join("|");
+          await pressIn(other, 2);
+          p = await picked();
+          expect("picker", p.stars[other] === "true" && p.names.join("|") === before,
+            `the star on "${name}" went ${p.stars[other]}, and the rows went ${before} -> ${p.names.join("|")}`);
+          await key("Escape");
+          await clickAt(TRIGGER);
+          p = await picked();
+          expect("picker", p.heads[0] === "Yêu thích" && p.names[0] === name, `reopened, the picker starts ${JSON.stringify(p.heads[0])} / ${p.names[0]}, not Yêu thích / ${name}`);
+
+          // A sample from the picker shows Stop on its row, leaves the other
+          // rows' buttons pressable, and ends when the picker closes.
+          const sampled = p.names.indexOf(name);
+          await pressIn(sampled, 1);
+          p = await picked();
+          expect("picker", p.stopping === sampled && !p.locked, `a sample left Stop on row ${p.stopping}, not ${sampled}${p.locked ? ", and locked every row" : ""}`);
+          // Quickly: the mock's sample is one sentence, over in ~1.35 s.
+          await key("Escape", { pause: 200 });
+          p = await picked();
+          expect("picker", !p.open && !p.reading, `the sample ${p.reading ? "kept playing" : "stopped"} after the picker closed`);
+
+          // A pick closes it, and the button names the voice picked.
+          await clickAt(TRIGGER);
+          p = await picked();
+          const last = p.names.length - 1;
+          const target = p.names[last];
+          await pressIn(last, 0);
+          p = await picked();
+          expect("picker", !p.open && p.shows === target, `picking "${target}" left the picker ${p.open ? "open" : "closed"} and the button saying ${JSON.stringify(p.shows)}`);
+
+          // Put the star back off. The first voice cannot come back this way,
+          // and should not: it was offered only while it was the one in use
+          // (the switch decides what is offered, HIG 3.13).
+          await clickAt(TRIGGER);
+          p = await picked();
+          const starredAt = p.names.indexOf(name);
+          await pressIn(starredAt, 2);
+          p = await picked();
+          expect("picker", p.stars[starredAt] === "false" && !p.names.includes(shownBefore),
+            `unstarring "${name}" left it ${p.stars[starredAt]}; "${shownBefore}" ${p.names.includes(shownBefore) ? "is still offered after another voice was picked" : "left the list"}`);
+          await key("Escape");
+        }
+        crashed("picker");
+      }
+      // While a reading plays, no sample can start: every Nghe thử in the
+      // picker is locked, and the picker says why (a locked button shows no
+      // tooltip).
+      if (!(await goto([...OPEN_BOOK]))) expect("picker", false, "could not open a document to read");
+      else if ((await findAndClick(/^Đọc tiếp$/)) && (await waitFor(/^Tạm dừng$/, 6000, "button"))) {
+        await findAndClick(/^Cài đặt giọng đọc$/);
+        await clickAt(TRIGGER);
+        const p = await picked();
+        expect("picker", p.open && p.locked && p.why, `while reading, the picker was ${p.open ? "open" : "closed"}, samples ${p.locked ? "locked" : "not locked"}, reason ${p.why ? "said" : "missing"}`);
+        await key("Escape");
+        await key("Escape");
+        await findAndClick(/^Dừng$/);
+        crashed("picker");
+      } else expect("picker", false, "could not start a reading");
 
       if (!(await goto([]))) expect("menu", false, "home did not load");
       else {

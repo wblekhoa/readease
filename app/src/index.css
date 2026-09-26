@@ -673,8 +673,12 @@ textarea, input { user-select: text; cursor: auto; }
    of scroll width in a 414px body (16/09), so a horizontal bar appeared,
    took 13px of height, and tipped a panel that just fit into a vertical bar
    as well. Chromium clips inside the box on its own, which is why the
-   render audit never saw it. */
-select {
+   render audit never saw it.
+
+   `.select-button` wears the same face: a button standing in for a select
+   that has to carry buttons of its own (the Voice picker, HIG 3.13). */
+select,
+.select-button {
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A9099' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");

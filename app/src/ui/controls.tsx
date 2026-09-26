@@ -308,6 +308,28 @@ export function Select({
   );
 }
 
+/** A button in the select's own face, for a choice the system's <select>
+ * cannot carry: rows with buttons of their own (the Voice picker, HIG
+ * 3.13). The face is `Select`'s default one, spelled out the same way on
+ * purpose - beside real selects in the same panel, the two must read as one
+ * kind of control. The chevron and the ellipsis come from index.css, with
+ * the select's. Name it the way a select is named: `aria-labelledby`. */
+export function SelectButton({
+  className = "",
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** For the layer it opens: placed from this box, focus handed back here. */
+  ref?: Ref<HTMLButtonElement>;
+}) {
+  return (
+    <button
+      type="button"
+      className={`select-button block h-[30px] truncate rounded-[var(--ctl-radius)] border border-edge-strong bg-paper px-2 text-left text-sm text-ink hover:bg-wash disabled:text-ink-faint ${className}`}
+      {...rest}
+    />
+  );
+}
+
 /** The one single-line input: a search or a filter box, control-height,
  * at the cluster radius like every other control in its row. */
 export function Input({

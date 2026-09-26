@@ -157,6 +157,7 @@ export const TEXT = {
     "Previews cost under $0.01 each, taken off your ceiling. Listening again is free.",
   ],
   "voices.pick": ["Chọn giọng…", "Pick a voice…"],
+  "voices.picker": ["Chọn giọng", "Choose a voice"],
   "voices.search": ["Tìm giọng…", "Search voices…"],
   "voices.filter_provider": ["Nhà cung cấp", "Provider"],
   "voices.filter_all_providers": ["Tất cả nhà cung cấp", "All providers"],

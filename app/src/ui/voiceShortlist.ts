@@ -7,6 +7,7 @@
  * đọc"). Pure functions, so the rules are testable without a shell.
  */
 import { text, type TextKey } from "../i18n.ts";
+import { isPaidVoice } from "./readingCost.ts";
 
 export type VoiceGender = "male" | "female";
 
@@ -332,6 +333,34 @@ export function favoritesFirst<T extends Pick<Voice, "id">>(
     ...voices.filter((voice) => starred.has(voice.id)),
     ...voices.filter((voice) => !starred.has(voice.id)),
   ];
+}
+
+export type VoiceGroup<T extends Pick<Voice, "id">> = {
+  /** `all` is the one group with no name: a single list needs no heading. */
+  key: "starred" | "local" | "paid" | "all";
+  voices: T[];
+};
+
+/** How the Voice picker in the settings panel groups what it offers (HIG
+ * 3.13): the starred voices first, under their own name, then the rest by
+ * where they come from - this Mac, then a paid service. A group is only
+ * named when there is more than one, and an empty one is not there at all.
+ * Every group keeps the order the voices came in. */
+export function voiceGroups<T extends Pick<Voice, "id">>(
+  offered: readonly T[],
+  favorites: readonly string[],
+): VoiceGroup<T>[] {
+  const starred = new Set(favorites);
+  const favourite = offered.filter((voice) => starred.has(voice.id));
+  const local = offered.filter((voice) => !starred.has(voice.id) && !isPaidVoice(voice.id));
+  const paid = offered.filter((voice) => !starred.has(voice.id) && isPaidVoice(voice.id));
+  if (!favourite.length && (!local.length || !paid.length)) return [{ key: "all", voices: [...offered] }];
+  const groups: VoiceGroup<T>[] = [
+    { key: "starred", voices: favourite },
+    { key: "local", voices: local },
+    { key: "paid", voices: paid },
+  ];
+  return groups.filter((group) => group.voices.length > 0);
 }
 
 /** Read the stored list. Anything unreadable is an empty list, never a

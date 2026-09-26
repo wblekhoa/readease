@@ -2343,6 +2343,12 @@ export default function App() {
           onScope={changeScope}
           onBudget={changeBudget}
           onVoice={switchVoice}
+          /* Hear and star from the Voice picker (HIG 3.13): the voice list's
+             own handlers, so a star or a sample means the same thing in both. */
+          previewing={previewing}
+          onPreview={previewVoice}
+          onStopPreview={stopPreview}
+          onFavorite={(id) => rememberFavorites(toggleShortlist(favorites, id))}
           onRate={rememberRate}
           chime={chime}
           noteReading={noteReading}
@@ -2358,7 +2364,12 @@ export default function App() {
              behind it. Now that a click on the book closes this panel, that
              would be a request to their servers every time somebody
              dismissed it. */
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => {
+            // A sample started from the Voice picker ends with the panel,
+            // as one started from the voice list ends with that sheet.
+            if (previewing !== null) stopPreview();
+            setSettingsOpen(false);
+          }}
         />}
       </Presence>
       <Presence open={hubOpen}>

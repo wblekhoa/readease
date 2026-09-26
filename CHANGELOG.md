@@ -4,6 +4,19 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The Voice choice in Voice settings can play a sample and star a voice
+  from the list itself: each row is the voice (pick it, and the list
+  closes), a Preview button and a star - the voice list's own two
+  buttons. Grouped as before (Favorites, On this Mac, API); a star changes
+  the star and the rows regroup the next time the list opens. Closing the
+  list stops a sample, and no sample starts while something is being read,
+  which the list says. In a short window it opens over its own button,
+  the voice in use level with it, instead of scrolling in a sliver. The
+  keyboard: arrows up and down keep the column, Tab stays inside, Escape
+  closes the list and not the panel.
+
 ## 0.1.19
 
 Hear where a chapter starts and where a section does; search results and
