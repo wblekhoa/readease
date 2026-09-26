@@ -435,3 +435,15 @@ test("ô chọn giọng: yêu thích giữ thứ tự danh sách, và yêu thíc
   ]);
   assert.deepEqual(grouped(voiceGroups(CATALOGUE.slice(0, 2), ["c"])), [["all", ["a", "b"]]]);
 });
+
+test("a twin's chip says its first descriptor in the reader's language, not the SDK's", () => {
+  const tuyen = { id: "Phạm Tuyên", label: "Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên" };
+  const twin = { id: "Phạm Tuyên 2", label: "Phạm Tuyên — Nữ · Nam · Phong cách tin tức" };
+  setLanguage("en");
+  try {
+    assert.equal(chipName(tuyen, [tuyen, twin]), "Phạm Tuyên · Male");
+    assert.equal(chipName(twin, [tuyen, twin]), "Phạm Tuyên · Female");
+  } finally {
+    setLanguage("vi");
+  }
+});

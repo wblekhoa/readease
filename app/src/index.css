@@ -437,6 +437,20 @@ html[data-hidden] *::after {
   .star-pop { animation: none; }
 }
 
+/* IconButton's resting ink, in the components layer so that a colour the
+   caller gives it wins - `text-ink` while its panel is open, `text-ink` on
+   the transport's pause, `text-brand-600` while a sample plays. As a
+   utility beside them, `text-ink-mute` sat later in the stylesheet than
+   every colour named before "ink-mute" and beat them all: measured 26/09,
+   text-ink, text-brand-600, text-favorite and text-danger each rendered as
+   ink-mute on an icon button. `disabled:text-ink-faint` is still a
+   utility, so a locked button still fades. */
+@layer components {
+  .icon-button {
+    color: var(--color-ink-mute);
+  }
+}
+
 /* The segmented control's one pill (HIG 3.17): it moves and resizes to the
    option chosen - `translate` on the compositor, `width` on one absolutely
    placed element that pushes nothing else. `data-still` lands it at once:

@@ -202,7 +202,7 @@ export function IconButton({
     <>
       <button
         type="button"
-        className={`flex h-8 w-8 items-center justify-center rounded-full text-ink-mute transition-colors hover-wash disabled:text-ink-faint ${className}`}
+        className={`icon-button flex h-8 w-8 items-center justify-center rounded-full transition-colors hover-wash disabled:text-ink-faint ${className}`}
         onMouseEnter={(event) => { hover(event.currentTarget); onMouseEnter?.(event); }}
         onMouseLeave={(event) => { close(); onMouseLeave?.(event); }}
         onFocus={(event) => { cancel(); open(event.currentTarget); onFocus?.(event); }}

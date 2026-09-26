@@ -139,7 +139,7 @@ export function chipName(voice: Pick<Voice, "id" | "label">, offered: readonly P
   const twin = offered.some((item) => item.id !== voice.id && bare(item) === mine);
   if (!twin) return mine;
   const detail =
-    voiceDescription(voice.label)?.split(" · ")[0]?.trim()
+    voiceDescriptionShown(voice.label)?.split(" · ")[0]?.trim()
     || tidyName(voice.label).split(" · ").slice(1).join(" · ").trim();
   return detail ? `${mine} · ${detail}` : mine;
 }

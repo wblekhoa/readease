@@ -43,7 +43,7 @@ import {
 } from "./readingSources";
 import type { Models } from "./useModels";
 import {
-  voiceDescription as describe,
+  voiceDescriptionShown,
   type Voice,
 } from "./voiceShortlist";
 import { VoicePicker } from "./VoicePicker";
@@ -269,13 +269,16 @@ export function SettingsPanel({
                   the full label in the select ran past the row and clipped
                   its title (owner, 02/09). A paid voice's line is its
                   provider's NAME: "openai" in a subtitle is an internal
-                  token wearing a label's clothes. */}
+                  token wearing a label's clothes. The line is in the
+                  reader's language, as the voice list and the picker say
+                  it - the SDK's own "Nữ · Mỹ" sat in the English
+                  interface until 26/09. */}
               <GroupedRow
                 title={text("player.voice")}
                 subtitle={
                   paidVoice
                     ? PROVIDERS.find((item) => item.id === providerOf(voiceId))?.label
-                    : describe(current?.label)
+                    : voiceDescriptionShown(current?.label)
                 }
                 trailing={(titleId) => (
                   /* Pick, hear and star in one place (HIG 3.13, owner 26/09).

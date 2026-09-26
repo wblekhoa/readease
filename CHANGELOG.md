@@ -25,6 +25,14 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   CSS on the compositor, no animation library, and nothing new moves
   while the voice reads. Reduce Motion turns the springs and the bounce
   off.
+- Icon buttons show the colour they were given. Their own resting grey
+  had been winning over every colour set on them, so a button whose
+  panel is open never looked pressed, the pause button in the reading
+  bar was as grey as the buttons around it, and a playing sample's Stop
+  never turned blue. All of those now show.
+- In the English interface a voice is described in English everywhere:
+  the Voice row in Voice settings, and the footer chip when two voices
+  share a name, said the voice engine's own Vietnamese words ("Nữ · Mỹ").
 
 ## 0.1.19
 

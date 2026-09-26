@@ -1900,7 +1900,7 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
   viền ấy **tô kín**, màu `favorite` = `--fill-warning-bold` (đo 3,6:1 nền sáng, 6,9:1 nền tối) = rồi. Ngoại lệ có
   lý do của bộ bulk: sao bulk vốn nửa đặc nửa nhạt — "nửa ngôi sao" không trả lời được câu "có phải yêu thích
   không"; còn sao đặc (`bold`) của bộ nguồn có một vết cắt chéo, ở 20px đọc thành sao **gạch bỏ**, tức nghĩa
-  ngược lại. Màu đặt trên chính SVG: `IconButton` tự mang `ink-mute`, và lớp màu truyền vào nút thua thứ tự CSS.
+  ngược lại. Màu đặt trên chính SVG (vẫn đúng). Gốc của chuyện "lớp màu truyền vào nút thua" đã sửa 26/09: `ink-mute` mặc định của `IconButton` nay ở `@layer components` (`.icon-button`), nên màu nơi gọi truyền vào THẮNG — trước đó `text-ink` (nút đang mở panel, nút tạm dừng ở thanh đọc), `text-brand-600` (câu mẫu đang phát), `text-ink-faint` đều hiện thành `ink-mute` mà không ai thấy (đo: 4/4 màu thua; kiểm keys `ink` đỏ trước).
 - **Nhóm Yêu thích xếp lại ở LẦN MỞ SAU** ("để lần sau có thể thấy"): trong lúc sheet đang mở, bấm ★ chỉ đổi
   dáng sao, hàng đứng yên — hàng nhảy lên đầu ngay dưới con trỏ là mất dấu nó, và bấm nhầm thì không kịp bấm lại.
 - **Nhớ qua lần mở app**: khoá `voice_favorites` (JSON các id), cùng đường với `voice_shortlist` — engine chỉ nhận

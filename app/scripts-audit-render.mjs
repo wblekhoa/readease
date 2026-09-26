@@ -401,9 +401,9 @@ async function main() {
           tip: !!document.querySelector("[role=tooltip]") }; })()`);
       const said = (w) => w.body ? "the page itself" : w.item ? `menu item "${w.item}"` : w.dialog ? `the panel "${w.dialog}"` : w.opener ? "the opener" : "some other control";
       const expect = (scenario, ok, detail) => { keyChecks++; if (!ok) findings.push({ cell: `keys/${scenario}`, kind: "keys", detail }); };
-      const goto = async (steps) => {
+      const goto = async (steps, lang = "vi") => {
         events.length = 0;
-        await seedLanguage("vi");
+        await seedLanguage(lang);
         await send("Page.navigate", { url: `http://localhost:${PORT}/?` });
         await sleep(900);
         await evalJs(`localStorage.removeItem("readease.theme")`);
@@ -886,6 +886,43 @@ async function main() {
         expect("motion", resting === 0, `a star already on moved when the list opened (${resting} animation(s))`);
         await findAndClick(/^Yêu thích Thái Sơn$/);
         crashed("motion");
+      }
+
+      // A colour an icon button is given is the colour it shows (26/09):
+      // IconButton's own resting `text-ink-mute` came later in the stylesheet
+      // than every colour named before "ink-mute", so an opener's "open" ink,
+      // the transport's ink and a playing sample's brand never showed.
+      const inks = () => evalJs(`(() => { const probe = (cls) => { const s = document.createElement("span"); s.className = cls; document.body.append(s);
+        const c = getComputedStyle(s).color; s.remove(); return c; }; return { ink: probe("text-ink"), mute: probe("text-ink-mute"), brand: probe("text-brand-600") }; })()`);
+      if (!(await goto([...OPEN_BOOK, ["click", /^Cài đặt đọc$/], ["wait", /^Cài đặt đọc$/, "[role=dialog]"]]))) expect("ink", false, "could not open Reading settings");
+      else {
+        const tone = await inks();
+        const opener = await evalJs(`(() => { const b = document.querySelector('button[aria-label="Cài đặt đọc"][aria-expanded="true"]') || [...document.querySelectorAll("button")].find((e) => e.getAttribute("aria-label") === "Cài đặt đọc");
+          return b ? getComputedStyle(b).color : null; })()`);
+        expect("ink", opener === tone.ink, `the Reading settings button, its panel open, is ${opener} - not ink ${tone.ink} (mute is ${tone.mute})`);
+        crashed("ink");
+      }
+      if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("ink", false, "could not open the voices sheet");
+      else {
+        const tone = await inks();
+        await findAndClick(/^Nghe thử$/);
+        await sleep(200);
+        const playing = await evalJs(`(() => { const b = document.querySelector('[role="dialog"] button[aria-label="Dừng nghe thử"]'); return b ? getComputedStyle(b).color : null; })()`);
+        expect("ink", playing === tone.brand, `a playing sample's Stop is ${playing} - not the brand ${tone.brand} (mute is ${tone.mute})`);
+        await findAndClick(/^Dừng nghe thử$/);
+        crashed("ink");
+      }
+      // The words a person reads about a voice are in their language (26/09):
+      // the Voice row said the SDK's own "Nữ · Mỹ" in the English interface,
+      // right above a picker that said "Female · American".
+      if (!(await goto(SCREENS.player_settings, "en"))) expect("words", false, "could not open Voice settings in English");
+      else {
+        // The row the Voice picker names itself by - its title's own line.
+        const line = await evalJs(`(() => { const button = document.querySelector('[role="dialog"] [aria-haspopup="dialog"]');
+          const title = button && document.getElementById(button.getAttribute("aria-labelledby").split(" ")[0]);
+          return title ? title.parentElement.textContent.trim().replace(/^Voice/, "") : null; })()`);
+        expect("words", line !== null && /^[\x20-\x7E·]*$/.test(line), `the Voice row reads ${JSON.stringify(line)} in the English interface`);
+        crashed("words");
       }
 
       if (!(await goto([]))) expect("menu", false, "home did not load");
