@@ -59,6 +59,12 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   ở bản kia" của Chuyển ghi chú (`opacity-60`) đều kéo chữ CÓ NGHĨA xuống dưới AA — axe `color-contrast` serious ngay lần
   render đầu của mỗi màn. Thứ không cần làm gì lùi lại bằng TOKEN: chữ chính sang `ink-mute`, chữ phụ giữ `ink-mute`;
   chỉ glyph và bìa được mờ.
+- ✗ **màu mặc định đứng ngang hoặc cao hơn tiện ích của nơi gọi**: nơi gọi truyền `text-*` vào là để nó THẮNG. Hỏng
+  hai cách: 26/09 `IconButton` mang `text-ink-mute` như một tiện ích cạnh tiện ích nơi gọi — cùng layer, thứ tự CSS quyết
+  định, 4/4 màu truyền vào thua; 27/09 `mark { color: inherit }` KHÔNG nằm trong layer nào — quy tắc không-layer thắng
+  mọi layer bất kể độ ưu tiên — nên `text-ink` của chữ trùng khớp trong danh sách tìm thua (mute trên vàng: 3,26:1 sáng,
+  2,5:1 tối; axe, lần đầu một ô tìm có kết quả). Mặc định của phần tử ở `@layer base`, của component ở
+  `@layer components`; không-layer chỉ cho class riêng có chủ đích (`.note-nudge`, `mark[data-search="current"]`).
 - ✗ **viền disabled dùng `edge`.** Đo được `edge` **1.00:1** so với nền desk sáng — đúng bằng màu
   nền, tức vô hình; `edge-strong` cho 1.24 (sáng) / 1.76 (tối): vẫn im, nhưng còn thấy dáng nút.
 - ✗ **danger dùng bậc `primary`.** Đo 3.12:1 (sáng) và 3.72:1 (tối) — dưới AA cho chữ 14px. Đổi
@@ -922,6 +928,10 @@ ngoại lệ (exception) thì không bao giờ được tha.
 **Kệ sách thay đổi** (27/09): `shelf_import` (hộp chọn tệp — mock trả một đường dẫn), `shelf_duplicate` (thêm lại
 cùng tệp), `shelf_remove` (hỏi) và `shelf_removed` (đã xoá) = 16 ô: chưa ô nào từng bấm hai nút đó. Lần đầu: 0 phát
 hiện, ảnh ổn (câu hỏi xoá thay chỗ tên trong thẻ, bìa vẫn nói thẻ nào; câu báo đứng trên lưới).
+
+**Tìm có chữ** (27/09): `search_none` (gõ chuỗi không có) và `search_capped` (gõ "ng", quá 200 kết quả) = 8 ô — chưa
+ô nào từng gõ vào ô tìm. Lần đầu bắt lỗi tương phản của chữ trùng khớp (xem §2, quy tắc không-layer). Từ nay mỗi phát
+hiện `color-contrast` in kèm số đo của nó: màu chữ, màu nền, tỉ lệ.
 
 **Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
 placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào

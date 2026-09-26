@@ -871,11 +871,18 @@ mark[data-style="3"] { background: var(--color-highlight-yellow); }
 mark[data-style="4"] { background: var(--color-highlight-pink); }
 mark[data-style="5"] { background: var(--color-highlight-purple); }
 
-mark {
-  background: var(--color-highlight);
-  color: inherit;
-  border-radius: 0.2em;
-  padding: 0 0.05em;
+/* In the base layer, so a caller's utility wins (27/09): unlayered, this
+   `color: inherit` beat the search list's `text-ink` whatever its
+   specificity, and a match took its row's mute - 3.26:1 on the yellow in
+   light, 2.5:1 in dark (axe, the first render of a search with results).
+   The same fix as the icon button's resting colour. */
+@layer base {
+  mark {
+    background: var(--color-highlight);
+    color: inherit;
+    border-radius: 0.2em;
+    padding: 0 0.05em;
+  }
 }
 /* A search match on the page, while the Tìm tab holds a query (HIG 3.16,
    owner 17/09): the DS yellow at a wash - "find" is yellow on every Mac,

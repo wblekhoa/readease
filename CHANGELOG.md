@@ -73,6 +73,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   wrong key asked you to check it "in the voice settings" - where you
   already were - and a lost connection to "press read again". They now
   say to paste the key again, or to press Save again.
+- In the search list the words that match are dark on their yellow, in
+  both themes. They took the row's grey and were hard to read on it.
 
 ## 0.1.19
 

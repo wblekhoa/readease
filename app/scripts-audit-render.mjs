@@ -78,6 +78,7 @@ const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
 const SHELF = [...UNFOLD, ["click", /^Thư viện$|^Library$/]];
+const SEARCH = [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]];
 const HUB = [...SHELF, ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]];
 const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/],
   ["click", /những phương án đầu tiên của họ/], ["click-at", "button.note-nudge"], ["wait", /^Sửa ghi chú$|^Edit this note$/, "textarea"]];
@@ -102,7 +103,12 @@ const SCREENS = {
   // like the toolbar's search button, so each is proven by what only the
   // open tab has: the checked radio for notes, the search box for search.
   book_notes: [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/]],
-  search: [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]],
+  search: SEARCH,
+  // What a search says past its first letters (HIG 3.9): nothing found, and
+  // a word so common the list stops at its cap. Until 27/09 no cell typed a
+  // query, so neither line had been on a screen.
+  search_none: [...SEARCH, ["type", "qwxz"], ["wait", /^Không thấy trong tài liệu này\.$|^Nothing in this document\.$/, "p"]],
+  search_capped: [...SEARCH, ["type", "ng"], ["wait", /^Hiện \d+ kết quả đầu|^Showing the first \d+/, "p"]],
   // The two floating settings panels over an open document (HIG 4.2): until
   // 23/09 no cell opened either, so axe had never seen a control in them -
   // and four of their selects had no name. The reading panel opens its finer
@@ -190,6 +196,8 @@ const ONLY_IN = {
   note_editor: ["default"],
   shelf_import: ["default"],
   key_form: ["default"],
+  search_none: ["default"],
+  search_capped: ["default"],
   key_refused: ["keyfail"],
   shelf_duplicate: ["default"],
   shelf_remove: ["default"],
@@ -503,7 +511,10 @@ async function main() {
                 try {
                   const found = await axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] }, resultTypes: ["violations"] });
                   return { ok: true, violations: found.violations.map((v) => ({ id: v.id, impact: v.impact,
-                    targets: v.nodes.slice(0, 3).map((n) => String(n.target[0]).slice(0, 80)) })) };
+                    // A contrast finding carries its own measure (27/09): the
+                    // selector alone left the colours to be guessed.
+                    targets: v.nodes.slice(0, 3).map((n) => String(n.target[0]).slice(0, 80)
+                      + (v.id === "color-contrast" && n.any?.[0]?.data ? \` (\${n.any[0].data.fgColor} on \${n.any[0].data.bgColor}, \${n.any[0].data.contrastRatio}:1)\` : "")) })) };
                 } catch (error) { return { ok: false, error: String((error && error.message) || error) }; }
               })()`);
               if (!report || !report.ok) findings.push({ cell, kind: "axe-failed", detail: report?.error || "axe did not answer" });
