@@ -33,6 +33,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - In the English interface a voice is described in English everywhere:
   the Voice row in Voice settings, and the footer chip when two voices
   share a name, said the voice engine's own Vietnamese words ("Nữ · Mỹ").
+- The update sheet in the English interface gives the release date in
+  English and shows the English half of the release notes - it showed the
+  Vietnamese half, dated in Vietnamese. In either language the notes no
+  longer show markdown's backticks, they can be scrolled from the
+  keyboard, and a failed check's long web address wraps inside the sheet
+  instead of running past its edge.
 
 ## 0.1.19
 

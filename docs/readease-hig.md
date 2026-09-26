@@ -1715,6 +1715,20 @@ mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plu
   một lần. Chủ tự sao lưu `~/.tauri/readease.key` + mật khẩu.
 - **Don't**: dialog khi kiểm tra lặng lẽ thất bại · tự tải khi chưa bấm (người dùng quyết) · ghi mật khẩu vào log/commit
   · bật `createUpdaterArtifacts`.
+- **Được kiểm ngoài cửa sổ** (27/09 — trước đó KHÔNG ô nào render bảng này, dù mọi người dùng lên bản mới qua nó): bản giả lập
+  trả lời updater (`check` · `download` qua Channel · `install` · `restart`) theo biến thể (có bản mới / đã mới nhất / lỗi /
+  đang tải giữ ~40 %), render audit mở bảng qua CHÍNH bộ điều phối menu (móc `__readeasePerform`, chỉ có ở bản dev — trình
+  duyệt không có thanh menu), và số phiên bản hỏi mọi host trả lời được (cùng lớp với hàng Loa, 26/09). Trong cửa sổ không
+  đổi gì; kiểm lặng lẽ sau khi mở app vẫn chỉ chạy trong cửa sổ.
+- **Lần render đầu tiên lộ 5 lỗi** (27/09, đều đã sửa, mỗi lỗi có kiểm đỏ trước): (1) khung ghi chú cuộn được nhưng bàn phím
+  không vào được (axe `scrollable-region-focusable`) ⇒ là một vùng có tên "Ghi chú phát hành", `tabIndex=0`; (2) giao diện
+  tiếng Anh ghi ngày kiểu Việt ("27 tháng 9") ⇒ ngày theo ngôn ngữ người đọc; (3) giao diện tiếng Anh hiện NỬA TIẾNG VIỆT của
+  ghi chú ⇒ ghi chú viết hai lần (Việt, gạch `---`, Anh) và bảng chọn nửa theo ngôn ngữ người đọc — nửa nào Việt là TƯƠNG
+  ĐỐI, theo tỉ lệ chữ mang dấu (0.1.18/0.1.19: 20–25 % so với 0–0,3 %), vì nửa Anh có trích tên nút tiếng Việt; (4) dấu
+  backtick và cú pháp link markdown lộ ra ⇒ chỉ còn chữ; (5) kiểm tra lỗi nói URL dài hơn bảng, tràn qua mép ⇒ dòng trạng
+  thái xuống dòng ở bất kỳ đâu. Audit nay bắt chữ tràn khỏi hộp TRONG một lớp (trước chỉ đo trang cuộn ngang — lớp `fixed`
+  không làm trang rộng ra). **Ghi chú phát hành**: nửa tiếng Anh dùng nhãn tiếng Anh của giao diện ("Back to reading
+  position"), không trích nhãn tiếng Việt như 0.1.19 lỡ làm.
 
 ### 3.21 Loa nào đang phát — thiết bị ra âm nói tên (20/09)
 

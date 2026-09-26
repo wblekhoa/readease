@@ -214,7 +214,9 @@ export default function App() {
   /** The running version, for "you are on the latest" (HIG 3.20). */
   const [appVersion, setAppVersion] = useState("");
   useEffect(() => {
-    if (!IN_WINDOW) return;
+    // Any host that answers: the mock too, which `IN_WINDOW` leaves out -
+    // or "you are on the latest (…)" could not be seen outside the window.
+    if (!("__TAURI_INTERNALS__" in window)) return;
     getVersion().then(setAppVersion).catch(() => undefined);
   }, []);
   const updater = useUpdater(appVersion);
@@ -1284,6 +1286,14 @@ export default function App() {
      bar, and the mock proves the dispatcher instead. */
   const performRef = useRef(perform);
   performRef.current = perform;
+  /* The browser has no menu bar, so the dev build hands the dispatcher to
+     the render audit - the update sheet (HIG 3.20) opens only from the
+     menu, and no cell could render it. Gone from the build. */
+  useEffect(() => {
+    if (!import.meta.env.DEV || IN_WINDOW) return;
+    window.__readeasePerform = (command) => performRef.current(command as MenuCommand);
+    return () => { delete window.__readeasePerform; };
+  }, []);
   useEffect(() => {
     if (!IN_WINDOW) return;
     let stale = false;

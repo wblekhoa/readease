@@ -105,6 +105,16 @@ const SCREENS = {
   // the page: every chapter's figures are in the DOM, most off-page.
   // Reached through the contents, like a reader would: the sample's sketch
   // on a transparent ground sits in "Chương 6 Bài tập 02".
+  // The update sheet (HIG 3.20), the way every reader reaches a new version:
+  // opened through the dispatcher "Kiểm tra bản mới…" calls, in its four
+  // resting states - a new version, already the latest, the check failing,
+  // a download under way (held at ~40 %). Until 27/09 no cell had ever
+  // rendered it.
+  update_available: [["perform", "check-updates"], ["wait", /^Có ReadEase 0\.1\.20\.$|^ReadEase 0\.1\.20 is available\.$/, "[role=dialog] p"]],
+  update_none: [["perform", "check-updates", "none"], ["wait", /^Bạn đang dùng bản mới nhất \(0\.1\.19\)\.$|^You are on the latest version \(0\.1\.19\)\.$/, "[role=dialog] p"]],
+  update_failed: [["perform", "check-updates", "failed"], ["wait", /^Không kiểm tra được|^Could not check/, "[role=dialog] p"]],
+  update_downloading: [["perform", "check-updates", "slow"], ["wait", /^Có ReadEase|is available\.$/, "[role=dialog] p"],
+    ["click", /^Tải và cài$|^Download and Install$/], ["wait", /^Đang tải bản 0\.1\.20… \d+%$|^Downloading 0\.1\.20… \d+%$/, "[role=dialog] p"]],
   lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
     ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
@@ -117,6 +127,10 @@ const ONLY_IN = {
   voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
+  update_available: ["default"],
+  update_none: ["default"],
+  update_failed: ["default"],
+  update_downloading: ["default"],
 };
 const STATES = {
   default: "",
@@ -210,6 +224,13 @@ async function main() {
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
       await sleep(350); return true;
     };
+    // A menu command, through the app's own dispatcher: the browser has no
+    // menu bar, so the dev build hands the harness the dispatcher (HIG
+    // 3.20). A third element picks the mock's answer to the update check.
+    const perform = (command, variant) => evalJs(`(() => {
+      if (typeof window.__readeasePerform !== "function") return false;
+      ${variant ? `window.__mockUpdate = ${JSON.stringify(variant)};` : ""}
+      window.__readeasePerform(${JSON.stringify(command)}); return true; })()`);
     // A control found by WHERE it is rather than by a name: the Voice
     // picker's button is named by its row ("Giọng") plus the voice it shows,
     // which changes as the checks pick voices. Pressed at its centre, with
@@ -294,6 +315,7 @@ async function main() {
                 : kind === "click?" ? (await findAndClick(re, 600), true)
                 : kind === "open-figure" ? await openFigure()
                 : kind === "click-at" ? await clickAt(re)
+                : kind === "perform" ? await perform(re, within)
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -318,7 +340,13 @@ async function main() {
               const plates = [...document.querySelectorAll("[data-figure] img")].map((img) => getComputedStyle(img).backgroundColor);
               const large = document.querySelector("[data-lightbox] img");
               const lightboxPlate = large ? getComputedStyle(large).backgroundColor : null;
-              return { leaked, over, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
+              // Inside a layer too: a fixed sheet never widens the document,
+              // so text running out of its box there went unreported - the
+              // update sheet's error URL ran past its edge (27/09).
+              const escaped = [...document.querySelectorAll('[role="dialog"] *')].filter((e) => { if (e.closest("[inert]") || !(e instanceof HTMLElement)) return false;
+                const s = getComputedStyle(e); return e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1 && s.overflowX === "visible"; })
+                .map((e) => (e.textContent || "").trim().slice(0, 48)).slice(0, 3);
+              return { leaked, over, escaped, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
             for (const k of probe.leaked) if (KEYS.has(k)) findings.push({ cell, kind: "i18n-leak", detail: k });
             // No cell picks a voice, so the saved one (the mock's "Thu Hà")
             // must still be the saved one after the walk. Start-up once
@@ -326,6 +354,7 @@ async function main() {
             // in a gap only a bridge that answers a tick later opens.
             if (probe.voice !== undefined && probe.voice !== "Thu Hà") findings.push({ cell, kind: "voice-lost", detail: `saved voice became ${probe.voice}` });
             if (probe.docWide) findings.push({ cell, kind: "overflow-x", detail: `document scrolls horizontally at ${W}px` + (probe.over.length ? ` (${probe.over.join(", ")})` : "") });
+            for (const text of probe.escaped) findings.push({ cell, kind: "overflow-layer", detail: `text runs out of its box in a layer: ${JSON.stringify(text)}` });
             if (probe.themeAttr !== theme) findings.push({ cell, kind: "theme", detail: `data-theme=${probe.themeAttr}, wanted ${theme}` });
             // The page says which language it is in (WCAG 3.1.1): VoiceOver
             // picks its voice from <html lang>, and a cell is only the
@@ -411,6 +440,7 @@ async function main() {
           const ok = kind === "click" ? await findAndClick(re)
             : kind === "click?" ? (await findAndClick(re, 600), true)
             : kind === "click-at" ? await clickAt(re)
+            : kind === "perform" ? await perform(re, within)
             : await waitFor(re, 6000, within);
           if (!ok) return false;
         }
@@ -930,6 +960,80 @@ async function main() {
           return title ? title.parentElement.textContent.trim().replace(/^Voice/, "") : null; })()`);
         expect("words", line !== null && /^[\x20-\x7E·]*$/.test(line), `the Voice row reads ${JSON.stringify(line)} in the English interface`);
         crashed("words");
+      }
+      // The update sheet in English (27/09): its date and its notes were the
+      // Vietnamese half, and code marks showed as backticks.
+      if (!(await goto([], "en"))) expect("words", false, "could not load the English interface");
+      else {
+        await perform("check-updates");
+        await waitFor(/is available\.$/, 6000, "[role=dialog] p");
+        const said = await evalJs(`(() => { const d = [...document.querySelectorAll('[role="dialog"]')].find((e) => e.getAttribute("aria-label") === "Software Update");
+          return d ? d.textContent : null; })()`);
+        // The Vietnamese HALF, not a quoted name: 0.1.19's English notes quote
+        // a button by its Vietnamese label (a slip in the notes, not the app),
+        // so the measure is how many letters carry Vietnamese marks - the
+        // Vietnamese half runs at 20-25 %, the English one under 1 %.
+        const letters = (said ?? "").match(/\p{L}/gu)?.length ?? 0;
+        const marked = ((said ?? "").match(/[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/giu) ?? []).length;
+        const dated = /Released \d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December) \d{4}/.test(said ?? "");
+        expect("words", said !== null && letters > 0 && marked / letters < 0.03 && dated && !said.includes("`"),
+          said === null ? "the English update sheet did not open" : `the English update sheet: ${(100 * marked / Math.max(letters, 1)).toFixed(1)} % Vietnamese-marked letters, date ${dated ? "in English" : "not in English"}, ${said.split("`").length - 1} backticks - ${JSON.stringify(said.slice(0, 100))}`);
+        crashed("words");
+      }
+
+      // The update sheet's moving parts (HIG 3.20) - what a still cell cannot
+      // show. Opened through the dispatcher, it is modal: the keyboard lands
+      // inside and Tab stays there. Escape closes it while nothing runs, and
+      // NOT while a download does (work in flight is not hidden). Download
+      // and Install walks downloading -> installing -> installed and offers
+      // Relaunch; Install When Quitting closes it and the next opening says
+      // it is armed; Skip This Version closes it.
+      const sheet = () => evalJs(`(() => { const d = [...document.querySelectorAll('[role="dialog"]')].find((e) => e.getAttribute("aria-label") === "Bản mới");
+        if (!d) return null; const a = document.activeElement;
+        return { headline: d.querySelector("p")?.textContent.trim() ?? null, inside: !!(a && d.contains(a)),
+          buttons: [...d.querySelectorAll("button")].map((b) => (b.getAttribute("aria-label") || b.textContent).trim()) }; })()`);
+      const until = async (probe, test, ms = 6000) => { const end = Date.now() + ms; let v = await probe(); while (!test(v) && Date.now() < end) { await sleep(150); v = await probe(); } return v; };
+      const OFFER = "Có ReadEase 0.1.20.";
+      if (!(await goto([]))) expect("update", false, "home did not load");
+      else {
+        const reached = await perform("check-updates");
+        let u = await until(sheet, (v) => v?.headline === OFFER);
+        expect("update", reached && u?.headline === OFFER && u.inside, `the update sheet opened ${JSON.stringify(u)} - wanted "${OFFER}" with the focus inside`);
+        for (let i = 0; i < (u?.buttons.length ?? 0) + 2; i++) await key("Tab", { pause: 120 });
+        u = await sheet();
+        expect("update", !!u?.inside, "Tab left the update sheet - it is modal");
+        await key("Escape");
+        expect("update", (await sheet()) === null, "Escape did not close the update sheet while nothing was running");
+        await perform("check-updates");
+        await until(sheet, (v) => v?.headline === OFFER);
+        await findAndClick(/^Tải và cài$/);
+        await key("Escape", { pause: 150 });
+        u = await sheet();
+        expect("update", u !== null && /^Đang tải bản 0\.1\.20/.test(u.headline ?? ""), `Escape during the download left ${JSON.stringify(u?.headline ?? "no sheet")} - a download stays in view`);
+        u = await until(sheet, (v) => !!v?.buttons.includes("Khởi động lại"), 8000);
+        expect("update", u?.headline === "Đã cài bản 0.1.20. Khởi động lại để dùng." && u.buttons.includes("Khởi động lại"), `after the install the sheet said ${JSON.stringify(u?.headline)} with ${JSON.stringify(u?.buttons)}`);
+        crashed("update");
+      }
+      if (!(await goto([]))) expect("update", false, "home did not load again");
+      else {
+        await perform("check-updates");
+        await until(sheet, (v) => v?.headline === OFFER);
+        await findAndClick(/^Cài đặt khi thoát$/);
+        const closed = await until(sheet, (v) => v === null, 8000);
+        expect("update", closed === null, "Install When Quitting left the sheet open");
+        await perform("check-updates");
+        const armed = await until(sheet, (v) => v !== null);
+        expect("update", armed?.headline === "Sẽ cài ReadEase 0.1.20 khi bạn thoát app.", `reopened after Install When Quitting, the sheet said ${JSON.stringify(armed?.headline)}`);
+        await key("Escape");
+        crashed("update");
+      }
+      if (!(await goto([]))) expect("update", false, "home did not load a third time");
+      else {
+        await perform("check-updates");
+        await until(sheet, (v) => v?.headline === OFFER);
+        await findAndClick(/^Bỏ qua phiên bản này$/);
+        expect("update", (await until(sheet, (v) => v === null)) === null, "Skip This Version left the sheet open");
+        crashed("update");
       }
 
       if (!(await goto([]))) expect("menu", false, "home did not load");

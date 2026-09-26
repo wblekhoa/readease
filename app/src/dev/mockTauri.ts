@@ -1192,6 +1192,45 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "log_path") return Promise.resolve(null);
   // Install-on-quit is the window's (HIG 3.20); the browser never quits.
   if (command === "set_install_on_quit") return Promise.resolve(null);
+  /* The updater (HIG 3.20), answered as the plugin answers, so the update
+     sheet can be looked at outside the window - no cell had rendered it
+     before 27/09. Which answer: the harness sets `window.__mockUpdate`
+     before it asks - "none", "failed", "slow" (a download held at 40 %);
+     anything else is a new version. The notes are 0.1.19's own, as
+     published: bilingual, a markdown link, a 64-character digest. */
+  if (command === "plugin:app|version") return Promise.resolve(MOCK_VERSION);
+  if (command === "plugin:updater|check") {
+    const variant = window.__mockUpdate ?? "available";
+    if (variant === "none") return Promise.resolve(null);
+    if (variant === "failed") return Promise.reject(UPDATE_CHECK_ERROR);
+    return Promise.resolve({ rid: nextUpdateRid++, currentVersion: MOCK_VERSION, version: NEXT_VERSION, date: NEXT_DATE, body: NEXT_NOTES, rawJson: {} });
+  }
+  if (command === "plugin:updater|download") {
+    // The plugin's Channel: ordered messages, then an end marker.
+    // A Channel's callback takes raw `{index, message}` frames, not events.
+    const channel = callbacks.get((args.onEvent as { id: number }).id) as ((raw: unknown) => void) | undefined;
+    const held = window.__mockUpdate === "slow";
+    let index = 0;
+    const send = (message: unknown) => channel?.({ index: index++, message });
+    const total = 118_000_000;
+    return new Promise((resolve) => {
+      send({ event: "Started", data: { contentLength: total } });
+      let sent = 0;
+      const tick = () => {
+        sent += 1;
+        send({ event: "Progress", data: { chunkLength: total / 5 } });
+        if (sent < (held ? 2 : 5)) { window.setTimeout(tick, 180); return; }
+        if (held) return; // never finishes: the downloading state, held for a cell
+        send({ event: "Finished" });
+        channel?.({ index: index++, end: true });
+        resolve(nextUpdateRid++);
+      };
+      window.setTimeout(tick, 180);
+    });
+  }
+  if (command === "plugin:updater|install") return new Promise((resolve) => window.setTimeout(() => resolve(null), 400));
+  if (command === "plugin:resources|close") return Promise.resolve(null);
+  if (command === "plugin:process|restart") return Promise.resolve(null);
   if (command === "exit_now") return Promise.resolve(null);
   if (command === "restart_engine") return Promise.resolve(null);
   /* The system open panel, answered with a canned path: the harness has
@@ -1425,11 +1464,22 @@ if (scannedCount > 0) {
   });
 }
 
+/* The versions and the notes the updater mock answers with (HIG 3.20). */
+const MOCK_VERSION = "0.1.19";
+const NEXT_VERSION = "0.1.20";
+const NEXT_DATE = "2026-09-27T02:00:00Z";
+let nextUpdateRid = 900;
+/* What the plugin says when the manifest cannot be fetched. */
+const UPDATE_CHECK_ERROR = "error sending request for url (https://github.com/wblekhoa/readease/releases/latest/download/latest.json)";
+const NEXT_NOTES = "## ReadEase — Thư Âm 0.1.19\n\n**Nghe rõ đâu là chương, đâu là mục; tìm và ghi chú không kéo trang về; giọng yêu thích đứng đầu danh sách.** Ký Developer ID, đã notarize; có `.dmg` và `.zip`.\n\n**Có gì mới**\n- **Chương dài, mục ngắn**: sang một chương mới là âm dài (hợp âm marimba 2,7 giây, trước đây chỉ phần mới có); sang một mục nhỏ trong chương (1.1, 1.2…) là một tiếng ngắn, nhẹ — khoảnh khắc đầu của chính chuông bạn chọn, nhỏ hơn. Phần và chương nay cùng một âm. Mục sâu hơn (1.1.1) nghỉ như một tiêu đề; mục đứng ngay dưới tên chương vang một lần, cùng chương.\n- **Tìm và ghi chú giữ trang**: bấm một kết quả tìm, một highlight hay một ghi chú trong lúc giọng đang đọc chỗ khác thì trang ở lại chỗ bạn vừa mở — trước đây câu kế tiếp kéo trang về chỗ đang đọc. Nút \"Về chỗ đang đọc\" đưa bạn trở lại.\n- **Giọng yêu thích**: đánh dấu ★ một giọng trong Danh sách giọng đọc, giọng ấy đứng đầu mọi nơi chọn giọng — nhóm \"Yêu thích\" trên cùng danh sách (xếp lại ở lần mở sau, để dòng không nhảy dưới con trỏ), đầu ô Giọng và đầu menu Đổi giọng, có ngôi sao nhỏ bên tên. Công tắc cạnh nó vẫn quyết giọng nào có mặt trong ô Giọng và menu.\n- **Nút Đổi giọng hình người**: trên thanh đọc và ở \"Quản lý giọng…\" — cái loa ở đó dễ bị hiểu là chỉnh âm lượng.\n- **Nhảy xa trong chế độ cuộn rơi đúng chỗ**: tới một kết quả tìm, một ghi chú hay một dòng mục lục ở xa, lần đầu có thể dừng hụt khi các hình phía trên nạp dần và đẩy trang xuống; nay mỗi hình giữ sẵn chỗ của nó.\n\n**Nâng cấp:** ReadEase › *Kiểm tra bản mới…* → **Tải và cài** (hoặc **Cài đặt khi thoát**) → khởi động lại; hoặc mở `.dmg` rồi kéo đè app. Tài liệu, tiến độ, ghi chú, giọng, mô hình và quyền Accessibility giữ nguyên.\n\n**Cần:** Mac Apple Silicon (M1 trở lên), macOS 15+, ~260 MB cho app + mô hình tải một lần theo lựa chọn (tiếng Việt ~330 MB Tiêu chuẩn / ~625 MB Cao nhất; tiếng Anh ~330 MB). Không tài khoản, không API key, không mất phí. Máy Intel không được hỗ trợ.\n\n**Giấy phép:** [PolyForm Noncommercial 1.0.0](https://github.com/wblekhoa/readease/blob/main/LICENSE).\n\n`ReadEase-0.1.19-arm64.dmg` · `ReadEase-0.1.19-arm64.zip` · sha256 (zip) `80ae6e39043f09a17543e3ff9b9ed221c25c47389a12320b291e8106d4200ddf` · build `a88c237`\n\n---\n\n**Hear where a chapter starts and where a section does; search and notes no longer pull the page back; favourite voices come first.** Developer ID-signed and notarized; `.dmg` and `.zip`.\n\n**What changed**\n- **Chapters long, sections short**: a new chapter opens with the long sound (the 2.7 s marimba chord only a part had until now); a section within a chapter (1.1, 1.2 ...) with a short, soft one - the first moment of the chime you chose, quieter. A part and a chapter now sound the same. Deeper sections (1.1.1) rest like a title; a section right under its chapter's title rings once, with the chapter.\n- **Search and notes keep the page**: pick a search result, a highlight or a note while the voice reads elsewhere and the page stays where you went - the next sentence used to pull it back to the voice. \"Về chỗ đang đọc\" brings you back.\n- **Favourite voices**: star a voice in the voice list and it comes first wherever voices are chosen - a Favourites group at the top of the list (regrouped the next time the list opens, so no row jumps under the pointer), first in the Voice select and in Change voice, with a small star by its name. The switch beside it still decides which voices the select and the menu offer.\n- **Change voice shows a person**: in the reading bar and on \"Manage voices...\" - the speaker there read as volume.\n- **Far jumps in a scroll land where aimed**: jumping to a distant search result, note or contents line could stop short the first time, as pictures above loaded and pushed the page down; each picture now keeps its room.\n\n**Upgrading:** ReadEase › *Check for Updates...* → **Download and Install** (or **Install When Quitting**) → relaunch; or open the `.dmg` and drag the app over the old one. Documents, progress, notes, voices, models and the Accessibility grant are kept.\n\n**Requires:** Apple Silicon Mac (M1 or newer), macOS 15+, ~260 MB plus the one-time model downloads you choose (Vietnamese ~330 MB Standard / ~625 MB Highest; English ~330 MB). No account, no API key, no cost. Intel Macs are not supported.\n\n**License:** [PolyForm Noncommercial 1.0.0](https://github.com/wblekhoa/readease/blob/main/LICENSE).\n";
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__: Record<string, unknown>;
     __mockEmit: (event: string, payload: unknown) => number;
     __mockUnanswered: () => string[];
+    /** The harness's pick of the update check's answer (HIG 3.20). */
+    __mockUpdate?: string;
   }
 }
 

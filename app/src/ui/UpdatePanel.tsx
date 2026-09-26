@@ -3,7 +3,7 @@
  * when quitting, install and relaunch, automatic download. In the middle
  * of the window on the scrim like the other sheets; work in flight cannot
  * be dismissed. */
-import { text } from "../i18n";
+import { currentLanguage, text } from "../i18n";
 import { Button, IconButton, Surface, Switch } from "./controls";
 import { CloseIcon } from "./icons";
 import { Scrim, useDismiss } from "./patterns";
@@ -52,9 +52,11 @@ export function UpdatePanel({
         <div className="flex items-start gap-3 px-6 pb-2 pt-5">
           <div className="min-w-0 flex-1">
             <h3 className="m-0 text-base font-bold">{text("update.title")}</h3>
-            <p className="m-0 mt-1 text-sm text-ink-mute">{headline(phase, onQuit)}</p>
+            {/* Wraps anywhere: a failed check says the URL it could not reach,
+                one unbroken word wider than the sheet (27/09). */}
+            <p className="m-0 mt-1 break-words text-sm text-ink-mute">{headline(phase, onQuit)}</p>
             {offer && phase.date && (
-              <p className="m-0 mt-0.5 text-xs text-ink-mute">{text("update.released", { date: releaseDate(phase.date) })}</p>
+              <p className="m-0 mt-0.5 text-xs text-ink-mute">{text("update.released", { date: releaseDate(phase.date, currentLanguage()) })}</p>
             )}
           </div>
           {!busy && (
@@ -65,9 +67,16 @@ export function UpdatePanel({
         </div>
         {offer && phase.notes && (
           // The release's notes as paragraphs: a note is a note, not a page;
-          // the whole of it is on the release.
-          <p className="m-0 max-h-48 overflow-y-auto whitespace-pre-line px-6 py-2 text-sm leading-relaxed text-ink-mute">
-            {excerpt(phase.notes)}
+          // the whole of it is on the release. The half in the reader's
+          // language. It scrolls, so the keyboard can reach it - a region
+          // with a name (axe, 27/09: scrollable-region-focusable).
+          <p
+            tabIndex={0}
+            role="region"
+            aria-label={text("update.notes")}
+            className="m-0 max-h-48 overflow-y-auto whitespace-pre-line break-words px-6 py-2 text-sm leading-relaxed text-ink-mute"
+          >
+            {excerpt(phase.notes, currentLanguage())}
           </p>
         )}
         {phase.kind === "downloading" && (

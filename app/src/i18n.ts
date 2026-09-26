@@ -832,6 +832,7 @@ export const TEXT = {
   "update.failed": ["Không kiểm tra được: {error}", "Could not check: {error}"],
   "update.open_releases": ["Mở trang phát hành", "Open the releases page"],
   "update.released": ["Phát hành {date}", "Released {date}"],
+  "update.notes": ["Ghi chú phát hành", "Release notes"],
   "update.ready": ["ReadEase {version} đã tải về, sẵn sàng cài.", "ReadEase {version} is downloaded and ready to install."],
   "update.installing": ["Đang cài bản {version}…", "Installing {version}…"],
   "update.on_quit": ["Cài đặt khi thoát", "Install When Quitting"],

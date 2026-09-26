@@ -9,6 +9,9 @@
 declare global {
   interface Window {
     __READEASE_MOCK__?: boolean;
+    /** The menu dispatcher, handed to the harness by the dev build only:
+     * the browser has no menu bar to issue "check-updates" (HIG 3.20). */
+    __readeasePerform?: (command: string) => void;
   }
 }
 
