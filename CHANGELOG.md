@@ -75,6 +75,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   say to paste the key again, or to press Save again.
 - In the search list the words that match are dark on their yellow, in
   both themes. They took the row's grey and were hard to read on it.
+- Pasted text past the limit: the character count and the line saying
+  to trim it no longer run together - they read "charactersLonger than
+  the limit".
 
 ## 0.1.19
 

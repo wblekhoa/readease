@@ -933,6 +933,10 @@ hiện, ảnh ổn (câu hỏi xoá thay chỗ tên trong thẻ, bìa vẫn nói
 ô nào từng gõ vào ô tìm. Lần đầu bắt lỗi tương phản của chữ trùng khớp (xem §2, quy tắc không-layer). Từ nay mỗi phát
 hiện `color-contrast` in kèm số đo của nó: màu chữ, màu nền, tỉ lệ.
 
+**Dán quá giới hạn** (27/09): `paste_over` gõ hơn 100 000 ký tự vào ô Dán = 4 ô. Lần đầu bắt số đếm và câu "hãy bớt lại"
+DÍNH LIỀN ("100.004 / 100.000 ký tựNội dung dài hơn…") — hai `span` trong một dòng chữ không có khoảng nào; nay là
+hàng flex `gap-x-2` (bậc trong-cặp 8, §6), xuống dòng gọn khi hẹp. Keys `paste-words` đo khoảng giữa hai phần.
+
 **Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
 placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào
 từng hiện, theo vùng (bỏ 46 khoá macOS tự vẽ: `menu.*`, `now_playing.*`). Khớp đúng hoa/thường (nhãn "Lưu" không phải

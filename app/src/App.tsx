@@ -1896,7 +1896,10 @@ export default function App() {
               value={content}
               onChange={(event) => setContent(event.target.value)}
             />
-            <div className="py-2 text-xs text-ink-mute">
+            {/* Two things on one line - the count, and past the limit what to
+                do - so a gap between them: as one run of text they read
+                "100.004 / 100.000 ký tựNội dung dài hơn…" (27/09). */}
+            <div className="flex flex-wrap items-baseline gap-x-2 py-2 text-xs text-ink-mute">
               <span className={overLimit ? "font-semibold text-danger" : ""}>
                 {text("paste.count", {
                   count: content.length.toLocaleString(locale),

@@ -85,6 +85,10 @@ const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highligh
 const SCREENS = {
   shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
   paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
+  // Pasted text past the limit (100 000 characters): the count turns to
+  // danger and a line says what to do. No cell had typed into the box.
+  paste_over: [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/], ["click-at", "textarea"], ["type", "chữ ".repeat(25_001)],
+    ["wait", /^Nội dung dài hơn giới hạn|^Longer than the limit/, "span"]],
   scan:   [...UNFOLD, ["click", /^Quét đọc$|^Read a selection$/]],
   notes:  [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/]],
   reader: OPEN_BOOK,
@@ -197,6 +201,7 @@ const ONLY_IN = {
   shelf_import: ["default"],
   key_form: ["default"],
   search_none: ["default"],
+  paste_over: ["default"],
   search_capped: ["default"],
   key_refused: ["keyfail"],
   shelf_duplicate: ["default"],
@@ -1235,6 +1240,18 @@ async function main() {
         const said = await evalJs(`(() => { const a = document.querySelector("[role=alert]"); return a ? a.textContent : null; })()`);
         expect("key-words", said !== null && wanted.test(said) && !wrong.test(said), `a ${code} refusal in the key form (${lang}) says ${JSON.stringify(said)}`);
         crashed("key-words");
+      }
+      // Pasted text past the limit (27/09): the count and the line saying
+      // what to do sat in one run of text - "100.004 / 100.000 ký tựNội
+      // dung dài hơn giới hạn". They are two things; there is room between.
+      if (!(await goto(SCREENS.paste_over, "vi"))) expect("paste-words", false, "could not paste past the limit");
+      else {
+        const gap = await evalJs(`(() => { const over = [...document.querySelectorAll("span")].find((e) => /^Nội dung dài hơn giới hạn/.test(e.textContent));
+          const count = over && over.previousElementSibling; if (!over || !count) return null;
+          const a = count.getBoundingClientRect(), b = over.getBoundingClientRect();
+          return b.top >= a.bottom - 1 ? 99 : Math.round(b.left - a.right); })()`);
+        expect("paste-words", gap !== null && gap >= 4, gap === null ? "no over-limit line" : `the count and the over-limit line are ${gap}px apart`);
+        crashed("paste-words");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot
