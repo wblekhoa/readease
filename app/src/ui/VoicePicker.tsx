@@ -152,8 +152,13 @@ export function VoicePicker({
       close(false);
     };
     // The layer is placed against the button; once what holds the button
-    // scrolls, it would float beside nothing.
-    const onScroll = (event: Event) => { if (!inside(event.target)) close(false); };
+    // scrolls, it would float beside nothing. Only that: in a scroll the page
+    // follows the voice every paragraph, and changing voice mid-reading is an
+    // ordinary thing to do - the page moving must not shut the list (26/09).
+    const onScroll = (event: Event) => {
+      const moved = event.target;
+      if (moved instanceof Node && trigger.current && moved.contains(trigger.current)) close(false);
+    };
     const onKey = (event: KeyboardEvent) => {
       const box = layer.current;
       if (!box) return;

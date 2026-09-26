@@ -1889,7 +1889,9 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
   phía đều không đủ (cửa sổ thấp — panel đứng trên footer) thì lớp **phủ lên chính nút, dòng giọng đang dùng nằm ngang
   nút**, như pop-up của Mac, thay vì cuộn trong một khe hẹp giấu mất các dòng cuối (đo 26/09 ở 960×600: dưới 246px,
   trên 281px, danh sách 6 giọng cần ~330px). Rộng bằng panel (26rem) để "Phong cách kể chuyện" không bị cắt — kiểu
-  giọng là chỗ phân biệt hai giọng. Vẽ qua **portal** vì panel cắt phần tràn và tự cuộn (cùng lý do tooltip đi portal). Mỗi dòng: dấu ✓ ở giọng đang dùng + tên + dòng mô tả — bấm vào đó là
+  giọng là chỗ phân biệt hai giọng. Vẽ qua **portal** vì panel cắt phần tràn và tự cuộn (cùng lý do tooltip đi portal).
+  Lớp đóng khi thứ **chứa nút** cuộn (thân panel) — KHÔNG khi trang sách cuộn theo giọng: ở chế độ cuộn trang dời mỗi
+  đoạn, và đổi giọng giữa chừng là việc thường (bản đầu đóng theo mọi cú cuộn — kiểm keys đỏ, sửa 26/09). Mỗi dòng: dấu ✓ ở giọng đang dùng + tên + dòng mô tả — bấm vào đó là
   **chọn**, lớp đóng; rồi nút **nghe thử** (loa ↔ ô vuông dừng) và nút **★** — đúng hai nút của Danh sách giọng, cùng
   tên, cùng dáng. Nhóm như select cũ: Yêu thích · Trên máy · API, chỉ đặt tên nhóm khi có hơn một nhóm.
   **Nhóm chốt lúc mở**: bấm ★ chỉ đổi dáng sao, dòng đứng yên; lần mở sau mới xếp lại (cùng luật với sheet).

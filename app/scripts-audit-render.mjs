@@ -761,6 +761,29 @@ async function main() {
         await findAndClick(/^Dừng$/);
         crashed("picker");
       } else expect("picker", false, "could not start a reading");
+      // In a scroll the page follows the voice (Reader.tsx), and changing
+      // voice mid-reading is an ordinary thing to do (HIG 3.13): the page
+      // scrolling must not shut the picker - only a scroll that moves the
+      // picker's own button may (26/09).
+      await evalJs(`localStorage.setItem("readease.reading-mode", "scroll")`);
+      if (!(await goto([...OPEN_BOOK]))) expect("picker", false, "could not open a document in a scroll");
+      else if ((await findAndClick(/^Đọc tiếp$/)) && (await waitFor(/^Tạm dừng$/, 6000, "button"))) {
+        await findAndClick(/^Cài đặt giọng đọc$/);
+        await clickAt(TRIGGER);
+        const opened = (await picked()).open;
+        const scrolled = await evalJs(`(() => { let el = document.querySelector("[data-segment]");
+          while (el && !(el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
+          if (!el) return false; el.scrollTop += 200; return true; })()`);
+        await sleep(500);
+        const p = await picked();
+        expect("picker", opened && scrolled && p.open,
+          !opened ? "the picker did not open over a reading in a scroll" : !scrolled ? "found no scrolling page to move" : "the page scrolling under it (as it does to follow the voice) closed the picker");
+        await key("Escape");
+        await key("Escape");
+        await findAndClick(/^Dừng$/);
+        crashed("picker");
+      } else expect("picker", false, "could not start a reading in a scroll");
+      await evalJs(`localStorage.removeItem("readease.reading-mode")`);
 
       if (!(await goto([]))) expect("menu", false, "home did not load");
       else {
