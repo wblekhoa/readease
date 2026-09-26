@@ -233,6 +233,17 @@ const FIGURE_DATA: Record<string, string> = Object.fromEntries(
   Object.entries(mockFigureSvgs()).map(([id, svg]) => [id, btoa(unescape(encodeURIComponent(svg)))]),
 );
 
+/* `?long=1`: names as long as the owner's library has them (measured 27/09,
+   numbers only - a title of 98 characters, a contents line of 133). The
+   fixtures' ~50 were the longest any cell had rendered. */
+const LONG = new URLSearchParams(window.location.search).get("long") === "1";
+const BOOK_TITLE = LONG
+  ? "Nguyên tắc trải nghiệm người dùng cho sản phẩm số — tài liệu đào tạo nội bộ dành cho nhóm thiết kế"
+  : "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo";
+const PATHS_LINE = LONG
+  ? "BA CON ĐƯỜNG VÀO UX: từ một nghề gần đó, từ việc cắt câu cho giọng đọc, và từ những lần tự tay làm lại một sản phẩm cũ đến khi nó ổn."
+  : "BA CON ĐƯỜNG VÀO UX";
+
 /** The publisher's contents tree the harness answers with (HIG 3.25), laid
  * over the chapters above: front matter, a part holding numbered chapters,
  * sections and subsections pointing into the sampler chapter, a second part,
@@ -244,7 +255,7 @@ const TOC: Array<{ level: number; title: string; segment_id: string }> = [
   { level: 2, title: "Các nguyên tắc phổ quát của trải nghiệm người dùng", segment_id: "ch-1-seg-h" },
   { level: 1, title: "Phần Một: NỀN MÓNG", segment_id: "ch-2-seg-0" },
   { level: 2, title: "Chương 3 Bộ mẫu trình bày", segment_id: "ch-2-seg-0" },
-  { level: 3, title: "BA CON ĐƯỜNG VÀO UX", segment_id: "ch-2-seg-0" },
+  { level: 3, title: PATHS_LINE, segment_id: "ch-2-seg-0" },
   { level: 4, title: "Từ một nghề gần đó", segment_id: "ch-2-seg-1" },
   { level: 4, title: "Cắt cho giọng đọc", segment_id: "ch-2-seg-2" },
   { level: 3, title: "BA BƯỚC ĐỂ BẮT ĐẦU", segment_id: "ch-2-seg-6" },
@@ -265,7 +276,7 @@ const TOC: Array<{ level: number; title: string; segment_id: string }> = [
 
 const BOOK = {
   id: "book-ux",
-  title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo",
+  title: BOOK_TITLE,
   chapters: CHAPTER_NAMES.map((title, chapterIndex) => ({
     id: `ch-${chapterIndex}`,
     title,
@@ -317,7 +328,7 @@ type ShelfRow = {
 const LIBRARY: ShelfRow[] = [
   {
     id: "book-ux",
-    title: "Nguyên tắc trải nghiệm người dùng — tài liệu đào tạo",
+    title: BOOK_TITLE,
     source_format: "epub",
     segment_id: "ch-2-seg-1",
     progress_ratio: 0.42,

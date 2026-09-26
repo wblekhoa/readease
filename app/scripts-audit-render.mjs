@@ -151,6 +151,13 @@ const STATES = {
   // The side column unfolded at the 960px floor, where it folds itself:
   // the "không tràn ngang" that matters most (HIG 3.16, C9).
   sidebar: "sidebar=open",
+  // Names as long as the owner's library has them (27/09, counted numbers
+  // only: a 98-character title, a 133-character contents line).
+  long: "long=1",
+};
+// A state that only reaches some screens: the long names show on these.
+const STATE_ON = {
+  long: ["shelf", "reader", "contents", "book_notes", "search"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -293,6 +300,7 @@ async function main() {
             const cell = `${screen}/${stateName}/${lang}/${theme}`;
             if (ONLY && !cell.startsWith(ONLY)) continue;
             if (ONLY_IN[screen] && !ONLY_IN[screen].includes(stateName)) continue;
+            if (STATE_ON[stateName] && !STATE_ON[stateName].includes(screen)) continue;
             cells++;
             // With no model on the machine the shell shows the setup screen
             // and nothing else - there are no tabs to reach. That screen is
