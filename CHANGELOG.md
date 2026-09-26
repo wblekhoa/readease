@@ -62,6 +62,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   announced as an alert, the same as a failure. In the preview, a note
   already in the other copy stays readable: its whole row had been
   dimmed below comfortable contrast.
+- When a reading cannot start - no credit, no connection, a blocked
+  account - the line saying why is no longer covered by the preview of
+  where the reading would start. The preview reopened on its own the
+  moment the reading was refused; it now closes when you press read and
+  opens again when the pointer comes back.
 
 ## 0.1.19
 

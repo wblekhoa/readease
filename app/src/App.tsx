@@ -396,6 +396,14 @@ export default function App() {
   /* Not a boolean: the panel is drawn in a PORTAL now (see the read button),
      so it carries the anchor it was opened from. */
   const [resumeTip, setResumeTip] = useState<{ centre: number; top: number } | null>(null);
+  /* The preview belongs to the button at rest. Starting a reading takes the
+     button away without a mouseleave, so the open state outlived the press:
+     a refused reading came back to idle with the preview open over the line
+     saying why (27/09). Closed when a reading starts, it stays closed until
+     the pointer comes back - the press rule of every tooltip (HIG 3.13). */
+  useEffect(() => {
+    if (reading !== "idle") setResumeTip(null);
+  }, [reading]);
   /* What a paid voice would cost this press of the button, and how far the
      press reaches. `null` estimate means "still counting", and the button
      stays disabled until it is not - the owner's rule (04/09): nobody spends

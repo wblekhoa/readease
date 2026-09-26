@@ -142,6 +142,11 @@ const SCREENS = {
   transfer_confirm: [...TRANSFER_PLAN, ["click", /^Chép sang$|^Copy across$/], ["wait", /^Chép ghi chú sang bản kia\?$|^Copy notes across\?$/, "p"]],
   transfer_done: [...TRANSFER_PLAN, ["click", /^Chép sang$|^Copy across$/], ["wait", /^Chép ghi chú sang bản kia\?$|^Copy notes across\?$/, "p"],
     ["click", /^Chép sang$|^Copy across$/], ["wait", /^Đã chép \d+ mục|^Copied \d+ items?/, "p"]],
+  // A reading that fails, and the line that says why (HIG 3.5): the mock
+  // has refused a reading on demand since the eight failure sentences were
+  // written, and no cell had pressed read - so none of them had been on a
+  // screen. The states below pick the failure.
+  reading_failed: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /./, "[role=alert]"], ["rest"]],
   lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
     ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
@@ -154,6 +159,7 @@ const ONLY_IN = {
   voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
+  reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
   transfer_plan: ["default"],
   transfer_confirm: ["default"],
   transfer_done: ["default"],
@@ -164,6 +170,11 @@ const ONLY_IN = {
   update_failed: ["default"],
   update_downloading: ["default"],
 };
+// What a screen logs on purpose. A refused reading is caught and shown, and
+// the page also logs it (every caught failure is console.error'd) - on the
+// screen that exists to refuse a reading, that line is the state, not a
+// fault. Exceptions are never excused.
+const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): / };
 const STATES = {
   default: "",
   empty: "empty=all",
@@ -188,11 +199,21 @@ const STATES = {
   long: "long=1",
   // A paid voice in use: the cost button and its panel exist only here.
   paid: "voice=paid",
+  // Reading failures on a paid voice, beside `voicefail` (quota): the
+  // commonest (network), the longest sentence (a blocked account, 175
+  // characters in English) and one stopped before any provider was asked
+  // (our own ceiling).
+  voicefail_network: "voice=paid&voicefail=network",
+  voicefail_blocked: "voice=paid&voicefail=account_blocked",
+  voicefail_budget: "voice=paid&voicefail=budget",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
   long: ["shelf", "reader", "contents", "book_notes", "search"],
   paid: ["reader", "cost", "player_settings"],
+  voicefail_network: ["reading_failed"],
+  voicefail_blocked: ["reading_failed"],
+  voicefail_budget: ["reading_failed"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -284,6 +305,10 @@ async function main() {
       Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(el, ${JSON.stringify(value)});
       el.dispatchEvent(new Event("change", { bubbles: true }));
       return el.value === ${JSON.stringify(value)}; })()`);
+    // The pointer taken off the page, to the window's top-left corner: a
+    // cell measures the page at rest, and a click leaves the pointer on the
+    // button it pressed, in its hover colours.
+    const rest = async () => { await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 1, y: 1 }); return true; };
     // A control found by WHERE it is rather than by a name: the Voice
     // picker's button is named by its row ("Giọng") plus the voice it shows,
     // which changes as the checks pick voices. Pressed at its centre, with
@@ -371,6 +396,7 @@ async function main() {
                 : kind === "click-at" ? await clickAt(re)
                 : kind === "perform" ? await perform(re, within)
                 : kind === "choose" ? await choose(re, within)
+                : kind === "rest" ? await rest()
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -384,6 +410,7 @@ async function main() {
               const detail = m.method === "Runtime.exceptionThrown" ? (m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text)
                 : m.method === "Log.entryAdded" ? m.params.entry.text
                 : m.params.args.map((a) => a.value ?? a.description ?? "").join(" ");
+              if (m.method === "Runtime.consoleAPICalled" && EXPECTED_CONSOLE[screen]?.test(String(detail))) continue;
               findings.push({ cell, kind: "console", detail: String(detail).split("\n")[0].slice(0, 200) });
             }
             if (DUMP) seen.push({ cell, text: await evalJs(`(() => [document.body.innerText,
@@ -499,6 +526,7 @@ async function main() {
             : kind === "click-at" ? await clickAt(re)
             : kind === "perform" ? await perform(re, within)
             : kind === "choose" ? await choose(re, within)
+            : kind === "rest" ? await rest()
             : await waitFor(re, 6000, within);
           if (!ok) return false;
         }
@@ -1108,6 +1136,28 @@ async function main() {
         expect("transfer", done !== null && done.role !== "alert" && done.color === tone.mute,
           done === null ? "no notice after copying" : `a copy that worked is reported as role=${done.role}, colour ${done.color} (mute is ${tone.mute})`);
         crashed("transfer");
+      }
+      // A reading that fails says why, and nothing covers it (27/09): the
+      // read button's preview of where it would start belongs to the button
+      // at rest, but its state outlived the press - it came back the moment
+      // the refused reading returned to idle, over the line saying why.
+      // The preview itself still opens on a hover at rest - the fix closes it
+      // on the press, not for good.
+      if (!(await goto(OPEN_BOOK, "vi", STATES.voicefail))) expect("reading-failed", false, "could not open the book");
+      else {
+        const box = await evalJs(`(() => { const b = [...document.querySelectorAll("button")].find((e) => /^Đọc tiếp/.test(e.textContent.trim()));
+          if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+        if (box) await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y });
+        const opened = box !== null && await waitFor(/^Bấm để tới chỗ này$/, 3000, "span");
+        const failed = (await findAndClick(/^Đọc tiếp|^Continue/)) && (await waitFor(/./, 6000, "[role=alert]"));
+        await sleep(300);
+        const seen = failed ? await evalJs(`(() => { const a = document.querySelector("[role=alert]"); const r = a.getBoundingClientRect();
+          const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          return { covered: !a.contains(top), tip: document.body.innerText.includes("Bấm để tới chỗ này") }; })()`) : null;
+        expect("reading-failed", opened && seen !== null && !seen.covered && !seen.tip,
+          seen === null ? `no failure line after a refused reading (preview ${opened ? "opened" : "never opened"} on hover)`
+            : `hover ${opened ? "opened" : "did not open"} the preview; after the refused reading the failure line is ${seen.covered ? "covered" : "visible"} and the preview is ${seen.tip ? "open" : "closed"}`);
+        crashed("reading-failed");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

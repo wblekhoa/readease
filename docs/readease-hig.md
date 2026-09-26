@@ -908,6 +908,14 @@ cửa sổ lớn, nơi bố cục có thể hết HÌNH (trang đôi, lớp nổ
 nền = 48 ô, 0 phát hiện, soi ảnh không lỗi. Không vào lượt đầy đủ (gấp đôi thời gian cho cùng câu trả lời) — chạy
 khi một thay đổi đụng bố cục.
 
+**Đọc thất bại** (27/09): mười hai câu lý do (`voiceerr.*`) chưa từng lên màn — mock từ chối được theo yêu cầu
+(`?voicefail=`) nhưng không ô nào bấm Đọc tiếp. Màn `reading_failed` bấm rồi chờ dòng `role="alert"`, ở bốn lý do đại
+diện: `quota` (giọng máy), `network` (hay gặp), `account_blocked` (câu dài nhất, 175 ký tự tiếng Anh), `budget` (bị trần
+của mình chặn trước khi hỏi nhà cung cấp) = 16 ô. Hai quy ước mới của audit: bước `rest` đưa con trỏ ra góc trên-trái
+để ô đo trang lúc NGHỈ (cú bấm để con trỏ nằm trên nút, trong màu hover), và `EXPECTED_CONSOLE` — màn này log lời từ
+chối có chủ đích (mọi lỗi đã bắt đều `console.error`), nên đúng dạng `voice_failed:`/`voice_unavailable:` không phải lỗi;
+ngoại lệ (exception) thì không bao giờ được tha.
+
 **Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
 placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào
 từng hiện, theo vùng (bỏ 46 khoá macOS tự vẽ: `menu.*`, `now_playing.*`). Khớp đúng hoa/thường (nhãn "Lưu" không phải
@@ -1344,6 +1352,11 @@ dòng đầu của chính đoạn sẽ được đọc** (`PageInfo.resumeExcerp
   là cây cầu giữ cho cây con liền mạch, nếu không `onMouseLeave` sẽ bắn ngay lúc con trỏ rời khỏi nút.
   (`group-hover` của CSS không kiểm được bằng sự kiện tổng hợp, mà một nút bấm không kiểm được thì không
   được ship.)
+- **Bấm là đóng, tới khi con trỏ quay lại** (27/09) — luật bấm của mọi tooltip (§3.13). Bắt đầu đọc gỡ nút khỏi cây
+  mà không có `mouseleave`, nên trạng thái "đang mở" sống qua cú bấm: lần đọc bị từ chối (hết tiền, mất mạng…) quay về
+  rảnh với tooltip mở lại ĐÈ lên dòng báo lý do — đúng lúc người đọc cần đọc nó. Nay tooltip đóng khi `reading` rời
+  `idle`. Thấy được nhờ lần đầu ma trận bấm Đọc tiếp khi engine từ chối (`reading_failed`); keys `reading-failed` canh cả
+  hai chiều: rê chuột vẫn mở, bấm xong thì dòng lỗi không bị che.
 - **Đường "đưa tôi tới đó" đi qua prop `reveal={{segmentId, at}}`** của Reader. Dấu `at` là thứ khiến hỏi
   **cùng một chỗ hai lần** vẫn chạy — chỉ mỗi id thì effect thấy không đổi và im lặng bỏ qua.
   `useEffect` đặt **sau** `showSegment`: mảng phụ thuộc được đánh giá lúc render, viết ở trên thì đọc vào
@@ -2093,7 +2106,11 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 
 **Màu brand = XANH DƯƠNG** (chủ, 21/09: "update màu brand của app thành màu xanh dương"): `--color-brand-600` =
 `--blue-b100`, `--color-brand-700` = `--blue-b120` — ramp xanh của DS, lật theo theme (sáng #2B52D4 / #2446B4, tối
-#486AF2 / #6988F0; ở tối bậc 120 sáng hơn bậc 100 nên hover *sáng lên*, đúng cách control tối phản hồi). Trước đó là đỏ
+#486AF2 / #6988F0; ở tối bậc 120 sáng hơn bậc 100 nên hover *sáng lên*, đúng cách control tối phản hồi). **Đo 27/09
+— CHỜ CHỦ**: chữ trắng trên nền hover ở theme tối (b120 #6988F0) chỉ **3,29:1**, dưới AA 4,5 cho chữ 14px đậm vừa
+(axe `color-contrast` serious khi con trỏ nằm trên nút); nền nghỉ b100 là 4,55:1 nên MỌI màu sáng hơn đều dưới 4,5 —
+"hover sáng lên" và "chữ trắng đạt AA khi hover" không cùng đứng được. Hai hướng: giữ (chỉ trong lúc rê chuột), hoặc
+hover ở tối đậm xuống (b80 #4563CC = 5,37:1). Chưa đổi: đây là gu đã chốt 21/09. Trước đó là đỏ
 DOL `#D42525`/`#B31F1F` viết cứng, không lật theme. Đo: chữ trắng trên b100 6,6:1 (sáng) / 4,9:1 (tối); chấm đầu dòng
 trên desk 6,6 / 4,4. Hệ quả: brand và `danger` là hai sắc khác hẳn (không còn phải giữ luật "hai sắc đỏ không đứng cạnh
 nhau"); vòng focus (info b60) là họ hàng của brand — Apple cũng dùng một màu xanh cho cả accent lẫn focus ring, đó là
