@@ -45,6 +45,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   had just opened (the gear for Voices & models). Voice settings and
   Voices & models also let go of the focus after a click, like the other
   buttons that open panels.
+- In the Apple Books sheet, a book that cannot come in (too large, DRM)
+  stands back by its cover and title only: dimmed as a whole, its reason
+  was too faint to read comfortably. The reason now comes first on its
+  line, so a long one is no longer the part the ellipsis cuts.
 
 ## 0.1.19
 

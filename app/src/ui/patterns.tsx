@@ -615,13 +615,16 @@ export function BookTile({
 }) {
   return (
     <div
-      className={`flex min-w-0 items-center gap-3 rounded-2xl border border-edge bg-paper p-3 transition-[border-color,box-shadow] hover:border-edge-strong hover:shadow-lifted ${
-        muted ? "opacity-70" : ""
-      }`}
+      className="flex min-w-0 items-center gap-3 rounded-2xl border border-edge bg-paper p-3 transition-[border-color,box-shadow] hover:border-edge-strong hover:shadow-lifted"
     >
+      {/* A tile that cannot be acted on stands back by its cover (a
+          `MiniCover muted` dims itself) and its name, NOT as a whole: the
+          line under them says why (too large, DRM) and must stay readable -
+          dimmed with the tile it fell under AA (27/09, axe color-contrast,
+          HIG 3.12). */}
       {cover}
       <div className="min-w-0 flex-1">
-        <div className="line-clamp-2 text-sm font-semibold leading-snug" title={hoverText(title)}>
+        <div className={`line-clamp-2 text-sm font-semibold leading-snug ${muted ? "text-ink-mute" : ""}`} title={hoverText(title)}>
           {title}
         </div>
         {meta && <div className="mt-0.5 truncate text-xs text-ink-mute">{meta}</div>}

@@ -53,8 +53,7 @@ function errorText(raw: unknown): string {
 function ShelfTile({ book, busy, onRun }: { book: ShelfBook; busy: boolean; onRun: (mode: SyncMode) => void }) {
   const cover = useCover(book.status === "linked" ? book.book_id : null);
   const blocked = book.status !== "importable" && book.status !== "linked";
-  const facts = [
-    book.highlights ? text("apple.highlights", { count: book.highlights }) : null,
+  const status =
     book.status === "linked"
       ? (book.paired_title && book.paired_title !== book.title
           ? text("apple.paired", { title: book.paired_title })
@@ -65,8 +64,12 @@ function ShelfTile({ book, busy, onRun }: { book: ShelfBook; busy: boolean; onRu
           ? text("apple.status_too_large")
           : book.status === "missing"
             ? text("apple.status_missing")
-            : null,
-  ].filter(Boolean).join(" · ");
+            : null;
+  const highlights = book.highlights ? text("apple.highlights", { count: book.highlights }) : null;
+  // A blocked book's reason comes first: the line is one line, and what
+  // gets cut should be the count, not why it cannot come in (27/09 - "Quá
+  // lớn (trên 200 M…" lost its limit to the ellipsis).
+  const facts = (blocked ? [status, highlights] : [highlights, status]).filter(Boolean).join(" · ");
   const action =
     book.status === "importable"
       ? (

@@ -743,7 +743,9 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   **lưới ô 2 cột** (`BookTile`, chủ chỉnh hai lần 02/09): ô = card `paper` viền `edge`, hover → viền
   `edge-strong` + `shadow-lifted` (bậc 3); bìa `MiniCover size="md"` 44×66 bên trái (bìa THẬT khi đã
   có qua `useCover` dùng chung, ô `band` + glyph khi chưa nhập, khoá + mờ khi chặn), tên tối đa 2 dòng,
-  một dòng dữ kiện "N ghi chú · Đã có / Ghép với «…» / lý do chặn"; hành động = **icon bên phải**
+  một dòng dữ kiện "N ghi chú · Đã có / Ghép với «…» / lý do chặn" — ô bị chặn **lùi lại bằng bìa mờ và tên màu mute,
+  KHÔNG làm mờ cả ô**: dòng lý do ("Quá lớn…", DRM) là thứ người đọc cần đọc nhất, giữ `ink-mute` đạt AA (27/09 — lần
+  render đầu của sheet: cả ô `opacity-70` kéo dòng lý do dưới AA, axe `color-contrast` serious); hành động = **icon bên phải**
   (`MenuButton`): nhập (mũi tên vào khay) mở tuỳ chọn *Chỉ nhập sách (mặc định) · kèm highlight · kèm
   ghi chú · kèm cả hai*; đồng bộ (hai mũi tên) mở *Highlight và ghi chú (mặc định) · chỉ highlight ·
   chỉ ghi chú*. Engine: `applebooks.sync_notes {mode}` — highlights = bỏ ghi chú, notes = chỉ đoạn có ghi

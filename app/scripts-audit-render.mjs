@@ -105,6 +105,10 @@ const SCREENS = {
   // the page: every chapter's figures are in the DOM, most off-page.
   // Reached through the contents, like a reader would: the sample's sketch
   // on a transparent ground sits in "Chương 6 Bài tập 02".
+  // The Apple Books sheet (HIG 3.12), from the shelf's own button: until
+  // 27/09 no cell had opened it - the coverage map listed it at zero.
+  apple_books: [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Từ Apple Books$|^From Apple Books$/],
+    ["wait", /^Tài liệu trong Apple Books$|^Items in Apple Books$/, "[role=dialog]"]],
   // The update sheet (HIG 3.20), the way every reader reaches a new version:
   // opened through the dispatcher "Kiểm tra bản mới…" calls, in its four
   // resting states - a new version, already the latest, the check failing,
@@ -127,6 +131,7 @@ const ONLY_IN = {
   voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
+  apple_books: ["default", "empty"],
   update_available: ["default"],
   update_none: ["default"],
   update_failed: ["default"],
@@ -468,6 +473,10 @@ async function main() {
         expect(scenario, w.opener, `Escape left the focus on ${said(w)}, not on the button that opened the panel`);
       };
       await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
+
+      // The Apple Books sheet: in with the keyboard, back to its button.
+      if (!(await goto([...UNFOLD, ["click", /^Thư viện$/]]))) expect("apple-books", false, "could not open the shelf");
+      else await inAndBack("apple-books", /^Từ Apple Books$/);
 
       if (!(await goto(OPEN_BOOK))) expect("reader", false, "could not open a document");
       else {
