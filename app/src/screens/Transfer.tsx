@@ -56,6 +56,11 @@ const VERDICT: Record<string, TextKey> = {
   "already-there": "transfer.verdict_already",
 };
 
+/** The engine's outcomes that REPORT - it copied, or there was nothing to
+ * copy. The rest (Apple Books open, no backup, a failed write, a format it
+ * cannot read) stopped the copy, and those are errors. */
+const REPORTED = new Set(["copied", "no_notes", "all_already_there", "already_there"]);
+
 export function Transfer() {
   const [books, setBooks] = useState<NotesBook[] | null>(null);
   const [source, setSource] = useState("");
@@ -63,14 +68,17 @@ export function Transfer() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  /** What the last step came to, and whether it went wrong. Every outcome
+   * used to be drawn as an error - "Copied 2 items…" in the danger colour,
+   * announced as an alert (27/09). */
+  const [notice, setNotice] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     request<{ books: NotesBook[] }>("notes.books", {})
       .then((reply) => setBooks(reply.books))
       .catch((error) => {
         setBooks([]);
-        setNotice(errorText(error));
+        setNotice({ tone: "error", message: errorText(error) });
       });
   }, []);
 
@@ -81,7 +89,7 @@ export function Transfer() {
     try {
       setPlan(await request<Plan>("notes.plan", { source, target }));
     } catch (error) {
-      setNotice(errorText(error));
+      setNotice({ tone: "error", message: errorText(error) });
     }
   }, [source, target]);
 
@@ -102,10 +110,13 @@ export function Transfer() {
         book: result.target_title ?? "",
         path: result.backup ?? "",
       };
-      setNotice(text(`outcome.${result.outcome}` as TextKey, values));
+      setNotice({
+        tone: REPORTED.has(result.outcome) ? "ok" : "error",
+        message: text(`outcome.${result.outcome}` as TextKey, values),
+      });
       if (result.outcome === "copied") setPlan(null);
     } catch (error) {
-      setNotice(errorText(error));
+      setNotice({ tone: "error", message: errorText(error) });
     } finally {
       setBusy(false);
     }
@@ -198,7 +209,7 @@ export function Transfer() {
                 {text("transfer.preview")}
               </Button>
               {notice && (
-                <Notice tone="error" className="max-w-[60ch] text-center">{notice}</Notice>
+                <Notice tone={notice.tone} className="max-w-[60ch] text-center">{notice.message}</Notice>
               )}
             </div>
           }
@@ -271,7 +282,7 @@ export function Transfer() {
         {text("transfer.description")}
       </Notice>
       {notice && (
-        <Notice tone="error" className="mt-3 max-w-[60ch]">{notice}</Notice>
+        <Notice tone={notice.tone} className="mt-3 max-w-[60ch]">{notice.message}</Notice>
       )}
 
       {plan && (
@@ -333,17 +344,21 @@ export function Transfer() {
                  there is barely news. */
               <div
                 key={index}
-                className={`flex items-baseline gap-3 py-2.5 ${
-                  item.verdict === "already-there" ? "opacity-60" : ""
-                }`}
+                className="flex items-baseline gap-3 py-2.5"
               >
                 <span className="w-24 shrink-0 text-xs font-medium text-ink-mute">
                   {text(item.has_note ? "transfer.kind_note" : "transfer.kind_highlight")}
                 </span>
                 {/* A clipped excerpt owes its own words back on hover - the
                     rule the library's titles and fact lines follow. */}
+                {/* A row with nothing to do recedes by the colour of its words,
+                    never by opacity: a whole-row `opacity-60` took the excerpt
+                    under AA (axe color-contrast serious, first render 27/09 -
+                    HIG 2). */}
                 <span
-                  className="min-w-0 flex-1 truncate text-sm"
+                  className={`min-w-0 flex-1 truncate text-sm ${
+                    item.verdict === "already-there" ? "text-ink-mute" : ""
+                  }`}
                   title={item.excerpt || undefined}
                 >
                   {item.excerpt || text("transfer.no_text")}

@@ -997,11 +997,16 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       };
     }
     case "notes.transfer": {
+      const source = NOTE_BOOKS.find((book) => book.asset_id === params.source);
       const target = NOTE_BOOKS.find((book) => book.asset_id === params.target);
-      if (!target) throw new Error("notes.transfer failed: book_gone");
+      if (!source || !target) throw new Error("notes.transfer failed: book_gone");
+      // What was copied is what the preview promised: the same-edition items
+      // of the same plan. A fixed 3 had the done notice contradict the count
+      // shown just before it (27/09).
+      const items = source.edition_id === target.edition_id ? PLAN_ITEMS : PLAN_ITEMS.slice(0, 3);
       return {
         outcome: "copied",
-        written: 3,
+        written: items.filter((item) => item.verdict === "same-edition").length,
         target_title: target.title,
         backup: "~/Library/…/AEAnnotation.sqlite.bak",
       };

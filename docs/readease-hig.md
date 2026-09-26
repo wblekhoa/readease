@@ -55,6 +55,10 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   không viền, việc thêm viền lúc focus **đẩy nhãn lệch 1px** mỗi lần tab tới. Nay chỉ còn vòng
   outline dùng chung — đo lại: outline `2px solid rgb(111,138,226)`, viền đứng yên.
 - ✗ **disabled bằng opacity.** Làm mờ control có viền thì mờ luôn viền của nó. Đổi sang ink-faint.
+- ✗ **lùi một hàng/ô bằng opacity** (27/09, hai lần trong một ngày): ô Apple Books bị chặn (`opacity-70`) và hàng "Đã có
+  ở bản kia" của Chuyển ghi chú (`opacity-60`) đều kéo chữ CÓ NGHĨA xuống dưới AA — axe `color-contrast` serious ngay lần
+  render đầu của mỗi màn. Thứ không cần làm gì lùi lại bằng TOKEN: chữ chính sang `ink-mute`, chữ phụ giữ `ink-mute`;
+  chỉ glyph và bìa được mờ.
 - ✗ **viền disabled dùng `edge`.** Đo được `edge` **1.00:1** so với nền desk sáng — đúng bằng màu
   nền, tức vô hình; `edge-strong` cho 1.24 (sáng) / 1.76 (tối): vẫn im, nhưng còn thấy dáng nút.
 - ✗ **danger dùng bậc `primary`.** Đo 3.12:1 (sáng) và 3.72:1 (tối) — dưới AA cho chữ 14px. Đổi
@@ -982,6 +986,13 @@ có `Esc` · tự cuộn kéo con trỏ VoiceOver đi · sửa cho axe xanh bằ
 - Gạch ngang `-`; **cấm em/en dash** (test tự động canh).
 - Nhãn nút = hành động cụ thể ("Đọc nội dung", "Chép sang") — không "OK/Có".
 - Thông điệp lỗi = chuyện gì + làm gì tiếp ("…Hãy thoát Apple Books rồi thử lại.").
+- **Báo tin không phải báo lỗi** (27/09): sắc thái của một thông báo theo chuyện đã xảy ra. Làm xong, hoặc không có gì
+  để làm, là một dòng `ok` (mute); chỉ thứ đã CHẶN việc lại mới là `error` (danger + `role="alert"`, VoiceOver đọc ngay).
+  Màn Chuyển ghi chú từng vẽ cả tám kết quả của engine là lỗi — "Đã chép 2 mục…" màu đỏ, như một lần hỏng — vì
+  trạng thái chỉ giữ CHỮ, không giữ sắc thái; nay giữ cả hai (`REPORTED`: copied · no_notes · all_already_there ·
+  already_there). Thấy được là nhờ lần đầu render phần xem trước: ma trận thêm `transfer_plan` · `transfer_confirm` ·
+  `transfer_done` (bước `choose` chọn option của `<select>` gốc) — trước 27/09 chưa ô nào chọn hai bản; keys `transfer`
+  canh màu và vai của câu báo.
 - Placeholder {x} phải khớp giữa hai ngôn ngữ (test canh).
 - **Chữ theo số** (27/09): `{count|highlight|highlights}` là chữ đầu khi số là 1, chữ sau khi khác; con số vẫn là một
   `{count}` thường đứng cạnh. Tiếng Anh cần nó — `1 highlights`, `Added 1 documents`, `The other 1 are not copied` từng

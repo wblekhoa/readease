@@ -67,6 +67,9 @@ const KEYS = new Set([...I18N.matchAll(/^  "([a-z_]+\.[a-z_0-9]+)"/gm)].map((m) 
 // the menu has no such row; the menu itself then closes on the next click).
 const UNFOLD = [["click?", /^Đổi chế độ$|^Switch mode$/], ["click?", /^Cột bên|^Side column/]];
 const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
+const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
+  ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
+  ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
 const SCREENS = {
   shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
   paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
@@ -125,6 +128,13 @@ const SCREENS = {
   update_failed: [["perform", "check-updates", "failed"], ["wait", /^Không kiểm tra được|^Could not check/, "[role=dialog] p"]],
   update_downloading: [["perform", "check-updates", "slow"], ["wait", /^Có ReadEase|is available\.$/, "[role=dialog] p"],
     ["click", /^Tải và cài$|^Download and Install$/], ["wait", /^Đang tải bản 0\.1\.20… \d+%$|^Downloading 0\.1\.20… \d+%$/, "[role=dialog] p"]],
+  // The Move-notes preview, its confirmation and what it says when done:
+  // until 27/09 no cell had chosen two copies, so none of it had been
+  // rendered. nb-1 and nb-4 share an edition, so all three verdicts show.
+  transfer_plan: TRANSFER_PLAN,
+  transfer_confirm: [...TRANSFER_PLAN, ["click", /^Chép sang$|^Copy across$/], ["wait", /^Chép ghi chú sang bản kia\?$|^Copy notes across\?$/, "p"]],
+  transfer_done: [...TRANSFER_PLAN, ["click", /^Chép sang$|^Copy across$/], ["wait", /^Chép ghi chú sang bản kia\?$|^Copy notes across\?$/, "p"],
+    ["click", /^Chép sang$|^Copy across$/], ["wait", /^Đã chép \d+ mục|^Copied \d+ items?/, "p"]],
   lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
     ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
@@ -137,6 +147,9 @@ const ONLY_IN = {
   voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
+  transfer_plan: ["default"],
+  transfer_confirm: ["default"],
+  transfer_done: ["default"],
   apple_books: ["default", "empty"],
   cost: ["paid"],
   update_available: ["default"],
@@ -253,6 +266,17 @@ async function main() {
       if (typeof window.__readeasePerform !== "function") return false;
       ${variant ? `window.__mockUpdate = ${JSON.stringify(variant)};` : ""}
       window.__readeasePerform(${JSON.stringify(command)}); return true; })()`);
+    // A native select, chosen the way a person's choice reaches React: the
+    // value set through the element's own setter, then a change event. Found
+    // by its label - the Move-notes pickers say "Lấy ghi chú từ" and
+    // "Chuyển sang". Until 27/09 no cell had chosen anything in one, so the
+    // preview behind them had never been rendered.
+    const choose = (label, value) => evalJs(`(() => {
+      const el = [...document.querySelectorAll("select")].find((e) => new RegExp(${JSON.stringify(label.source)}).test(e.getAttribute("aria-label") ?? ""));
+      if (!el) return false;
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(el, ${JSON.stringify(value)});
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return el.value === ${JSON.stringify(value)}; })()`);
     // A control found by WHERE it is rather than by a name: the Voice
     // picker's button is named by its row ("Giọng") plus the voice it shows,
     // which changes as the checks pick voices. Pressed at its centre, with
@@ -339,6 +363,7 @@ async function main() {
                 : kind === "open-figure" ? await openFigure()
                 : kind === "click-at" ? await clickAt(re)
                 : kind === "perform" ? await perform(re, within)
+                : kind === "choose" ? await choose(re, within)
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -464,6 +489,7 @@ async function main() {
             : kind === "click?" ? (await findAndClick(re, 600), true)
             : kind === "click-at" ? await clickAt(re)
             : kind === "perform" ? await perform(re, within)
+            : kind === "choose" ? await choose(re, within)
             : await waitFor(re, 6000, within);
           if (!ok) return false;
         }
@@ -1061,6 +1087,18 @@ async function main() {
         expect("words", said !== null && said.includes("$") && wrong.length === 0,
           said === null ? "the English cost panel did not open" : `the English cost panel writes ${wrong.join(" ")} - ${JSON.stringify(said.slice(0, 200))}`);
         crashed("words");
+      }
+      // What a copy says when it worked (27/09): the Move-notes screen drew
+      // every outcome - "Copied 2 items…" included - as an error, in the
+      // danger colour and as an alert.
+      if (!(await goto(SCREENS.transfer_done, "en"))) expect("transfer", false, "could not copy notes across in the mock");
+      else {
+        const tone = await inks();
+        const done = await evalJs(`(() => { const p = [...document.querySelectorAll("p")].find((e) => /^Copied \\d+ items?/.test(e.textContent ?? ""));
+          return p ? { role: p.getAttribute("role"), color: getComputedStyle(p).color } : null; })()`);
+        expect("transfer", done !== null && done.role !== "alert" && done.color === tone.mute,
+          done === null ? "no notice after copying" : `a copy that worked is reported as role=${done.role}, colour ${done.color} (mute is ${tone.mute})`);
+        crashed("transfer");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

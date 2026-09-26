@@ -57,6 +57,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - The English interface agrees with its numbers wherever a count can be
   one: 1 highlight, 1 result, 1 chapter, 1 voice, "Added 1 document",
   "The other 1 is not copied" - it said "1 highlights" and the like.
+- Move notes reports a copy that worked, or a book with nothing to copy,
+  as news in the plain text colour. Every outcome was shown in red and
+  announced as an alert, the same as a failure. In the preview, a note
+  already in the other copy stays readable: its whole row had been
+  dimmed below comfortable contrast.
 
 ## 0.1.19
 
