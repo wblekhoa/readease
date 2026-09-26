@@ -785,6 +785,109 @@ async function main() {
       } else expect("picker", false, "could not start a reading in a scroll");
       await evalJs(`localStorage.removeItem("readease.reading-mode")`);
 
+      // Motion that is Apple-smooth and stays cheap (HIG 3.17, owner 26/09:
+      // "đẹp nhưng vẫn phải đảm bảo hiệu suất"). A segmented row has ONE pill
+      // that slides on the control spring - seen part-way, then exactly under
+      // the option, never more than a few percent past it - and lands at once
+      // under Reduce Motion; the side column's compact tabs resize it on the
+      // way. The Voice picker is a popover that grows from its button. A star
+      // bounces when it is pressed, and a list that opens with it on stays
+      // still. Sampled in the page, frame by frame, from the click.
+      const slide = (group) => evalJs(`(async () => {
+        const group = document.querySelector('[role="radiogroup"][aria-label="${group}"]');
+        const thumb = group && group.querySelector(".segment-thumb");
+        const target = group && [...group.querySelectorAll('[role="radio"]')].find((r) => r.getAttribute("aria-checked") !== "true" && !r.disabled);
+        if (!thumb || !target) return { error: !group ? "no row" : !thumb ? "no pill" : "no other option" };
+        const g = group.getBoundingClientRect();
+        const left = () => thumb.getBoundingClientRect().left - g.left;
+        const from = left();
+        target.click();
+        const frames = [];
+        let easing = null;
+        const start = performance.now();
+        while (performance.now() - start < 700) {
+          await new Promise((r) => requestAnimationFrame(r));
+          frames.push(left());
+          // Read while it moves: at rest the pill is "still", no transition.
+          if (easing === null) easing = getComputedStyle(thumb).transitionTimingFunction;
+        }
+        const r = target.getBoundingClientRect();
+        return { from, to: r.left - g.left, frames, width: thumb.getBoundingClientRect().width, wanted: r.width, easing };
+      })()`);
+      const judged = (m) => {
+        if (!m || m.error) return m?.error ?? "nothing measured";
+        const lo = Math.min(m.from, m.to) + 0.5, hi = Math.max(m.from, m.to) - 0.5;
+        const travel = Math.abs(m.to - m.from);
+        const past = Math.max(...m.frames.map((x) => (m.to > m.from ? x - m.to : m.to - x)));
+        const last = m.frames[m.frames.length - 1];
+        if (!m.frames.some((x) => x > lo && x < hi)) return `the pill jumped from ${Math.round(m.from)} to ${Math.round(m.to)} px - never seen on the way`;
+        if (Math.abs(last - m.to) > 1 || Math.abs(m.width - m.wanted) > 1) return `the pill stopped at ${last.toFixed(1)} px, ${m.width.toFixed(1)} wide - not under the option (${m.to.toFixed(1)}, ${m.wanted.toFixed(1)})`;
+        if (past > travel * 0.05 + 1) return `the pill ran ${past.toFixed(1)} px past its option on a ${travel.toFixed(1)} px move`;
+        if (!/linear\(/.test(m.easing)) return `the pill is not on the spring (${m.easing.slice(0, 40)})`;
+        return null;
+      };
+      if (!(await goto(SCREENS.reading_settings.slice(0, -2)))) expect("motion", false, "could not open Reading settings");
+      else {
+        const verdict = judged(await slide("Giao diện"));
+        expect("motion", verdict === null, `Giao diện: ${verdict}`);
+        await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+        const still = await slide("Giao diện");
+        await send("Emulation.setEmulatedMedia", { features: [] });
+        expect("motion", !still?.error && Math.abs(still.frames[0] - still.to) <= 1,
+          still?.error ? `Reduce Motion: ${still.error}` : `under Reduce Motion the pill was at ${still.frames[0].toFixed(1)} px one frame after the click, not at ${still.to.toFixed(1)}`);
+        crashed("motion");
+      }
+      if (!(await goto([...OPEN_BOOK, ["click?", /^Hiện mục lục$/], ["wait", /^Mục lục$/]]))) expect("motion", false, "could not open the side column");
+      else {
+        const verdict = judged(await slide("Danh sách của tài liệu"));
+        expect("motion", verdict === null, `side column tabs: ${verdict}`);
+        crashed("motion");
+      }
+      if (!(await goto(SCREENS.player_settings))) expect("motion", false, "could not open Voice settings");
+      else {
+        const opening = await evalJs(`(async () => {
+          const button = document.querySelector('${TRIGGER}');
+          button.click();
+          const seen = [];
+          const start = performance.now();
+          while (performance.now() - start < 500) {
+            await new Promise((r) => requestAnimationFrame(r));
+            const box = document.querySelector('${PICKER}');
+            if (box) seen.push(parseFloat(getComputedStyle(box).opacity));
+          }
+          const box = document.querySelector('${PICKER}');
+          if (!box) return null;
+          const b = button.getBoundingClientRect(), l = box.getBoundingClientRect();
+          const side = l.top >= b.bottom ? "origin-top-right" : l.bottom <= b.top ? "origin-bottom-right" : "origin-right";
+          return { popover: box.classList.contains("layer-popover"), origin: [...box.classList].find((c) => c.startsWith("origin-")) ?? null, side,
+            rising: seen.some((o) => o > 0 && o < 1), last: seen[seen.length - 1] };
+        })()`);
+        expect("motion", opening?.popover && opening.origin === opening.side && opening.rising && opening.last === 1,
+          `the Voice picker opened ${JSON.stringify(opening)} - wanted a popover growing from ${opening?.side}`);
+        await key("Escape");
+        crashed("motion");
+      }
+      const STAR = '[role="dialog"] button[aria-label="Yêu thích Thái Sơn"]';
+      if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("motion", false, "could not open the voices sheet");
+      else {
+        const knob = await evalJs(`(() => { const s = document.querySelector('[role="dialog"] input[role="switch"]'); const spans = s ? s.closest("label").querySelectorAll("span") : [];
+          return spans.length ? getComputedStyle(spans[spans.length - 1]).transitionTimingFunction : null; })()`);
+        expect("motion", /linear\(/.test(knob ?? ""), `the switch knob is not on the spring (${String(knob).slice(0, 40)})`);
+        const pressed = await evalJs(`(async () => { const star = document.querySelector('${STAR}'); if (!star) return null;
+          const was = star.getAttribute("aria-pressed"); star.click();
+          await new Promise((r) => requestAnimationFrame(r));
+          return { was, now: star.getAttribute("aria-pressed"), running: star.querySelector("svg")?.getAnimations().length ?? -1 }; })()`);
+        expect("motion", pressed?.was === "false" && pressed.now === "true" && pressed.running > 0, `pressing the star gave ${JSON.stringify(pressed)} - wanted it on, bouncing`);
+        await sleep(700);
+        await key("Escape");
+        for (const [, re] of VOICES_SHEET.slice(0, 2)) await findAndClick(re);
+        await waitFor(/^Danh sách giọng đọc$/);
+        const resting = await evalJs(`(() => { const svg = document.querySelector('${STAR} svg'); return svg ? svg.getAnimations().length : -1; })()`);
+        expect("motion", resting === 0, `a star already on moved when the list opened (${resting} animation(s))`);
+        await findAndClick(/^Yêu thích Thái Sơn$/);
+        crashed("motion");
+      }
+
       if (!(await goto([]))) expect("menu", false, "home did not load");
       else {
         if (!(await focusOn(/^Đổi chế độ$/))) expect("menu", false, "no mode switch");

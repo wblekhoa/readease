@@ -75,6 +75,25 @@ function iconButtonsWithoutALabel(directory) {
 }
 iconButtonsWithoutALabel(new URL("./src", import.meta.url).pathname);
 
+// Motion that stays cheap (HIG 3.17, owner 26/09: "đẹp nhưng vẫn phải đảm
+// bảo hiệu suất"): a transition names what it moves. `transition-all` /
+// `transition: all` also animates whatever layout property changes next -
+// a width, a padding, a colour in a list of hundreds - off the compositor,
+// on the thread the reading shares. Every file, src/ui and the CSS included.
+function transitionOnEverything(directory) {
+  for (const entry of readdirSync(directory)) {
+    const path = join(directory, entry);
+    if (statSync(path).isDirectory()) { transitionOnEverything(path); continue; }
+    if (!/\.(tsx?|css)$/.test(path)) continue;
+    const source = readFileSync(path, "utf-8");
+    for (const match of source.matchAll(/transition-all\b|transition:\s*all\b/g)) {
+      const line = source.slice(0, match.index).split("\n").length;
+      violations.push(`${path}:${line}: ${match[0]} - name the properties (opacity, scale, translate)`);
+    }
+  }
+}
+transitionOnEverything(new URL("./src", import.meta.url).pathname);
+
 // A rejection from the engine arrives wrapped by the Rust transport
 // (`engine refused read_book: <câu tiếng Việt>`). engineMessage() drops that
 // wrapper and says the rest in the reader's language; anything that puts the

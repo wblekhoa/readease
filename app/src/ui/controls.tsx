@@ -638,7 +638,9 @@ export function Switch({
       />
       <span
         aria-hidden
-        className={`pointer-events-none absolute left-[3px] h-4 w-4 rounded-full bg-thumb shadow-raised transition-transform ${
+        /* The knob moves on the control spring (HIG 3.17); the track's
+           colour keeps its quick fade. */
+        className={`pointer-events-none absolute left-[3px] h-4 w-4 rounded-full bg-thumb shadow-raised transition-transform duration-(--dur-spring) ease-spring ${
           checked ? "translate-x-4" : ""
         } ${disabled ? "opacity-60" : ""}`}
       />
@@ -729,8 +731,43 @@ export function SegmentedControl<T extends string | number>({
   material?: boolean;
   className?: string;
 }) {
+  /* ONE pill under the chosen option, moved rather than repainted (HIG
+     3.17, owner 26/09): it slides and resizes on a spring when the value
+     changes, and lands at once the first time and whenever the row
+     resizes - the side column's fold resizes it every frame for 240 ms,
+     and a spring there would trail behind the layout. */
+  const track = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ left: number; width: number; slide: boolean } | null>(null);
+  const placed = useRef<{ value: T; left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const box = track.current;
+    if (!box) return;
+    const place = (slide: boolean) => {
+      const chosen = box.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]');
+      if (!chosen) {
+        placed.current = null;
+        setThumb(null);
+        return;
+      }
+      const left = chosen.offsetLeft;
+      const width = chosen.offsetWidth;
+      const was = placed.current;
+      // The same place again is no news - and a "land at once" written over
+      // a slide still running would cut it short (a compact row's options
+      // resize the moment the value changes, and the observer says so).
+      if (was && was.value === value && was.left === left && was.width === width) return;
+      placed.current = { value, left, width };
+      setThumb({ left, width, slide });
+    };
+    place(placed.current !== null && placed.current.value !== value);
+    const observer = new ResizeObserver(() => place(false));
+    observer.observe(box);
+    box.querySelectorAll('[role="radio"]').forEach((option) => observer.observe(option));
+    return () => observer.disconnect();
+  }, [value, compact, size, material, options.length]);
   return (
     <div
+      ref={track}
       role="radiogroup"
       aria-label={label}
       // 22 outside, 18 inside: half the group's resting height, so it is a
@@ -742,8 +779,21 @@ export function SegmentedControl<T extends string | number>({
       // các item sẽ tràn viền"): the chosen tint runs to the track's edge,
       // like a segmented control on Apple's toolbar; a raised paper pill
       // needs the 4 px of track around it to read as riding on the track.
-      className={`flex items-stretch rounded-[22px] ${material ? "bg-veil" : "bg-track p-1"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
+      className={`relative flex items-stretch rounded-[22px] ${material ? "bg-veil" : "bg-track p-1"} ${size === "lg" ? "h-11" : "h-9"} ${className}`}
     >
+      {/* First, so the options (positioned too) paint over it. Its two faces
+          are the ones the chosen option used to wear: a raised paper pill in
+          the 4 px of track, or a flat tint to the edge on the material. */}
+      {thumb && (
+        <span
+          aria-hidden="true"
+          data-still={thumb.slide ? undefined : ""}
+          className={`segment-thumb pointer-events-none absolute left-0 ${
+            material ? "inset-y-0 rounded-[22px] bg-tint" : "inset-y-1 rounded-[18px] bg-pill shadow-raised"
+          }`}
+          style={{ translate: `${thumb.left}px 0`, width: thumb.width }}
+        />
+      )}
       {options.map((option) => {
         const on = option.value === value;
         /* A locked choice keeps its pill: it IS still the reader's choice,
@@ -757,7 +807,7 @@ export function SegmentedControl<T extends string | number>({
            they are written, so a locked choice could not be told to be
            darker than a locked non-choice. */
         const chosen = on
-          ? `${material ? "bg-tint" : "bg-pill shadow-raised"} font-semibold ${option.disabled ? "text-locked-choice" : "text-ink"}`
+          ? `font-semibold ${option.disabled ? "text-locked-choice" : "text-ink"}`
           : option.disabled
             ? "text-ink-faint"
             : "text-ink-mute hover:text-ink";
@@ -771,7 +821,7 @@ export function SegmentedControl<T extends string | number>({
             title={option.title}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`flex items-center justify-center gap-1.5 whitespace-nowrap text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
+            className={`relative flex items-center justify-center gap-1.5 whitespace-nowrap text-sm transition-colors [&_svg]:h-4 [&_svg]:w-4 ${
               // No inset on the material, so the option's corner IS the
               // track's; on paper it is the 22 less the 4 px inset.
               material ? "rounded-[22px]" : "rounded-[18px]"

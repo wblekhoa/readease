@@ -30,7 +30,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from "react-dom";
 import { text, type TextKey } from "../i18n";
 import { IconButton, LAYER_GAP, SelectButton, Surface } from "./controls";
-import { CheckIcon, SpeakerIcon, StarIcon, StarOutlineIcon, StopIcon } from "./icons";
+import { FavoriteButton } from "./FavoriteButton";
+import { CheckIcon, SpeakerIcon, StopIcon } from "./icons";
 import { Presence } from "./motion";
 import { pressedByPointer } from "./patterns";
 import { isPaidVoice } from "./readingCost";
@@ -81,7 +82,7 @@ export function VoicePicker({
   /* A fresh layer - and so a fresh pin of the groups - every time it opens,
      even when it opens again before the last one has faded out. */
   const [opens, setOpens] = useState(0);
-  const [place, setPlace] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
+  const [place, setPlace] = useState<{ left: number; top: number; maxHeight: number; side: "below" | "above" | "over" } | null>(null);
   const own = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -114,8 +115,8 @@ export function VoicePicker({
       const left = Math.min(Math.max(at.right - width, MARGIN), Math.max(MARGIN, window.innerWidth - width - MARGIN));
       const below = window.innerHeight - at.bottom - LAYER_GAP - MARGIN;
       const above = at.top - LAYER_GAP - MARGIN;
-      if (height <= below) { setPlace({ left, top: at.bottom + LAYER_GAP, maxHeight: below }); return; }
-      if (height <= above) { setPlace({ left, top: at.top - LAYER_GAP - height, maxHeight: above }); return; }
+      if (height <= below) { setPlace({ left, top: at.bottom + LAYER_GAP, maxHeight: below, side: "below" }); return; }
+      if (height <= above) { setPlace({ left, top: at.top - LAYER_GAP - height, maxHeight: above, side: "above" }); return; }
       // Neither side holds the whole list (a short window: the panel stands
       // on the footer). Over the button, then, the way the Mac's own pop-up
       // opens - the voice in use level with it - rather than a list that
@@ -125,7 +126,7 @@ export function VoicePicker({
       const row = box.querySelector<HTMLElement>('[data-voice-row]:has(button[aria-current="true"])');
       const level = row ? row.offsetTop + row.offsetHeight / 2 : shownHeight / 2;
       const top = Math.min(Math.max(at.top + at.height / 2 - level, MARGIN), window.innerHeight - MARGIN - shownHeight);
-      setPlace({ left, top, maxHeight: full });
+      setPlace({ left, top, maxHeight: full, side: "over" });
     };
     measure();
     window.addEventListener("resize", measure);
@@ -271,12 +272,16 @@ export function VoicePicker({
               edge="strong"
               material="glass"
               radius="menu"
-              layer="menu"
+              /* A popover, not a menu (HIG 3.17): it grows out of its button
+                 - from the corner it hangs by, or from the button's own
+                 height when it covers it. A menu appears at once, but this
+                 is a list with buttons in it. */
+              layer="popover"
               /* The panel's own width: "Nam · miền Nam · Phong cách kể chuyện" fits
                  on one line beside the two buttons. The style is what tells
                  two voices apart, and at 21rem it was the part the ellipsis
                  took; at 24rem it still broke before its last word. */
-              className="max-h-[inherit] w-[26rem] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-2 shadow-lifted"
+              className={`${place?.side === "above" ? "origin-bottom-right" : place?.side === "over" ? "origin-right" : "origin-top-right"} max-h-[inherit] w-[26rem] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-2 shadow-lifted`}
             >
               <PickerRows
                 voices={voices}
@@ -368,15 +373,7 @@ function PickerRows({
                 >
                   {playing ? <StopIcon /> : <SpeakerIcon />}
                 </IconButton>
-                {/* Two shapes for the two states, as in the voice list. */}
-                <IconButton
-                  onClick={() => onFavorite(voice.id)}
-                  aria-pressed={favorite}
-                  aria-label={text("voices.favorite", { name })}
-                  title={text(favorite ? "voices.favorite_remove" : "voices.favorite_add")}
-                >
-                  {favorite ? <StarIcon className="text-favorite" /> : <StarOutlineIcon />}
-                </IconButton>
+                <FavoriteButton name={name} on={favorite} onToggle={() => onFavorite(voice.id)} />
               </div>
             );
           })}

@@ -16,6 +16,15 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   the voice in use level with it, instead of scrolling in a sliver. The
   keyboard: arrows up and down keep the column, Tab stays inside, Escape
   closes the list and not the panel.
+- Motion that feels like the Mac's and costs nothing: a segmented row's
+  pill - appearance, reading language, the side column's tabs - slides and
+  resizes to the option chosen on a spring (there in about 170 ms,
+  settling a touch past), and a switch's knob moves on the same spring.
+  The Voice list grows out of its button like the other popovers, and a
+  star bounces when it is set - never when a list opens with it on. All
+  CSS on the compositor, no animation library, and nothing new moves
+  while the voice reads. Reduce Motion turns the springs and the bounce
+  off.
 
 ## 0.1.19
 

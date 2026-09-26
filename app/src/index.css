@@ -308,12 +308,24 @@
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   /* Moving between two places: symmetric. */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Springs (HIG 3.17, owner 26/09), for a control that moves under the
+     hand - never for a layer. Each is the step response of a damped
+     spring, x(t) = 1 - e^(-z*w*t) * (cos(wd*t) + z/sqrt(1-z^2) * sin(wd*t)),
+     w = 2*pi/response, wd = w*sqrt(1-z^2), sampled evenly over its settle
+     time (the matching --dur-*), last stop set to exactly 1.
+     The segmented pill and the switch knob: response 0.32 s, z 0.78 -
+     95 % at ~167 ms, 2 % over, settled at 430 ms. */
+  --ease-spring: linear(0, 0.0199, 0.0714, 0.1435, 0.2278, 0.3176, 0.408, 0.4955, 0.5775, 0.6525, 0.7195, 0.7784, 0.8292, 0.8721, 0.9079, 0.9371, 0.9604, 0.9788, 0.9928, 1.0031, 1.0104, 1.0153, 1.0182, 1.0196, 1.0199, 1.0194, 1.0182, 1.0167, 1.015, 1.0132, 1.0114, 1.0097, 1.0081, 1.0066, 1.0053, 1.0042, 1.0032, 1.0024, 1.0017, 1.0011, 1);
+  /* A star just set: response 0.34 s, z 0.55 - 12.6 % over, 620 ms. */
+  --ease-pop: linear(0, 0.026, 0.0946, 0.1925, 0.3081, 0.4315, 0.5547, 0.6717, 0.7781, 0.8709, 0.9488, 1.0112, 1.0587, 1.0922, 1.1135, 1.1241, 1.1261, 1.1214, 1.1117, 1.0986, 1.0837, 1.068, 1.0526, 1.0381, 1.025, 1.0138, 1.0044, 0.997, 0.9914, 0.9876, 0.9852, 0.9842, 0.9841, 0.9849, 0.9863, 0.988, 0.9899, 0.9919, 0.9938, 0.9956, 0.9972, 0.9986, 0.9997, 1.0006, 1.0012, 1.0017, 1.0019, 1.002, 1);
 }
 :root {
   --dur-quick: 120ms;
   --dur-enter: 200ms;
   --dur-exit: 150ms;
   --dur-move: 240ms;
+  --dur-spring: 430ms;
+  --dur-pop: 620ms;
 }
 /* Reduce Motion (System Settings › Accessibility): movement goes, feedback
    stays. Scale and rise are zeroed below on the layers themselves; the
@@ -324,6 +336,7 @@
     --dur-enter: 100ms;
     --dur-exit: 100ms;
     --dur-move: 0ms;
+    --dur-spring: 0ms;
   }
 }
 /* A window that is off screen has no running timeline (WKWebView, measured
@@ -407,6 +420,35 @@ html[data-hidden] *::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .notice-in { animation-name: fade-in; }
+}
+
+/* A star the reader has just set grows into place with a bounce - the
+   feedback Apple's symbols give a toggle. Only on that press: a list that
+   opens with stars already on stays still (FavoriteButton). */
+@keyframes star-pop {
+  from { scale: 0.55; }
+  to { scale: 1; }
+}
+.star-pop {
+  transform-origin: center;
+  animation: star-pop var(--dur-pop) var(--ease-pop) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star-pop { animation: none; }
+}
+
+/* The segmented control's one pill (HIG 3.17): it moves and resizes to the
+   option chosen - `translate` on the compositor, `width` on one absolutely
+   placed element that pushes nothing else. `data-still` lands it at once:
+   the first placement and every resize (the side column's 240 ms fold would
+   otherwise leave it trailing behind the layout). */
+.segment-thumb {
+  transition-property: translate, width;
+  transition-duration: var(--dur-spring);
+  transition-timing-function: var(--ease-spring);
+}
+.segment-thumb[data-still] {
+  transition: none;
 }
 
 /* Hover and press are a wash LAYERED OVER a control's own fill, never a

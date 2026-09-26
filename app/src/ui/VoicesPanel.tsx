@@ -17,9 +17,10 @@ import {
   Button, IconButton, Notice, SearchField, SegmentedControl, SuggestionDot, Surface, Switch,
 } from "./controls";
 import { Cluster, GroupedSection, useDismiss } from "./patterns";
+import { FavoriteButton } from "./FavoriteButton";
 import {
   CloseIcon, CloudIcon, ManIcon, MonitorIcon, SearchIcon, SlidersIcon, SpeakerIcon,
-  StarIcon, StarOutlineIcon, StopIcon, WomanIcon,
+  StopIcon, WomanIcon,
 } from "./icons";
 import { useShortWindow } from "./useShortWindow";
 import {
@@ -501,16 +502,11 @@ export function VoicesPanel({
                 </IconButton>
                 {/* Two shapes for the two states, not two colours of one
                     (HIG 3.13): outline = not yet, solid yellow = starred. */}
-                <IconButton
-                  onClick={() => onFavorite(voice.id)}
-                  aria-pressed={favorite}
-                  aria-label={text("voices.favorite", { name: tidyName(voice.label) || voice.id })}
-                  title={text(favorite ? "voices.favorite_remove" : "voices.favorite_add")}
-                >
-                  {/* The colour sits on the star itself: the button's own
-                      ink-mute would win a class-order contest on the button. */}
-                  {favorite ? <StarIcon className="text-favorite" /> : <StarOutlineIcon />}
-                </IconButton>
+                <FavoriteButton
+                  name={tidyName(voice.label) || voice.id}
+                  on={favorite}
+                  onToggle={() => onFavorite(voice.id)}
+                />
                 <Switch
                   checked={inList}
                   onChange={() => onToggle(voice.id)}

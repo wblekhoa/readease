@@ -1535,14 +1535,28 @@ frame đọc như lỗi render, và Apple không có lớp nào rời màn kiể
 | `--ease-out` | `cubic-bezier(0.2, 0, 0, 1)` | vào — giảm tốc về chỗ nghỉ |
 | `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` | ra — tăng tốc rời đi |
 | `--ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | dời chỗ có hai đầu (cột thu/mở) |
+| `--ease-spring` · `--dur-spring` | `linear(…)` lò xo ζ 0,78, response 0,32 s · **430 ms** | thứ dời chỗ **dưới tay**: vệt chọn segmented, núm công tắc — tới 95 % ở ~167 ms, vượt 2 %, lắng hết ở 430 ms |
+| `--ease-pop` · `--dur-pop` | `linear(…)` lò xo ζ 0,55, response 0,34 s · **620 ms** | ★ nảy khi vừa đánh dấu — tới 95 % ở ~130 ms, vượt 12,6 % |
+
+**Lò xo — chỉ cho control dời chỗ dưới tay** (chủ 26/09: "animation mượt mà như Apple design… đẹp nhưng vẫn phải đảm
+bảo hiệu suất"). Cái "mượt kiểu Apple" của một vệt chọn hay một núm gạt là lò xo: về đích nhanh, vượt một chút rồi lắng.
+`linear()` của CSS vẽ đúng đường lò xo mà không cần JS: điểm được sinh từ nghiệm của lò xo tắt dần (ζ, response như
+SwiftUI; công thức và tham số ghi ngay trên token trong `index.css`), `app/tests/motion.test.ts` giữ đầu 0, đích ĐÚNG 1
+và độ vượt trong khoảng định trước. Hỗ trợ: Safari 17.2+, Chrome 113+ [caniuse, 26/09/2026] — sàn của app là macOS 15
+(WebKit 18); trình duyệt không hiểu `linear()` rơi về `ease`, không vỡ gì. Thời lượng của lò xo là lúc **lắng hết**;
+mắt thấy xong ở mốc 95 % — không trái nguyên tắc 2. **Lớp nổi KHÔNG lò xo**: popover lớn ra từ neo và sheet lớn ra tại
+chỗ bằng `--ease-out`, như của Apple — không nảy.
 
 **Bản đồ lớp** (cái gì động thế nào — và cái gì ĐỨNG YÊN có chủ ý):
 
 | Lớp | Vào | Ra |
 |---|---|---|
-| popover neo nút (Cài đặt giọng · Cài đặt đọc · Chi phí · Giọng đọc & mô hình · tip "về chỗ đang đọc") | `opacity 0→1` + `scale .96→1`, `--dur-enter` `--ease-out`, gốc ở cạnh neo (`origin-top-right`, `origin-bottom-right`, `origin-bottom`) | `opacity→0` + `scale→.98`, `--dur-exit` `--ease-in` |
+| popover neo nút (Cài đặt giọng · Cài đặt đọc · Chi phí · Giọng đọc & mô hình · tip "về chỗ đang đọc" · ô chọn Giọng `VoicePicker` — gốc theo chỗ đặt: `origin-top-right` dưới nút, `origin-bottom-right` trên nút, `origin-right` phủ lên nút) | `opacity 0→1` + `scale .96→1`, `--dur-enter` `--ease-out`, gốc ở cạnh neo (`origin-top-right`, `origin-bottom-right`, `origin-bottom`) | `opacity→0` + `scale→.98`, `--dur-exit` `--ease-in` |
 | sheet giữa cửa sổ (Nguồn giọng · Apple Books) + `Scrim` | sheet `scale .96→1` + mờ vào `--dur-move` `--ease-out`; scrim mờ vào `--dur-enter` | cả hai mờ ra `--dur-exit` |
 | menu (`MenuButton`) | **hiện ngay** — NSMenu không có hoạt cảnh mở | mờ ra `--dur-exit` |
+| vệt chọn segmented (`SegmentedControl`) | MỘT vệt đặt tuyệt đối dưới lựa chọn: `translate` + `width` `--dur-spring` `--ease-spring`; đặt thẳng lần đầu và khi đổi kích thước | — |
+| núm công tắc (`Switch`) | `translate` `--dur-spring` `--ease-spring` (nền đổi màu vẫn `--dur-quick`) | như vào |
+| ★ vừa đánh dấu (`FavoriteButton`) | `scale .55→1` `--dur-pop` `--ease-pop` — CHỈ khi người dùng vừa bấm; mở danh sách có sẵn ★ thì không động | — |
 | tooltip (`IconButton`), peek chương / ghi chú, callout `Notice` | mờ vào `--dur-quick` (peek/Notice: `--dur-enter`, Notice trồi 4 px) | tức thì (lớp không nhận chuột, không có gì để "rút") |
 | cột bên | width `--dur-move` `--ease-standard` (từ 200 `ease-out`: thu/mở có hai đầu như nhau, ease-out là cho thứ *xuất hiện*) | như vào |
 | hàng dấu cỡ chữ (§3.9d) | `grid-template-rows` + opacity `--dur-move` `--ease-standard` | như vào |
@@ -1553,8 +1567,13 @@ frame đọc như lỗi render, và Apple không có lớp nào rời màn kiể
 Đứng yên có chủ ý: **nền hover/press của `hover-wash`** (macOS tô hover tức thì; nền là `background-image` nên cũng
 không mờ dần được — đúng ý) · **theo giọng** ở Quét đọc và Reader (`block: "nearest"` tức thì: trang nhích theo từng
 câu, cuộn mượt liên tục thành trang trôi) · đổi theme · hàng danh sách xuất hiện (kết quả tìm khi gõ) · mark tìm trên
-trang · đổi tab cột · pill của segmented KHÔNG trượt (bản `compact` đổi bề rộng khi đổi tab, trượt sẽ méo; đổi màu
-`--dur-quick` là đủ, macOS cũng không trượt).
+trang · đổi tab cột.
+
+**Vệt segmented TRƯỢT — đảo quyết định 20/09** (chủ 26/09). Lý do cũ: bản `compact` đổi bề rộng khi đổi tab nên pill
+trượt sẽ méo. Một vệt RIÊNG vừa dời (`translate`) vừa đổi bề rộng (`width`) theo nút được chọn thì không méo — không
+scale, nên góc bo và bóng giữ nguyên. Vệt chỉ trượt khi **giá trị** đổi; lần đặt đầu và mọi lần đổi kích thước (cột bên
+thu/mở 240 ms bắn ResizeObserver mỗi frame) thì đặt thẳng — lò xo ở đó sẽ lẽo đẽo sau layout. Một lần đo lại trùng đích
+cũ thì bỏ qua, để không cắt ngang một cú trượt đang chạy. Chữ của tab compact hiện/ẩn tức thì trong lúc vệt trượt.
 
 **Cơ chế** (`ui/motion.tsx` + `index.css`):
 - `Presence open={…}`: giữ con đã render thêm `--dur-exit` sau khi `open` tắt (con cuối cùng được nhớ, vì props của nó
@@ -1570,11 +1589,17 @@ trang · đổi tab cột · pill của segmented KHÔNG trượt (bản `compac
 - Reduce Motion: `@media (prefers-reduced-motion: reduce)` đặt `--dur-move: 0ms`, scale = 1 và trồi = 0 ngay từ đầu,
   giữ mờ dần ≤ 100 ms; JS hỏi `matchMedia` (`ui/motion.ts::scrollBehavior()`) cho `scrollIntoView`.
 - Chỉ animate `opacity` · `scale` · `translate` (compositor, 60 fps trên `glass-panel` có blur 28 px). Ngoại lệ có chủ
-  ý và đã có: width cột bên, `grid-template-rows` hàng dấu (layout, ngắn, một phần tử).
+  ý và đã có: width cột bên, `grid-template-rows` hàng dấu (layout, ngắn, một phần tử), **width vệt segmented** (một phần
+  tử đặt tuyệt đối — không đẩy phần tử nào khác, không reflow anh em).
+- **Hiệu suất** (chủ 26/09: "đẹp nhưng vẫn phải đảm bảo hiệu suất"): KHÔNG thư viện animation JS — GSAP, anime.js ghi
+  style mỗi frame trên luồng chính, đúng luồng React bận nhất lúc đang đọc (mỗi câu: vị trí, tô dòng, tự cuộn), còn CSS
+  trên compositor thì không; 0 KB thêm. KHÔNG gì mới chạy theo **nhịp đọc**: theo giọng vẫn tức thì. Gate: UI audit cấm
+  `transition-all`; keys đo vệt segmented giữa đường rồi đúng chỗ, Reduce Motion đặt thẳng, ô chọn Giọng là popover đúng
+  gốc, ★ nảy khi bấm và đứng yên khi mở. Khung hình của WebKit thật chỉ đo được trên bản cài.
 - Đo (mock, Chromium — WebKit thật chỉ trên bản cài): sau khi mở, `opacity` tại 0 / 100 / 250 ms tăng dần tới 1; sau
   khi đóng, phần tử còn đó với `pointer-events: none` ở 50 ms, biến khỏi DOM trước 300 ms.
 
-**Don't**: `transition: all` · animate `width/height/top/left` cho lớp nổi · hoạt cảnh ra dài bằng hoạt cảnh vào · một
+**Don't**: `transition: all` · thư viện animation JS · lò xo cho lớp nổi · hoạt cảnh chạy theo nhịp đọc · animate `width/height/top/left` cho lớp nổi · hoạt cảnh ra dài bằng hoạt cảnh vào · một
 số ms viết tay trong màn (mọi thời lượng đi qua token) · hoạt cảnh cho thứ người dùng không nhìn (đổi theme, danh
 sách đang gõ) · trượt-vào cho popover (Apple: popover *lớn ra* từ neo, sheet *lớn ra* tại chỗ; trượt là của banner).
 
@@ -1885,7 +1910,7 @@ Máy có **20 giọng**. Hai việc khác nhau, hai chỗ khác nhau:
 - **Ô Giọng trong Cài đặt giọng đọc nghe thử và ★ được ngay trong danh sách chọn** (chủ 26/09: "nâng cấp dropdown
   chọn giọng cũng có thể preview voice và favorite luôn"). `<select>` gốc không chứa được nút — menu của hệ chỉ có
   dòng chữ — nên ô này là `VoicePicker`: một nút trông y như select (30px, viền control, cùng mũi tên, tên cắt ba
-  chấm), bấm mở một lớp `menu` kính ngay dưới nó, hoặc ngay trên nó khi dưới không đủ chỗ cho cả danh sách; cả hai
+  chấm), bấm mở một lớp popover kính (mọc ra từ nút, §3.17) ngay dưới nó, hoặc ngay trên nó khi dưới không đủ chỗ cho cả danh sách; cả hai
   phía đều không đủ (cửa sổ thấp — panel đứng trên footer) thì lớp **phủ lên chính nút, dòng giọng đang dùng nằm ngang
   nút**, như pop-up của Mac, thay vì cuộn trong một khe hẹp giấu mất các dòng cuối (đo 26/09 ở 960×600: dưới 246px,
   trên 281px, danh sách 6 giọng cần ~330px). Rộng bằng panel (26rem) để "Phong cách kể chuyện" không bị cắt — kiểu
