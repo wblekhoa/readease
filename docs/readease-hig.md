@@ -1274,6 +1274,10 @@ trên màn cảm ứng thì không đọc được. Nay:
 - Một lớp nổi tại một thời điểm: mở ghi chú thì đóng mục lục và ngược lại.
 - Annotation trỏ vào đoạn **không thuộc sách này** bị bỏ khỏi danh sách, không đoán chương — hàng nhảy
   đi đâu không biết còn tệ hơn là không có hàng.
+- **Mở một ghi chú để viết là viết TIẾP** (27/09): ô soạn nhận tiêu điểm với con trỏ ở ĐẦU (textarea có sẵn chữ,
+  `autoFocus`), nên chữ gõ thêm chen vào trước ghi chú cũ. Nay lần nhận tiêu điểm ĐẦU đặt con trỏ ở cuối; bấm chuột về
+  sau thì con trỏ nằm đúng chỗ bấm. Thấy được nhờ lần đầu ma trận mở ô soạn (`note_editor`, và `note_save_failed` —
+  engine từ chối lưu, lý do hiện ngay trong ô); keys `note-caret` gõ vào ghi chú đã mở và đòi chữ nằm ở cuối.
 
 **Thanh cuộn** (chủ, 03/09: "đừng để nó lòi ra khỏi panel… phạm vi nên chỉ thuộc phần body"): panel là
 cột flex `overflow-hidden` — tiêu đề `shrink-0` đứng yên, **chỉ body cuộn**, nên thanh cuộn thuộc về danh

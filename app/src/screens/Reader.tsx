@@ -1257,6 +1257,16 @@ export function Reader({
         <Surface edge="strong" layer="popover" className="flex w-[22rem] max-w-full flex-col gap-2 p-3 shadow-lifted">
           <Textarea
             autoFocus
+            /* A note opened for writing is written ON: the focus arrived
+               with the caret at the start, so words typed into an existing
+               note landed in front of it (27/09). Only the first focus of
+               this editor - a click later puts the caret where it lands. */
+            onFocus={(event) => {
+              const box = event.currentTarget;
+              if (box.dataset.caret) return;
+              box.dataset.caret = "end";
+              box.setSelectionRange(box.value.length, box.value.length);
+            }}
             rows={3}
             value={editing.draft}
             placeholder={text("reader.note_placeholder")}

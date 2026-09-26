@@ -77,6 +77,8 @@ const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^
 const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
+const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/],
+  ["click", /những phương án đầu tiên của họ/], ["click-at", "button.note-nudge"], ["wait", /^Sửa ghi chú$|^Edit this note$/, "textarea"]];
 const SCREENS = {
   shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
   paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
@@ -147,6 +149,12 @@ const SCREENS = {
   // written, and no cell had pressed read - so none of them had been on a
   // screen. The states below pick the failure.
   reading_failed: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /./, "[role=alert]"], ["rest"]],
+  // Writing a note where it sits (HIG 3.14): until 27/09 no cell had
+  // opened the editor. Reached the way a reader would - the notes list
+  // jumps to a highlight, and its note button opens the editor on the page.
+  note_editor: NOTE_EDITOR,
+  // And a save the engine refuses: the reason is said inside the editor.
+  note_save_failed: [...NOTE_EDITOR, ["type", " Xem lại."], ["click", /^Lưu$|^Save$/], ["wait", /./, "[role=alert]"]],
   lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
     ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
@@ -160,6 +168,8 @@ const ONLY_IN = {
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
   reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
+  note_editor: ["default"],
+  note_save_failed: ["note_fail"],
   transfer_plan: ["default"],
   transfer_confirm: ["default"],
   transfer_done: ["default"],
@@ -174,7 +184,7 @@ const ONLY_IN = {
 // the page also logs it (every caught failure is console.error'd) - on the
 // screen that exists to refuse a reading, that line is the state, not a
 // fault. Exceptions are never excused.
-const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): / };
+const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): /, note_save_failed: /annotations\.update/ };
 const STATES = {
   default: "",
   empty: "empty=all",
@@ -206,6 +216,8 @@ const STATES = {
   voicefail_network: "voice=paid&voicefail=network",
   voicefail_blocked: "voice=paid&voicefail=account_blocked",
   voicefail_budget: "voice=paid&voicefail=budget",
+  // A note the engine will not save.
+  note_fail: "fail=annotations.update",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
@@ -214,6 +226,7 @@ const STATE_ON = {
   voicefail_network: ["reading_failed"],
   voicefail_blocked: ["reading_failed"],
   voicefail_budget: ["reading_failed"],
+  note_fail: ["note_save_failed"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -309,6 +322,8 @@ async function main() {
     // cell measures the page at rest, and a click leaves the pointer on the
     // button it pressed, in its hover colours.
     const rest = async () => { await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 1, y: 1 }); return true; };
+    // Words typed where the focus is, the way a keyboard would insert them.
+    const type = async (words) => { await send("Input.insertText", { text: words }); return true; };
     // A control found by WHERE it is rather than by a name: the Voice
     // picker's button is named by its row ("Giọng") plus the voice it shows,
     // which changes as the checks pick voices. Pressed at its centre, with
@@ -397,6 +412,7 @@ async function main() {
                 : kind === "perform" ? await perform(re, within)
                 : kind === "choose" ? await choose(re, within)
                 : kind === "rest" ? await rest()
+                : kind === "type" ? await type(re)
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -527,6 +543,7 @@ async function main() {
             : kind === "perform" ? await perform(re, within)
             : kind === "choose" ? await choose(re, within)
             : kind === "rest" ? await rest()
+            : kind === "type" ? await type(re)
             : await waitFor(re, 6000, within);
           if (!ok) return false;
         }
@@ -1158,6 +1175,17 @@ async function main() {
           seen === null ? `no failure line after a refused reading (preview ${opened ? "opened" : "never opened"} on hover)`
             : `hover ${opened ? "opened" : "did not open"} the preview; after the refused reading the failure line is ${seen.covered ? "covered" : "visible"} and the preview is ${seen.tip ? "open" : "closed"}`);
         crashed("reading-failed");
+      }
+      // A note opened for writing is written ON (27/09): the editor took the
+      // focus with the caret at the start, so words typed into an existing
+      // note landed in front of it.
+      if (!(await goto(NOTE_EDITOR, "vi"))) expect("note-caret", false, "could not open a note for writing");
+      else {
+        await type(" thêm");
+        const said = await evalJs(`(() => { const box = document.querySelector("textarea"); return box ? box.value : null; })()`);
+        expect("note-caret", said !== null && said.endsWith(" thêm"),
+          said === null ? "no note editor" : `typing into an opened note wrote ${JSON.stringify(said)} - not at its end`);
+        crashed("note-caret");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

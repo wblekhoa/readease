@@ -67,6 +67,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   where the reading would start. The preview reopened on its own the
   moment the reading was refused; it now closes when you press read and
   opens again when the pointer comes back.
+- Opening a note to edit it puts the cursor at its end, so what you type
+  is added to the note. It went in front of the words already there.
 
 ## 0.1.19
 
