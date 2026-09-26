@@ -830,7 +830,9 @@ export function SegmentedControl<T extends string | number>({
             } ${size === "lg" ? "[&_svg]:h-[18px] [&_svg]:w-[18px]" : ""} ${chosen}`}
           >
             {option.icon}
-            {(!compact || on) && option.label}
+            {/* A compact row's chosen words fade in while the pill slides to
+                them (HIG 3.17): shown at once, they arrived ahead of it. */}
+            {compact ? on && <span className="fade-in">{option.label}</span> : option.label}
             {on && option.disabled && <LockIcon />}
           </button>
         );

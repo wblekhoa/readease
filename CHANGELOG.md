@@ -19,7 +19,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - Motion that feels like the Mac's and costs nothing: a segmented row's
   pill - appearance, reading language, the side column's tabs - slides and
   resizes to the option chosen on a spring (there in about 170 ms,
-  settling a touch past), and a switch's knob moves on the same spring.
+  settling a touch past) - a side-column tab's name fading in as the pill
+  arrives - and a switch's knob moves on the same spring.
   The Voice list grows out of its button like the other popovers, and a
   star bounces when it is set - never when a list opens with it on. All
   CSS on the compositor, no animation library, and nothing new moves

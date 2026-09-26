@@ -1573,7 +1573,10 @@ trang · đổi tab cột.
 trượt sẽ méo. Một vệt RIÊNG vừa dời (`translate`) vừa đổi bề rộng (`width`) theo nút được chọn thì không méo — không
 scale, nên góc bo và bóng giữ nguyên. Vệt chỉ trượt khi **giá trị** đổi; lần đặt đầu và mọi lần đổi kích thước (cột bên
 thu/mở 240 ms bắn ResizeObserver mỗi frame) thì đặt thẳng — lò xo ở đó sẽ lẽo đẽo sau layout. Một lần đo lại trùng đích
-cũ thì bỏ qua, để không cắt ngang một cú trượt đang chạy. Chữ của tab compact hiện/ẩn tức thì trong lúc vệt trượt.
+cũ thì bỏ qua, để không cắt ngang một cú trượt đang chạy. Chữ của tab compact vừa chọn **mờ vào** (`fade-in`,
+`--dur-quick`) trong lúc vệt trượt tới — hiện tức thì thì chữ "bật" ra trước khi vệt tới nơi (thấy rõ ở clip chậm 26/09;
+sửa 27/09); chữ của tab vừa rời tắt ngay, vì vệt đã rời nó. Reduce Motion vẫn giữ cái mờ (ngắn hơn) — mờ là phản hồi,
+không phải di chuyển.
 
 **Cơ chế** (`ui/motion.tsx` + `index.css`):
 - `Presence open={…}`: giữ con đã render thêm `--dur-exit` sau khi `open` tắt (con cuối cùng được nhớ, vì props của nó

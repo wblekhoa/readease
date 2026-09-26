@@ -834,15 +834,18 @@ async function main() {
         target.click();
         const frames = [];
         let easing = null;
+        let fading = null;
         const start = performance.now();
         while (performance.now() - start < 700) {
           await new Promise((r) => requestAnimationFrame(r));
           frames.push(left());
           // Read while it moves: at rest the pill is "still", no transition.
           if (easing === null) easing = getComputedStyle(thumb).transitionTimingFunction;
+          // And whether the chosen option's words are fading in with it.
+          if (fading === null) fading = [...target.querySelectorAll("*")].some((e) => e.getAnimations().length > 0);
         }
         const r = target.getBoundingClientRect();
-        return { from, to: r.left - g.left, frames, width: thumb.getBoundingClientRect().width, wanted: r.width, easing };
+        return { from, to: r.left - g.left, frames, width: thumb.getBoundingClientRect().width, wanted: r.width, easing, fading };
       })()`);
       const judged = (m) => {
         if (!m || m.error) return m?.error ?? "nothing measured";
@@ -869,8 +872,11 @@ async function main() {
       }
       if (!(await goto([...OPEN_BOOK, ["click?", /^Hiện mục lục$/], ["wait", /^Mục lục$/]]))) expect("motion", false, "could not open the side column");
       else {
-        const verdict = judged(await slide("Danh sách của tài liệu"));
+        const tabs = await slide("Danh sách của tài liệu");
+        const verdict = judged(tabs);
         expect("motion", verdict === null, `side column tabs: ${verdict}`);
+        // A compact tab's words arrive with the pill, not ahead of it (27/09).
+        expect("motion", tabs?.fading === true, `the chosen tab's words appeared at once (fading: ${tabs?.fading}) - they should fade in as the pill slides`);
         crashed("motion");
       }
       if (!(await goto(SCREENS.player_settings))) expect("motion", false, "could not open Voice settings");
