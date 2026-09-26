@@ -4,7 +4,11 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.19
+
+Hear where a chapter starts and where a section does; search results and
+notes no longer pull the page back; favourite voices come first. Installs
+over 0.1.18, or lets 0.1.18 install it.
 
 - A search result, a highlight or a note stays on the page while the
   voice reads on. Picked mid-listen, it took the page there and the next
