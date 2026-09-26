@@ -44,6 +44,13 @@ const SHOTS = opt("--shots", null);
 const AXE = !args.includes("--no-axe");
 const ONLY = opt("--only", null); // e.g. "voices/default" narrows a run to one screen/state
 const KEYS_ONLY = args.includes("--keys");
+// `--dump-text <file>`: every reached cell's words - what is on the page
+// plus the names, tooltips and placeholders a person meets - written out,
+// so `scripts-string-coverage.mjs` can say which interface strings no cell
+// has ever shown (27/09: three defects in a day sat in screens no cell
+// had opened).
+const DUMP = opt("--dump-text", null);
+const seen = [];
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const CDP_PORT = 9333 + Math.floor(Math.random() * 500);
 // tauri.conf.json minWidth/minHeight - the floor a person can shrink to. A
@@ -379,6 +386,8 @@ async function main() {
                 : m.params.args.map((a) => a.value ?? a.description ?? "").join(" ");
               findings.push({ cell, kind: "console", detail: String(detail).split("\n")[0].slice(0, 200) });
             }
+            if (DUMP) seen.push({ cell, text: await evalJs(`(() => [document.body.innerText,
+              ...[...document.querySelectorAll("[aria-label],[title],[placeholder]")].flatMap((e) => ["aria-label", "title", "placeholder"].map((a) => e.getAttribute(a)).filter(Boolean))].join("\\n"))()`) });
             const probe = await evalJs(`(() => {
               const text = document.body.innerText;
               const leaked = [...new Set((text.match(/\\b[a-z_]+\\.[a-z_0-9]+\\b/g) || []))];
@@ -1266,6 +1275,7 @@ async function main() {
     const byKind = {}; for (const f of findings) byKind[f.kind] = (byKind[f.kind] || 0) + 1;
     for (const f of findings) console.log(`  ${f.kind.padEnd(11)} ${f.cell.padEnd(34)} ${f.detail}`);
     const summary = Object.entries(byKind).map(([k, v]) => `${k}=${v}`).join(" ") || "clean";
+    if (DUMP) writeFileSync(DUMP, JSON.stringify(seen));
     if (findings.length) { console.log(`RENDER_AUDIT RED cells=${cells} ${summary}`); process.exitCode = 1; }
     else if (KEYS_ONLY) console.log(`RENDER_AUDIT PASS keys=${keyChecks} — bàn phím vào được lớp nổi và về đúng nút, chuột không đổi gì, nhóm điều khiển đọc có tên`);
     else console.log(`RENDER_AUDIT PASS cells=${cells}${AXE ? ` axe-watch=${watching.length}` : " (axe skipped)"}${keyChecks ? ` keys=${keyChecks}` : ""} — mọi màn render ở ${W}×${H}, không lỗi console, không lộ key, không tràn ngang`);

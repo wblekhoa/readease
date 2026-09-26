@@ -908,6 +908,15 @@ cửa sổ lớn, nơi bố cục có thể hết HÌNH (trang đôi, lớp nổ
 nền = 48 ô, 0 phát hiện, soi ảnh không lỗi. Không vào lượt đầy đủ (gấp đôi thời gian cho cùng câu trả lời) — chạy
 khi một thay đổi đụng bố cục.
 
+**Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
+placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào
+từng hiện, theo vùng (bỏ 46 khoá macOS tự vẽ: `menu.*`, `now_playing.*`). Khớp đúng hoa/thường (nhãn "Lưu" không phải
+âm tiết trong "Sao lưu") cộng biến thể VIẾT HOA cho nhãn CSS viết hoa; chỗ trống chỉ khớp trong một dòng. Là một
+SÀN, không phải phán quyết: chữ chỉ hiện trong lượt bàn phím (không ghi) hay chỉ ở app thật bị tính là chưa hiện, và
+nhãn rất ngắn có thể trùng chữ khác. Lần đầu, lượt đầy đủ @ `3c00dd4` (724 ô PASS): **274/450**. Nó là bản đồ chỗ chưa
+ô nào nhìn tới — ba lỗi thật trong ngày 27/09 (chữ tiếng Anh của bảng chi phí, hai hàng mờ dưới AA, báo thành công
+bằng màu lỗi) đều nằm ở màn chưa ô nào mở.
+
 **Đo lần đầu 22/09 — 7 vi phạm, hai nhóm, không có mức nhẹ nào** (620 ô); sau khi sửa: **0**.
 1. `color-contrast` serious — dòng "Chọn tài liệu…" ở màn Chuyển ghi chú dùng `text-ink-faint`, tức token **disabled**,
    đo 2,1:1 trên nền `paper` (cần 4,5). Ô chọn ấy không vô hiệu, nó đang chờ, và dòng đó là chỉ dẫn duy nhất → đổi sang
