@@ -899,6 +899,11 @@ render audit (620 ô), luật `wcag2a wcag2aa`; **vi phạm mức serious/critic
 theo dõi. Kết quả gộp theo (luật × phần tử) và chỉ in một lần kèm ô đầu tiên thấy nó — 620 ô nhân lên sẽ không đọc
 được. Luật HIG §8: chạy trên cây CHƯA sửa trước để biết nó đỏ được, rồi mới sửa.
 
+**Cửa sổ lớn** (27/09): ma trận đo ở sàn 960×600, nơi mọi thứ hết CHỖ; `--size 1440x900` chạy cùng các ô ở một
+cửa sổ lớn, nơi bố cục có thể hết HÌNH (trang đôi, lớp nổi neo theo nút, lưới kệ). Lần đầu: 12 màn × 2 ngôn ngữ × 2
+nền = 48 ô, 0 phát hiện, soi ảnh không lỗi. Không vào lượt đầy đủ (gấp đôi thời gian cho cùng câu trả lời) — chạy
+khi một thay đổi đụng bố cục.
+
 **Đo lần đầu 22/09 — 7 vi phạm, hai nhóm, không có mức nhẹ nào** (620 ô); sau khi sửa: **0**.
 1. `color-contrast` serious — dòng "Chọn tài liệu…" ở màn Chuyển ghi chú dùng `text-ink-faint`, tức token **disabled**,
    đo 2,1:1 trên nền `paper` (cần 4,5). Ô chọn ấy không vô hiệu, nó đang chờ, và dòng đó là chỉ dẫn duy nhất → đổi sang

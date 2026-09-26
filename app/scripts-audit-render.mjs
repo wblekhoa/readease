@@ -46,7 +46,10 @@ const ONLY = opt("--only", null); // e.g. "voices/default" narrows a run to one 
 const KEYS_ONLY = args.includes("--keys");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const CDP_PORT = 9333 + Math.floor(Math.random() * 500);
-const W = 960, H = 600; // tauri.conf.json minWidth/minHeight - the floor a person can shrink to
+// tauri.conf.json minWidth/minHeight - the floor a person can shrink to. A
+// larger window is asked for by name (`--size 1440x900`): the floor is where
+// things run out of room, a large window where they run out of shape.
+const [W, H] = opt("--size", "960x600").split("x").map(Number);
 
 // Every key the interface can print, so a leaked one is recognisable by name.
 const I18N = readFileSync(join(HERE, "src/i18n.ts"), "utf8");
