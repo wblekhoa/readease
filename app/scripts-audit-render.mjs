@@ -506,6 +506,22 @@ async function main() {
             return { kept: !!b && document.activeElement === b, tip: document.querySelector("[role=tooltip]")?.textContent ?? null }; })()`);
           expect("mouse", !after.kept && after.tip === null, `${name}: after a mouse press the opener ${after.kept ? "kept the focus" : "let go"}${after.tip ? `, and the tooltip "${after.tip}" hangs over what it opened` : ""}`);
         }
+        // A press puts the tooltip away, as the Mac's help tags go when you
+        // click (27/09): it came back - by focus in this browser, by the hover
+        // timer in WebKit, where a click does not focus a button - over what
+        // the press had just done. A plain button, not an opener, so an
+        // opener's own blur cannot hide it.
+        if (!(await goto(OPEN_BOOK))) expect("mouse", false, "could not reopen the document");
+        else {
+          const theme = await evalJs(`[...document.querySelectorAll("button")].find((b) => /^Chuyển sang nền (tối|sáng)$/.test(b.getAttribute("aria-label") || "") && b.getBoundingClientRect().width > 0)?.getAttribute("aria-label") ?? null`);
+          if (!theme) expect("mouse", false, "no theme switch to press");
+          else {
+            await clickAt(`button[aria-label="${theme}"]`);
+            await sleep(900);
+            const tip = await evalJs(`document.querySelector("[role=tooltip]")?.textContent ?? null`);
+            expect("mouse", tip === null, `after a mouse press on "${theme}" its tooltip "${tip}" came back`);
+          }
+        }
         // The transport is a named group (HIG 4.2, point 1): VoiceOver says
         // what the buttons are FOR before it reads them one by one. No cell
         // of the matrix is mid-reading, so this is the only place it is seen.

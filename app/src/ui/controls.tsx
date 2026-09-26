@@ -124,6 +124,7 @@ export function IconButton({
   onMouseLeave,
   onFocus,
   onBlur,
+  onPointerDown,
   ...rest
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> & {
   /* Wider than the DOM attribute on purpose: `title` never reaches the
@@ -147,6 +148,12 @@ export function IconButton({
      once on keyboard focus. Leaving early cancels the timer and shows
      nothing. */
   const timer = useRef<number | null>(null);
+  /* Pressed, and the pointer has not left since: a help tag goes when you
+     click and stays gone until you move away and back (27/09 - it came back
+     over what the press had just opened: by the hover timer in WebKit, by
+     the focus the click gave it in a browser). Keyboard focus still shows
+     it at once. */
+  const pressed = useRef(false);
   const cancel = () => {
     if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; }
   };
@@ -203,10 +210,11 @@ export function IconButton({
       <button
         type="button"
         className={`icon-button flex h-8 w-8 items-center justify-center rounded-full transition-colors hover-wash disabled:text-ink-faint ${className}`}
-        onMouseEnter={(event) => { hover(event.currentTarget); onMouseEnter?.(event); }}
-        onMouseLeave={(event) => { close(); onMouseLeave?.(event); }}
-        onFocus={(event) => { cancel(); open(event.currentTarget); onFocus?.(event); }}
-        onBlur={(event) => { close(); onBlur?.(event); }}
+        onMouseEnter={(event) => { if (!pressed.current) hover(event.currentTarget); onMouseEnter?.(event); }}
+        onMouseLeave={(event) => { pressed.current = false; close(); onMouseLeave?.(event); }}
+        onPointerDown={(event) => { pressed.current = true; close(); onPointerDown?.(event); }}
+        onFocus={(event) => { cancel(); if (!pressed.current) open(event.currentTarget); onFocus?.(event); }}
+        onBlur={(event) => { pressed.current = false; close(); onBlur?.(event); }}
         {...rest}
       />
       {tip && title && createPortal(

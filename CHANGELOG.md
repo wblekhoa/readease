@@ -40,9 +40,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   longer show markdown's backticks, they can be scrolled from the
   keyboard, and a failed check's long web address wraps inside the sheet
   instead of running past its edge.
-- After Voice settings or Voices & models is opened with the mouse, Space
-  pauses the reading again - it used to press the button once more - and
-  the gear's tooltip no longer hangs over the sheet it opened.
+- Clicking an icon button puts its tooltip away until the pointer leaves,
+  as the Mac's help tags do: it could come back over the sheet the button
+  had just opened (the gear for Voices & models). Voice settings and
+  Voices & models also let go of the focus after a click, like the other
+  buttons that open panels.
 
 ## 0.1.19
 
