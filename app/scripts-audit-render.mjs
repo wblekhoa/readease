@@ -168,6 +168,13 @@ const SCREENS = {
   transfer_confirm: [...TRANSFER_PLAN, ["click", /^Chép sang$|^Copy across$/], ["wait", /^Chép ghi chú sang bản kia\?$|^Copy notes across\?$/, "p"]],
   transfer_done: [...TRANSFER_PLAN, ["click", /^Chép sang$|^Copy across$/], ["wait", /^Chép ghi chú sang bản kia\?$|^Copy notes across\?$/, "p"],
     ["click", /^Chép sang$|^Copy across$/], ["wait", /^Đã chép \d+ mục|^Copied \d+ items?/, "p"]],
+  // A reading under way (HIG 3.5, 3.24): the transport, the forecast of
+  // what is left, a pause - and the moment before the voice's first sound.
+  // The core of the app, and no cell had ever drawn it: every cell was idle.
+  reading_now: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["wait", /còn ~|left$/, "span"], ["rest"]],
+  reading_paused: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["click", /^Tạm dừng$|^Pause$/],
+    ["wait", /^Tiếp tục$|^Resume$/], ["rest"]],
+  reading_warming: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Đang chuẩn bị giọng đọc…$|^Preparing the voice…$/, "p"], ["rest"]],
   // A reading that fails, and the line that says why (HIG 3.5): the mock
   // has refused a reading on demand since the eight failure sentences were
   // written, and no cell had pressed read - so none of them had been on a
@@ -227,6 +234,9 @@ const ONLY_IN = {
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
   reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
+  reading_now: ["default"],
+  reading_paused: ["default"],
+  reading_warming: ["warm_hold"],
   note_editor: ["default"],
   shelf_import: ["default"],
   key_form: ["default"],
@@ -306,6 +316,8 @@ const STATES = {
   download_hold: "download=hold",
   english_hold: "english=missing&download=hold",
   first_run_hold: "model=missing&download=hold",
+  // A reading whose voice has not made its first sound.
+  warm_hold: "warm=hold",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
@@ -320,6 +332,7 @@ const STATE_ON = {
   download_hold: ["model_downloading", "model_cancelled"],
   english_hold: ["model_english_downloading"],
   first_run_hold: ["first_run_download"],
+  warm_hold: ["reading_warming"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];

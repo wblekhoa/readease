@@ -446,6 +446,7 @@ const FAIL_SAID = new URLSearchParams(window.location.search).get("said")
 const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const DOWNLOAD_HOLD = new URLSearchParams(window.location.search).get("download") === "hold";
+const WARM_HOLD = new URLSearchParams(window.location.search).get("warm") === "hold";
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
 const PERMISSION = new URLSearchParams(window.location.search).get("permission");
 /* Which lists come back EMPTY. The harness answered every list with its
@@ -691,6 +692,9 @@ function stepReading(delay: number) {
 function startMockReading(steps: string[], billing: { chars: number; usd: number } | null = null) {
   stopMockReading();
   live = { steps, index: 0, timer: null, paused: false, billing };
+  // `?warm=hold`: the voice never makes its first sound, so a cell can look
+  // at "preparing the voice" - in the harness it lasts 120 ms.
+  if (WARM_HOLD) return;
   readingTimers.push(setTimeout(() => emit("reading:started", {}), 120) as unknown as number);
   stepReading(150);
 }
