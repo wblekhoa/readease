@@ -2146,14 +2146,14 @@ loãng tông ramp. Material nếu quay lại chỉ ở vùng giới hạn, khôn
 | tick (vạch trên rãnh) | `edge-strong` (n40) | n80 | chấm thang cỡ chữ, vạch giữa hai nửa cụm cỡ chữ |
 
 **Màu brand = XANH DƯƠNG** (chủ, 21/09: "update màu brand của app thành màu xanh dương"): `--color-brand-600` =
-`--blue-b100`, `--color-brand-700` = `--blue-b120` — ramp xanh của DS, lật theo theme (sáng #2B52D4 / #2446B4, tối
-#486AF2 / #6988F0; ở tối bậc 120 sáng hơn bậc 100 nên hover *sáng lên*, đúng cách control tối phản hồi). **Đo 27/09
-— CHỜ CHỦ**: chữ trắng trên nền hover ở theme tối (b120 #6988F0) chỉ **3,29:1**, dưới AA 4,5 cho chữ 14px đậm vừa
-(axe `color-contrast` serious khi con trỏ nằm trên nút); nền nghỉ b100 là 4,55:1 nên MỌI màu sáng hơn đều dưới 4,5 —
-"hover sáng lên" và "chữ trắng đạt AA khi hover" không cùng đứng được. Hai hướng: giữ (chỉ trong lúc rê chuột), hoặc
-hover ở tối đậm xuống (b80 #4563CC = 5,37:1). Chưa đổi: đây là gu đã chốt 21/09. Trước đó là đỏ
-DOL `#D42525`/`#B31F1F` viết cứng, không lật theme. Đo: chữ trắng trên b100 6,6:1 (sáng) / 4,9:1 (tối); chấm đầu dòng
-trên desk 6,6 / 4,4. Hệ quả: brand và `danger` là hai sắc khác hẳn (không còn phải giữ luật "hai sắc đỏ không đứng cạnh
+`--blue-b100`, `--color-brand-700` = `--app-brand-deep` — ramp xanh của DS, lật theo theme. **Hover và nhấn ĐẬM XUỐNG ở
+cả hai theme** (đúng luật §2 "nút primary … đậm xuống"): sáng b120 #2446B4, tối **b80** #4563CC. Trước 27/09 `brand-700`
+đi thẳng theo ramp (b120), mà ở tối b120 #6988F0 lại SÁNG hơn nền b100 — chữ trắng khi hover còn **3,29:1**, dưới AA 4,5
+(axe serious; nền nghỉ b100 chỉ 4,55 nên mọi hover sáng hơn đều trượt). Chủ uỷ quyền 27/09 "theo đề xuất của bạn" ⇒ b80
+= 5,37:1. Đi qua biến vai trò `--app-brand-deep` (`:root` b120 · `[data-theme="dark"]` b80) vì `@theme inline` chép giá
+trị thẳng vào tiện ích. Ô `primary_hover` (bước `hover` của audit) canh ở cả hai theme. Trước đó là đỏ
+DOL `#D42525`/`#B31F1F` viết cứng, không lật theme. Đo (công thức WCAG trên mã DS, 27/09): chữ trắng trên b100 6,44:1
+(sáng) / 4,55:1 (tối), trên nền hover 8,05 / 5,37; chấm đầu dòng trên desk 6,6 / 4,4 (đo 21/09). Hệ quả: brand và `danger` là hai sắc khác hẳn (không còn phải giữ luật "hai sắc đỏ không đứng cạnh
 nhau"); vòng focus (info b60) là họ hàng của brand — Apple cũng dùng một màu xanh cho cả accent lẫn focus ring, đó là
 điều mong muốn. **Icon app (22/09)**: vòng sóng âm hữu cơ — các dải xanh uốn thành một vòng không đối xứng; nguồn chủ
 duyệt là `assets/branding/readease-icon-master.png` (1254 px, sha256 `26379365…`), `tauri icon` sinh lại cả bộ +

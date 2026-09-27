@@ -84,6 +84,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - Searching the voice list or the Apple Books sheet no longer moves the
   search box while you type: each shrank with its matches and the box
   slid with it. It stays where it was until the search is cleared.
+- In the dark theme the blue button (Continue, Save, Copy across…) goes a
+  shade deeper under the pointer instead of lighter, so its label stays
+  easy to read: on the lighter blue it had dropped to 3.3:1.
 
 ## 0.1.19
 

@@ -16,17 +16,19 @@
 
 /* The brand colour: BLUE, the DS's own blue ramp (owner, 21/09: "update
    màu brand của app thành màu xanh dương" - it had been DOL's red, two
-   hex literals that did not follow the theme). b100 is the fill, b120 the
-   pressed/hover step; in dark the ramp runs the other way, so hover
-   brightens there, which is what a dark control does. Resolved through
-   the DS variables, so it flips with [data-theme] like every other role.
-   Measured: white on b100 6.6:1 (light) / 4.9:1 (dark); the list dot on
-   the desk 6.6 / 4.4. Brand and danger are now different hues outright,
-   and the focus ring (info b60) is a cousin of the brand - Apple's blue
-   is both its accent and its ring, so that reads as intended. */
+   hex literals that did not follow the theme). b100 is the fill; hover and
+   pressed go a step DEEPER in both themes (HIG 2: the primary "đậm xuống"),
+   which is `--app-brand-deep` below - b120 in light, b80 in dark. The dark
+   ramp runs the other way, and following it (b120) lifted the fill under
+   the white label to 3.29:1; b80 holds 5.37 (27/09, delegated: "theo đề
+   xuất của bạn"). Resolved through the DS variables, so it flips with
+   [data-theme] like every other role - and through a role variable, since
+   `@theme inline` writes the value into the utility itself. Brand and
+   danger are different hues outright, and the focus ring (info b60) is a
+   cousin of the brand - Apple's blue is both its accent and its ring. */
 @theme inline {
   --color-brand-600: var(--blue-b100);
-  --color-brand-700: var(--blue-b120);
+  --color-brand-700: var(--app-brand-deep);
 }
 
 /* The token bridge: every colour a component may use, named by ROLE and
@@ -126,6 +128,9 @@
      itself turns lighter on the dark ground - so one name holds in both
      themes, and the star stays legible on the sheet in each. */
   --app-favorite: var(--fill-warning-bold);
+  /* The primary button's hover and pressed fill: a step deeper than the
+     b100 fill (see the brand note at the top). */
+  --app-brand-deep: var(--blue-b120);
 }
 [data-theme="dark"] {
   --app-dot: var(--border-color-neutral-soft);
@@ -156,6 +161,9 @@
      panel recedes and the controls on it still come forward. Light cannot use
      the same step (its paper IS the white desk), hence the per-theme role. */
   --app-panel: var(--neutral-n05);
+  /* Deeper in dark too: b120 is LIGHTER here and left the white label at
+     3.29:1; b80 is 5.37 (axe, 27/09). */
+  --app-brand-deep: var(--blue-b80);
 }
 
 @theme inline {

@@ -173,6 +173,9 @@ const SCREENS = {
   // written, and no cell had pressed read - so none of them had been on a
   // screen. The states below pick the failure.
   reading_failed: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /./, "[role=alert]"], ["rest"]],
+  // The primary button under the pointer (HIG 2, hover): its label must
+  // hold its contrast on the hover fill in both themes (27/09).
+  primary_hover: [...OPEN_BOOK, ["hover", /^Đọc tiếp|^Continue/]],
   // Adding a provider's key (HIG 3.13): the form, and a key the provider
   // refuses (`keyfail=bad_key`). The words typed are a made-up test string
   // on the mock, which answers locally and hands no key back. Until 27/09
@@ -212,6 +215,7 @@ const ONLY_IN = {
   note_editor: ["default"],
   shelf_import: ["default"],
   key_form: ["default"],
+  primary_hover: ["default"],
   search_none: ["default"],
   paste_over: ["default"],
   apple_import_menu: ["default"],
@@ -342,21 +346,32 @@ async function main() {
       }
       return false;
     };
-    const findAndClick = async (re, patience = 4000) => {
-      await waitFor(re, patience);
-      // The first VISIBLE match, as a hand would find it: the folded column
-      // keeps its tabs in the DOM at zero width behind \`inert\`, and a tab
-      // named like the toolbar button ("Tìm trong tài liệu") used to be
-      // found first and clicked at the fold (16/09, search unreachable).
-      const box = await evalJs(`(() => {
+    // The first VISIBLE match, as a hand would find it: the folded column
+    // keeps its tabs in the DOM at zero width behind \`inert\`, and a tab
+    // named like the toolbar button ("Tìm trong tài liệu") used to be
+    // found first and clicked at the fold (16/09, search unreachable).
+    const locate = (re) => evalJs(`(() => {
         const re = ${re.toString()};
         const el = [...document.querySelectorAll("button,[role=button],[role=radio],[role=tab],a,summary")]
           .find((e) => re.test((e.getAttribute("aria-label") || e.textContent || "").trim())
             && !e.closest("[inert]") && e.getBoundingClientRect().width > 0);
         if (!el) return null; el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    const findAndClick = async (re, patience = 4000) => {
+      await waitFor(re, patience);
+      const box = await locate(re);
       if (!box) return false;
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1 });
+      await sleep(350); return true;
+    };
+    // The pointer resting on a control, not pressing it: a cell that measures
+    // a hover state (27/09 - the primary button's hover had never been
+    // looked at, and in the dark theme it took its label under AA).
+    const hover = async (re, patience = 4000) => {
+      await waitFor(re, patience);
+      const box = await locate(re);
+      if (!box) return false;
+      await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y });
       await sleep(350); return true;
     };
     // A menu command, through the app's own dispatcher: the browser has no
@@ -472,6 +487,7 @@ async function main() {
                 : kind === "choose" ? await choose(re, within)
                 : kind === "rest" ? await rest()
                 : kind === "type" ? await type(re)
+                : kind === "hover" ? await hover(re)
                 : await waitFor(re, 6000, within);
               if (!ok) { reached = false; findings.push({ cell, kind: "unreachable", detail: `${kind} ${re}` }); break; }
             }
@@ -606,6 +622,7 @@ async function main() {
             : kind === "choose" ? await choose(re, within)
             : kind === "rest" ? await rest()
             : kind === "type" ? await type(re)
+            : kind === "hover" ? await hover(re)
             : await waitFor(re, 6000, within);
           if (!ok) return false;
         }
