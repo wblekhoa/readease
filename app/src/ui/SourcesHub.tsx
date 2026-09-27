@@ -106,7 +106,6 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading }: 
         onSaveKey={onSaveKey}
       />
       <Notice fine className="mt-2 block">{text("hub.api_note")} {text("key.local_only")}</Notice>
-      <ModelProgress models={models} className="mt-4" />
     </>
   );
 }
@@ -149,9 +148,15 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
         <ReadingSources {...sources} />
       </div>
       {/* Nothing to confirm: every row acts on its own. The one button is
-          the way out, for a person who came from the settings panel. */}
-      <div className="flex shrink-0 justify-end border-t border-edge px-6 py-3">
-        <Button size="sm" disabled={downloading} onClick={onClose}>{text("aria.close")}</Button>
+          the way out, for a person who came from the settings panel. A
+          download in flight stands beside it, where it is always in view -
+          it sat at the end of the scrolling body, out of sight at the
+          window's floor while every button here, Close too, was locked
+          (27/09). The Apple Books sheet keeps its progress in the same
+          spot. */}
+      <div className="flex shrink-0 items-center gap-4 border-t border-edge px-6 py-3">
+        <ModelProgress models={sources.models} className="min-w-0 flex-1" />
+        <Button size="sm" disabled={downloading} onClick={onClose} className="ml-auto">{text("aria.close")}</Button>
       </div>
     </Surface>
     </>

@@ -173,6 +173,17 @@ const SCREENS = {
   // written, and no cell had pressed read - so none of them had been on a
   // screen. The states below pick the failure.
   reading_failed: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /./, "[role=alert]"], ["rest"]],
+  // A model download in flight and cancelled (HIG 3.13, the first thing a
+  // new person does): no cell had pressed "Tải và dùng" or "Tải về", so the
+  // progress, its message and the cancel had never been on a screen. The
+  // mock holds the download at 38 % (`download=hold`).
+  model_downloading: [...HUB, ["click", /^Tải và dùng$|^Download and use$/], ["wait", /^Huỷ tải$|^Cancel download$/]],
+  model_cancelled: [...HUB, ["click", /^Tải và dùng$|^Download and use$/], ["wait", /^Huỷ tải$|^Cancel download$/],
+    ["click", /^Huỷ tải$|^Cancel download$/], ["wait", /^Đã huỷ tải|^Download cancelled/, "p"]],
+  model_english_downloading: [...HUB, ["click", /^Tải về$|^Download$/], ["wait", /^Huỷ tải$|^Cancel download$/]],
+  // The same download from the first-run screen, where it is the point.
+  first_run_download: [["wait", /Chọn cách đọc để bắt đầu|Choose how to read/], ["click", /^Tải và dùng$|^Download and use$/],
+    ["wait", /^Huỷ tải$|^Cancel download$/]],
   // The primary button under the pointer (HIG 2, hover): its label must
   // hold its contrast on the hover fill in both themes (27/09).
   primary_hover: [...OPEN_BOOK, ["hover", /^Đọc tiếp|^Continue/]],
@@ -216,6 +227,10 @@ const ONLY_IN = {
   shelf_import: ["default"],
   key_form: ["default"],
   primary_hover: ["default"],
+  model_downloading: ["download_hold"],
+  model_cancelled: ["download_hold"],
+  model_english_downloading: ["english_hold"],
+  first_run_download: ["first_run_hold"],
   search_none: ["default"],
   paste_over: ["default"],
   apple_import_menu: ["default"],
@@ -280,6 +295,10 @@ const STATES = {
   // A paid voice whose price could not be worked out: the read button must
   // stay locked, saying so, and the cost panel must say why (27/09).
   price_failed: "voice=paid&fail=estimate",
+  // A model download that stays in flight (the mock stops at 38 %).
+  download_hold: "download=hold",
+  english_hold: "english=missing&download=hold",
+  first_run_hold: "model=missing&download=hold",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
@@ -290,6 +309,9 @@ const STATE_ON = {
   voicefail_budget: ["reading_failed"],
   note_fail: ["note_save_failed"],
   price_failed: ["reader", "cost"],
+  download_hold: ["model_downloading", "model_cancelled"],
+  english_hold: ["model_english_downloading"],
+  first_run_hold: ["first_run_download"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -1340,6 +1362,42 @@ async function main() {
         expect("apple-search", before !== null && after !== null && Math.abs(after - before) <= 1,
           `typing a query that matches nothing moved the Apple Books search from y=${before} to y=${after}`);
         crashed("apple-search");
+      }
+      // A download shows itself where the person is (27/09): pressing "Tải và
+      // dùng" greyed every button, Close included, while the progress and its
+      // Cancel sat at the end of the sheet's scrolling body - out of view at
+      // the window's floor.
+      if (!(await goto([...HUB, ["click", /^Tải và dùng$|^Download and use$/], ["wait", /^Huỷ tải$|^Cancel download$/]], "vi", STATES.download_hold))) expect("model-progress", false, "could not start a download in the hub");
+      else {
+        const seen = await evalJs(`(() => { const b = [...document.querySelectorAll("[role=dialog] button")].find((e) => e.textContent.trim() === "Huỷ tải");
+          if (!b) return null; const r = b.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          return { visible: !!top && b.contains(top), y: Math.round(r.y) }; })()`);
+        expect("model-progress", seen !== null && seen.visible, seen === null ? "no Cancel download button" : `the download's Cancel is out of view (y=${seen.y}) while every other button is locked`);
+        crashed("model-progress");
+      }
+      // What a download says, in the reader's language (27/09): the engine
+      // writes its progress in Vietnamese and the shell has every sentence in
+      // English (RUNTIME_EN) - but the download line showed the engine's
+      // words untranslated.
+      if (!(await goto([...HUB, ["click", /^Download$/], ["wait", /^Cancel download$/]], "en", STATES.english_hold))) expect("model-words", false, "could not start the English download");
+      else {
+        await sleep(900);
+        const said = await evalJs(`(() => { const b = [...document.querySelectorAll("[role=dialog] button")].find((e) => e.textContent.trim() === "Cancel download");
+          const p = b && b.closest("div.flex")?.parentElement?.querySelector("p"); return p ? p.textContent : null; })()`);
+        const marked = /[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i.test(said ?? "");
+        expect("model-words", said !== null && !marked, said === null ? "no download line" : `the English download says ${JSON.stringify(said)}`);
+        crashed("model-words");
+      }
+      // The same on the first-run screen - the first thing a new person
+      // sees, and the one place a download is the whole point.
+      if (!(await goto([["wait", /Chọn cách đọc để bắt đầu|Choose how to read/], ["click", /^Tải và dùng$|^Download and use$/], ["wait", /^Huỷ tải$|^Cancel download$/]],
+        "vi", "model=missing&download=hold"))) expect("first-run-progress", false, "could not start a download on the first-run screen");
+      else {
+        const seen = await evalJs(`(() => { const b = [...document.querySelectorAll("button")].find((e) => e.textContent.trim() === "Huỷ tải");
+          if (!b) return null; const r = b.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          return { visible: !!top && b.contains(top), y: Math.round(r.y) }; })()`);
+        expect("first-run-progress", seen !== null && seen.visible, seen === null ? "no Cancel download button" : `on the first-run screen the download's Cancel is out of view (y=${seen.y})`);
+        crashed("first-run-progress");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

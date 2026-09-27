@@ -87,6 +87,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - In the dark theme the blue button (Continue, Save, Copy across…) goes a
   shade deeper under the pointer instead of lighter, so its label stays
   easy to read: on the lighter blue it had dropped to 3.3:1.
+- A model download shows its progress and its Cancel where you can see
+  them - at the foot of Voices & models, and on the first-run screen
+  with the way into the library. In a small window they sat below the
+  rows, out of view, while every other button was locked. The download's
+  progress line is also in English in the English interface; it showed
+  the voice engine's Vietnamese.
 
 ## 0.1.19
 

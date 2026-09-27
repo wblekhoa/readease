@@ -445,6 +445,7 @@ const FAIL_SAID = new URLSearchParams(window.location.search).get("said")
  */
 const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
+const DOWNLOAD_HOLD = new URLSearchParams(window.location.search).get("download") === "hold";
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
 const PERMISSION = new URLSearchParams(window.location.search).get("permission");
 /* Which lists come back EMPTY. The harness answered every list with its
@@ -1274,16 +1275,24 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
      * sees - spinning forever in the preview, so nobody ever looked at it. */
     stopMockReading();
     const english = (args as { model?: string } | undefined)?.model === "english";
-    const steps = [0.12, 0.38, 0.61, 0.87, 1];
+    // `?download=hold` stops at 38 % and never finishes, so a cell can look
+    // at a download in flight - the real one takes minutes, this one 4 s.
+    const steps = DOWNLOAD_HOLD ? [0.12, 0.38] : [0.12, 0.38, 0.61, 0.87, 1];
+    // The engine's own sentences (kokoro.py / vieneu.py `prepare_model`),
+    // word for word: the shell translates them through RUNTIME_EN, and a
+    // mock that made up its own ("… 38%") could never show whether it does.
+    const said = english
+      ? ["Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…", "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…",
+         "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…", "Đang kiểm tra giọng đọc tiếng Anh…", "Giọng đọc tiếng Anh đã sẵn sàng."]
+      : ["Đang tải mô hình đọc tiếng Việt lần đầu…", "Đang tải mô hình đọc tiếng Việt lần đầu…",
+         "Đang tải bộ giải mã âm thanh…", "Đang kiểm tra bộ đọc tiếng Việt…", "Mô hình đọc tiếng Việt đã sẵn sàng."];
     steps.forEach((progress, index) => {
       downloadTimers.push(setTimeout(() => emit("engine:model_progress", {
         progress,
-        message: english
-          ? `Đang tải giọng đọc tiếng Anh… ${Math.round(progress * 100)}%`
-          : `Đang tải giọng đọc… ${Math.round(progress * 100)}%`,
+        message: said[index],
       }), 400 + index * 700));
     });
-    downloadTimers.push(setTimeout(() => {
+    if (!DOWNLOAD_HOLD) downloadTimers.push(setTimeout(() => {
       downloadTimers = [];
       if (english) {
         MODEL.english = { ...MODEL.english, ready: true, installed: 335_000_000 };

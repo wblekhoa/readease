@@ -296,7 +296,15 @@ và chỉ khi đó. Trước 15/09 đây là gate: chặn toàn app cho tới kh
   "Đã có khoá · N giọng"; **lời từ chối nói việc làm NGAY Ở ĐÂY** — 27/09, lần đầu ma trận mở form khoá (`key_form`,
   `key_refused`): nó mượn câu của lần đọc thất bại, nên khoá sai bảo "kiểm tra lại khoá trong phần giọng đọc" (đang ở
   đó) và mất mạng bảo "bấm đọc lại" (form này Lưu); ba mã chỉ đường sai — `bad_key` · `rate_limit` · `network` — có câu
-  riêng `key.refused_*`, các mã còn lại đọc như nhau ở hai nơi; keys `key-words`); tiến độ + Huỷ tải ở cuối (`ModelProgress`). Nguồn sự thật duy nhất: hook
+  riêng `key.refused_*`, các mã còn lại đọc như nhau ở hai nơi; keys `key-words`); **tiến độ + Huỷ tải luôn trong tầm
+  mắt** (`ModelProgress`, 27/09): trong sheet nó ở **dải chân**, cạnh nút Đóng mà nó khoá (cùng chỗ sheet Apple Books để
+  tiến độ); trên màn chạy lần đầu nó cùng nút "vào thư viện" **dính đáy** cột cuộn (nền đặc, đệm dưới của cột nằm TRONG khối để
+  không lộ hàng bên dưới, một đường kẻ trên như chân sheet để tiến độ không đứng như con của tiêu đề nhóm còn lộ ra). Trước đó nó nằm cuối thân cuộn, sau
+  phần khoá API — ở sàn cửa sổ, bấm "Tải và dùng" thì mọi nút xám đi (cả Đóng) còn thanh tiến độ và Huỷ tải ở y≈800 trong
+  cửa sổ cao 600, cả ở màn đầu tiên người mới gặp. **Câu tiến độ nói bằng ngôn ngữ của người đọc**: engine viết tiếng Việt,
+  bảng `RUNTIME_EN` có đủ bảy câu, nhưng dòng tiến độ in thẳng câu engine — nay qua `runtime()`. Mock phát đúng nguyên văn
+  câu của engine (không tự chế "… 38%") và giữ được lượt tải đang chạy (`download=hold`); ô `model_downloading` ·
+  `model_cancelled` · `model_english_downloading`, keys `model-progress` · `model-words` · `first-run-progress`. Nguồn sự thật duy nhất: hook
   `useModels` (trạng thái + lượt tải + hành động), để màn đầu, sheet và bảng giọng đọc không cãi nhau.
   **Huỷ tải là lời riêng của lượt tải** (`model.cancel`, 16/09), không phải Dừng của giọng đọc: trước đó
   cả hai là một lệnh `stop`, nên bấm Đọc trong lúc đang tải rồi Dừng (hoặc bấm Đọc lần nữa) là huỷ luôn

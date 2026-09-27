@@ -14,7 +14,7 @@
  * refuses anything else anyway). The English model is one download, kept
  * or removed; its voices appear in the voice list only while it is here.
  */
-import { text } from "../i18n";
+import { runtime, text } from "../i18n";
 import { Button, ProgressBar } from "./controls";
 import { formatSize } from "./format";
 import { GroupedRow, GroupedSection } from "./patterns";
@@ -156,8 +156,12 @@ export function ModelProgress({ models, className = "" }: { models: Models; clas
           </Button>
         </div>
       )}
+      {/* The engine writes its progress in Vietnamese; every sentence it
+          says is in RUNTIME_EN, so the line is said in the reader's
+          language - it showed the engine's own words in English (27/09).
+          A line the shell wrote itself passes through unchanged. */}
       {(job?.message ?? note) && (
-        <p className="m-0 mt-2 text-xs leading-relaxed text-ink-mute">{job?.message ?? note}</p>
+        <p className="m-0 mt-2 text-xs leading-relaxed text-ink-mute">{runtime(job?.message ?? note ?? "")}</p>
       )}
     </div>
   );
