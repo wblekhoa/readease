@@ -945,6 +945,14 @@ bảng *Chi phí và phạm vi* = 8 ô — đúng như thiết kế (nút đọc
 canh nó: gỡ điều kiện khoá trên bản sao thì đỏ ("nút đọc MỞ"). `EXPECTED_CONSOLE` nay nhận cả tên trạng thái (dòng
 log ước giá thất bại là chính trạng thái đó).
 
+**Công cụ của danh sách giọng** (27/09): `voices_filters` (bộ lọc gập sau nút ở cửa sổ thấp) và `voices_search_none`
+(tìm không thấy) = 8 ô. Lần đầu gõ bắt **ô đang gõ trượt đi**: bảng treo từ mép DƯỚI và co theo số giọng khớp, nên
+mỗi phím làm rơi một giọng kéo ô tìm xuống — 267px khi không còn giọng nào. Nay khi ô tìm mở, bảng giữ chiều cao lúc
+bắt đầu tìm (`Surface` nhận `style` cho một kích thước đo được), đóng tìm thì thả. Luật: **thứ đang được gõ không bao
+giờ di chuyển dưới tay người gõ**. Keys `voice-search` đo vị trí ô trước/sau khi gõ. Quét anh em cùng họ: ô tìm của sheet
+Apple Books (sheet canh GIỮA, co theo số ô) trượt 140px khi không còn ô nào khớp — nay sheet giữ chiều cao từ chữ đầu
+tiên tới khi ô tìm được xoá; keys `apple-search`. Ô tìm ở cột bên đứng đầu một cột cao cố định nên không cần.
+
 **Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
 placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào
 từng hiện, theo vùng (bỏ 46 khoá macOS tự vẽ: `menu.*`, `now_playing.*`). Khớp đúng hoa/thường (nhãn "Lưu" không phải

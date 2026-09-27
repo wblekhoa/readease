@@ -81,6 +81,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - After an import or sync from Apple Books, the sheet's summary of what
   happened is shown whole on up to two lines. In a small window it was
   cut off mid-word.
+- Searching the voice list or the Apple Books sheet no longer moves the
+  search box while you type: each shrank with its matches and the box
+  slid with it. It stays where it was until the search is cleared.
 
 ## 0.1.19
 

@@ -78,6 +78,7 @@ const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
 const SHELF = [...UNFOLD, ["click", /^Thư viện$|^Library$/]];
+const VOICES = [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["click", /^Quản lý giọng|^Manage voices/], ["wait", /^Danh sách giọng đọc$|^Voices$/]];
 const APPLE = [...SHELF, ["click", /^Từ Apple Books$|^From Apple Books$/], ["wait", /^Tài liệu trong Apple Books$|^Items in Apple Books$/, "[role=dialog]"]];
 const SEARCH = [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in document$/], ["wait", /^Tìm trong tài liệu$|^Search in document$/, "[role=radio]"]];
 const HUB = [...SHELF, ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]];
@@ -93,8 +94,13 @@ const SCREENS = {
   scan:   [...UNFOLD, ["click", /^Quét đọc$|^Read a selection$/]],
   notes:  [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/]],
   reader: OPEN_BOOK,
-  voices: [...OPEN_BOOK,
-           ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["click", /^Quản lý giọng|^Manage voices/], ["wait", /^Danh sách giọng đọc$|^Voices$/]],
+  voices: VOICES,
+  // The list's own tools at the window's floor (HIG 3.13): its filters fold
+  // behind a button there, and a search can find nothing. Until 27/09 no
+  // cell had opened the one or typed into the other.
+  voices_filters: [...VOICES, ["click", /^Lọc danh sách$|^Filter the list$/], ["wait", /^Tất cả giới tính$|^All genders$/]],
+  voices_search_none: [...VOICES, ["click", /^Tìm giọng…$|^Search voices…$/], ["type", "qwxz"],
+    ["wait", /^Không có giọng nào khớp|^No voice matches/, "p,div,span"]],
   // The hub, from the gear in the column's foot (or the toolbar while the
   // column is folded): the sheet's title is what the wait looks for.
   hub: [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]],
@@ -209,6 +215,8 @@ const ONLY_IN = {
   search_none: ["default"],
   paste_over: ["default"],
   apple_import_menu: ["default"],
+  voices_filters: ["default"],
+  voices_search_none: ["default"],
   apple_imported: ["default"],
   apple_sync_menu: ["default"],
   search_capped: ["default"],
@@ -1286,6 +1294,35 @@ async function main() {
         expect("price-lock", button !== null && button.disabled && /chưa có giá/.test(button.said),
           button === null ? "no read button" : `with no price the read button is ${button.disabled ? "locked" : "OPEN"} and says ${JSON.stringify(button.said)}`);
         crashed("price-lock");
+      }
+      // The field being typed into stays put (27/09): the voice list hangs
+      // from its bottom edge and shrank with its matches, so each keystroke
+      // that dropped a voice slid the search box down under the typing.
+      if (!(await goto([...VOICES, ["click", /^Tìm giọng…$|^Search voices…$/]], "vi"))) expect("voice-search", false, "could not open the voice search");
+      else {
+        const top = () => evalJs(`(() => { const f = document.querySelector('[role=dialog] input[type=search], [role=dialog] input'); return f ? Math.round(f.getBoundingClientRect().top) : null; })()`);
+        await sleep(300);
+        const before = await top();
+        await type("qwxz");
+        await sleep(400);
+        const after = await top();
+        expect("voice-search", before !== null && after !== null && Math.abs(after - before) <= 1,
+          `typing a query that matches nothing moved the search field from y=${before} to y=${after}`);
+        crashed("voice-search");
+      }
+      // The same for the Apple Books sheet's search, at the top of a sheet
+      // that sizes itself to its tiles.
+      if (!(await goto([...APPLE, ["click-at", "[role=dialog] input"]], "vi"))) expect("apple-search", false, "could not open the Apple Books sheet");
+      else {
+        const top = () => evalJs(`(() => { const f = document.querySelector('[role=dialog] input'); return f ? Math.round(f.getBoundingClientRect().top) : null; })()`);
+        await sleep(300);
+        const before = await top();
+        await type("qwxz");
+        await sleep(400);
+        const after = await top();
+        expect("apple-search", before !== null && after !== null && Math.abs(after - before) <= 1,
+          `typing a query that matches nothing moved the Apple Books search from y=${before} to y=${after}`);
+        crashed("apple-search");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot

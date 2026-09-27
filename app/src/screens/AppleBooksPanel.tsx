@@ -123,6 +123,11 @@ export function AppleBooksPanel({
   const [working, setWorking] = useState<{ done: number; total: number; title: string } | null>(null);
   const [notice, setNotice] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
   const [query, setQuery] = useState("");
+  /* The field typed into stays put (27/09). The sheet is centred and sizes
+     itself to its tiles, so a query that dropped tiles pulled the search box
+     140px down under the typing. From the first letter until the box is
+     emptied, the sheet keeps the height it had when the typing began. */
+  const [held, setHeld] = useState<number | null>(null);
 
   const refresh = useCallback(() => {
     request<{ books: ShelfBook[] }>("applebooks.shelf", {})
@@ -188,6 +193,7 @@ export function AppleBooksPanel({
     <Scrim />
     <Surface
       ref={sheet}
+      style={held === null ? undefined : { minHeight: held }}
       dialog={text("apple.title")}
       modal
       edge="strong"
@@ -211,7 +217,12 @@ export function AppleBooksPanel({
             type="search"
             value={query}
             placeholder={text("apple.search")}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (!next) setHeld(null);
+              else if (!query) setHeld(sheet.current?.offsetHeight ?? null);
+              setQuery(next);
+            }}
             className="w-full"
           />
         </div>

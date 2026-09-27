@@ -458,9 +458,13 @@ export function Surface({
   ref,
   dialog,
   modal = false,
+  style,
 }: {
   children: ReactNode;
   className?: string;
+  /** A measured size a layer holds for a while - the voice list keeps its
+   * height while a search is open, so the field typed into stays put. */
+  style?: CSSProperties;
   /** For a floating layer that has to know whether a click landed inside it. */
   ref?: Ref<HTMLDivElement>;
   /** A floating panel's NAME - its own title - which makes it a dialog to
@@ -500,6 +504,7 @@ export function Surface({
       aria-label={dialog}
       aria-modal={dialog && modal ? true : undefined}
       tabIndex={dialog ? -1 : undefined}
+      style={style}
       className={`border ${material === "glass" ? "glass-panel" : "bg-paper"} ${
         radius === "sheet" ? "rounded-3xl" : radius === "menu" ? "rounded-[20px]" : "rounded-2xl"
       } ${

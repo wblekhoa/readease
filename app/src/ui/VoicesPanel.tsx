@@ -118,6 +118,12 @@ export function VoicesPanel({
   const [query, setQuery] = useState("");
   // Folded away by default; the button in the header opens it.
   const [searching, setSearching] = useState(false);
+  /* The field typed into stays put. The list hangs from its bottom edge and
+     shrank with its matches, so every keystroke that dropped a voice slid
+     the search box down under the typing - 267px by "no match" (27/09).
+     While a search is open the panel keeps the height it had when the
+     search began. */
+  const [held, setHeld] = useState<number | null>(null);
   const [providerFilter, setProviderFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState<"all" | VoiceGender>("all");
   // On a short window the filter chips are folded away behind their own
@@ -208,6 +214,7 @@ export function VoicesPanel({
       edge="strong"
       radius="sheet"
       ref={panel}
+      style={held === null ? undefined : { minHeight: held }}
       dialog={text("voices.title")}
       /* `overflow-hidden` is not tidying: without it the rows above the
          list simply drew past the rounded surface when they came to more
@@ -232,6 +239,7 @@ export function VoicesPanel({
         {voices.length > 8 && (
           <IconButton
             onClick={() => {
+              setHeld(searching ? null : panel.current?.offsetHeight ?? null);
               setSearching((open: boolean) => {
                 if (open) setQuery("");
                 return !open;
@@ -273,7 +281,7 @@ export function VoicesPanel({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             label={text("voices.search")}
-            onEscape={() => { setQuery(""); setSearching(false); }}
+            onEscape={() => { setQuery(""); setSearching(false); setHeld(null); }}
           />
         </div>
       )}
