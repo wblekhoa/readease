@@ -740,7 +740,11 @@ const SETTINGS: Record<string, string | number | null> = {
 
 /* `?voice=paid` (below) changes the settings for one page only: remembered,
    they would follow every later cell of the audit. */
-const EPHEMERAL = new URLSearchParams(window.location.search).get("voice") === "paid";
+/* `?voice=paid` is an OpenAI voice, `?voice=elevenlabs` an ElevenLabs one -
+   the provider that bills COUNTED credits, so its figure is a ceiling
+   ("tối đa") with a unit count under it (27/09: never on a screen). */
+const PAID_VOICE = new URLSearchParams(window.location.search).get("voice");
+const EPHEMERAL = PAID_VOICE === "paid" || PAID_VOICE === "elevenlabs";
 
 function rememberSettings() {
   if (EPHEMERAL) return;
@@ -793,9 +797,13 @@ if (new URLSearchParams(window.location.search).get("model") === "missing") {
 /* `?voice=paid`: a paid voice in use - the one state with the cost button
    and its panel ("Giọng trả phí"), which no cell had opened until 27/09.
    The key is only a "set" mark: the harness never hands a value back. */
-if (EPHEMERAL) {
+if (PAID_VOICE === "paid") {
   SETTINGS.openai_api_key = "set";
   SETTINGS.voice = "openai:gpt-4o-mini-tts:marin";
+}
+if (PAID_VOICE === "elevenlabs") {
+  SETTINGS.elevenlabs_api_key = "set";
+  SETTINGS.voice = "elevenlabs:eleven_flash_v2_5:nhu";
 }
 if (new URLSearchParams(window.location.search).get("vietnamese") === "missing") {
   MODEL.ready = false;

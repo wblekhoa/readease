@@ -248,7 +248,7 @@ const ONLY_IN = {
   transfer_confirm: ["default"],
   transfer_done: ["default"],
   apple_books: ["default", "empty"],
-  cost: ["paid", "price_failed"],
+  cost: ["paid", "price_failed", "paid_eleven"],
   update_available: ["default"],
   update_none: ["default"],
   update_failed: ["default"],
@@ -283,6 +283,8 @@ const STATES = {
   long: "long=1",
   // A paid voice in use: the cost button and its panel exist only here.
   paid: "voice=paid",
+  // An ElevenLabs voice: counted credits, so a ceiling and a unit count.
+  paid_eleven: "voice=elevenlabs",
   // Reading failures on a paid voice, beside `voicefail` (quota): the
   // commonest (network), the longest sentence (a blocked account, 175
   // characters in English) and one stopped before any provider was asked
@@ -304,6 +306,7 @@ const STATES = {
 const STATE_ON = {
   long: ["shelf", "reader", "contents", "book_notes", "search"],
   paid: ["reader", "cost", "player_settings"],
+  paid_eleven: ["reader", "cost"],
   voicefail_network: ["reading_failed"],
   voicefail_blocked: ["reading_failed"],
   voicefail_budget: ["reading_failed"],

@@ -952,6 +952,9 @@ hàng flex `gap-x-2` (bậc trong-cặp 8, §6), xuống dòng gọn khi hẹp. 
 bảng *Chi phí và phạm vi* = 8 ô — đúng như thiết kế (nút đọc khoá kèm "chưa có giá", bảng nói lý do). Keys `price-lock`
 canh nó: gỡ điều kiện khoá trên bản sao thì đỏ ("nút đọc MỞ"). `EXPECTED_CONSOLE` nay nhận cả tên trạng thái (dòng
 log ước giá thất bại là chính trạng thái đó).
+**Giọng ElevenLabs** (27/09): trạng thái `paid_eleven` (`voice=elevenlabs`, khoá giả "set" trên mock) trên màn đọc và
+bảng chi phí = 8 ô — đường tính tiền ĐẾM ĐƯỢC chưa từng lên màn: nút "tối đa $1,18" / "up to $1.18", dòng "≈ 11.800 credit"
+/ "≈ 11,800 credits". Đúng như thiết kế, 0 phát hiện (số/tiền/ngày tiếng Anh sửa sáng cùng ngày giữ vững).
 
 **Công cụ của danh sách giọng** (27/09): `voices_filters` (bộ lọc gập sau nút ở cửa sổ thấp) và `voices_search_none`
 (tìm không thấy) = 8 ô. Lần đầu gõ bắt **ô đang gõ trượt đi**: bảng treo từ mép DƯỚI và co theo số giọng khớp, nên
