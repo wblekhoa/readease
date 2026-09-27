@@ -210,6 +210,10 @@ const SCREENS = {
   note_editor: NOTE_EDITOR,
   // And a save the engine refuses: the reason is said inside the editor.
   note_save_failed: [...NOTE_EDITOR, ["type", " Xem lại."], ["click", /^Lưu$|^Save$/], ["wait", /./, "[role=alert]"]],
+  // Past the download: installed, waiting for a relaunch - reached by the
+  // keys pass in Vietnamese only, never looked at in both languages.
+  update_installed: [["perform", "check-updates"], ["wait", /^Có ReadEase 0\.1\.20\.$|^ReadEase 0\.1\.20 is available\.$/, "[role=dialog] p"],
+    ["click", /^Tải và cài$|^Download and Install$/], ["wait", /^Khởi động lại$|^Relaunch$/]],
   lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
     ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
@@ -253,6 +257,7 @@ const ONLY_IN = {
   update_none: ["default"],
   update_failed: ["default"],
   update_downloading: ["default"],
+  update_installed: ["default"],
 };
 // What a screen logs on purpose. A refused reading is caught and shown, and
 // the page also logs it (every caught failure is console.error'd) - on the
