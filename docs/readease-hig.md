@@ -940,6 +940,11 @@ hiện `color-contrast` in kèm số đo của nó: màu chữ, màu nền, tỉ
 DÍNH LIỀN ("100.004 / 100.000 ký tựNội dung dài hơn…") — hai `span` trong một dòng chữ không có khoảng nào; nay là
 hàng flex `gap-x-2` (bậc trong-cặp 8, §6), xuống dòng gọn khi hẹp. Keys `paste-words` đo khoảng giữa hai phần.
 
+**Không có giá thì không có tiền** (27/09): trạng thái `price_failed` (giọng trả phí + `fail=estimate`) trên màn đọc và
+bảng *Chi phí và phạm vi* = 8 ô — đúng như thiết kế (nút đọc khoá kèm "chưa có giá", bảng nói lý do). Keys `price-lock`
+canh nó: gỡ điều kiện khoá trên bản sao thì đỏ ("nút đọc MỞ"). `EXPECTED_CONSOLE` nay nhận cả tên trạng thái (dòng
+log ước giá thất bại là chính trạng thái đó).
+
 **Độ phủ chuỗi** (27/09): `--dump-text <tệp>` ghi chữ của mỗi ô chạm tới (chữ trên trang + tên, tooltip,
 placeholder); `node --experimental-strip-types scripts-string-coverage.mjs <tệp>` liệt kê các khoá i18n chưa ô nào
 từng hiện, theo vùng (bỏ 46 khoá macOS tự vẽ: `menu.*`, `now_playing.*`). Khớp đúng hoa/thường (nhãn "Lưu" không phải

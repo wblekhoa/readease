@@ -221,7 +221,7 @@ const ONLY_IN = {
   transfer_confirm: ["default"],
   transfer_done: ["default"],
   apple_books: ["default", "empty"],
-  cost: ["paid"],
+  cost: ["paid", "price_failed"],
   update_available: ["default"],
   update_none: ["default"],
   update_failed: ["default"],
@@ -231,7 +231,7 @@ const ONLY_IN = {
 // the page also logs it (every caught failure is console.error'd) - on the
 // screen that exists to refuse a reading, that line is the state, not a
 // fault. Exceptions are never excused.
-const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): /, note_save_failed: /annotations\.update/ };
+const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): /, note_save_failed: /annotations\.update/, price_failed: /estimate/ };
 const STATES = {
   default: "",
   empty: "empty=all",
@@ -265,6 +265,9 @@ const STATES = {
   voicefail_budget: "voice=paid&voicefail=budget",
   // A note the engine will not save.
   note_fail: "fail=annotations.update",
+  // A paid voice whose price could not be worked out: the read button must
+  // stay locked, saying so, and the cost panel must say why (27/09).
+  price_failed: "voice=paid&fail=estimate",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
@@ -274,6 +277,7 @@ const STATE_ON = {
   voicefail_blocked: ["reading_failed"],
   voicefail_budget: ["reading_failed"],
   note_fail: ["note_save_failed"],
+  price_failed: ["reader", "cost"],
 };
 const LANGS = ["vi", "en"];
 const THEMES = ["light", "dark"];
@@ -473,7 +477,7 @@ async function main() {
               const detail = m.method === "Runtime.exceptionThrown" ? (m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text)
                 : m.method === "Log.entryAdded" ? m.params.entry.text
                 : m.params.args.map((a) => a.value ?? a.description ?? "").join(" ");
-              if (m.method === "Runtime.consoleAPICalled" && EXPECTED_CONSOLE[screen]?.test(String(detail))) continue;
+              if (m.method === "Runtime.consoleAPICalled" && (EXPECTED_CONSOLE[screen] ?? EXPECTED_CONSOLE[stateName])?.test(String(detail))) continue;
               findings.push({ cell, kind: "console", detail: String(detail).split("\n")[0].slice(0, 200) });
             }
             if (DUMP) seen.push({ cell, text: await evalJs(`(() => [document.body.innerText,
@@ -1271,6 +1275,17 @@ async function main() {
           return p ? { wide: p.scrollWidth > p.clientWidth + 1, tall: p.scrollHeight > p.clientHeight + 1, said: p.textContent } : null; })()`);
         expect("apple-summary", cut !== null && !cut.wide && !cut.tall, cut === null ? "no summary after the import" : `the import summary is clipped (${cut.wide ? "width" : "height"}): ${JSON.stringify(cut.said)}`);
         crashed("apple-summary");
+      }
+      // No money without a price (owner, 04/09): a paid voice whose price
+      // could not be worked out leaves the read button locked, and says so.
+      if (!(await goto(OPEN_BOOK, "vi", STATES.price_failed))) expect("price-lock", false, "could not open a book with a paid voice");
+      else {
+        await sleep(900);
+        const button = await evalJs(`(() => { const b = [...document.querySelectorAll("button")].find((e) => /^Đọc tiếp/.test(e.textContent.trim()));
+          return b ? { disabled: b.disabled, said: b.textContent.trim() } : null; })()`);
+        expect("price-lock", button !== null && button.disabled && /chưa có giá/.test(button.said),
+          button === null ? "no read button" : `with no price the read button is ${button.disabled ? "locked" : "OPEN"} and says ${JSON.stringify(button.said)}`);
+        crashed("price-lock");
       }
 
       // The update sheet's moving parts (HIG 3.20) - what a still cell cannot
