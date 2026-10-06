@@ -38,7 +38,7 @@ The build passed 216 frontend tests, UI/mock audits, the seven bundle
 contract tests, macOS floor 15.0 and the public-source/bundle audit.
 
 Installed `0.1.19+64cb319-dirty` at
-`/Users/wblekhoa/Applications/ReadEase.app` through `install-local-app.sh`.
+`~/Applications/ReadEase.app` through `install-local-app.sh`.
 The previous `0.1.16+3bcfc76` app was moved to Trash. The app was reopened
 and its process observed. Installed signature verification passed; its
 engine SHA-256 matches the built bundle:
