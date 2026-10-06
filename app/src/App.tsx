@@ -390,6 +390,7 @@ export default function App() {
   /* And where a home screen's actions stand: the toolbar's trailing
      cluster, the way a book's stand beside its title. */
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
+  const [readingActionSlot, setReadingActionSlot] = useState<HTMLElement | null>(null);
   /** "Take me to where reading would resume" - the stamp lets the same place
    * be asked for twice. */
   const [reveal, setReveal] = useState<{ segmentId: string; at: number } | null>(null);
@@ -1821,6 +1822,7 @@ export default function App() {
               onSegments={setSegments}
               onReadFrom={(segmentId) => { void readBookFrom(segmentId); }}
               onPageInfo={setPageInfo}
+              readingActionSlot={readingActionSlot}
               onSelection={setSelection}
             />
           ) : (
@@ -1834,6 +1836,7 @@ export default function App() {
           )
         ) : tab === "external" ? (
           <External
+            readingActionSlot={readingActionSlot}
             history={externalHistory}
             onClearHistory={() => setExternalHistory([])}
             /* "reading" is a fact of the playback state - the voice IS
@@ -1923,6 +1926,46 @@ export default function App() {
       {showFooter && (
       <footer ref={footerBar} className="absolute inset-x-0 bottom-0 z-20">
         <GradientBlur edge="bottom" />
+        {/* What the voice is doing floats just above the transport (owner,
+            06/10), centred, like Books' and Music's now-playing capsule: it
+            adds nothing to the bar's measured height, so the panels and the
+            page inset stay where they are, and it steps aside while a panel
+            hangs over the bar. */}
+        {reading !== "idle" && !(readingSettingsOpen || costOpen || settingsOpen || voicesOpen) && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100%-12px)] z-10 flex justify-center px-6">
+            <Surface
+              material="glass"
+              edge="strong"
+              className="pointer-events-auto flex min-w-0 max-w-full items-center p-1 shadow-raised"
+            >
+              <div data-reading-status className="flex min-w-0 items-center gap-2">
+                <p className="m-0 min-w-0 truncate whitespace-nowrap px-3 py-1.5 text-xs text-ink-mute">
+                  {reading === "paused"
+                    ? text("player.paused_state")
+                    : player.warming
+                      ? text("player.warming")
+                      : origin?.kind === "book"
+                        ? text("player.reading_book", { title: origin.book.title })
+                        : origin?.kind === "external"
+                          ? text("player.reading_external")
+                          : text("player.reading_paste")}
+                </p>
+                {origin && !atOrigin && (
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    if (origin.kind === "book") {
+                      setTab("library");
+                      setOpenBook(origin.book);
+                    } else setTab(origin.kind);
+                  }}>
+                    <ArrowLeftIcon />{text("player.return")}
+                  </Button>
+                )}
+                <span ref={setReadingActionSlot} className="flex shrink-0 items-center empty:hidden" />
+              </div>
+            </Surface>
+          </div>
+        )}
+
         {/* A reading that stopped says WHY, in a whole sentence, across the
             whole bar. It used to be a chip in the right-hand column under
             `truncate`: the engine names its failures precisely and eight
@@ -1971,35 +2014,6 @@ export default function App() {
               <span className="min-w-0 truncate whitespace-nowrap text-xs text-ink-mute">
                 {remainingLabel(remaining)}
               </span>
-            )}
-            {reading !== "idle" && origin && !atOrigin && (
-              /* Playing, but the reader has walked off: say what is being
-                 read and offer the way back. Silent while they are where the
-                 voice is - the pill inside the book handles that case. */
-              <>
-                <span className="min-w-0 truncate text-xs text-ink-mute">
-                  {origin.kind === "book"
-                    ? text("player.reading_book", { title: origin.book.title })
-                    : origin.kind === "paste"
-                      ? text("player.reading_paste")
-                      : text("player.reading_external")}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (origin.kind === "book") {
-                      setTab("library");
-                      setOpenBook(origin.book);
-                    } else {
-                      setTab(origin.kind);
-                    }
-                  }}
-                >
-                  <ArrowLeftIcon />
-                  {text("player.return")}
-                </Button>
-              </>
             )}
           </div>
           {/* The transport keeps an open panel open (owner, 10/09): these
@@ -2249,15 +2263,12 @@ export default function App() {
               </>
             )}
           </div>
-          {/* Right: what the voice is up to, and which voice that is. The
+          {/* Right: which voice is in use. The
               settings chip moved out of the middle group (owner, 03/09): the
               middle is what a CLICK DOES, and the chip is a standing fact
-              about the reading with a way in - it belongs beside the state,
+              about the reading with a way in - it belongs beside transport,
               not inside the actions. Its panel stays centred over the bar. */}
           <div className="flex min-w-0 items-center justify-end gap-2">
-            {reading !== "idle" && player.warming && (
-              <Notice className="min-w-0 truncate whitespace-nowrap">{text("player.warming")}</Notice>
-            )}
             {speechSettings && (
               <Button
                 variant="ghost"

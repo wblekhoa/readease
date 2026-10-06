@@ -175,6 +175,18 @@ const SCREENS = {
   reading_paused: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["click", /^Tạm dừng$|^Pause$/],
     ["wait", /^Tiếp tục$|^Resume$/], ["rest"]],
   reading_warming: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Đang chuẩn bị giọng đọc…$|^Preparing the voice…$/, "p"], ["rest"]],
+  reading_paste: [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/], ["click-at", "textarea"],
+    ["type", "Một đoạn nội dung để kiểm tra vị trí trạng thái đang đọc."], ["click", /^Đọc nội dung$|^Read text$/],
+    ["wait", /^Dừng$|^Stop$/], ["rest"]],
+  reading_scan: [...UNFOLD, ["click", /^Quét đọc$|^Read a selection$/], ["click", /^Nghe lại phần đã chọn$|^Read the selection again$/],
+    ["wait", /^Dừng$|^Stop$/], ["wait", /^Về chỗ đang đọc$|^Back to reading position$/], ["rest"]],
+  reading_returned: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/],
+    ["click", /^Quay lại thư viện$|^Back to library$/], ["click", /^Quay lại$|^Go back$/],
+    ["wait", /^Quay lại thư viện$|^Back to library$/], ["rest"]],
+  reading_stopped: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/],
+    ["click", /^Dừng$|^Stop$/], ["wait", /^Đọc tiếp|^Continue/], ["rest"]],
+  reading_follow: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["rest"],
+    ["click", /^Trang sau$|^Next page$/], ["wait", /^Về chỗ đang đọc$|^Back to reading position$/], ["rest"]],
   // A reading that fails, and the line that says why (HIG 3.5): the mock
   // has refused a reading on demand since the eight failure sentences were
   // written, and no cell had pressed read - so none of them had been on a
@@ -237,6 +249,11 @@ const ONLY_IN = {
   reading_now: ["default"],
   reading_paused: ["default"],
   reading_warming: ["warm_hold"],
+  reading_paste: ["default"],
+  reading_scan: ["scanned"],
+  reading_returned: ["default"],
+  reading_stopped: ["default"],
+  reading_follow: ["default"],
   note_editor: ["default"],
   shelf_import: ["default"],
   key_form: ["default"],
@@ -538,6 +555,36 @@ async function main() {
             }
             if (!reached) continue;
             await sleep(500);
+            if (["reading_now", "reading_paused", "reading_warming", "reading_paste", "reading_scan", "reading_returned", "reading_follow"].includes(screen)) {
+              // Floats above the transport (owner, 06/10), clear of it, and
+              // inside the window.
+              const above = await evalJs(`(() => {
+                const transport = document.querySelector('[aria-label="Điều khiển đọc"], [aria-label="Reading controls"]')
+                  || document.querySelector('footer [role="group"]');
+                const status = document.querySelector('[data-reading-status]');
+                if (!transport || !status || !status.textContent.trim()) return false;
+                const s = status.getBoundingClientRect(), t = transport.getBoundingClientRect();
+                return s.bottom <= t.top && s.top >= 0 && s.left >= 0 && s.right <= innerWidth;
+              })()`);
+              if (!above) findings.push({ cell, kind: "reading-status", detail: "reading status must float above the transport" });
+              if (screen === "reading_paused") {
+                const pausedLabel = await evalJs(`document.querySelector('[data-reading-status]')?.textContent.trim()`);
+                if (!/^(Đã tạm dừng|Reading paused)$/.test(pausedLabel ?? "")) {
+                  findings.push({ cell, kind: "reading-status", detail: "paused playback must not claim it is still reading or warming" });
+                }
+              }
+              if (screen === "reading_scan" || screen === "reading_follow") {
+                const sharesStatus = await evalJs(`(() => {
+                  const status = document.querySelector('[data-reading-status]');
+                  const follow = [...document.querySelectorAll('button')].find(e => /^(Về chỗ đang đọc|Back to reading position)$/.test(e.textContent.trim()));
+                  return !!follow && status?.contains(follow);
+                })()`);
+                if (!sharesStatus) findings.push({ cell, kind: "reading-status", detail: "return-to-reading action must share the status row" });
+              }
+            }
+            if (screen === "reading_stopped" && await evalJs(`!!document.querySelector('[data-reading-status]')`)) {
+              findings.push({ cell, kind: "reading-status", detail: "reading status must disappear when stopped" });
+            }
             const errs = events.filter((m) =>
               m.method === "Runtime.exceptionThrown" ||
               (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") ||

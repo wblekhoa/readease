@@ -332,8 +332,10 @@ export function Reader({
   onReadFrom,
   onSelection,
   onPageInfo,
+  readingActionSlot,
 }: {
   bookId: string;
+  readingActionSlot: HTMLElement | null;
   /** The language the document is written in ("vi" / "en"), for its words
    * only - the interface around them speaks the app's (WCAG 3.1.2). */
   language?: string;
@@ -1315,21 +1317,21 @@ export function Reader({
     </Presence>
   );
 
-  const pills = (
+  const followAction = (
     <>
       {/* The eye wandered off from the voice: offer the way back, never drag. */}
-      {marker && !following && reading && (
-        <div className={`pointer-events-none absolute inset-x-0 flex justify-center ${paged ? "bottom-8" : "bottom-[calc(var(--shell-bottom-h)+1rem)]"}`}>
+      {marker && !following && reading && readingActionSlot && createPortal(
           <Button
-            className="pointer-events-auto rounded-full shadow-raised"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               setFollowing(true);
               showSegment(marker, "voice");
             }}
           >
             {text("reader.follow")}
-          </Button>
-        </div>
+          </Button>,
+          readingActionSlot,
       )}
     </>
   );
@@ -1360,7 +1362,7 @@ export function Reader({
           {lists}
           {notePeek}
           {noteEditor}
-          {pills}
+          {followAction}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 gap-5">
@@ -1385,7 +1387,7 @@ export function Reader({
             {lists}
             {notePeek}
             {noteEditor}
-            {pills}
+            {followAction}
           </div>
         </div>
       )}

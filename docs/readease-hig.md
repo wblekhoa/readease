@@ -196,11 +196,15 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   điểm bắt đầu — "Đọc tiếp · Chương 3" (có vị trí đã lưu/đã dừng, chương lấy từ `PageInfo.resumeChapterTitle`)
   hoặc "Đọc từ đầu"; màn dán giữ "Đọc nội dung". Bên trái footer một hint nhỏ "Nhấn vào đoạn văn để đọc từ
   đó" (chỉ màn đọc). **Đường về chỗ đang đọc** (chủ, 02/09): đang phát mà người đọc rời khỏi nguồn (sang thư viện, tab
-  khác) → ô trái footer nói đang đọc gì ("Đang đọc: «sách»" / "…nội dung đã dán" / "…phần đã quét") +
-  nút ghost "Quay lại" mở đúng màn/sách. Nguồn ghi lúc BẮT ĐẦU đọc (`origin`: book · paste · external);
-  đứng đúng nguồn thì không hiện — trong sách, viên "Về chỗ đang đọc" lo phần "mắt đi lạc".
-  Footer là lớp phủ, CAO BẰNG HEADER (76 px: pt-6 · hàng 36 · pb-4, padding lớn ở mép trong như
-  header — chủ chỉnh 02/09); inset đo thật (`--shell-bottom-h`).
+  khác) → nút ghost "Quay lại" mở đúng màn/sách. Nguồn ghi lúc BẮT ĐẦU đọc (`origin`: book · paste · external).
+  **Trạng thái đọc là viên nổi TRÊN control bar** (chủ, 06/10; thay hàng dưới transport của 04/10): Reader,
+  Dán nội dung và Quét đọc dùng chung một viên kính (`Surface` glass, viền strong, `shadow-raised`) căn giữa,
+  đáy viên chồng 12 px lên mép trên của footer — kiểu viên "đang phát" của Books/Music. Viên nói đang đọc nguồn
+  nào, "Đang chuẩn bị giọng đọc…" trước PCM, hoặc "Đã tạm dừng" khi pause; ẩn ngay khi idle, và nhường chỗ khi
+  một panel đang treo trên thanh (cài đặt đọc, giọng, cài đặt giọng, chi phí). "Quay lại" (khác nguồn) và
+  "Về chỗ đang đọc" (mắt đi lạc trong Reader / trở lại đoạn quét) nằm trong viên này.
+  Footer là lớp phủ, CAO BẰNG HEADER; viên nổi là `absolute` nên không cộng vào chiều cao đo
+  (`--shell-bottom-h`), panel và inset trang giữ nguyên.
 
 - **Usage — thanh dưới chỉ mang đúng NĂNG LỰC của màn đang mở** (mở rộng luật "ẩn-khi-chết",
   01/09). Footer hiện khi: màn có thể bắt đầu đọc **HOẶC** đang đọc **HOẶC** đang có lỗi đọc.
@@ -261,9 +265,10 @@ dòng "Đã có quyền Trợ năng." hiện 3 s rồi tắt. Câu "thoát rồi
 vẫn không đọc* (AX trust được macOS đánh giá lại mỗi lần gọi; phím tắt toàn cục qua Carbon không cần AX),
 không phải bước bắt buộc.
 
-**Trạng thái "Đang đọc phần bạn vừa chọn…" trên màn Quét đọc** (19/09): là callout `info` **kèm nút "Tới đoạn
-đang đọc"** (mở đoạn đang đọc nếu đang gập, cuộn phần giọng đang ở vào giữa) — không còn là dòng `error`; và
-nó **tắt khi đọc xong**: hiển thị suy ra từ máy trạng thái phát (`reading ≠ idle` và nguồn là quét đọc), không
+**Trạng thái "Đang đọc phần bạn vừa chọn…" của Quét đọc** (04/10, thay vị trí callout 19/09): dùng viên
+trạng thái chung **nổi trên transport** (§3.5, 06/10), kèm nút "Về chỗ đang đọc" (mở đoạn đang đọc nếu đang gập,
+cuộn phần giọng đang ở vào giữa). Không còn callout trong nội dung. Hàng **tắt khi đọc xong**:
+hiển thị suy ra từ máy trạng thái phát (`reading ≠ idle` và nguồn là quét đọc), không
 từ sự kiện `external:status` "reading" của host — sự kiện ấy không bao giờ được xoá nên dòng "Đang đọc…"
 từng đứng lại mãi sau khi giọng đã im (chủ: "đọc hết thì tự động stop").
 
@@ -444,7 +449,8 @@ Màn duy nhất mà NỘI DUNG là sản phẩm, chrome là chi phí. Luật g�
   **Nút "Đọc phần đã chọn" nằm ở FOOTER** (chủ chuyển 02/09, viên nổi trong trang bỏ): Reader báo
   `onSelection`, App vẽ ở cụm giữa — rảnh: primary đứng trước "Đọc tiếp" (lùi thành secondary khi đang có
   chọn); đang đọc: cỡ nhỏ cạnh transport. Bấm = đọc + bỏ chọn.
-- **Viên nổi** ("Về chỗ đang đọc", "Đọc đoạn đã chọn") đứng trên footer: `bottom = --shell-bottom-h + 1rem`.
+- **"Về chỗ đang đọc"** nằm trong viên trạng thái nổi trên transport (§3.5, chủ 06/10), không còn viên
+  riêng trên nội dung. Reader portal hành động vào slot chung; giữ nguyên hành vi theo giọng, không tự kéo mắt về.
 - **Scroll-spy** tính "đầu trang" từ inset: dòng mắt = top + `--shell-top-h` + 40; dòng đang đọc
   "còn nhìn thấy" khi nằm giữa hai inset, không phải giữa hai mép cửa sổ.
 

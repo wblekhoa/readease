@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   checkAccessibilityPermission,
   requestAccessibilityPermission,
@@ -177,6 +178,7 @@ const ACCESSIBILITY_PANE =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 
 export function External({
+  readingActionSlot,
   history,
   status,
   shortcut,
@@ -188,6 +190,7 @@ export function External({
   onClearHistory,
 }: {
   history: ExternalEntry[];
+  readingActionSlot: HTMLElement | null;
   status: string | null;
   shortcut: string;
   /** Which captured passage the voice is in, or null when it is elsewhere. */
@@ -283,6 +286,14 @@ export function External({
     setFollowing(true);
     setJump((n) => n + 1);
   };
+  const readingAction = status === "reading" && readingActionSlot
+    ? createPortal(
+        <Button variant="ghost" size="sm" onClick={backToReading}>
+          {text("reader.follow")}
+        </Button>,
+        readingActionSlot,
+      )
+    : null;
   /* Only a HAND on the scroller ends the following: wheel, touch, or a
      scrolling key. The scroll event itself is not used - the app's own
      scrollIntoView fires it too. */
@@ -291,11 +302,7 @@ export function External({
   const byKey = (event: React.KeyboardEvent) => { if (scrollKeys.has(event.key)) byHand(); };
 
   const statusMessage =
-    status && status !== "reading"
-      ? text(`status.${status}` as TextKey)
-      : status === "reading"
-        ? text("external.reading")
-        : null;
+    status && status !== "reading" ? text(`status.${status}` as TextKey) : null;
 
   /* Nothing captured yet: the screen has no content to be a header FOR, so
      the header stops being a header. Name, shortcut and the way in gather in
@@ -366,24 +373,9 @@ export function External({
           {text("external.shortcut_taken")}
         </Notice>
       )}
-      {/* "Reading your selection" is a callout with the way back to the
-          voice in it; it is shown only while the voice is actually reading
-          a scanned passage (App derives that from the playback state), so
-          it ends when the reading ends. The other statuses are failures
-          and stay lines. */}
-      {status === "reading" ? (
-        <Notice
-          tone="info"
-          className="max-w-[52ch]"
-          action={
-            <Button size="sm" onClick={backToReading}>
-              {text("reader.follow")}
-            </Button>
-          }
-        >
-          {text("external.reading")}
-        </Notice>
-      ) : statusMessage && (
+      {/* Reading status and the way back belong below the shared transport.
+          Capture failures stay beside the shortcut that caused them. */}
+      {statusMessage && (
         <Notice tone="error" className="max-w-[52ch]">
           {statusMessage}
         </Notice>
@@ -434,6 +426,7 @@ export function External({
   if (soloEntry) {
     return (
       <section className="shell-inset flex min-h-0 flex-1 flex-col gap-2">
+        {readingAction}
         <div className="flex items-center gap-3">
           <IconButton
             aria-label={text("external.focus_back")}
@@ -489,6 +482,7 @@ export function External({
   if (bare) {
     return (
       <section className="shell-inset flex min-h-0 flex-1 flex-col">
+        {readingAction}
         <EmptyState
           icon={<CursorTextIcon className="h-8 w-8" />}
           actions={
@@ -511,6 +505,7 @@ export function External({
        needed once. So the setup is one bar across the top and the passages
        have the width (owner, 09/09). */
     <section className="shell-inset flex min-h-0 flex-1 flex-col gap-2">
+      {readingAction}
       {setupBar}
       {asides}
       {/* Capped at a readable measure rather than stretched: the passages
