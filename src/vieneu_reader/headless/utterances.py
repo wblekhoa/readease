@@ -21,6 +21,7 @@ from typing import Any
 import numpy as np
 
 from vieneu_reader.domain.presentation import figure_label
+from vieneu_reader.domain.markdown import markdown_speech_parts
 from vieneu_reader.domain.prosody import (
     DEFAULT_NOTE_READING,
     DEFAULT_SPEECH_LANGUAGE,
@@ -57,8 +58,10 @@ def _text_utterances(
     if not parts:
         return []
     spoken = tuple(
-        speakable_text(part.text, language=language, citations=note_reading != "full")
-        for part in parts
+        speakable_text(text, language=language, citations=note_reading != "full", markdown=False)
+        for text in markdown_speech_parts(
+            tuple(part.text for part in parts), tuple(part.joint for part in parts)
+        )
     )
     return [
         _Utterance(

@@ -108,6 +108,43 @@ def run_server(requests: list[dict], engine, repository=None, service=None,
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_markdown_bold_is_removed_only_from_speech_and_its_estimate(self):
+        raw = "**Câu chuyện.** Vy quay lại."
+        engine = FakeEngine(chunks_per_sentence=1)
+        replies = run_server([
+            {"id": 1, "method": "text.parts", "params": {"text": raw}},
+            {"id": 2, "method": "estimate", "params": {"text": raw, "voice_id": "adam"}},
+            {"id": 3, "method": "read", "params": {"text": raw, "voice_id": "adam"}},
+        ], engine)
+        by_id = {reply["id"]: reply for reply in replies if "id" in reply}
+        self.assertEqual(by_id[1]["result"]["parts"][0]["text"], raw)
+        self.assertEqual([text for text, _ in engine.requests], ["Câu chuyện.", "Vy quay lại."])
+        self.assertEqual(by_id[2]["result"]["chars"], len("Câu chuyện. Vy quay lại."))
+
+    def test_bold_spanning_speech_chunks_keeps_source_parts_and_ids(self):
+        from vieneu_reader.headless.utterances import _text_utterances
+        from vieneu_reader.speech.contracts import SynthesisSettings
+        from vieneu_reader.domain.segmenter import split_transient_parts
+
+        raw = "**" + "nhóm làm việc " * 30 + "kết thúc.**"
+        settings = SynthesisSettings(max_chars=80)
+        utterances = _text_utterances(raw, settings)
+        original = split_transient_parts(raw, settings.max_chars)
+        self.assertGreater(len(utterances), 1)
+        self.assertEqual([u.source for u in utterances], [p.text for p in original])
+        self.assertEqual([u.segment_id for u in utterances], [f"part-{i}" for i in range(len(original))])
+        self.assertEqual(" ".join(u.text for u in utterances), raw[2:-2])
+
+    def test_code_spanning_chunks_keeps_literal_bold_marks(self):
+        from vieneu_reader.headless.utterances import _text_utterances
+        from vieneu_reader.speech.contracts import SynthesisSettings
+
+        raw = "`" + "word " * 9 + "**literal** " + "word " * 9 + "`"
+        utterances = _text_utterances(raw, SynthesisSettings(max_chars=40))
+        # The backticks are the code's frame, not words (06/10); what they
+        # frame stays literal, bold marks included.
+        self.assertEqual(" ".join(u.text for u in utterances).strip(), raw.strip("` "))
+
     def test_ping_names_the_contract_a_shell_depends_on(self) -> None:
         replies = run_server([{"id": 1, "method": "ping"}], FakeEngine())
 

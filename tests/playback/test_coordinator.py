@@ -504,6 +504,17 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.assertIsNone(self.coordinator.snapshot.selection_part_index)
         self.assertEqual(self.coordinator.snapshot.selection_part_count, 0)
 
+    def test_selection_bold_spanning_parts_is_not_sent_to_the_voice(self):
+        self.coordinator.play_selection(
+            "**Một hai ba bốn năm sáu.**", "Adam",
+            settings=SynthesisSettings(max_chars=12),
+        )
+        while self.scheduler.tasks:
+            self.scheduler.run_next()
+            self.output.complete()
+        self.assertEqual(" ".join(text for text, _ in self.engine.calls),
+                         "Một hai ba bốn năm sáu.")
+
     def test_selection_paragraphs_stay_separate_before_sentence_fallback(self):
         self.coordinator.play_selection("Đoạn một.\n\nĐoạn hai.", "Adam")
 

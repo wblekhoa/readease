@@ -14,6 +14,9 @@ _WHITESPACE = re.compile(r"\s+")
 _PARAGRAPH_BREAK = re.compile(r"\n[\t ]*\n+")
 _SENTENCE_ENDINGS = frozenset(".!?…")
 _CLAUSE_ENDINGS = frozenset(",;:")
+# A Markdown heading, code fence or rule is never an unfinished sentence
+# that a lowercase line below continues (06/10).
+_NEVER_CONTINUED = re.compile(r"#{1,6}(?:\s|$)|`{3,}|~{3,}|([-*_=])(?:\s*\1){2,}\s*$")
 MAX_PASTED_TEXT_CHARS = 100_000
 
 
@@ -120,7 +123,8 @@ def _merged_paragraph_lines(raw_paragraph: str) -> tuple[str, ...]:
         line = normalize_paragraph(raw_line)
         if not line:
             continue
-        if kept and line[0].islower() and not ends_sentence(kept[-1]):
+        if (kept and line[0].islower() and not ends_sentence(kept[-1])
+                and not _NEVER_CONTINUED.match(kept[-1])):
             kept[-1] = f"{kept[-1]} {line}"
         else:
             kept.append(line)

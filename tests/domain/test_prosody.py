@@ -130,6 +130,30 @@ class SelectionPauseTests(unittest.TestCase):
 
 
 class SpeakableTextTests(unittest.TestCase):
+    def test_markdown_bold_reads_its_words_in_both_languages(self):
+        for language, text, expected in (
+            ("vi", "**Câu chuyện.** Vy quay lại.", "Câu chuyện. Vy quay lại."),
+            ("en", "A **working group** meets.", "A working group meets."),
+            ("en", "__Working group.__ Next sentence.", "Working group. Next sentence."),
+            ("vi", "Năm **2026** mới.", "Năm 2026 mới."),
+        ):
+            with self.subTest(language=language, text=text):
+                self.assertEqual(speakable_text(text, language=language), expected)
+
+    def test_literal_or_incomplete_markdown_marks_are_preserved(self):
+        for text in ("**unfinished", "unfinished**", "2 ** 3", "x**2",
+                     "a__name__b", r"\**literal\**", "`**literal**`",
+                     "** spaced **", "***",
+                     # Two powers in one selection pair up as "bold"; read
+                     # that way "2**10 rồi 3**4" became "210 rồi 34".
+                     "Tính 2**10 rồi 3**4.", "x**2 + y**2 = r**2"):
+            with self.subTest(text=text):
+                expected = "" if text == "***" else text
+                self.assertEqual(speakable_text(text), expected)
+
+    def test_preformatted_text_keeps_literal_bold_delimiters(self):
+        self.assertEqual(speakable_text("**literal**", kind="preformatted"), "**literal**")
+
     def test_bullet_glyphs_are_not_spoken(self):
         for text, expected in (
             ("• Táo đỏ", "Táo đỏ"),

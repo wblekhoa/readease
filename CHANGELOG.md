@@ -6,6 +6,27 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Reading status now floats in a capsule just above the shared control
+  bar in Reader, Paste text and Read a selection. Preparing, reading and
+  paused states use the same capsule, with return-to-source and
+  return-to-reading actions inside it; it steps aside while a panel is
+  open over the bar, and stopping removes it. The selection callout and floating
+  Reader follow button no longer compete with the content.
+- Paired Markdown bold markers (`**words**` or `__words__`) are omitted
+  from speech in Vietnamese and English, including selections split into
+  several reading parts. The captured text and resume positions stay as
+  written; estimates count the same cleaned text sent to the voice.
+  Code spans, escaped markers, incomplete bold and powers such as
+  `2**10` remain literal.
+- Pasted and scanned text now reads its Markdown as meant: italic,
+  bold-italic, nested emphasis and strikethrough read their words; links
+  and images read their text, not the address; headings, quotes, bullets,
+  task boxes and table rows lose their markers (a row reads "An, 7");
+  rules, table separators and link definitions are silent; code loses its
+  backticks and keeps its content. Books keep only the bold rule.
+- Pasted text no longer folds a lowercase line into a Markdown heading,
+  code fence or rule above it, so those lines stay their own parts in
+  Paste text as well as in speech.
 - The Voice choice in Voice settings can play a sample and star a voice
   from the list itself: each row is the voice (pick it, and the list
   closes), a Preview button and a star - the voice list's own two

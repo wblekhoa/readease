@@ -11,6 +11,7 @@ from threading import RLock
 from typing import Mapping, Protocol
 
 from vieneu_reader.domain.models import AudioChunk, BookDocument, Segment
+from vieneu_reader.domain.markdown import markdown_speech_parts
 from vieneu_reader.domain.prosody import (
     READING_REVISION,
     SENTENCE_PAUSE_MS,
@@ -351,7 +352,12 @@ class PlaybackCoordinator:
             parts = split_transient_parts(text, settings.max_chars)
             if not parts:
                 raise ValueError("selection text cannot be empty")
-            spoken = tuple(speakable_text(part.text) for part in parts)
+            spoken = tuple(
+                speakable_text(part, markdown=False)
+                for part in markdown_speech_parts(
+                    tuple(part.text for part in parts), tuple(part.joint for part in parts)
+                )
+            )
             pauses = tuple(
                 selection_pause_ms(spoken[index], parts[index + 1].joint)
                 if index + 1 < len(parts)

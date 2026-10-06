@@ -15,6 +15,7 @@ import unicodedata
 from collections.abc import Mapping, Sequence
 
 from vieneu_reader.domain.models import Segment, SegmentJoint
+from vieneu_reader.domain.markdown import strip_strong
 
 SENTENCE_ENDINGS = frozenset(".!?…")
 _TRAILING_CLOSERS = frozenset("\"'”’»›)]}")
@@ -959,6 +960,7 @@ def speakable_text(
     language: str = DEFAULT_SPEECH_LANGUAGE,
     *,
     citations: bool = False,
+    markdown: bool = True,
 ) -> str:
     """Shape one segment's text for the voice without touching the display.
 
@@ -981,7 +983,11 @@ def speakable_text(
         return ""
     # Roman numerals BEFORE unshout: "II" is all-caps and vowel-less, and a
     # de-shouted "ii" is no longer a numeral anything can recognise.
-    spoken = drop_note_marks(text)
+    # Transient callers resolve emphasis across all source parts first, so
+    # code spans crossing a chunk boundary must not be interpreted again.
+    spoken = drop_note_marks(
+        strip_strong(text) if markdown and kind != "preformatted" else text
+    )
     if citations:
         # `citations` says the in-text ones may go too - the reader's
         # `note_reading` is anything but "full" (16/09).
@@ -996,6 +1002,10 @@ def speakable_text(
     spoken = spell_ordinal_marks(unshout(speak_links(spoken, language)), language)
     stripped = spoken.lstrip()
     while stripped and stripped[0] in _BULLET_GLYPHS:
+        # A Markdown bullet is one star followed by whitespace. Incomplete
+        # bold and literal stars must not lose only their opening delimiter.
+        if stripped[0] == "*" and (len(stripped) < 2 or not stripped[1].isspace()):
+            break
         stripped = stripped[1:].lstrip()
     if stripped:
         spoken = stripped
