@@ -302,6 +302,43 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
 @media (max-width: 360px) {
   .view-tabs button { padding-inline: 8px; gap: 5px; font-size: 12px; }
 }
+/* Motion (07/10). Only when the viewer allows it; every element is fully
+   visible without it. Hover lifts use the separate `translate` property so they
+   compose with the reveal's `transform`. Reveals are scroll-driven CSS
+   (animation-timeline: view()): browsers without it simply show the page. */
+@media (prefers-reduced-motion: no-preference) {
+  .tile-grid li, .voice-card, .api-card, .way-card, .api-row, .voice-lang {
+    transition: translate 360ms cubic-bezier(.2, .7, .2, 1), background-color 240ms ease-out, box-shadow 360ms ease-out; }
+  .tile-grid li:hover, .voice-card:hover, .api-card:hover { translate: 0 -4px; box-shadow: 0 18px 40px -24px rgb(0 0 0 / .45); }
+  .way-card:hover { translate: 0 -4px; }
+  .api-row:hover { translate: 4px 0; }
+  .tile-icon { transition: scale 360ms cubic-bezier(.3, 1.6, .5, 1), rotate 360ms cubic-bezier(.3, 1.6, .5, 1); }
+  .tile-grid li:hover .tile-icon { scale: 1.12; rotate: -6deg; }
+  .way-art > * { transition: scale 600ms cubic-bezier(.2, .7, .2, 1); }
+  .way-card:hover .way-art > * { scale: 1.025; }
+  .button, .nav-download, .voice-play, .api-read { transition: translate 180ms ease-out, scale 160ms ease-out, opacity 180ms ease-out, background-color 160ms ease-out; }
+  .button:active, .nav-download:active, .voice-play:active { scale: .96; }
+  .voice-wave i { transition: background-color 120ms linear, scale 240ms ease-out; }
+  .voice-player:hover .voice-wave i { scale: 1 1.12; }
+  details[open] > :not(summary) { animation: rise 420ms cubic-bezier(.2, .7, .2, 1) both; }
+
+  /* Page load: the hero arrives in one short cascade. */
+  .hero > :not(.hero-aura) { animation: rise 760ms cubic-bezier(.2, .7, .2, 1) both; }
+  .hero > :nth-child(3) { animation-delay: 80ms; }
+  .hero > :nth-child(4) { animation-delay: 160ms; }
+  .hero > :nth-child(5) { animation-delay: 240ms; }
+  .hero > :nth-child(6) { animation-delay: 300ms; }
+
+  @supports (animation-timeline: view()) {
+    .center-heading, .split-heading, .way-track, .tile-grid li, .voice-card, .api-card, .questions, .download-block, .privacy-foot {
+      animation: reveal linear both; animation-timeline: view(); animation-range: entry 0% cover 28%; }
+    .tile-grid li:nth-child(4n + 2), .voice-card:nth-child(2) { animation-range: entry 6% cover 32%; }
+    .tile-grid li:nth-child(4n + 3) { animation-range: entry 12% cover 36%; }
+    .tile-grid li:nth-child(4n + 4) { animation-range: entry 18% cover 40%; }
+  }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+@keyframes reveal { from { opacity: 0; transform: translateY(36px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }

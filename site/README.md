@@ -97,6 +97,11 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   highlight passes word by word behind always-visible words, and the chip's
   level meter moves for those few beats then rests still. A dotted-paper aura
   (the DMG's) and a brand glow under the laptop set the light.
+- Motion only under `prefers-reduced-motion: no-preference`: the hero
+  cascades in on load (≤1 s); headings, tiles, voice cards, the API block and
+  the FAQ rise in as they enter, driven by CSS `animation-timeline: view()`
+  (browsers without it show the page still); cards and tiles lift on hover
+  through the `translate`/`scale` properties so they compose with the reveal.
 - The feature band translates with the scroll (scrub), never loops; with
   reduced motion or no JS its words wrap, centred, and the duplicate set used
   for the drift is hidden.
