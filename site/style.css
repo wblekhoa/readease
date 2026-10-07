@@ -208,20 +208,19 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .voice-wave i.is-played { background: var(--brand); }
 .api-card { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 32px; margin-top: 20px; padding: 32px; border-radius: 28px; background: var(--card); }
 .api-copy { display: grid; justify-items: start; gap: 20px; }
-.api-demos { display: grid; gap: 14px; width: 100%; margin-top: 4px; }
-.api-demo { display: grid; gap: 8px; }
-.api-demo p { color: var(--muted); font-size: 13px; } .api-demo b { color: var(--ink); font-weight: 500; }
-.api-demo .voice-player { max-width: none; margin-top: 0; background: var(--bg); }
 .api-copy h3 { font-size: clamp(24px, 2.4vw, 30px); font-weight: 500; line-height: 1.25; letter-spacing: -.025em; }
 .api-panel { display: grid; gap: 10px; padding: 18px; border-radius: 20px; background: var(--bg); }
 .api-row { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--card); font-size: 14px; }
-.api-row b { font-weight: 500; }
+.api-row b { font-weight: 500; } .api-row b span { color: var(--muted); font-weight: 400; }
+.api-provider { display: grid; gap: 10px; padding: 10px; border-radius: 16px; background: var(--card); }
+.api-provider .api-row { grid-template-columns: max-content minmax(0, 1fr) auto; padding: 2px 4px 0; background: none; }
+.api-provider .api-row b { white-space: nowrap; }
+.api-provider .voice-player { max-width: none; margin-top: 0; padding-block: 8px; }
+.api-provider .voice-play { width: 34px; height: 34px; }
 .api-row code { overflow: hidden; color: var(--muted); font: 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .api-saved { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .api-saved .glyph { width: 16px; height: 16px; color: #2f9e6e; }
 .api-cap { grid-column: 3; font-variant-numeric: tabular-nums; font-weight: 500; }
-.api-read { display: inline-flex; align-items: center; gap: 8px; justify-self: end; margin-top: 4px; padding: 9px 16px 9px 12px; border-radius: 999px; background: var(--brand); color: var(--on-brand); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.api-read .glyph { width: 16px; height: 16px; }
 
 /* The grid of small things. */
 /* Feature tiles (OneNotch's): an icon in a round chip and a name. The craft
@@ -321,7 +320,7 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .tile-grid li:hover .tile-icon { scale: 1.12; rotate: -6deg; }
   .way-art > * { transition: scale 600ms cubic-bezier(.2, .7, .2, 1); }
   .way-card:hover .way-art > * { scale: 1.025; }
-  .button, .nav-download, .voice-play, .api-read { transition: translate 180ms ease-out, scale 160ms ease-out, opacity 180ms ease-out, background-color 160ms ease-out; }
+  .button, .nav-download, .voice-play { transition: translate 180ms ease-out, scale 160ms ease-out, opacity 180ms ease-out, background-color 160ms ease-out; }
   .button:active, .nav-download:active, .voice-play:active { scale: .96; }
   .voice-wave i { transition: background-color 120ms linear, scale 240ms ease-out; }
   .voice-player:hover .voice-wave i { scale: 1 1.12; }

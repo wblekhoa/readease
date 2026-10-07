@@ -47,7 +47,7 @@ export const content = {
       ['🇬🇧', 'English', 'Kokoro-82M', ['6 giọng Mỹ', '330 MB']],
     ],
     apiTitle: 'Muốn giọng AI? Dùng khoá của bạn.',
-    apiRows: ['Đã lưu', 'Trần mỗi phiên', 'Đọc'],
+    apiRows: ['Đã lưu', 'Trần mỗi phiên'],
     listen: ['Nghe thử', 'Dừng'],
     moreLabel: 'Còn nhiều hơn thế', moreTitle: ['Những điều nhỏ', 'làm việc nghe dễ chịu.'],
     more: [
@@ -123,7 +123,7 @@ export const content = {
       ['🇬🇧', 'English', 'Kokoro-82M', ['6 American voices', '330 MB']],
     ],
     apiTitle: 'Prefer an AI voice? Bring your own key.',
-    apiRows: ['Saved', 'Session cap', 'Read'],
+    apiRows: ['Saved', 'Session cap'],
     listen: ['Play', 'Pause'],
     moreLabel: 'And more', moreTitle: ['The small things', 'that make listening easy.'],
     more: [
