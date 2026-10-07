@@ -219,7 +219,17 @@ function Voices({ c, prefix }) {
         <VoicePlayer src={`${prefix}voice-demos/${demo}.m4a`} bars={voiceBars[demo]} name={model} labels={c.listen} />
       </article>;
     })}</div>
-    <p className="voices-note">{c.voicesNote}</p>
+    {/* The paid-voice option, drawn as the app's key settings: keys stay masked, a session cap,
+        and the price shown on the read button before anything is sent (example figures). */}
+    <article className="api-card">
+      <div className="api-copy"><span className="tile-icon"><Glyph name="key" /></span><h3>{c.apiTitle}</h3></div>
+      <div className="api-panel" aria-hidden="true">
+        {[['OpenAI', 'sk-••••••••••••3f9a'], ['ElevenLabs', '••••••••••••b21c']].map(([provider, key]) =>
+          <p key={provider} className="api-row"><b>{provider}</b><code>{key}</code><span className="api-saved"><Glyph name="check" />{c.apiRows[0]}</span></p>)}
+        <p className="api-row"><b>{c.apiRows[1]}</b><span className="api-cap">$1.00</span></p>
+        <span className="api-read"><Glyph name="play" />{c.apiRows[2]} · ≈ $0.02</span>
+      </div>
+    </article>
   </section>;
 }
 function More({ c }) {
