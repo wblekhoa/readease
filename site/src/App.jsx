@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { content } from './content.js';
 import { fallback, fetchRelease, mb, repository } from './release.js';
 import { glyphs } from './icons.js';
+import { voiceBars } from './voiceBars.js';
 import { createStory, keyboardIndex, viewIds } from './story.js';
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
@@ -178,19 +179,46 @@ function Craft({ c }) {
     <ul className="tile-grid craft-list">{c.craftItems.map(([icon, title]) => <li key={title}><span className="tile-icon"><Glyph name={icon} /></span><h3>{title}</h3></li>)}</ul>
   </section>;
 }
-function Voices({ c }) {
-  // Each model as a card: its language, its name, its sizes, and a player caught mid-sentence.
-  const wave = seed => Array.from({ length: 34 }, (_, i) =>
-    <i key={i} className={i < 13 ? 'is-played' : undefined} style={{ '--h': `${26 + Math.round(66 * Math.abs(Math.sin(i * .9 + seed)))}%` }} />);
+/* A real sample from each local model (scripts/render-voice-demos.py). Plays on
+   request only; starting one stops the other; the bars are the clip's own peaks. */
+function VoicePlayer({ src, bars, name, labels }) {
+  const audio = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const element = audio.current;
+    let frame = 0;
+    const draw = () => { setProgress(element.duration ? element.currentTime / element.duration : 0); frame = requestAnimationFrame(draw); };
+    const onPlay = () => { setPlaying(true); frame = requestAnimationFrame(draw); };
+    const onStop = () => { setPlaying(false); cancelAnimationFrame(frame); };
+    const onEnd = () => { onStop(); setProgress(0); };
+    element.addEventListener('play', onPlay); element.addEventListener('pause', onStop); element.addEventListener('ended', onEnd);
+    return () => { cancelAnimationFrame(frame); element.removeEventListener('play', onPlay); element.removeEventListener('pause', onStop); element.removeEventListener('ended', onEnd); };
+  }, []);
+  function toggle() {
+    const element = audio.current;
+    if (!element.paused) { element.pause(); return; }
+    for (const other of document.querySelectorAll('audio[data-voice-demo]')) if (other !== element) other.pause();
+    element.play().catch(() => setPlaying(false));
+  }
+  const lit = Math.round(progress * bars.length);
+  return <div className="voice-player">
+    <button type="button" className="voice-play" onClick={toggle} aria-pressed={playing} aria-label={`${playing ? labels[1] : labels[0]}: ${name}`}><Glyph name={playing ? 'pause' : 'play'} /></button>
+    <span className="voice-wave" aria-hidden="true">{bars.map((height, i) => <i key={i} className={i < lit ? 'is-played' : undefined} style={{ '--h': `${height}%` }} />)}</span>
+    <audio ref={audio} src={src} preload="none" data-voice-demo="" />
+  </div>;
+}
+function Voices({ c, prefix }) {
   return <section className="voices section container" id="voices" aria-labelledby="voices-title">
     <div className="center-heading"><p className="label">{c.voicesLabel}</p><h2 id="voices-title"><Lines value={c.voicesTitle} /></h2></div>
-    <div className="voice-grid">{c.voices.map(([flag, language, model, facts]) =>
-      <article key={model} className="voice-card">
+    <div className="voice-grid">{c.voices.map(([flag, language, model, facts], i) => {
+      const demo = ['vi', 'en'][i];
+      return <article key={model} className="voice-card">
         <p className="voice-lang"><span aria-hidden="true">{flag}</span>{language}</p><h3>{model}</h3>
-        <p className="fact-list">{facts.map((fact, i) => <React.Fragment key={fact}>{i > 0 && <span className="meta-dot" aria-hidden="true">·</span>}<span>{fact}</span></React.Fragment>)}</p>
-        <div className="voice-player" aria-hidden="true"><span className="voice-play" /><span className="voice-wave">{wave(model.length)}</span></div>
-      </article>)}
-    </div>
+        <p className="fact-list">{facts.map((fact, j) => <React.Fragment key={fact}>{j > 0 && <span className="meta-dot" aria-hidden="true">·</span>}<span>{fact}</span></React.Fragment>)}</p>
+        <VoicePlayer src={`${prefix}voice-demos/${demo}.m4a`} bars={voiceBars[demo]} name={model} labels={c.listen} />
+      </article>;
+    })}</div>
     <p className="voices-note">{c.voicesNote}</p>
   </section>;
 }
@@ -248,6 +276,6 @@ export function App({ locale = 'vi' }) {
   }, []);
   return <><a className="skip-link" href="#main">{c.skip}</a><Header c={c} prefix={prefix} />
     <main id="main"><div className="container"><Hero c={c} prefix={prefix} release={release} /></div><Showcase c={c} screenshots={screenshots} /><Ticker c={c} />
-      <Ways c={c} screenshots={screenshots} /><Craft c={c} /><Voices c={c} /><More c={c} /><Privacy c={c} /><FAQ c={c} /><Closing c={c} prefix={prefix} release={release} /></main>
+      <Ways c={c} screenshots={screenshots} /><Craft c={c} /><Voices c={c} prefix={prefix} /><More c={c} /><Privacy c={c} /><FAQ c={c} /><Closing c={c} prefix={prefix} release={release} /></main>
     <Footer c={c} prefix={prefix} release={release} /></>;
 }

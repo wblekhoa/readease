@@ -47,6 +47,7 @@ export const content = {
       ['🇬🇧', 'English', 'Kokoro-82M', ['6 giọng Mỹ', '330 MB']],
     ],
     voicesNote: 'Tuỳ chọn: giọng OpenAI, ElevenLabs bằng khóa của bạn.',
+    listen: ['Nghe thử', 'Dừng'],
     moreLabel: 'Còn nhiều hơn thế', moreTitle: ['Những điều nhỏ', 'làm việc nghe dễ chịu.'],
     more: [
       ['speed', 'Tốc độ tuỳ chỉnh'],
@@ -121,6 +122,7 @@ export const content = {
       ['🇬🇧', 'English', 'Kokoro-82M', ['6 American voices', '330 MB']],
     ],
     voicesNote: 'Optional: OpenAI and ElevenLabs voices with your own key.',
+    listen: ['Play', 'Pause'],
     moreLabel: 'And more', moreTitle: ['The small things', 'that make listening easy.'],
     more: [
       ['speed', 'Adjustable speed'],

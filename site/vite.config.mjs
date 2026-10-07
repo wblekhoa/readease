@@ -10,6 +10,7 @@ const assets = new Map([
   ['icon.png', new URL('./icon.png', import.meta.url)],
   ...['', 'en/'].flatMap(locale => ['reader', 'shelf', 'voices'].map(id =>
     [`screenshots/${locale}${id}.png`, new URL(`../assets/screenshots/${locale}${id}.png`, import.meta.url)])),
+  ...['vi', 'en'].map(id => [`voice-demos/${id}.m4a`, new URL(`../assets/voice-demos/${id}.m4a`, import.meta.url)]),
 ]);
 
 export default defineConfig({
@@ -29,7 +30,7 @@ export default defineConfig({
         const name = req.url?.split('?')[0].replace(/^\//, '');
         const file = assets.get(name);
         if (!file) return next();
-        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Content-Type', name.endsWith('.m4a') ? 'audio/mp4' : 'image/png');
         res.end(readFileSync(file));
       });
     },

@@ -36,7 +36,9 @@ FORBIDDEN_SUFFIXES = {
 # package data the engine cannot read English without. The ".wav" rule keeps
 # recordings and rendered speech out; the three files here are the chapter
 # chimes (owner's pick, 16/09), each under a second or two of generated
-# sound, provenance in `THIRD_PARTY_NOTICES.md`. A re-export or re-render
+# sound, provenance in `THIRD_PARTY_NOTICES.md`. The two ".m4a" files are the
+# landing page's voice demos (owner, 07/10): one sentence each, rendered by the
+# app's own models, provenance in `assets/voice-demos/README.md`. A re-export or re-render
 # changes the hash and has to come back here, which is the review it
 # deserves.
 PUBLIC_MODEL_ASSETS = {
@@ -46,6 +48,8 @@ PUBLIC_MODEL_ASSETS = {
     "src/vieneu_reader/speech/chimes/harp.wav": "c47dcf36966ac8a6a0a6cda37e1e24655c47bcb13456221711c9618a7e83db45",
     "src/vieneu_reader/speech/chimes/piano.wav": "a1dfb65859aef7f9fbaae912450b26c79d6c7ff6b1ef3ed00a6bfed953ccc702",
     "src/vieneu_reader/speech/chimes/part-marimba.wav": "d7c69099fe1e202568724305054e00d8dc4dfdb94d657ec749d2cb7391d1d7d0",
+    "assets/voice-demos/vi.m4a": "e77827bdfa6440d9ebadadccd4cfd1143c0a5d06500101b34eab80a64554935a",
+    "assets/voice-demos/en.m4a": "94d736f18fe9f78393229ceeb0e1a39c0282437c73cfc0662514309dea59495c",
 }
 FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",
