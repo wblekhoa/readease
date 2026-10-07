@@ -218,25 +218,18 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .pause-rows li { display: grid; grid-template-columns: 6.6em auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--win-muted); font-size: 12.5px; }
 .pause-rule { position: relative; width: calc(var(--w) * 1%); border-top: 1.5px dashed #4a505c; }
 .pause-rule::after { content: ""; position: absolute; right: 0; top: -6px; width: 1.5px; height: 10px; background: #4a505c; }
-.chime-scene { display: grid; gap: 16px; }
-.chime-from { display: flex; align-items: center; gap: 10px; color: var(--win-muted); font-size: 12.5px; }
-.chime-from .speech i { background: #3a3f49; }
-.chime-to { display: flex; align-items: center; gap: 12px; font: 700 24px/1.1 var(--display); letter-spacing: -.03em; }
-.chime-bell { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--win-brand); color: #fff; font-size: 16px;
-  box-shadow: 0 0 0 6px rgb(123 147 247 / .18); }
-.chime-choices { display: flex; width: fit-content; gap: 2px; padding: 3px; border-radius: 999px; background: #0e1013; border: 1px solid var(--win-edge); }
-.chime-choices span { padding: 5px 12px; border-radius: 999px; color: var(--win-muted); font-size: 12px; }
-.chime-choices span.is-on { background: #2a2e36; color: var(--win-ink); font-weight: 600; }
-.markdown-rows { display: grid; margin: 0; }
-.markdown-rows > div { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); gap: 12px; padding-block: 12px; }
-.markdown-rows > div:first-child { padding-top: 0; }
-.markdown-rows > div + div { border-top: 1px solid var(--win-edge); }
-.markdown-rows dt { padding-top: 3px; color: var(--win-muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.markdown-rows dd { margin: 0; }
-.markdown-rows code { font: 12.5px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--win-muted); overflow-wrap: anywhere; }
-.markdown-rows code s { text-decoration: none; opacity: .45; }
-.markdown-said { display: flex; align-items: flex-start; gap: 8px; font: 600 17px/1.35 var(--display); letter-spacing: -.015em; }
-.markdown-said .glyph { width: 18px; height: 18px; margin-top: 2px; color: var(--win-brand); }
+/* Headings: slower, louder, a breath either side; the paragraph runs on. */
+.stress-rows { display: grid; gap: 22px; padding-top: 6px; }
+.stress-rows p { display: grid; gap: 10px; color: var(--win-muted); font-size: 12px; }
+.stress-line { display: flex; align-items: center; gap: 8px; }
+.breath { width: 22px; border-top: 1.5px dashed #4a505c; }
+.speech-loud { height: 46px; gap: 6px; } .speech-loud i { width: 5px; border-radius: 3px; }
+.speech-run { height: 20px; gap: 2px; } .speech-run i { width: 2.5px; background: #5a6a9a !important; }
+/* Follow: the sentence being read is marked, as in the reader. */
+.follow-lines { display: grid; gap: 6px; padding-top: 2px; }
+.follow-lines p { padding: 7px 10px; border-radius: 10px; color: var(--win-muted); font-size: 14px; line-height: 1.45; }
+.follow-lines p.is-reading { display: flex; align-items: flex-start; gap: 8px; background: rgb(123 147 247 / .16); color: var(--win-ink); font-weight: 500; }
+.follow-lines .glyph { width: 16px; height: 16px; margin-top: 2px; flex: none; color: var(--win-brand); }
 .voices .split-heading { grid-template-columns: 1.35fr .65fr; }
 .voice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .voice-card { position: relative; overflow: hidden; min-height: 260px; }
@@ -249,11 +242,12 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 
 /* The grid of small things. */
 /* Small things (OneNotch's feature tiles): a coloured icon and a name. */
-.more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
+.more-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
 .more-grid li { padding: 24px; border-radius: 22px; background: var(--card); }
 .more-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; }
 .more-icon .glyph { width: 19px; height: 19px; stroke-width: 1.8; }
-.more-clock { background: #e0902f; } .more-menu { background: #7a5af5; } .more-books { background: #e0604a; }
+.more-bell { background: #e0902f; } .more-hash { background: #64708a; } .more-speed { background: #d6457a; }
+.more-clock { background: #2b8fd6; } .more-menu { background: #7a5af5; } .more-books { background: #e0604a; }
 .more-globe { background: #1f9bb0; } .more-key { background: #2f9e6e; }
 .more-grid h3 { margin-top: 18px; font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
 

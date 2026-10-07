@@ -116,7 +116,7 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   assert.equal((html.match(/class="preview"/g) || []).length, 3);
   assert.equal((html.match(/class="tab-icon"/g) || []).length, 3);
   assert.equal((html.match(/<ol class="sample-passages">(.*?)<\/ol>/)[1].match(/<li>/g) || []).length, 3);
-  assert.equal((html.match(/<ul class="more-grid">(.*?)<\/ul>/)[1].match(/<li>/g) || []).length, 6);
+  assert.equal((html.match(/<ul class="more-grid">(.*?)<\/ul>/)[1].match(/<li>/g) || []).length, 8);
   // The ticker repeats its words for the drift; the copy is hidden from AT.
   assert.equal((html.match(/<li aria-hidden="true">/g) || []).length, c.ticker.length);
   for (const id of ['features', 'voices', 'privacy', 'faq']) assert.match(html, new RegExp(`id="${id}"`));
