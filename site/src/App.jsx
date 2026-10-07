@@ -149,9 +149,9 @@ function Ticker({ c }) {
   </section>;
 }
 function Card({ title, chips, children }) {
-  // Every card: a fixed-height illustration with its feature chips pinned to the same spot, then the title.
-  return <article className="way-card"><div className="way-visual"><div className="way-art">{children}</div>
-    <ul className="way-chips">{chips.map(chip => <li key={chip}>{chip}</li>)}</ul></div>
+  // Every card: a fixed-height illustration, its feature chips floating over its lower edge, then the title.
+  return <article className="way-card"><div className="way-visual"><div className="way-art">{children}
+    <ul className="way-chips">{chips.map(chip => <li key={chip}>{chip}</li>)}</ul></div></div>
     <div className="way-text"><p className="way-type">{title[0]} <span>{title[1]}</span></p><h3><Lines value={title.slice(2)} /></h3></div></article>;
 }
 function Ways({ c, screenshots }) {
