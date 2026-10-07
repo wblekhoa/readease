@@ -53,8 +53,8 @@ PUBLIC_MODEL_ASSETS = {
     "assets/voice-demos/en.m4a": "33e8e13a7d5e074fd1037b8500ce91ef85c2b300bc0e7243efcd59b6056a8168",
     "assets/voice-demos/openai-vi.m4a": "796e26afb4bcebb09c1b32bbf898de602759ca4bc349818179a559c9ba52b6dd",
     "assets/voice-demos/openai-en.m4a": "40fc42f5b5c662d8fdca53b638aa17b5a17d20a955ede75de165e96ba7bf5d48",
-    "assets/voice-demos/elevenlabs-vi.m4a": "50da3d1600e35c218d53f6c738c8ecf0617fd309ebaa5ce0203577a408435cb1",
-    "assets/voice-demos/elevenlabs-en.m4a": "538f86fe9ce3ee39b2caa590f1c857d3b67d4f93400a2b840bef2e33f587b29b",
+    "assets/voice-demos/elevenlabs-vi.m4a": "c1a420338784a85d60b59edd154053fb6f78f0fe988ef749407f4f82db83dea9",
+    "assets/voice-demos/elevenlabs-en.m4a": "2db6acbfcca18753e0e73100591d2711bbdb51dcb89cff68c919652c1fa6b50b",
 }
 FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",

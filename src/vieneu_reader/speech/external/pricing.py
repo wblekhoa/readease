@@ -94,6 +94,13 @@ PRICES: tuple[VoicePrice, ...] = (
         "elevenlabs", "eleven_flash_v2_5", "ElevenLabs · Flash",
         0.050, "credits", "counted", "2026-09-04",
     ),
+    # The default since 07/10 (owner's pick by ear: Flash got Vietnamese
+    # tones wrong). The API's own model list gives it the same 0.5 character
+    # cost multiplier as Flash and names Vietnamese [fetched 2026-10-07].
+    VoicePrice(
+        "elevenlabs", "eleven_v4_turbo", "ElevenLabs · v4 Turbo",
+        0.050, "credits", "counted", "2026-10-07",
+    ),
 )
 
 _BY_MODEL = {price.model: price for price in PRICES}

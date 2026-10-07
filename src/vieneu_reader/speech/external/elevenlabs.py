@@ -134,7 +134,7 @@ class ElevenLabsVoiceProvider:
     def __init__(
         self,
         api_key: str,
-        model: str = "eleven_flash_v2_5",
+        model: str = "eleven_v4_turbo",
         *,
         opener: Opener | None = None,
         timeout: float = 60.0,

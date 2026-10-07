@@ -585,7 +585,7 @@ class CatalogueTests(unittest.TestCase):
 
         self.assertEqual({v["model"] for v in dear if v["paid"]}, {"eleven_v3"})
         self.assertEqual(
-            {v["model"] for v in cheap if v["paid"]}, {"eleven_flash_v2_5"}
+            {v["model"] for v in cheap if v["paid"]}, {"eleven_v4_turbo"}
         )
         # Same voices, different price - so the ids differ in the middle and
         # nothing that keyed off the old id can silently be charged the new

@@ -541,13 +541,14 @@ const PAID_VOICES: Record<string, { id: string; label: string; languages?: strin
  */
 const MODELS = [
   { provider: "openai", model: "gpt-4o-mini-tts" },
+  { provider: "elevenlabs", model: "eleven_v4_turbo" },
   { provider: "elevenlabs", model: "eleven_flash_v2_5" },
   { provider: "elevenlabs", model: "eleven_v3" },
 ];
 
 const DEFAULT_MODEL: Record<string, string> = {
   openai: "gpt-4o-mini-tts",
-  elevenlabs: "eleven_flash_v2_5",
+  elevenlabs: "eleven_v4_turbo",
 };
 
 function chosenModel(provider: string): string {

@@ -11,7 +11,8 @@ encoding (64 kb/s mono).
 | `vi.m4a` | VieNeu-TTS v3 Turbo (Apache-2.0) | Ngọc Linh (preset) | Three sentences, 15 s (text in `scripts/render-voice-demos.py`) |
 | `en.m4a` | Kokoro-82M v1.0 (Apache-2.0) | Heart (`af_heart`) | Three sentences, 18 s (text in `scripts/render-voice-demos.py`) |
 | `openai-vi.m4a`, `openai-en.m4a` | OpenAI `gpt-4o-mini-tts` (the app's default) | Marin (stock) | Same text, Vietnamese / English |
-| `elevenlabs-vi.m4a`, `elevenlabs-en.m4a` | ElevenLabs `eleven_flash_v2_5` (the app's default) | Sarah (premade) | Same text, Vietnamese / English |
+| `elevenlabs-vi.m4a` | ElevenLabs `eleven_v4_turbo` (the app's default since 07/10) | Nguyễn Ngân (voice library) | Same text, Vietnamese |
+| `elevenlabs-en.m4a` | ElevenLabs `eleven_v4_turbo` | Sarah (premade) | Same text, English |
 
 Model revisions and licences: `legal/MODEL_PROVENANCE.md`. The VieNeu model
 card states its preset voices carry commercial-use permission and speaker
@@ -23,7 +24,8 @@ is the clips' own peaks, written to `site/src/voiceBars.js` by the same run.
 
 The four paid-voice clips came from the owner's own keys through the app's
 own provider code (`scripts/render-voice-demos.py --api`), on stock voices
-only - no library or cloned voice. The ElevenLabs account is on a paid plan
+except the Vietnamese ElevenLabs clip, which uses a public voice-library voice
+(the premade voices are English speakers); never a cloned voice. The ElevenLabs account is on a paid plan
 (Starter on 07/10/2026), whose terms allow commercial use of the output;
 OpenAI's usage policies ask that AI-generated voices be disclosed as such,
 which the page does by naming the provider and voice beside each player.

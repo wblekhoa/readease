@@ -188,10 +188,11 @@ DEFAULT_MODEL_FOR_PROVIDER = {
     # model" [fetched 2026-09-10]. It replaced tts-1/tts-1-hd outright rather
     # than joining them - see `pricing.py` for what that cost in exactness.
     "openai": "gpt-4o-mini-tts",
-    # The model whose published language list names Vietnamese, and half the
-    # price of v3 [fetched 2026-09-04]. A default that cannot say the language
-    # this app exists for is not a default.
-    "elevenlabs": "eleven_flash_v2_5",
+    # Names Vietnamese and costs what Flash costs, half of v3 [fetched
+    # 2026-10-07]; chosen 07/10 because Flash put Vietnamese tones wrong.
+    # A default that cannot say the language this app exists for is not a
+    # default. Flash stays priced so voices saved with it still read.
+    "elevenlabs": "eleven_v4_turbo",
 }
 
 

@@ -229,11 +229,11 @@ function Voices({ c, prefix, locale }) {
       {/* The app's key settings, each saved provider with a real sample of its stock voice
           (same text as the local demos), then the per-session spending cap. */}
       <div className="api-panel">
-        {[['openai', 'OpenAI', 'Marin', 'sk-••••••••••••3f9a'], ['elevenlabs', 'ElevenLabs', 'Sarah', '••••••••••••b21c']].map(([id, provider, voice, key]) =>
+        {[['openai', 'OpenAI', { vi: 'Marin', en: 'Marin' }, 'sk-••••••••••••3f9a'], ['elevenlabs', 'ElevenLabs', { vi: 'Nguyễn Ngân', en: 'Sarah' }, '••••••••••••b21c']].map(([id, provider, voices, key]) => { const voice = voices[locale]; return (
           <div key={id} className="api-row api-provider">
             <VoicePlayer compact src={`${prefix}voice-demos/${id}-${locale}.m4a`} bars={voiceBars[`${id}-${locale}`]} name={`${provider} ${voice}`} labels={c.listen} />
             <b>{provider}<span> · {voice}</span></b><code aria-hidden="true">{key}</code><span className="api-saved"><Glyph name="check" />{c.apiRows[0]}</span>
-          </div>)}
+          </div>); })}
         <p className="api-row api-cap-row" aria-hidden="true"><b>{c.apiRows[1]}</b><span className="api-cap">$1.00</span></p>
       </div>
     </article>

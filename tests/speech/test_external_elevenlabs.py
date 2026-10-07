@@ -82,16 +82,17 @@ class RequestShapeTests(unittest.TestCase):
         # Zero retention, asked for per request.
         self.assertIn("enable_logging=false", seen["url"])
         self.assertEqual(seen["body"]["text"], "Một câu.")
-        self.assertEqual(seen["body"]["model_id"], "eleven_flash_v2_5")
+        self.assertEqual(seen["body"]["model_id"], "eleven_v4_turbo")
         # The words and the model. Nothing about the book or the reader.
         self.assertEqual(set(seen["body"]), {"text", "model_id"})
         self.assertIn("Xi-api-key", seen["headers"])
 
     def test_the_default_model_is_the_one_that_speaks_vietnamese(self) -> None:
-        # eleven_flash_v2_5 is the model whose language list names Vietnamese
-        # [fetched 2026-09-04]; it is also half the price of v3. A default
-        # that cannot say the language the app exists for is not a default.
-        self.assertEqual(ElevenLabsVoiceProvider(KEY).model, "eleven_flash_v2_5")
+        # eleven_v4_turbo names Vietnamese and costs what Flash costs, half of
+        # v3 [fetched 2026-10-07]; Flash put Vietnamese tones wrong (owner,
+        # 07/10). A default that cannot say the language the app exists for
+        # is not a default.
+        self.assertEqual(ElevenLabsVoiceProvider(KEY).model, "eleven_v4_turbo")
 
 
 class RefusalTests(unittest.TestCase):
@@ -194,7 +195,7 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual([voice.id for voice in voices], ["id-Rachel", "id-Adam"])
         self.assertEqual(voices[0].label, "Rachel · ElevenLabs")
         # The model rides along, because the id built from it carries the price.
-        self.assertEqual(voices[0].model, "eleven_flash_v2_5")
+        self.assertEqual(voices[0].model, "eleven_v4_turbo")
 
     def test_it_follows_the_pages(self) -> None:
         pages = [page(["A"], token="t1", more=True), page(["B"], more=False)]

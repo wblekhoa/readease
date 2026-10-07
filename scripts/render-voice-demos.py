@@ -42,7 +42,13 @@ TEXT = {
 VOICE = {"vi": "Ngọc Linh", "en": "af_heart"}
 # Paid voices (--api): the providers' own stock voices, never a library or
 # cloned voice. Keys are read from the app's settings and never printed.
-API_VOICE = {"openai": ("marin", "Marin"), "elevenlabs": ("EXAVITQu4vr4xnSDxMaL", "Sarah")}
+API_VOICE = {
+    ("openai", "vi"): ("marin", "Marin"), ("openai", "en"): ("marin", "Marin"),
+    # A Vietnamese voice from the account's voice library for Vietnamese (the
+    # premade ones are English speakers), on eleven_v4_turbo since 07/10.
+    ("elevenlabs", "vi"): ("DvG3I1kDzdBY3u4EzYh6", "Nguyễn Ngân"),
+    ("elevenlabs", "en"): ("EXAVITQu4vr4xnSDxMaL", "Sarah"),
+}
 API_RATE = 24_000
 
 
@@ -91,7 +97,7 @@ def encode(audio: np.ndarray, rate: int, name: str) -> None:
                         str(wav), str(OUT / f"{name}.m4a")], check=True)
 
 
-def render_api(shapes: dict) -> None:
+def render_api(shapes: dict, only: str | None = None) -> None:
     """Spends a few cents of the owner's own credit; sends only the demo text."""
     from vieneu_reader.speech.external.elevenlabs import ElevenLabsVoiceProvider
     from vieneu_reader.speech.external.openai import OpenAIVoiceProvider
@@ -99,8 +105,10 @@ def render_api(shapes: dict) -> None:
     makers = {"openai": lambda: OpenAIVoiceProvider(settings["openai_api_key"]),
               "elevenlabs": lambda: ElevenLabsVoiceProvider(settings["elevenlabs_api_key"])}
     for provider, make in makers.items():
-        voice, label = API_VOICE[provider]
+        if only and provider != only:
+            continue
         for language, text in TEXT.items():
+            voice, label = API_VOICE[(provider, language)]
             pcm = b"".join(make().synthesize(text, voice))
             audio = level(np.frombuffer(pcm[: len(pcm) // 2 * 2], dtype="<i2").astype(np.float32) / 32768)
             name = f"{provider}-{language}"
@@ -125,12 +133,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", type=Path)
     parser.add_argument("--api", action="store_true", help="render the paid-voice demos instead")
+    parser.add_argument("--only", choices=["openai", "elevenlabs"], help="with --api, one provider")
     args = parser.parse_args()
     sys.path.insert(0, str(ROOT / "src"))
     OUT.mkdir(parents=True, exist_ok=True)
     shapes = {}
     if args.api:
-        render_api(shapes)
+        render_api(shapes, args.only)
         write_bars(shapes)
         return
     if not args.models:
