@@ -199,9 +199,9 @@ function Craft({ c }) {
   const [pauseTitle, pauses] = c.pauses;
   const [chimeTitle, chapter, chimes, previous] = c.chimes;
   const [mdTitle, source, spoken, [written, said]] = c.markdown;
-  // Three cards in the same shape: a label, one sentence, one line, then a piece of the app peeking up from the bottom.
-  const card = (i, label, art) => <article className="craft-card"><p className="card-label">{label}</p>
-    <h3>{c.craftCopy[i][0]}</h3><p className="craft-note">{c.craftCopy[i][1]}</p><div className="craft-window">{art}</div></article>;
+  // Three cards in the same shape: one title (owner, 07/10: nothing else), then a piece of the app peeking up from the bottom.
+  const card = (i, label, art) => <article className="craft-card" aria-label={label}>
+    <h3>{c.craftTitles[i]}</h3><div className="craft-window">{art}</div></article>;
   return <section className="craft section container" aria-labelledby="craft-title">
     <div className="center-heading"><p className="label">{c.craftLabel}</p><h2 id="craft-title"><Lines value={c.craft} /></h2></div>
     <div className="craft-grid">
@@ -230,7 +230,7 @@ function Voices({ c }) {
 function More({ c }) {
   return <section className="more section container" aria-labelledby="more-title">
     <div className="center-heading"><p className="label">{c.moreLabel}</p><h2 id="more-title"><Lines value={c.moreTitle} /></h2></div>
-    <ul className="more-grid">{c.more.map(([icon, title, note]) => <li key={title}><span className={`more-icon more-${icon}`}><Glyph name={icon} /></span><h3>{title}</h3><p>{note}</p></li>)}</ul>
+    <ul className="more-grid">{c.more.map(([icon, title]) => <li key={title}><span className={`more-icon more-${icon}`}><Glyph name={icon} /></span><h3>{title}</h3></li>)}</ul>
   </section>;
 }
 function Privacy({ c }) {
