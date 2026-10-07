@@ -1468,6 +1468,10 @@ if (showcaseLocale === "vi" || showcaseLocale === "en") {
     chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of && showcased.has(String(figure.id)));
     if (index === 2) {
       chapter.title = showcaseLocale === "vi" ? "Chương 3 · Những góc nhìn khác nhau" : "Chapter 3 · Different perspectives";
+      // The stress chapter has grown past the authored copy; a segment left
+      // without words white-screened the reader (07/10). Its figures sit
+      // inside the authored part, so the chapter ends where the copy does.
+      chapter.segments = chapter.segments.slice(0, sampler.length);
       chapter.segments.forEach((segment, i) => { segment.text = sampler[i]; });
     }
     chapter.figures.forEach(figure => {
@@ -1477,6 +1481,40 @@ if (showcaseLocale === "vi" || showcaseLocale === "en") {
         : "Engineering, design and research together shape the user experience";
     });
   });
+}
+// Showcase covers (07/10): the pictures on the public landing page. Four
+// layouts, no "MOCK" label and no rule lines - each book looks like itself.
+function showcaseCovers(lang: "vi" | "en"): Record<string, string> {
+  const t = lang === "vi"
+    ? { ux: ["Nguyên tắc", "trải nghiệm"], two: ["Thiết kế cho", "người đọc vội"], three: ["Cẩm nang", "usability"], four: ["Sổ tay", "thiết kế"] }
+    : { ux: ["Principles of", "experience"], two: ["A quieter", "way to read"], three: ["Usability", "notes"], four: ["The design", "field guide"] };
+  const serif = 'font-family="Georgia,serif" font-weight="700"';
+  const sans = 'font-family="Helvetica Neue,Helvetica,Arial" font-weight="700"';
+  const svg = (body: string) => btoa(unescape(encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900">${body}</svg>`)));
+  const dots = Array.from({ length: 20 }, (_, i) => {
+    const x = 90 + (i % 4) * 140, y = 360 + Math.floor(i / 4) * 105;
+    return `<rect x="${x - 34}" y="${y - 34}" width="68" height="68" rx="${i % 3 === 0 ? 34 : 14}" fill="#4A2318" opacity="${(0.12 + (i * 7 % 10) / 14).toFixed(2)}"/>`;
+  }).join("");
+  return {
+    "book-ux": svg(`<rect width="600" height="900" fill="#EFE6D6"/>
+<circle cx="470" cy="660" r="260" fill="#C8643B"/><circle cx="200" cy="560" r="70" fill="#2B2118"/>
+<text x="60" y="150" ${serif} font-size="66" fill="#2B2118">${t.ux[0]}</text><text x="60" y="230" ${serif} font-size="66" fill="#2B2118">${t.ux[1]}</text>`),
+    "book-two": svg(`<rect width="600" height="900" fill="#24453A"/>
+<text x="60" y="140" ${sans} font-size="58" fill="#EEF2E6">${t.two[0]}</text><text x="60" y="210" ${sans} font-size="58" fill="#EEF2E6">${t.two[1]}</text>
+<rect x="150" y="430" width="330" height="400" rx="26" fill="#3E6B58"/><rect x="110" y="480" width="330" height="400" rx="26" fill="#6E9C82"/>
+<rect x="70" y="530" width="330" height="400" rx="26" fill="#CFE0C9"/>`),
+    "book-three": svg(`<rect width="600" height="900" fill="#F3D9CC"/>${dots}
+<text x="60" y="150" ${sans} font-size="70" fill="#4A2318">${t.three[0]}</text><text x="60" y="230" ${sans} font-size="70" fill="#4A2318" opacity="0.75">${t.three[1]}</text>`),
+    "book-four": svg(`<rect width="600" height="900" fill="#1D3557"/>
+<circle cx="0" cy="900" r="330" fill="#E9C46A"/><circle cx="0" cy="900" r="210" fill="#F4A261"/><circle cx="600" cy="0" r="150" fill="#457B9D"/>
+<text x="60" y="330" ${serif} font-size="74" fill="#F4F1EA">${t.four[0]}</text><text x="60" y="415" ${serif} font-size="74" fill="#F4F1EA">${t.four[1]}</text>`),
+  };
+}
+if (showcaseLocale === "vi") {
+  const titles: Record<string, string> = { "book-three": "Cẩm nang usability cho đội sản phẩm", "book-four": "Sổ tay của nhóm thiết kế" };
+  LIBRARY.forEach(book => { if (titles[book.id]) book.title = titles[book.id]; });
+  Object.assign(COVERS, showcaseCovers("vi"));
 }
 if (showcaseLocale === "en") {
   SETTINGS.ui_language = "en";
@@ -1490,8 +1528,7 @@ if (showcaseLocale === "en") {
     book.language = book.language_detected = DETECTED_LANGUAGE[book.id] = "en";
     if (book.progress_chapter) book.progress_chapter = `Chapter ${index + 1}`;
   });
-  COVERS["book-ux"] = coverSvg("Principles of", "experience", "#E8DCC8", "#2B2118");
-  COVERS["book-four"] = coverSvg("The design", "field guide", "#1F3A5F", "#F4F1EA");
+  Object.assign(COVERS, showcaseCovers("en"));
   BOOK.chapters.forEach((chapter, index) => {
     // The ordinary showcase uses one illustration, not the default harness's
     // deliberately repeated figure used to stress duplicate-handling tests.
