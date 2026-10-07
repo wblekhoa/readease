@@ -148,8 +148,10 @@ function Ticker({ c }) {
       <li key={i} aria-hidden={i >= c.ticker.length ? true : undefined}>{word}</li>)}</ul>
   </section>;
 }
-function Card({ title, children }) {
-  return <article className="way-card"><div className="way-visual">{children}</div>
+function Card({ title, chips, children }) {
+  // Every card: a fixed-height illustration with its feature chips pinned to the same spot, then the title.
+  return <article className="way-card"><div className="way-visual"><div className="way-art">{children}</div>
+    <ul className="way-chips">{chips.map(chip => <li key={chip}>{chip}</li>)}</ul></div>
     <div className="way-text"><p className="way-type">{title[0]} <span>{title[1]}</span></p><h3><Lines value={title.slice(2)} /></h3></div></article>;
 }
 function Ways({ c, screenshots }) {
@@ -168,15 +170,15 @@ function Ways({ c, screenshots }) {
   return <section className="ways section" id="features" aria-labelledby="ways-title">
     <div className="split-heading container"><h2 id="ways-title"><Lines value={c.ways} /></h2></div>
     <div className="way-track" ref={track} onScroll={enhanced ? onScroll : undefined} role="group" aria-label={c.carousel} tabIndex={0}>
-      <Card title={c.library}><figure className="library-visual"><img src={`${screenshots}shelf.png`} width="1600" height="1025" loading="lazy" alt={c.libraryAlt} /></figure></Card>
-      <Card title={c.paste}><figure className="reading-visual paste-visual" aria-label={c.pasteLabel}>
-        <div className="passage-sheet"><p className="sample-label">{c.sampleTitle}</p><ol className="sample-passages">{c.passages.map(p => <li key={p}>{p}</li>)}</ol></div><figcaption>{c.pasteCaption}</figcaption>
+      <Card title={c.library} chips={c.libraryChips}><figure className="library-visual"><img src={`${screenshots}shelf.png`} width="1600" height="1025" loading="lazy" alt={c.libraryAlt} /></figure></Card>
+      <Card title={c.paste} chips={c.pasteChips}><figure className="reading-visual paste-visual" aria-label={c.pasteLabel}>
+        <div className="passage-sheet"><p className="sample-label">{c.sampleTitle}</p><ol className="sample-passages">{c.passages.map(p => <li key={p}>{p}</li>)}</ol></div>
       </figure></Card>
-      <Card title={c.selection}><figure className="reading-visual selection-visual" aria-label={c.selectionLabel}>
-        <div className="selection-sheet"><p className="sample-label">{c.page}</p><p className="sample-excerpt">{c.excerpt[0]}<br /><mark>{c.excerpt[1]}</mark></p><div className="shortcut-legend"><span>{c.shortcut}</span><span><kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>R</kbd></span></div></div><figcaption>{c.selectionCaption}</figcaption>
+      <Card title={c.selection} chips={c.selectionChips}><figure className="reading-visual selection-visual" aria-label={c.selectionLabel}>
+        <div className="selection-sheet"><p className="sample-label">{c.page}</p><p className="sample-excerpt">{c.excerpt[0]}<br /><mark>{c.excerpt[1]}</mark></p><div className="shortcut-legend"><span>{c.shortcut}</span><span><kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>R</kbd></span></div></div>
       </figure></Card>
-      <Card title={c.figures}><figure className="reading-visual figure-visual" aria-label={c.figuresLabel}>
-        <div className="figure-sheet"><div className="figure-art" aria-hidden="true"><span /><span /><span /></div><p className="sample-label">{c.figureName}</p><p className="figure-cue"><Glyph name="voices" />{c.figureCue}</p></div><figcaption>{c.figuresCaption}</figcaption>
+      <Card title={c.figures} chips={c.figuresChips}><figure className="reading-visual figure-visual" aria-label={c.figuresLabel}>
+        <div className="figure-sheet"><div className="figure-art" aria-hidden="true"><span /><span /><span /></div><p className="sample-label">{c.figureName}</p><p className="figure-cue"><Glyph name="voices" />{c.figureCue}</p></div>
       </figure></Card>
     </div>
     <div className="way-controls container" hidden={!enhanced}>
@@ -195,12 +197,17 @@ function Craft({ c }) {
   return <section className="craft section container" aria-labelledby="craft-title">
     <div className="center-heading"><p className="label">{c.craftLabel}</p><h2 id="craft-title"><Lines value={c.craft} /></h2></div>
     <div className="craft-grid">
+      {/* Each pause drawn as what it is: speech, a silence of that length, speech again. */}
       <article className="panel-card"><p className="card-label">{pauseTitle}</p>
-        <ul className="pause-bars">{pauses.map(([label, width]) => <li key={label}><span>{label}</span><span className="pause-bar" style={{ '--w': `${width}%` }} /></li>)}</ul></article>
+        <ul className="pause-lines">{pauses.map(([label, width]) => <li key={label} style={{ '--w': width }}><span>{label}</span>
+          <span className="pause-line" aria-hidden="true"><i /><b /><i /></span></li>)}</ul></article>
       <article className="panel-card"><p className="card-label">{chimeTitle}</p>
-        <div className="chime-demo"><p className="chime-chapter">{chapter}</p><p className="chime-notes">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>♪ {name}</span>)}</p></div></article>
+        <div className="chime-demo"><span className="chime-bell" aria-hidden="true">♪</span><p className="chime-chapter">{chapter}</p>
+          <p className="chime-notes">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>{name}</span>)}</p></div></article>
+      {/* The markup is dimmed, the words the voice keeps stay bright. */}
       <article className="panel-card"><p className="card-label">{mdTitle}</p>
-        <div className="markdown-demo"><code>{source}</code><span className="markdown-arrow" aria-hidden="true">↓</span><p>{spoken}</p></div></article>
+        <div className="markdown-demo"><code>{source.split(/(\*\*|\*|\[|\]\([^)]*\))/).map((part, i) => i % 2 ? <s key={i}>{part}</s> : part)}</code>
+          <span className="markdown-arrow" aria-hidden="true">↓</span><p><Glyph name="voices" />{spoken}</p></div></article>
     </div>
   </section>;
 }
