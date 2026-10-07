@@ -1,9 +1,9 @@
 /* Simple GA4 page analytics for the landing page (owner, 07/10).
-   Off until GA_ID holds the ReadEase web stream's measurement id; skipped on
+   Uses the ReadEase web stream (GA_ID); skipped on
    localhost and when the browser sends Do Not Track. Google signals and ad
    personalisation are switched off. The app itself sends nothing - this
    counts visits to the page, nothing more. */
-export const GA_ID = '';
+export const GA_ID = 'G-SCW9MNJQM2';
 
 const EVENTS = [
   // [selector, event name, params from the element]

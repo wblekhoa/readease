@@ -42,6 +42,14 @@ that voice afterwards is entirely local.
 The other time ReadEase reaches the network is an outside AI voice, described
 next. There is no third.
 
+## The website
+
+The landing page (wblekhoa.github.io/readease) counts visits with Google
+Analytics 4: page views and a few clicks (download, GitHub, language
+switch, a voice demo started, a question opened). Google signals and ad
+personalisation are off, and nothing loads when your browser sends Do Not
+Track. This is the website only; the app sends nothing of the kind.
+
 ## Outside AI voices (off unless you turn them on)
 
 ReadEase can read with a paid voice from OpenAI or ElevenLabs, on **your own
