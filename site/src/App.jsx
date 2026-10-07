@@ -137,10 +137,9 @@ function Ticker({ c }) {
     media.addEventListener('change', setup);
     return () => { disposed = true; media.removeEventListener('change', setup); ctx?.revert(); };
   }, [enhanced]);
-  return <section className="ticker" aria-labelledby="ticker-title" ref={band}>
+  return <section className="ticker" aria-label={c.tickerLabel} ref={band}>
     <ul className="ticker-row" data-drift="">{[...c.ticker, ...c.ticker].map((word, i) =>
       <li key={i} aria-hidden={i >= c.ticker.length ? true : undefined}>{word}</li>)}</ul>
-    <p className="ticker-title" id="ticker-title">{c.tickerTitle}</p>
   </section>;
 }
 function Card({ title, children }) {
@@ -161,7 +160,7 @@ function Ways({ c, screenshots }) {
     setCurrent(Math.max(0, Math.min(count - 1, Math.round(el.scrollLeft / (card.offsetWidth + 24)))));
   };
   return <section className="ways section" id="features" aria-labelledby="ways-title">
-    <div className="split-heading container"><h2 id="ways-title"><Lines value={c.ways} /></h2><p>{c.waysDescription}</p></div>
+    <div className="split-heading container"><h2 id="ways-title"><Lines value={c.ways} /></h2></div>
     <div className="way-track" ref={track} onScroll={enhanced ? onScroll : undefined} role="group" aria-label={c.carousel} tabIndex={0}>
       <Card title={c.library}><figure className="library-visual"><img src={`${screenshots}shelf.png`} width="1600" height="1025" loading="lazy" alt={c.libraryAlt} /></figure></Card>
       <Card title={c.paste}><figure className="reading-visual paste-visual" aria-label={c.pasteLabel}>
@@ -184,26 +183,26 @@ function Ways({ c, screenshots }) {
   </section>;
 }
 function Craft({ c }) {
-  const [pauseTitle, pauseText, pauses] = c.pauses;
-  const [chimeTitle, chimeText, chapter, chimes] = c.chimes;
-  const [mdTitle, mdText, source, spoken] = c.markdown;
+  const [pauseTitle, pauses] = c.pauses;
+  const [chimeTitle, chapter, chimes] = c.chimes;
+  const [mdTitle, source, spoken] = c.markdown;
   return <section className="craft section container" aria-labelledby="craft-title">
-    <div className="center-heading"><p className="label">{c.craftLabel}</p><h2 id="craft-title"><Lines value={c.craft} /></h2><p>{c.craftDescription}</p></div>
+    <div className="center-heading"><p className="label">{c.craftLabel}</p><h2 id="craft-title"><Lines value={c.craft} /></h2></div>
     <div className="craft-grid">
-      <article className="panel-card"><p className="card-label">{pauseTitle}</p><p className="card-text">{pauseText}</p>
+      <article className="panel-card"><p className="card-label">{pauseTitle}</p>
         <ul className="pause-bars">{pauses.map(([label, width]) => <li key={label}><span>{label}</span><span className="pause-bar" style={{ '--w': `${width}%` }} /></li>)}</ul></article>
-      <article className="panel-card"><p className="card-label">{chimeTitle}</p><p className="card-text">{chimeText}</p>
+      <article className="panel-card"><p className="card-label">{chimeTitle}</p>
         <div className="chime-demo"><p className="chime-chapter">{chapter}</p><p className="chime-notes">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>♪ {name}</span>)}</p></div></article>
-      <article className="panel-card"><p className="card-label">{mdTitle}</p><p className="card-text">{mdText}</p>
+      <article className="panel-card"><p className="card-label">{mdTitle}</p>
         <div className="markdown-demo"><code>{source}</code><span className="markdown-arrow" aria-hidden="true">↓</span><p>{spoken}</p></div></article>
     </div>
   </section>;
 }
 function Voices({ c }) {
   return <section className="voices section container" id="voices" aria-labelledby="voices-title">
-    <div className="split-heading"><div><p className="label">{c.voicesLabel}</p><h2 id="voices-title"><Lines value={c.voicesTitle} /></h2></div><p>{c.voicesDescription}</p></div>
-    <div className="voice-grid">{c.voices.map(([language, model, text, facts]) =>
-      <article key={model} className="voice-card"><p className="card-label">{language}</p><h3>{model}</h3><p className="card-text">{text}</p>
+    <div className="split-heading"><div><p className="label">{c.voicesLabel}</p><h2 id="voices-title"><Lines value={c.voicesTitle} /></h2></div></div>
+    <div className="voice-grid">{c.voices.map(([language, model, facts]) =>
+      <article key={model} className="voice-card"><p className="card-label">{language}</p><h3>{model}</h3>
         <ul className="fact-list">{facts.map(fact => <li key={fact}>{fact}</li>)}</ul><span className="voice-wave" aria-hidden="true">{Array.from({ length: 28 }, (_, i) => <i key={i} style={{ '--h': `${30 + Math.round(60 * Math.abs(Math.sin(i * .9 + model.length)))}%` }} />)}</span></article>)}
     </div>
     <p className="voices-note">{c.voicesNote}</p>
@@ -212,16 +211,13 @@ function Voices({ c }) {
 function More({ c }) {
   return <section className="more section container" aria-labelledby="more-title">
     <div className="center-heading"><p className="label">{c.moreLabel}</p><h2 id="more-title"><Lines value={c.moreTitle} /></h2></div>
-    <ul className="more-grid">{c.more.map(([icon, title, text]) => <li key={title}><Glyph name={icon} /><h3>{title}</h3><p>{text}</p></li>)}</ul>
+    <ul className="more-grid">{c.more.map(([icon, title]) => <li key={title}><Glyph name={icon} /><h3>{title}</h3></li>)}</ul>
   </section>;
 }
 function Privacy({ c }) {
-  const Column = ({ value, tone }) => <article className={`privacy-card ${tone}`}><h3>{value[0]}</h3><p className="card-text">{value[1]}</p>
-    <ul className="check-list">{value[2].map(item => <li key={item}><Glyph name="check" />{item}</li>)}</ul></article>;
   return <section className="privacy section container" id="privacy" aria-labelledby="privacy-title">
     <div className="center-heading"><p className="label">{c.privacyLabel}</p><h2 id="privacy-title">{c.privacyTitle[0]}<br /><span className="accent">{c.privacyTitle[1]}</span></h2>
       <p>{c.privacy}</p><ul className="pill-checks">{c.checks.map(item => <li key={item}><Glyph name="check" />{item}</li>)}</ul></div>
-    <div className="privacy-grid"><Column value={c.local} tone="is-local" /><Column value={c.remote} tone="is-remote" /></div>
     <p className="privacy-foot">{c.license} <a className="text-link" href={doc('PRIVACY.md')}>{c.privacyLink} <Arrow /></a></p>
   </section>;
 }

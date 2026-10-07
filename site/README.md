@@ -64,8 +64,10 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   always fits. A segmented tab bar sits under it.
 - A band of feature words that drifts with the scroll, then sections in this
   order: card scroller (library, paste, selection, EPUB figures), craft (pauses,
-  chapter chimes, Markdown), voices (VieNeu, Kokoro), a 12-item grid, free and
+  chapter chimes, Markdown), voices (VieNeu, Kokoro), a 6-item grid, free and
   private (stands where a pricing table would), FAQ, closing, column footer.
+- Few words (owner, 07/10): headings and visuals carry each section; no
+  supporting paragraphs under headings or cards, grid items are titles only.
 - Dark ink CTA, cobalt accent, DS blue ramp, Be Vietnam Pro / Plus Jakarta Sans,
   system light/dark. Diagrams and glyphs are CSS/SVG; no generated art, no
   private books, no reference-site assets.
