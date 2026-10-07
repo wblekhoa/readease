@@ -76,7 +76,8 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
   background: var(--cta); color: var(--on-cta); font-size: 16px; font-weight: 600; white-space: nowrap; box-shadow: 0 12px 30px -14px rgb(20 26 36 / .6); transition: transform 180ms ease-out, opacity 180ms ease-out; }
 .button:hover { color: var(--on-cta); transform: translateY(-1px); opacity: .92; }
 .button-glyph { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.compatibility { margin-top: 18px; color: var(--muted); font-size: 13px; }
+.compatibility { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 14px; margin-top: 18px; color: var(--muted); font-size: 13px; }
+.meta-dot { opacity: .45; }
 
 /* The laptop. Width is bound to the viewport height too, so the pinned stage
    always fits the window (story.js refuses to pin a stage taller than it). */
