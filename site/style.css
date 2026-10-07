@@ -209,22 +209,24 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
   mask: linear-gradient(90deg, #000 0 100%) center / 100% 45% no-repeat, linear-gradient(90deg, transparent 0 20%, #000 20% 40%, transparent 40% 60%, #000 60% 80%, transparent 80%) center / 100% 100% no-repeat; }
 .pause-line i:last-child { flex: 1; min-width: 12px; }
 .pause-line b { flex: none; width: calc(var(--w) * 1%); max-width: 70%; height: 0; margin-inline: 6px; border-top: 2px dotted color-mix(in srgb, var(--brand) 55%, var(--edge)); }
-/* Chimes: a bell that rings between chapters. */
-.chime-demo { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 16px; row-gap: 16px; align-content: center;
-  padding: 22px; border-radius: 18px; background: var(--bg); border: 1px solid var(--edge); }
-.chime-bell { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--brand-wash); color: var(--brand); font-size: 20px;
-  box-shadow: 0 0 0 7px color-mix(in srgb, var(--brand) 12%, transparent), 0 0 0 15px color-mix(in srgb, var(--brand) 6%, transparent); }
-.chime-chapter { font: 700 26px/1.2 var(--display); letter-spacing: -.03em; }
-.chime-notes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-.chime-notes span { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--edge); font-size: 13px; color: var(--muted); }
-.chime-notes span.is-on { border-color: var(--brand); background: var(--brand-wash); color: var(--brand); }
-/* Markdown: what is written, then what is said. */
-.markdown-demo { display: grid; gap: 12px; align-content: center; padding: 22px; border-radius: 18px; background: var(--bg); border: 1px solid var(--edge); }
-.markdown-demo code { font: 13px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); overflow-wrap: anywhere; }
-.markdown-demo code s { text-decoration: none; color: var(--muted); opacity: .55; }
+/* Chimes and Markdown sit straight on the card, like the pauses: no box in a box. */
+.chime-demo { display: grid; grid-template-columns: auto 1fr; align-items: center; align-content: center; gap: 20px 22px; }
+.chime-bell { position: relative; display: grid; place-items: center; width: 44px; height: 44px; margin: 12px; color: var(--brand); font-size: 22px; }
+.chime-bell::before, .chime-bell::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--brand) 45%, transparent); }
+.chime-bell::after { inset: -12px; border-color: color-mix(in srgb, var(--brand) 20%, transparent); }
+.chime-chapter { font: 700 30px/1.15 var(--display); letter-spacing: -.035em; }
+.chime-notes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.chime-notes span { display: inline-flex; align-items: center; gap: 7px; }
+.chime-notes span.is-on { color: var(--brand); font-weight: 600; }
+.chime-level { display: inline-flex; align-items: center; gap: 2px; height: 12px; }
+.chime-level b { width: 2.5px; border-radius: 2px; background: currentColor; height: 55%; }
+.chime-level b:nth-child(2) { height: 100%; } .chime-level b:nth-child(3) { height: 70%; }
+.markdown-demo { display: grid; gap: 14px; align-content: center; }
+.markdown-demo code { font: 13px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.markdown-demo code s { text-decoration: none; opacity: .5; }
 .markdown-arrow { color: var(--brand); }
-.markdown-demo p { display: flex; align-items: center; gap: 10px; width: fit-content; padding: 10px 14px; border-radius: 12px; background: var(--brand-wash); font-size: 16px; font-weight: 500; }
-.markdown-demo p .glyph { width: 18px; height: 18px; color: var(--brand); }
+.markdown-demo p { display: flex; align-items: flex-start; gap: 10px; font: 600 20px/1.35 var(--display); letter-spacing: -.02em; }
+.markdown-demo p .glyph { width: 20px; height: 20px; margin-top: 3px; color: var(--brand); }
 .voices .split-heading { grid-template-columns: 1.35fr .65fr; }
 .voice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .voice-card { position: relative; overflow: hidden; min-height: 260px; }

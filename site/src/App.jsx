@@ -203,7 +203,7 @@ function Craft({ c }) {
           <span className="pause-line" aria-hidden="true"><i /><b /><i /></span></li>)}</ul></article>
       <article className="panel-card"><p className="card-label">{chimeTitle}</p>
         <div className="chime-demo"><span className="chime-bell" aria-hidden="true">♪</span><p className="chime-chapter">{chapter}</p>
-          <p className="chime-notes">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>{name}</span>)}</p></div></article>
+          <p className="chime-notes">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>{i === 0 && <i className="chime-level" aria-hidden="true"><b /><b /><b /></i>}{name}</span>)}</p></div></article>
       {/* The markup is dimmed, the words the voice keeps stay bright. */}
       <article className="panel-card"><p className="card-label">{mdTitle}</p>
         <div className="markdown-demo"><code>{source.split(/(\*\*|\*|\[|\]\([^)]*\))/).map((part, i) => i % 2 ? <s key={i}>{part}</s> : part)}</code>
