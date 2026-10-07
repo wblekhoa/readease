@@ -14,7 +14,9 @@ They tell the landing page's three-step story:
   of chapter 3, the floating reading status above the transport. Vietnamese
   keeps the table of contents; English hides it, because the English fixture
   translates the chapter, not the contents.
-- `voices.png`: the same reading with Voice settings open.
+- `voices.png`: the same book, reading stopped so every voice can be
+  previewed, with the voice list open: Vietnamese shows all 26 voices, English
+  filters to the six English ones.
 
 Dark theme, 1152×738 CSS px at device scale 1600/1152, so the interface reads
 a little larger than life inside the page's laptop frame.

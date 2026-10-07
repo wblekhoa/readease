@@ -83,8 +83,24 @@ try {
     const back = await js(`!!document.querySelector('[data-reading-status]')`);
     console.log(lang, "status hidden under the voice menu:", hidden, "back after closing:", back);
     if (!hidden || !back) code = 1;
+    // Stopped first: while a reading plays the list cannot preview a voice,
+    // and says so - the opposite of the step it illustrates.
+    await click(vi ? /^Dừng$/ : /^Stop$/);
+    await sleep(600);
     await click(vi ? /^Cài đặt giọng đọc$/ : /^Voice settings$/);
+    await sleep(700);
+    // The whole catalogue, not one picked voice (owner, 07/10): many voices,
+    // both languages, filters and previews.
+    await click(vi ? /^Quản lý giọng/ : /^Manage voices/);
     await sleep(900);
+    // English readers see the English voices first: the filter chip, which is
+    // the LAST visible "English" (the reading-language switch comes first).
+    if (!vi) {
+      const chip = await js(`(() => { const el = [...document.querySelectorAll("button,[role=radio]")]
+        .filter(e => /English$/.test(e.textContent.trim()) && !e.closest("[role=radiogroup]") && e.getBoundingClientRect().width > 0).at(-1);
+        if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+      if (chip) { await press(chip); await sleep(600); } else code = 1;
+    }
     await shot(`${lang}-voices.png`);
   }
 } catch (error) { console.error(error); code = 1; }
