@@ -160,13 +160,6 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 .way-visual { display: grid; height: 400px; padding: 32px 32px 24px; background: linear-gradient(160deg, var(--brand-wash), transparent 70%); }
 /* The illustration rests on the bottom of its area so the chips can straddle its lower edge. */
 .way-art { position: relative; display: grid; place-items: center; min-height: 0; }
-/* Chips: white, blue icon, dark text in both themes; scattered over the art, never past its edge. */
-.way-chips { position: absolute; z-index: 1; inset: 0; pointer-events: none; }
-.way-chips li { position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); transform: translate(calc(var(--x) * -1%), calc(var(--y) * -1%));
-  display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px 8px 10px; border-radius: 999px; white-space: nowrap;
-  background: #fff; color: #141a24; font-size: 13px; font-weight: 600; line-height: 1.2;
-  box-shadow: 0 10px 26px -10px rgb(0 0 0 / .45), 0 1px 2px rgb(0 0 0 / .12); }
-.way-chips .chip-icon { flex: none; width: 17px; height: 17px; color: #2b52d4; }
 .way-text { padding: 24px 28px 28px; }
 .way-type { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: 12px; letter-spacing: .05em; }
 .way-card h3 { margin-top: 12px; font-size: clamp(21px, 2vw, 26px); line-height: 1.25; font-weight: 500; letter-spacing: -.03em; }
@@ -313,7 +306,6 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .craft-card { padding: 30px 20px 0; }
   .footer-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .way-visual { height: 340px; padding: 20px 16px 16px; }
-  .way-chips li { padding: 6px 11px 6px 8px; font-size: 12px; }
   .view-tabs button { padding-inline: 10px; gap: 6px; font-size: 13px; }
   .view-tabs .tab-icon { display: none; }
   .closing-tiles span { width: 48px; height: 48px; border-radius: 14px; }

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { content } from './content.js';
 import { fallback, fetchRelease, mb, repository } from './release.js';
-import { chipIcons } from './icons.js';
 import { createStory, keyboardIndex, viewIds } from './story.js';
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
@@ -150,15 +149,9 @@ function Ticker({ c }) {
       <li key={i} aria-hidden={i >= c.ticker.length ? true : undefined}>{word}</li>)}</ul>
   </section>;
 }
-/* Where each card's chips float over its illustration, as [x%, y%] of the art.
-   Anchored so 0% sits flush left/top and 100% flush right/bottom: always inside. */
-const ChipIcon = ({ name }) => <svg className="chip-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-  {chipIcons[name].map(([d, opacity], i) => <path key={i} d={d} opacity={opacity < 1 ? opacity : undefined} />)}</svg>;
-const chipSpots = { library: [[5, 8], [95, 92]], paste: [[96, 6], [4, 94]], selection: [[4, 10], [96, 90]], figures: [[96, 12]] };
-function Card({ title, chips, spots, children }) {
-  // Every card: a fixed-height illustration with its feature chips floating on it, then the title.
-  return <article className="way-card"><div className="way-visual"><div className="way-art">{children}
-    <ul className="way-chips">{chips.map(([icon, chip], i) => <li key={chip} style={{ '--x': spots[i][0], '--y': spots[i][1] }}><ChipIcon name={icon} />{chip}</li>)}</ul></div></div>
+function Card({ title, children }) {
+  // Every card: a fixed-height illustration, then the title, so titles line up across cards.
+  return <article className="way-card"><div className="way-visual"><div className="way-art">{children}</div></div>
     <div className="way-text"><p className="way-type">{title[0]} <span>{title[1]}</span></p><h3><Lines value={title.slice(2)} /></h3></div></article>;
 }
 function Ways({ c, screenshots }) {
@@ -177,14 +170,14 @@ function Ways({ c, screenshots }) {
   return <section className="ways section" id="features" aria-labelledby="ways-title">
     <div className="split-heading container"><h2 id="ways-title"><Lines value={c.ways} /></h2></div>
     <div className="way-track" ref={track} onScroll={enhanced ? onScroll : undefined} role="group" aria-label={c.carousel} tabIndex={0}>
-      <Card title={c.library} chips={c.libraryChips} spots={chipSpots.library}><figure className="library-visual"><img src={`${screenshots}shelf.png`} width="1600" height="1025" loading="lazy" alt={c.libraryAlt} /></figure></Card>
-      <Card title={c.paste} chips={c.pasteChips} spots={chipSpots.paste}><figure className="reading-visual paste-visual" aria-label={c.pasteLabel}>
+      <Card title={c.library}><figure className="library-visual"><img src={`${screenshots}shelf.png`} width="1600" height="1025" loading="lazy" alt={c.libraryAlt} /></figure></Card>
+      <Card title={c.paste}><figure className="reading-visual paste-visual" aria-label={c.pasteLabel}>
         <div className="passage-sheet"><p className="sample-label">{c.sampleTitle}</p><ol className="sample-passages">{c.passages.map(p => <li key={p}>{p}</li>)}</ol></div>
       </figure></Card>
-      <Card title={c.selection} chips={c.selectionChips} spots={chipSpots.selection}><figure className="reading-visual selection-visual" aria-label={c.selectionLabel}>
+      <Card title={c.selection}><figure className="reading-visual selection-visual" aria-label={c.selectionLabel}>
         <div className="selection-sheet"><p className="sample-label">{c.page}</p><p className="sample-excerpt">{c.excerpt[0]}<br /><mark>{c.excerpt[1]}</mark></p><div className="shortcut-legend"><span>{c.shortcut}</span><span><kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>R</kbd></span></div></div>
       </figure></Card>
-      <Card title={c.figures} chips={c.figuresChips} spots={chipSpots.figures}><figure className="reading-visual figure-visual" aria-label={c.figuresLabel}>
+      <Card title={c.figures}><figure className="reading-visual figure-visual" aria-label={c.figuresLabel}>
         <div className="figure-sheet"><div className="figure-art" aria-hidden="true"><span /><span /><span /></div><p className="sample-label">{c.figureName}</p><p className="figure-cue"><Glyph name="voices" />{c.figureCue}</p></div>
       </figure></Card>
     </div>
