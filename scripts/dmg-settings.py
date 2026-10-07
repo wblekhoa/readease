@@ -47,6 +47,6 @@ show_icon_preview = False
 arrange_by = None
 scroll_position = (0, 0)
 icon_locations = {
-    "ReadEase.app": (165, 175),
-    "Applications": (495, 175),
+    "ReadEase.app": (165, 150),
+    "Applications": (495, 150),
 }

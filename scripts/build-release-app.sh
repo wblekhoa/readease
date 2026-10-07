@@ -258,8 +258,18 @@ if [[ -n "$developer_id" ]]; then
   # it writes the Finder layout itself, no Finder window opens. Without
   # uvx the image is the plain pair it always was.
   if command -v uvx >/dev/null 2>&1; then
+    # The backdrop names the version it installs, so it is drawn for this
+    # one; the committed picture stands in if the venv cannot draw it.
+    dmg_background="$project_root/assets/branding/dmg-background.png"
+    dmg_background_dir="$(mktemp -d)"
+    if "$project_root/.venv/bin/python" "$project_root/scripts/build-dmg-background.py" \
+        --version "$version" --out "$dmg_background_dir" >/dev/null 2>&1; then
+      dmg_background="$dmg_background_dir/dmg-background.png"
+    else
+      echo "    could not draw the backdrop for $version: using the committed one" >&2
+    fi
     uvx --from "dmgbuild==1.6.7" dmgbuild -s "$project_root/scripts/dmg-settings.py" \
-      -D "app=$app" -D "background=$project_root/assets/branding/dmg-background.png" \
+      -D "app=$app" -D "background=$dmg_background" \
       -D "icon=$project_root/app/src-tauri/icons/icon.icns" "ReadEase" "$dmg" | sed 's/^/    /'
   else
     echo "    uvx not found: a plain disk image, no backdrop" >&2

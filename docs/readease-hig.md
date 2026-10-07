@@ -1799,8 +1799,11 @@ mình (Sparkle là chuẩn; Tauri có `tauri-plugin-updater` 2.12.0 + `tauri-plu
   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD_READEASE`, không bao giờ in) → `.sig` → `latest.json` { version, notes, pub_date
   RFC 3339, platforms."darwin-aarch64".{signature, url} } với url = asset của release. Release phải upload **zip + dmg +
   tar.gz + latest.json**. Thiếu khoá thì script bỏ qua bước này và nói rõ.
-- **Cửa sổ `.dmg` có nền** (22/09, Phase 3): app bên trái, Applications bên phải, mũi tên xanh brand ở giữa và một dòng
-  "Kéo ReadEase vào Applications để cài" (VI + EN) — `assets/branding/dmg-background.png` + `@2x` (vẽ bằng
+- **Cửa sổ `.dmg` có nền** (22/09, Phase 3; vẽ lại 07/10 theo kiểu "lời chào"): giấy chấm mờ, app bên trái,
+  Applications bên phải (tâm icon y=150), mũi tên mực nét tay có vệt chấm và một sóng âm xanh brand bên dưới
+  (chữ thành tiếng), vài dấu nổi ở mép (sóng âm, "Aa", lấp lánh, nút phát), tiêu đề "Chào mừng đến với ReadEase",
+  dòng VI "Kéo ReadEase vào Applications để bắt đầu", dòng EN viết hoa giãn chữ và số phiên bản. Bản build vẽ lại
+  nền cho đúng phiên bản đang đóng gói (`--version`), hỏng thì dùng ảnh đã commit — `assets/branding/dmg-background.png` + `@2x` (vẽ bằng
   `scripts/build-dmg-background.py`, chữ SF của hệ vì cửa sổ Finder là của Mac, không phải của app), bố cục
   `scripts/dmg-settings.py` cho `dmgbuild` (qua `uvx`, ghim 1.6.7): nó tự viết `.DS_Store`, gộp TIFF HiDPI bằng
   `tiffutil`, gắn icon volume, mount `-nobrowse` — không mở cửa sổ Finder nào lúc build. Không có `uvx` thì về ảnh
