@@ -199,27 +199,21 @@ function Craft({ c }) {
   const [pauseTitle, pauses] = c.pauses;
   const [chimeTitle, chapter, chimes, previous] = c.chimes;
   const [mdTitle, source, spoken, [written, said]] = c.markdown;
+  // Three cards in the same shape: a label, one sentence, one line, then a piece of the app peeking up from the bottom.
+  const card = (i, label, art) => <article className="craft-card"><p className="card-label">{label}</p>
+    <h3>{c.craftCopy[i][0]}</h3><p className="craft-note">{c.craftCopy[i][1]}</p><div className="craft-window">{art}</div></article>;
   return <section className="craft section container" aria-labelledby="craft-title">
     <div className="center-heading"><p className="label">{c.craftLabel}</p><h2 id="craft-title"><Lines value={c.craft} /></h2></div>
     <div className="craft-grid">
-      {/* One track, shortest silence to longest: speech, the pause at its length, speech again. */}
-      <article className="panel-card pause-card"><p className="card-label">{pauseTitle}</p>
-        <ol className="pause-track">{[...pauses].reverse().map(([label, width], i) =>
-          <li key={label} style={{ '--w': width }}><Speech seed={i * 2.3} /><span className="pause-gap"><span className="pause-rule" aria-hidden="true" /><span className="pause-name">{label}</span></span></li>)}
-          <li className="pause-end" aria-hidden="true"><Speech seed={11} /></li></ol></article>
-      <article className="panel-card chime-card"><p className="card-label">{chimeTitle}</p>
-        <div className="chime-scene">
-          <p className="chime-from"><Speech seed={4} n={7} /><span>{previous}</span></p>
-          <span className="chime-bell" aria-hidden="true">♪</span>
-          <p className="chime-to">{chapter}</p>
-        </div>
-        <p className="chime-choices">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>{name}</span>)}</p></article>
-      {/* What is written, then what is said: the markup falls away. */}
-      <article className="panel-card"><p className="card-label">{mdTitle}</p>
-        <dl className="markdown-rows">
-          <div><dt>{written}</dt><dd><code>{source.split(/(\*\*|\*|\[|\]\([^)]*\))/).map((part, i) => i % 2 ? <s key={i}>{part}</s> : part)}</code></dd></div>
-          <div><dt>{said}</dt><dd className="markdown-said"><Glyph name="voices" />{spoken}</dd></div>
-        </dl></article>
+      {card(0, pauseTitle, <ol className="pause-rows">{[...pauses].reverse().map(([label, width], i) =>
+        <li key={label} style={{ '--w': width }}><span>{label}</span><Speech seed={i * 2.3} n={7} /><span className="pause-rule" aria-hidden="true" /></li>)}</ol>)}
+      {card(1, chimeTitle, <div className="chime-scene">
+        <p className="chime-from"><Speech seed={4} n={6} /><span>{previous}</span></p>
+        <p className="chime-to"><span className="chime-bell" aria-hidden="true">♪</span>{chapter}</p>
+        <p className="chime-choices">{chimes.map((name, i) => <span key={name} className={i === 0 ? 'is-on' : undefined}>{name}</span>)}</p></div>)}
+      {card(2, mdTitle, <dl className="markdown-rows">
+        <div><dt>{written}</dt><dd><code>{source.split(/(\*\*|\*|\[|\]\([^)]*\))/).map((part, i) => i % 2 ? <s key={i}>{part}</s> : part)}</code></dd></div>
+        <div><dt>{said}</dt><dd className="markdown-said"><Glyph name="voices" />{spoken}</dd></div></dl>)}
     </div>
   </section>;
 }
@@ -233,23 +227,10 @@ function Voices({ c }) {
     <p className="voices-note">{c.voicesNote}</p>
   </section>;
 }
-/* A small scene for each "small thing", drawn in CSS; decorative, the title says it. */
-function MoreArt({ name }) {
-  const bars = n => Array.from({ length: n }, (_, i) => <i key={i} />);
-  const scenes = {
-    follow: <span className="art-follow">{bars(5)}</span>,
-    clock: <span className="art-clock">{['09:12', '14:30', '21:05'].map(t => <span key={t}><b>{t}</b><i /></span>)}</span>,
-    menu: <span className="art-menu"><span className="art-menubar"><i /><i /><b /><i /></span><span className="art-dropdown">{bars(3)}</span></span>,
-    books: <span className="art-books">{bars(5)}</span>,
-    globe: <span className="art-lang"><b>VI</b><span>EN</span></span>,
-    key: <span className="art-key"><span>OpenAI</span><span>ElevenLabs</span></span>,
-  };
-  return <div className="more-art" aria-hidden="true">{scenes[name]}</div>;
-}
 function More({ c }) {
   return <section className="more section container" aria-labelledby="more-title">
     <div className="center-heading"><p className="label">{c.moreLabel}</p><h2 id="more-title"><Lines value={c.moreTitle} /></h2></div>
-    <ul className="more-grid">{c.more.map(([icon, title]) => <li key={title}><MoreArt name={icon} /><h3><Glyph name={icon} />{title}</h3></li>)}</ul>
+    <ul className="more-grid">{c.more.map(([icon, title, note]) => <li key={title}><span className={`more-icon more-${icon}`}><Glyph name={icon} /></span><h3>{title}</h3><p>{note}</p></li>)}</ul>
   </section>;
 }
 function Privacy({ c }) {

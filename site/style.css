@@ -200,42 +200,44 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 
 /* Craft and voices: content cards on the quiet wash. */
 .craft-grid, .voice-grid { display: grid; gap: 20px; margin-top: 56px; }
-.craft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.panel-card, .voice-card { padding: 28px; border-radius: 28px; background: var(--card); border: 1px solid var(--edge); }
-.panel-card { display: grid; grid-template-rows: auto 1fr; gap: 28px; padding: 32px; }
+.craft-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.voice-card { padding: 28px; border-radius: 28px; background: var(--card); border: 1px solid var(--edge); }
 .card-label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; }
-.speech { display: flex; align-items: center; gap: 3px; flex: none; height: 52px; }
-.speech i { width: 3px; height: var(--h); border-radius: 2px; background: var(--brand); }
-/* Pauses: one track, speech and silence, each silence at its length, named under it. */
-.pause-card { grid-column: 1 / -1; padding: 32px 36px 36px; }
-.pause-track { display: flex; align-items: center; margin: 0; padding: 0 0 34px; list-style: none; }
-.pause-track li { display: contents; }
-.pause-gap { position: relative; flex: var(--w) 1 0; min-width: 48px; height: 52px; margin-inline: 10px; }
-.pause-rule { position: absolute; inset: 50% 0 auto; border-top: 1.5px dashed color-mix(in srgb, var(--muted) 45%, transparent); }
-.pause-rule::before, .pause-rule::after { content: ""; position: absolute; top: -7px; width: 1.5px; height: 12px; background: color-mix(in srgb, var(--muted) 45%, transparent); }
-.pause-rule::before { left: 0; } .pause-rule::after { right: 0; }
-.pause-name { position: absolute; top: calc(100% + 12px); left: 50%; transform: translateX(-50%); white-space: nowrap; color: var(--muted); font-size: 13px; }
-/* Chimes: the end of one chapter, the chime, the next chapter. */
-.chime-card { grid-template-rows: auto 1fr auto; }
-.chime-scene { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; }
-.chime-from { display: grid; justify-items: start; gap: 10px; color: var(--muted); font-size: 13px; }
-.chime-from .speech { height: 32px; } .chime-from .speech i { background: var(--edge); }
-.chime-bell { display: grid; place-items: center; width: 60px; height: 60px; margin: 20px; border-radius: 50%; background: var(--brand); color: var(--on-brand); font-size: 24px;
-  box-shadow: 0 0 0 10px var(--brand-wash), 0 0 0 20px color-mix(in srgb, var(--brand-wash) 45%, transparent); }
-.chime-to { justify-self: end; font: 700 30px/1.1 var(--display); letter-spacing: -.035em; }
-.chime-choices { display: flex; width: fit-content; gap: 2px; padding: 4px; border-radius: 999px; background: var(--bg); border: 1px solid var(--edge); }
-.chime-choices span { padding: 7px 16px; border-radius: 999px; color: var(--muted); font-size: 13px; }
-.chime-choices span.is-on { background: var(--wash); color: var(--ink); font-weight: 600; box-shadow: 0 2px 8px -4px rgb(0 0 0 / .4); }
-/* Markdown: what is written, what is said. */
-.markdown-rows { display: grid; align-content: center; margin: 0; }
-.markdown-rows > div { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 16px; padding-block: 20px; }
-.markdown-rows > div + div { border-top: 1px solid var(--edge); }
-.markdown-rows dt { padding-top: 4px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.speech { display: flex; align-items: center; gap: 2px; flex: none; height: 16px; }
+.speech i { width: 2.5px; height: var(--h); border-radius: 2px; background: var(--brand); }
+/* Craft cards (OneNotch's widget cards): label, one sentence, one line, and a
+   piece of the app rising from the bottom edge. The window keeps the app's own
+   dark palette in both themes, the way a screenshot would. */
+.craft-card { display: flex; flex-direction: column; align-items: center; padding: 36px 28px 0; border-radius: 28px; background: var(--card); text-align: center; overflow: hidden; }
+.craft-card h3 { margin-top: 12px; font: 600 22px/1.25 var(--display); letter-spacing: -.025em; text-wrap: balance; }
+.craft-note { max-width: 30ch; margin: 10px 0 32px; color: var(--muted); font-size: 14.5px; line-height: 1.55; text-wrap: pretty; }
+.craft-window { --win-ink: #eceef2; --win-muted: #8d95a3; --win-edge: #2a2e36; --win-brand: #7b93f7;
+  width: 100%; max-width: 440px; height: 212px; margin-top: auto; overflow: hidden; padding: 22px 22px 30px; border: 1px solid var(--win-edge); border-bottom: 0;
+  border-radius: 18px 18px 0 0; background: #15171c; color: var(--win-ink); text-align: left; box-shadow: 0 -12px 32px -20px rgb(0 0 0 / .55); }
+.craft-window .speech i { background: var(--win-brand); }
+.pause-rows { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.pause-rows li { display: grid; grid-template-columns: 6.6em auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--win-muted); font-size: 12.5px; }
+.pause-rule { position: relative; width: calc(var(--w) * 1%); border-top: 1.5px dashed #4a505c; }
+.pause-rule::after { content: ""; position: absolute; right: 0; top: -6px; width: 1.5px; height: 10px; background: #4a505c; }
+.chime-scene { display: grid; gap: 16px; }
+.chime-from { display: flex; align-items: center; gap: 10px; color: var(--win-muted); font-size: 12.5px; }
+.chime-from .speech i { background: #3a3f49; }
+.chime-to { display: flex; align-items: center; gap: 12px; font: 700 24px/1.1 var(--display); letter-spacing: -.03em; }
+.chime-bell { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--win-brand); color: #fff; font-size: 16px;
+  box-shadow: 0 0 0 6px rgb(123 147 247 / .18); }
+.chime-choices { display: flex; width: fit-content; gap: 2px; padding: 3px; border-radius: 999px; background: #0e1013; border: 1px solid var(--win-edge); }
+.chime-choices span { padding: 5px 12px; border-radius: 999px; color: var(--win-muted); font-size: 12px; }
+.chime-choices span.is-on { background: #2a2e36; color: var(--win-ink); font-weight: 600; }
+.markdown-rows { display: grid; margin: 0; }
+.markdown-rows > div { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); gap: 12px; padding-block: 12px; }
+.markdown-rows > div:first-child { padding-top: 0; }
+.markdown-rows > div + div { border-top: 1px solid var(--win-edge); }
+.markdown-rows dt { padding-top: 3px; color: var(--win-muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .markdown-rows dd { margin: 0; }
-.markdown-rows code { font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.markdown-rows code { font: 12.5px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--win-muted); overflow-wrap: anywhere; }
 .markdown-rows code s { text-decoration: none; opacity: .45; }
-.markdown-said { display: flex; align-items: flex-start; gap: 10px; font: 600 22px/1.3 var(--display); letter-spacing: -.02em; }
-.markdown-said .glyph { width: 22px; height: 22px; margin-top: 3px; color: var(--brand); }
+.markdown-said { display: flex; align-items: flex-start; gap: 8px; font: 600 17px/1.35 var(--display); letter-spacing: -.015em; }
+.markdown-said .glyph { width: 18px; height: 18px; margin-top: 2px; color: var(--win-brand); }
 .voices .split-heading { grid-template-columns: 1.35fr .65fr; }
 .voice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .voice-card { position: relative; overflow: hidden; min-height: 260px; }
@@ -247,37 +249,15 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .voices-note { margin-top: 20px; color: var(--muted); font-size: 14px; text-align: center; }
 
 /* The grid of small things. */
-.more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 56px; }
-.more-grid li { display: grid; gap: 18px; padding: 12px 12px 22px; border-radius: 24px; background: var(--card); border: 1px solid var(--edge); }
-.more-grid h3 { display: flex; align-items: center; gap: 10px; padding-inline: 10px; font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
-.more-grid h3 .glyph { width: 20px; height: 20px; color: var(--brand); }
-/* The small scenes: flat fills from the page's own tokens and the shelf's cover colours. */
-.more-art { display: grid; place-items: center; height: 156px; border-radius: 16px; background: var(--bg); border: 1px solid var(--edge); overflow: hidden; }
-.art-follow { display: grid; gap: 10px; width: 62%; }
-.art-follow i { height: 8px; border-radius: 4px; background: var(--edge); }
-.art-follow i:nth-child(2) { width: 84%; } .art-follow i:nth-child(4) { width: 70%; } .art-follow i:nth-child(5) { width: 88%; }
-.art-follow i:nth-child(3) { width: 94%; background: var(--brand); }
-.art-clock { display: grid; gap: 7px; width: 68%; }
-.art-clock > span { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; background: var(--card); border: 1px solid var(--edge); }
-.art-clock b { font: 600 12px/1 var(--body); font-variant-numeric: tabular-nums; } .art-clock > span:first-child b { color: var(--brand); }
-.art-clock i { flex: 1; height: 6px; border-radius: 3px; background: var(--edge); }
-.art-menu { display: grid; justify-items: end; gap: 6px; width: 76%; margin-top: -18px; }
-.art-menubar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--edge); }
-.art-menubar i { width: 10px; height: 10px; border-radius: 3px; background: var(--edge); }
-.art-menubar b { width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--brand); }
-.art-dropdown { display: grid; gap: 8px; width: 58%; margin-right: 28px; padding: 11px; border-radius: 10px; background: var(--card); border: 1px solid var(--edge); box-shadow: var(--shadow); }
-.art-dropdown i { height: 7px; border-radius: 4px; background: var(--edge); } .art-dropdown i:first-child { background: var(--brand); width: 80%; }
-.art-books { display: flex; align-items: flex-end; gap: 6px; height: 96px; }
-.art-books i { width: 20px; border-radius: 3px; }
-.art-books i:nth-child(1) { height: 80px; background: #efe1cd; } .art-books i:nth-child(2) { height: 96px; background: #c96a45; }
-.art-books i:nth-child(3) { height: 72px; background: #24395f; } .art-books i:nth-child(4) { height: 88px; background: #2f4a3b; }
-.art-books i:nth-child(5) { height: 84px; background: var(--brand); transform: rotate(10deg); transform-origin: bottom left; margin-left: 4px; }
-.art-lang { display: flex; padding: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--edge); font-size: 15px; font-weight: 600; }
-.art-lang b, .art-lang span { padding: 8px 20px; border-radius: 999px; }
-.art-lang b { background: var(--brand); color: var(--on-brand); } .art-lang span { color: var(--muted); }
-.art-key { display: grid; justify-items: center; gap: 8px; }
-.art-key span { padding: 7px 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--edge); font-size: 13px; font-weight: 600; }
-.art-key span:first-child { transform: translateX(-18px); } .art-key span:last-child { transform: translateX(14px); }
+/* Small things (OneNotch's feature tiles): a coloured icon, a name, one line. */
+.more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
+.more-grid li { padding: 24px; border-radius: 22px; background: var(--card); }
+.more-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; }
+.more-icon .glyph { width: 19px; height: 19px; stroke-width: 1.8; }
+.more-clock { background: #e0902f; } .more-menu { background: #7a5af5; } .more-books { background: #e0604a; }
+.more-globe { background: #1f9bb0; } .more-key { background: #2f9e6e; }
+.more-grid h3 { margin-top: 18px; font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
+.more-grid p { margin-top: 6px; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
 
 /* Free and private. */
 .pill-checks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
@@ -330,33 +310,17 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .more-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .footer { grid-template-columns: 1fr; }
 }
-/* Narrow: the pause track turns into rows, name · speech · silence. */
-@media (max-width: 720px) {
-  .pause-card { padding: 28px 24px; }
-  .pause-track { display: grid; gap: 14px; padding-bottom: 0; }
-  .pause-track li { display: grid; grid-template-columns: 6.5em auto minmax(0, 1fr); align-items: center; gap: 12px; }
-  .pause-track .pause-end { display: none; }
-  .pause-track .speech { height: 22px; gap: 2px; } .pause-track .speech i { width: 2.5px; }
-  .pause-gap { display: contents; }
-  .pause-name { position: static; transform: none; grid-column: 1; grid-row: 1; font-size: 13px; }
-  .pause-rule { position: relative; inset: auto; width: calc(var(--w) * 1%); }
-  .chime-scene { grid-template-columns: auto minmax(0, 1fr); gap: 8px 4px; }
-  .chime-from { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
-  .chime-bell { width: 48px; height: 48px; margin: 14px 18px 14px 12px; font-size: 20px; } .chime-to { justify-self: start; font-size: 28px; }
-}
 @media (max-width: 560px) {
   .container { padding-inline: 20px; }
   .nav-shell { padding-inline: 10px; }
   .language { padding-inline: 6px; }
   .nav-github { padding-inline: 8px; }
   .nav-github span { display: none; }
-  .more-grid { gap: 12px; }
-  .more-grid li { gap: 14px; padding: 8px 8px 16px; border-radius: 20px; }
-  .more-art { height: 116px; border-radius: 13px; }
-  .more-grid h3 { align-items: flex-start; gap: 8px; padding-inline: 6px; font-size: 14.5px; line-height: 1.3; }
-  .more-grid h3 .glyph { width: 17px; height: 17px; margin-top: 1px; }
-  .art-follow, .art-clock { width: 78%; } .art-menu { width: 88%; } .art-dropdown { margin-right: 10px; }
-  .art-lang b, .art-lang span { padding: 7px 14px; } .art-books { height: 80px; transform: scale(.85); }
+  .more-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .more-grid li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; padding: 18px; }
+  .more-icon { grid-row: span 2; }
+  .more-grid h3 { margin-top: 0; font-size: 16px; } .more-grid p { margin-top: 2px; font-size: 14px; }
+  .craft-card { padding: 30px 20px 0; }
   .footer-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .way-visual { height: 340px; padding: 20px 16px 16px; }
   .way-chips { width: 100%; flex-wrap: wrap; gap: 6px; }
