@@ -7,7 +7,7 @@ export const content = {
     other: 'en', flag: '🇬🇧', switchLabel: 'Switch to English', downloadId: 'tai', download: 'Tải về',
     chip: 'Thư Âm', hero: ['Để chữ', 'cất lời.'],
     description: 'Nghe tài liệu, bài viết hay đoạn bạn vừa chọn, ngay trên Mac.',
-    cta: 'Tải cho Mac', meta: ['Miễn phí', 'macOS 15+', 'Apple Silicon'], install: 'Hướng dẫn cài', installFile: 'INSTALL.md',
+    cta: 'Tải cho Mac', meta: ['Miễn phí', 'macOS 15+', 'Apple Silicon'], installFile: 'INSTALL.md',
     experience: 'Khám phá giao diện ReadEase', screenshots: 'Ảnh giao diện',
     previews: [
       ['Thư viện', 'Thư viện ReadEase hiển thị ảnh bìa tài liệu, tiến độ đọc và nút mở PDF hoặc EPUB.', 'Mở tài liệu từ thư viện.'],
@@ -76,7 +76,7 @@ export const content = {
     other: 'vi', flag: '🇻🇳', switchLabel: 'Chuyển sang tiếng Việt', downloadId: 'download', download: 'Download',
     chip: 'Thư Âm', hero: ['Let words', 'speak.'],
     description: 'Listen to documents, articles or any passage you select, right on your Mac.',
-    cta: 'Download for Mac', meta: ['Free', 'macOS 15+', 'Apple Silicon'], install: 'Install guide', installFile: 'INSTALL.en.md',
+    cta: 'Download for Mac', meta: ['Free', 'macOS 15+', 'Apple Silicon'], installFile: 'INSTALL.en.md',
     experience: 'Explore ReadEase', screenshots: 'App screenshots',
     previews: [
       ['Library', 'ReadEase library with document covers, reading progress and the Open PDF or EPUB button.', 'Open a document from your library.'],

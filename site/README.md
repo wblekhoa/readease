@@ -58,8 +58,9 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   (hidden under 960px), a GitHub link (icon only on phones), language switch
   and a dark Download pill. The repository is never only in the footer.
 - A centred hero: product chip, two-line headline, one-sentence description,
-  one dark download button, a Free · macOS 15+ · Apple Silicon line and the
-  install link.
+  one dark download button and a Free · macOS 15+ · Apple Silicon line. No
+  install link: installing is one drag (owner, 07/10); the guide is in the FAQ
+  and the footer.
 - A MacBook drawn in CSS (bezel, notch, screen, hinge) holding the three real
   screenshots as a three-step story (owner, 07/10): Library → Reader → Voices,
   open a document, read it, change the voice. Its width is bound to the viewport

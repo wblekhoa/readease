@@ -130,7 +130,9 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   assert.ok(html.includes(fallback));
   assert.ok(html.includes(c.installFile));
   assert.match(html, /VieNeu/); assert.match(html, /Kokoro/); assert.match(html, /OpenAI/); assert.match(html, /OCR/);
-  assert.ok(html.indexOf('id="compatibility"') < html.indexOf('class="install-link"'));
+  // Installing is one drag now (owner, 07/10): no install link in the hero;
+  // the guide stays in the FAQ and the footer.
+  assert.doesNotMatch(html, /install-link/);
   assert.match(html, new RegExp(`id="${c.downloadId}"`));
   assert.match(html, /class="nav container"/); assert.match(html, /class="footer container"/);
   const imageSources = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(match => match[1]).filter(src => src.includes('screenshots/'));

@@ -68,7 +68,6 @@ function Hero({ c, prefix, release }) {
     <p className="description">{c.description}</p>
     <div className="actions"><DownloadButton c={c} release={release} describedBy="compatibility" /></div>
     <p className="compatibility" id="compatibility">{c.meta.map((item, i) => <React.Fragment key={item}>{i > 0 && <span aria-hidden="true"> · </span>}<span>{item}</span></React.Fragment>)}</p>
-    <a className="install-link" href={doc(c.installFile)}>{c.install}</a>
   </section>;
 }
 /* A MacBook drawn in CSS: bezel, camera notch, screen, hinge and base. */
