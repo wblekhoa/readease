@@ -43,8 +43,8 @@ export const content = {
     ],
     voicesLabel: 'Giọng đọc', voicesTitle: ['Tiếng Việt hay English.', 'Ngay trên máy bạn.'],
     voices: [
-      ['Tiếng Việt', 'VieNeu', ['Tiêu chuẩn · 330 MB', 'Cao nhất · 625 MB']],
-      ['English', 'Kokoro-82M', ['6 giọng Mỹ', '330 MB']],
+      ['🇻🇳', 'Tiếng Việt', 'VieNeu', ['Tiêu chuẩn · 330 MB', 'Cao nhất · 625 MB']],
+      ['🇬🇧', 'English', 'Kokoro-82M', ['6 giọng Mỹ', '330 MB']],
     ],
     voicesNote: 'Tuỳ chọn: giọng OpenAI, ElevenLabs bằng khóa của bạn.',
     moreLabel: 'Còn nhiều hơn thế', moreTitle: ['Những điều nhỏ', 'làm việc nghe dễ chịu.'],
@@ -117,8 +117,8 @@ export const content = {
     ],
     voicesLabel: 'Voices', voicesTitle: ['Tiếng Việt or English.', 'Right on your Mac.'],
     voices: [
-      ['Tiếng Việt', 'VieNeu', ['Standard · 330 MB', 'Highest · 625 MB']],
-      ['English', 'Kokoro-82M', ['6 American voices', '330 MB']],
+      ['🇻🇳', 'Tiếng Việt', 'VieNeu', ['Standard · 330 MB', 'Highest · 625 MB']],
+      ['🇬🇧', 'English', 'Kokoro-82M', ['6 American voices', '330 MB']],
     ],
     voicesNote: 'Optional: OpenAI and ElevenLabs voices with your own key.',
     moreLabel: 'And more', moreTitle: ['The small things', 'that make listening easy.'],

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { content } from './content.js';
 import { fallback, fetchRelease, mb, repository } from './release.js';
+import { glyphs } from './icons.js';
 import { createStory, keyboardIndex, viewIds } from './story.js';
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
@@ -8,35 +9,11 @@ const Lines = ({ value }) => <>{value[0]}<br />{value[1]}</>;
 const doc = name => `${repository}/blob/main/${name}`;
 
 /* One stroke set for every small glyph on the page (24px grid, 1.6 stroke). */
-const glyphs = {
-  reader: 'M12 5v15M12 5C9 3 6 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z',
-  shelf: 'M4 4h4v16H4zM10 4h4v16h-4zM16 5l4-1 3 15-4 1z',
-  voices: 'M4 9v6M8 5v14M12 3v18M16 6v12M20 9v6',
-  book: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11',
-  paste: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M8 12h8M8 16h5',
-  cursor: 'M8 4h3M9.5 4v16M8 20h3M14 9h6M14 13h6M14 17h4',
-  image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
-  bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4',
-  hash: 'M9 4 7 20M17 4l-2 16M4 9h16M3 15h16',
-  follow: 'M4 18h16M4 13h10M4 8h16M17 11l3 2-3 2',
-  clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
-  menu: 'M3 6h18M7 6v-.5M12 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
-  books: 'M4 5h5v15H4zM9 7h5v13H9zM15 6l4-1 3 14-4 1z',
-  globe: 'M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
-  key: 'M14 10a4 4 0 1 0-3.5 4L9 16v2H7v2H4v-3l6.1-6.1M15 7h.01',
-  speed: 'M12 14l4-5M4 18a9 9 0 1 1 16 0',
-  pause: 'M8 6v12M16 6v12',
-  heading: 'M5 5h14M12 5v14M9 19h6',
-  caps: 'M3 18 7.5 6 12 18M4.7 14h5.6M15 18V6h3.5a3 3 0 0 1 0 6H15h4a3 3 0 0 1 0 6Z',
-  quote: 'M5 11h4v6H5zM5 11c0-3 1-5 4-6M14 11h4v6h-4zM14 11c0-3 1-5 4-6',
-  check: 'm5 12 4 4 10-10',
-  plus: 'M12 5v14M5 12h14',
-  down: 'M12 4v12M6 11l6 6 6-6M5 20h14',
-};
 /* The GitHub mark, filled (it is a logo, not a stroke glyph). */
 const GITHUB = 'M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z';
 const Glyph = ({ name, className = 'glyph' }) =>
-  <svg className={className} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={glyphs[name]} /></svg>;
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+    {glyphs[name].map(([d, extra], i) => <path key={i} d={d} {...extra} />)}</svg>;
 
 function useEnhanced() {
   const [enhanced, setEnhanced] = useState(false);
@@ -202,11 +179,17 @@ function Craft({ c }) {
   </section>;
 }
 function Voices({ c }) {
+  // Each model as a card: its language, its name, its sizes, and a player caught mid-sentence.
+  const wave = seed => Array.from({ length: 34 }, (_, i) =>
+    <i key={i} className={i < 13 ? 'is-played' : undefined} style={{ '--h': `${26 + Math.round(66 * Math.abs(Math.sin(i * .9 + seed)))}%` }} />);
   return <section className="voices section container" id="voices" aria-labelledby="voices-title">
-    <div className="split-heading"><div><p className="label">{c.voicesLabel}</p><h2 id="voices-title"><Lines value={c.voicesTitle} /></h2></div></div>
-    <div className="voice-grid">{c.voices.map(([language, model, facts]) =>
-      <article key={model} className="voice-card"><p className="card-label">{language}</p><h3>{model}</h3>
-        <ul className="fact-list">{facts.map(fact => <li key={fact}>{fact}</li>)}</ul><span className="voice-wave" aria-hidden="true">{Array.from({ length: 28 }, (_, i) => <i key={i} style={{ '--h': `${30 + Math.round(60 * Math.abs(Math.sin(i * .9 + model.length)))}%` }} />)}</span></article>)}
+    <div className="center-heading"><p className="label">{c.voicesLabel}</p><h2 id="voices-title"><Lines value={c.voicesTitle} /></h2></div>
+    <div className="voice-grid">{c.voices.map(([flag, language, model, facts]) =>
+      <article key={model} className="voice-card">
+        <p className="voice-lang"><span aria-hidden="true">{flag}</span>{language}</p><h3>{model}</h3>
+        <p className="fact-list">{facts.map((fact, i) => <React.Fragment key={fact}>{i > 0 && <span className="meta-dot" aria-hidden="true">·</span>}<span>{fact}</span></React.Fragment>)}</p>
+        <div className="voice-player" aria-hidden="true"><span className="voice-play" /><span className="voice-wave">{wave(model.length)}</span></div>
+      </article>)}
     </div>
     <p className="voices-note">{c.voicesNote}</p>
   </section>;
