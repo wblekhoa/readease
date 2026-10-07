@@ -17,7 +17,7 @@ export const content = {
     tickerLabel: 'Những gì ReadEase đọc được',
     // The big features only (owner, 07/10); pauses, chimes, figures and
     // Markdown are one thing to a listener: it reads naturally.
-    ticker: ['Thư viện PDF & EPUB', 'Dán nội dung', 'Quét đọc mọi ứng dụng', 'Đọc tự nhiên', 'Tiếng Việt & English', 'Nghe offline', 'Apple Books'],
+    ticker: [['shelf', 'Thư viện PDF & EPUB'], ['paste', 'Dán nội dung'], ['cursor', 'Quét đọc mọi ứng dụng'], ['voices', 'Đọc tự nhiên'], ['globe', 'Tiếng Việt & English'], ['offline', 'Nghe offline'], ['books', 'Apple Books']],
     github: 'Mã nguồn trên GitHub',
     ways: ['Bắt đầu từ', 'điều bạn muốn đọc.'],
     carousel: 'Các cách bắt đầu đọc', previous: 'Thẻ trước', next: 'Thẻ sau', slide: 'Thẻ',
@@ -93,7 +93,7 @@ export const content = {
       ['Voices', 'Voice selection with language and gender filters and individual voice previews.', 'Preview and switch voices any time.'],
     ],
     tickerLabel: 'What ReadEase reads',
-    ticker: ['PDF & EPUB library', 'Paste text', 'Read a selection anywhere', 'Natural reading', 'Tiếng Việt & English', 'Listen offline', 'Apple Books'],
+    ticker: [['shelf', 'PDF & EPUB library'], ['paste', 'Paste text'], ['cursor', 'Read a selection anywhere'], ['voices', 'Natural reading'], ['globe', 'Tiếng Việt & English'], ['offline', 'Listen offline'], ['books', 'Apple Books']],
     github: 'Source on GitHub',
     ways: ['Start with what', 'you want to read.'],
     carousel: 'Ways to start reading', previous: 'Previous card', next: 'Next card', slide: 'Card',

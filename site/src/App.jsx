@@ -127,8 +127,8 @@ function Ticker({ c }) {
     return () => { disposed = true; media.removeEventListener('change', setup); ctx?.revert(); };
   }, [enhanced]);
   return <section className="ticker" aria-label={c.tickerLabel} ref={band}>
-    <ul className="ticker-row" data-drift="">{[...c.ticker, ...c.ticker].map((word, i) =>
-      <li key={i} aria-hidden={i >= c.ticker.length ? true : undefined}>{word}</li>)}</ul>
+    <ul className="ticker-row" data-drift="">{[...c.ticker, ...c.ticker].map(([icon, word], i) =>
+      <li key={i} aria-hidden={i >= c.ticker.length ? true : undefined}><Glyph name={icon} />{word}</li>)}</ul>
   </section>;
 }
 function Card({ title, children }) {
