@@ -1,4 +1,5 @@
-export const viewIds = ['reader', 'shelf', 'voices'];
+// A story in three steps (owner, 07/10): open a document, read it, change the voice.
+export const viewIds = ['shelf', 'reader', 'voices'];
 // The list is vertical beside the screen on desktop and horizontal above it
 // on narrow screens, so both arrow axes move through it (WAI-ARIA tabs).
 export function keyboardIndex(key, index) {

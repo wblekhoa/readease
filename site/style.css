@@ -101,6 +101,8 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 .view-tabs { display: inline-flex; gap: 4px; margin-top: 16px; padding: 4px; border: 1px solid var(--edge); border-radius: 999px; background: var(--card); }
 .view-tabs button { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--muted); min-height: 38px; padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; white-space: nowrap; }
 .view-tabs button[aria-selected="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 2px 8px -4px rgb(20 26 36 / .3); }
+.tab-step { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--edge); color: var(--muted); font-size: 11px; font-weight: 700; }
+.view-tabs button[aria-selected="true"] .tab-step { background: var(--brand); color: var(--on-brand); }
 .tab-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .scroll-showcase::after { content: ""; display: block; height: var(--story-travel); }
 .scroll-showcase .showcase-stage { position: sticky; top: 76px; min-height: calc(100svh - 96px); align-content: center; }
@@ -253,8 +255,12 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .footer-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .way-visual { min-height: 260px; padding: 20px; }
   .view-tabs button { padding-inline: 10px; gap: 6px; font-size: 13px; }
+  .view-tabs .tab-icon { display: none; }
   .pause-bars li { grid-template-columns: 7.5em 1fr; }
   .closing-tiles span { width: 48px; height: 48px; border-radius: 14px; }
+}
+@media (max-width: 360px) {
+  .view-tabs button { padding-inline: 8px; gap: 5px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

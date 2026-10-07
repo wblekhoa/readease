@@ -106,7 +106,7 @@ function Showcase({ c, screenshots }) {
       <div className="view-tabs" role="tablist" aria-label={c.screenshots} hidden={!enhanced}>
         {viewIds.map((id, i) => <button key={id} id={`tab-${id}`} type="button" role="tab" aria-controls={`panel-${id}`} aria-selected={selected === i} tabIndex={selected === i ? 0 : -1}
           onClick={() => navigate(i)} onKeyDown={event => { const next = keyboardIndex(event.key, i); if (next !== undefined) { event.preventDefault(); navigate(next, true); } }}>
-          <Glyph name={id} className="tab-icon" /><span>{c.previews[i][0]}</span>
+          <span className="tab-step" aria-hidden="true">{i + 1}</span><Glyph name={id} className="tab-icon" /><span>{c.previews[i][0]}</span>
         </button>)}
       </div>
     </div>

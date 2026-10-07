@@ -133,7 +133,7 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   assert.match(html, /class="nav container"/); assert.match(html, /class="footer container"/);
   const imageSources = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(match => match[1]).filter(src => src.includes('screenshots/'));
   const base = locale === 'en' ? '../screenshots/en/' : 'screenshots/';
-  assert.deepEqual(imageSources, ['reader', 'shelf', 'voices', 'shelf'].map(id => `${base}${id}.png`));
+  assert.deepEqual(imageSources, ['shelf', 'reader', 'voices', 'shelf'].map(id => `${base}${id}.png`));
 });
 test('CSS keeps the floating nav, aligned images, JS-only stacking and reduced-motion fallback', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');

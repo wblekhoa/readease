@@ -60,8 +60,9 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   one dark download button, a Free · macOS 15+ · Apple Silicon line and the
   install link.
 - A MacBook drawn in CSS (bezel, notch, screen, hinge) holding the three real
-  screenshots. Its width is bound to the viewport height so the pinned stage
-  always fits. A segmented tab bar sits under it.
+  screenshots as a three-step story (owner, 07/10): Library → Reader → Voices,
+  open a document, read it, change the voice. Its width is bound to the viewport
+  height so the pinned stage always fits. Numbered tabs sit under it.
 - A band of feature words that drifts with the scroll, then sections in this
   order: card scroller (library, paste, selection, EPUB figures), craft (pauses,
   chapter chimes, Markdown), voices (VieNeu, Kokoro), a 6-item grid, free and
@@ -87,7 +88,7 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   the one marked `data-on`; captions become a shared line under the laptop.
 - The showcase pins only at 720px+ wide and 600px+ tall with motion allowed;
   GSAP observes two scroll steps (70% of viewport each, minimum 320px) and CSS
-  owns stickiness. Scroll down advances Reader → Library → Voices; up reverses.
+  owns stickiness. Scroll down advances Library → Reader → Voices; up reverses.
   Elsewhere the tabs alone switch the screen.
 - The feature band translates with the scroll (scrub), never loops; with
   reduced motion or no JS its words wrap, centred, and the duplicate set used
