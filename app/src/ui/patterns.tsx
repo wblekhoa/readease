@@ -792,6 +792,7 @@ export function MenuButton({
   disabled = false,
   align = "right",
   side = "below",
+  onOpenChange,
 }: {
   icon: ReactNode;
   label: string;
@@ -812,8 +813,16 @@ export function MenuButton({
   align?: "left" | "right";
   /** Which way it opens: toward the room the button has. */
   side?: "below" | "above";
+  /** Told while the menu is open, for what must step aside from it - the
+   * floating reading status above the transport (06/10). */
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open || !onOpenChange) return;
+    onOpenChange(true);
+    return () => onOpenChange(false);
+  }, [open, onOpenChange]);
   const holder = useRef<HTMLSpanElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);

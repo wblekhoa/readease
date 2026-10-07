@@ -433,6 +433,8 @@ export default function App() {
     setPrefs(next);
   }, []);
   const [readingSettingsOpen, setReadingSettingsOpen] = useState(false);
+  /* The quick voice menu opens upward over the floating reading status. */
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
 
   const paidVoice = isPaidVoice(voiceId);
   /* Whether there is anything to put a price ON. An empty paste box is not
@@ -1931,7 +1933,7 @@ export default function App() {
             adds nothing to the bar's measured height, so the panels and the
             page inset stay where they are, and it steps aside while a panel
             hangs over the bar. */}
-        {reading !== "idle" && !(readingSettingsOpen || costOpen || settingsOpen || voicesOpen) && (
+        {reading !== "idle" && !(readingSettingsOpen || costOpen || settingsOpen || voicesOpen || voiceMenuOpen) && (
           <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100%-12px)] z-10 flex justify-center px-6">
             <Surface
               material="glass"
@@ -2209,6 +2211,7 @@ export default function App() {
                   <MenuButton
                     icon={<VoiceSwitchIcon />}
                     label={text("voices.switch")}
+                    onOpenChange={setVoiceMenuOpen}
                     align="left"
                     side="above"
                     items={[
