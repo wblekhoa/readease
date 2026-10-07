@@ -191,37 +191,9 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .way-arrows button:disabled { opacity: .35; cursor: default; }
 
 /* Craft and voices: content cards on the quiet wash. */
-.craft-grid, .voice-grid { display: grid; gap: 20px; margin-top: 56px; }
-.craft-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.voice-grid { display: grid; gap: 20px; margin-top: 56px; }
 .voice-card { padding: 28px; border-radius: 28px; background: var(--card); border: 1px solid var(--edge); }
 .card-label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; }
-.speech { display: flex; align-items: center; gap: 2px; flex: none; height: 16px; }
-.speech i { width: 2.5px; height: var(--h); border-radius: 2px; background: var(--brand); }
-/* Craft cards (OneNotch's widget cards): label, one sentence, one line, and a
-   piece of the app rising from the bottom edge. The window keeps the app's own
-   dark palette in both themes, the way a screenshot would. */
-.craft-card { display: flex; flex-direction: column; align-items: center; padding: 40px 28px 0; border-radius: 28px; background: var(--card); text-align: center; overflow: hidden; }
-.craft-card h3 { margin-bottom: 36px; font: 500 22px/1.25 var(--display); letter-spacing: -.025em; text-wrap: balance; }
-.craft-window { --win-ink: #eceef2; --win-muted: #8d95a3; --win-edge: #2a2e36; --win-brand: #7b93f7;
-  width: 100%; max-width: 440px; height: 212px; margin-top: auto; overflow: hidden; padding: 22px 22px 30px; border: 1px solid var(--win-edge); border-bottom: 0;
-  border-radius: 18px 18px 0 0; background: #15171c; color: var(--win-ink); text-align: left; box-shadow: 0 -12px 32px -20px rgb(0 0 0 / .55); }
-.craft-window .speech i { background: var(--win-brand); }
-.pause-rows { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.pause-rows li { display: grid; grid-template-columns: 6.6em auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--win-muted); font-size: 12.5px; }
-.pause-rule { position: relative; width: calc(var(--w) * 1%); border-top: 1.5px dashed #4a505c; }
-.pause-rule::after { content: ""; position: absolute; right: 0; top: -6px; width: 1.5px; height: 10px; background: #4a505c; }
-/* Headings: slower, louder, a breath either side; the paragraph runs on. */
-.stress-rows { display: grid; gap: 22px; padding-top: 6px; }
-.stress-rows p { display: grid; gap: 10px; color: var(--win-muted); font-size: 12px; }
-.stress-line { display: flex; align-items: center; gap: 8px; }
-.breath { width: 22px; border-top: 1.5px dashed #4a505c; }
-.speech-loud { height: 46px; gap: 6px; } .speech-loud i { width: 5px; border-radius: 3px; }
-.speech-run { height: 20px; gap: 2px; } .speech-run i { width: 2.5px; background: #5a6a9a !important; }
-/* Follow: the sentence being read is marked, as in the reader. */
-.follow-lines { display: grid; gap: 6px; padding-top: 2px; }
-.follow-lines p { padding: 7px 10px; border-radius: 10px; color: var(--win-muted); font-size: 14px; line-height: 1.45; }
-.follow-lines p.is-reading { display: flex; align-items: flex-start; gap: 8px; background: rgb(123 147 247 / .16); color: var(--win-ink); font-weight: 500; }
-.follow-lines .glyph { width: 16px; height: 16px; margin-top: 2px; flex: none; color: var(--win-brand); }
 .voices .split-heading { grid-template-columns: 1.35fr .65fr; }
 .voice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .voice-card { position: relative; overflow: hidden; min-height: 260px; }
@@ -233,15 +205,16 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .voices-note { margin-top: 20px; color: var(--muted); font-size: 14px; text-align: center; }
 
 /* The grid of small things. */
-/* Small things (OneNotch's feature tiles): a coloured icon and a name. */
-.more-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
-.more-grid li { padding: 24px; border-radius: 22px; background: var(--card); }
-.more-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; }
-.more-icon .glyph { width: 19px; height: 19px; stroke-width: 1.8; }
-.more-bell { background: #e0902f; } .more-hash { background: #64708a; } .more-speed { background: #d6457a; }
+/* Feature tiles (OneNotch's): an icon in a round chip and a name. The craft
+   list stays brand blue; the small things take a colour each. */
+.tile-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
+.tile-grid li { padding: 24px; border-radius: 22px; background: var(--card); }
+.tile-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; }
+.tile-icon .glyph { width: 19px; height: 19px; stroke-width: 1.8; }
+.more-speed { background: #d6457a; }
 .more-clock { background: #2b8fd6; } .more-menu { background: #7a5af5; } .more-books { background: #e0604a; }
 .more-globe { background: #1f9bb0; } .more-key { background: #2f9e6e; }
-.more-grid h3 { margin-top: 18px; font-size: 17px; font-weight: 500; letter-spacing: -.015em; }
+.tile-grid h3 { margin-top: 18px; font-size: 17px; font-weight: 500; letter-spacing: -.015em; }
 
 /* Free and private. */
 .pill-checks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
@@ -290,8 +263,8 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
 @media (max-width: 960px) {
   .nav-links { display: none; }
   .split-heading, .voices .split-heading { grid-template-columns: 1fr; gap: 20px; }
-  .craft-grid, .voice-grid { grid-template-columns: minmax(0, 1fr); }
-  .more-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .voice-grid { grid-template-columns: minmax(0, 1fr); }
+  .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .footer { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
@@ -300,10 +273,9 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .language { padding-inline: 6px; }
   .nav-github { padding-inline: 8px; }
   .nav-github span { display: none; }
-  .more-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .more-grid li { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
-  .more-grid h3 { margin-top: 0; font-size: 16px; }
-  .craft-card { padding: 30px 20px 0; }
+  .tile-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .tile-grid li { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+  .tile-grid h3 { margin-top: 0; font-size: 16px; }
   .footer-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .way-visual { height: 340px; padding: 20px 16px 16px; }
   .view-tabs button { padding-inline: 10px; gap: 6px; font-size: 13px; }

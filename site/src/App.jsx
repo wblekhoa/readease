@@ -25,6 +25,10 @@ const glyphs = {
   globe: 'M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   key: 'M14 10a4 4 0 1 0-3.5 4L9 16v2H7v2H4v-3l6.1-6.1M15 7h.01',
   speed: 'M12 14l4-5M4 18a9 9 0 1 1 16 0',
+  pause: 'M8 6v12M16 6v12',
+  heading: 'M5 5h14M12 5v14M9 19h6',
+  caps: 'M3 18 7.5 6 12 18M4.7 14h5.6M15 18V6h3.5a3 3 0 0 1 0 6H15h4a3 3 0 0 1 0 6Z',
+  quote: 'M5 11h4v6H5zM5 11c0-3 1-5 4-6M14 11h4v6h-4zM14 11c0-3 1-5 4-6',
   check: 'm5 12 4 4 10-10',
   plus: 'M12 5v14M5 12h14',
   down: 'M12 4v12M6 11l6 6 6-6M5 20h14',
@@ -190,30 +194,11 @@ function Ways({ c, screenshots }) {
     </div>
   </section>;
 }
-/* A stretch of speech, drawn as level bars (deterministic, so SSR and hydration agree). */
-function Speech({ seed, n = 9, className = '' }) {
-  return <span className={`speech ${className}`} aria-hidden="true">{Array.from({ length: n }, (_, i) =>
-    <i key={i} style={{ '--h': `${28 + Math.round(66 * Math.abs(Math.sin(i * 1.7 + seed)))}%` }} />)}</span>;
-}
 function Craft({ c }) {
-  const [pauseTitle, pauses] = c.pauses;
-  const [heading, paragraph] = c.headingRows;
-  // Three cards in the same shape: one title (owner, 07/10: nothing else), then a piece of the app peeking up from the bottom.
-  const card = (i, art) => <article className="craft-card">
-    <h3>{c.craftTitles[i]}</h3><div className="craft-window">{art}</div></article>;
+  // A plain list of what makes listening feel natural (owner, 07/10: simple, many items).
   return <section className="craft section container" aria-labelledby="craft-title">
     <div className="center-heading"><p className="label">{c.craftLabel}</p><h2 id="craft-title"><Lines value={c.craft} /></h2></div>
-    <div className="craft-grid">
-      {card(0, <ol className="pause-rows" aria-label={pauseTitle}>{[...pauses].reverse().map(([label, width], i) =>
-        <li key={label} style={{ '--w': width }}><span>{label}</span><Speech seed={i * 2.3} n={7} /><span className="pause-rule" aria-hidden="true" /></li>)}</ol>)}
-      {/* A heading is read slower and louder, with a breath before and after; the paragraph runs on. */}
-      {card(1, <div className="stress-rows">
-        <p><span>{heading}</span><span className="stress-line"><span className="breath" aria-hidden="true" /><Speech seed={1.4} n={9} className="speech-loud" /><span className="breath" aria-hidden="true" /></span></p>
-        <p><span>{paragraph}</span><span className="stress-line"><Speech seed={5} n={26} className="speech-run" /></span></p></div>)}
-      {/* The reader marks the sentence the voice is on. */}
-      {card(2, <div className="follow-lines">{c.followLines.map((line, i) =>
-        <p key={line} className={i === 1 ? 'is-reading' : undefined}>{i === 1 && <Glyph name="voices" />}{line}</p>)}</div>)}
-    </div>
+    <ul className="tile-grid craft-list">{c.craftItems.map(([icon, title]) => <li key={title}><span className="tile-icon"><Glyph name={icon} /></span><h3>{title}</h3></li>)}</ul>
   </section>;
 }
 function Voices({ c }) {
@@ -229,7 +214,7 @@ function Voices({ c }) {
 function More({ c }) {
   return <section className="more section container" aria-labelledby="more-title">
     <div className="center-heading"><p className="label">{c.moreLabel}</p><h2 id="more-title"><Lines value={c.moreTitle} /></h2></div>
-    <ul className="more-grid">{c.more.map(([icon, title]) => <li key={title}><span className={`more-icon more-${icon}`}><Glyph name={icon} /></span><h3>{title}</h3></li>)}</ul>
+    <ul className="tile-grid more-grid">{c.more.map(([icon, title]) => <li key={title}><span className={`tile-icon more-${icon}`}><Glyph name={icon} /></span><h3>{title}</h3></li>)}</ul>
   </section>;
 }
 function Privacy({ c }) {
