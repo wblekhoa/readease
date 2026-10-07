@@ -93,6 +93,10 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   GSAP observes two scroll steps (70% of viewport each, minimum 320px) and CSS
   owns stickiness. Scroll down advances Library → Reader → Voices; up reverses.
   Elsewhere the tabs alone switch the screen.
+- The hero reads its second line once on load, CSS only: the app's reading
+  highlight passes word by word behind always-visible words, and the chip's
+  level meter moves for those few beats then rests still. A dotted-paper aura
+  (the DMG's) and a brand glow under the laptop set the light.
 - The feature band translates with the scroll (scrub), never loops; with
   reduced motion or no JS its words wrap, centred, and the duplicate set used
   for the drift is hidden.

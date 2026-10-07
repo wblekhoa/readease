@@ -6,7 +6,7 @@
   --bg: #fff; --ink: #141a24; --muted: #5a6473; --edge: #e2e5ea; --wash: #f3f5f8; --card: #f6f7f9;
   --brand: #2b52d4; --brand-hover: #2446b4; --brand-wash: #e9eefc; --on-brand: #fff; --focus: #6f8ae2;
   --cta: #141a24; --on-cta: #fff; --glass: rgb(255 255 255 / .72); --shadow: 0 24px 60px -28px rgb(20 26 36 / .35);
-  --alu: #d8dbe0; --alu-dark: #b9bdc4; --bezel: #0b0c0f;
+  --alu: #d8dbe0; --alu-dark: #b9bdc4; --bezel: #0b0c0f; --dot: #cfd5df;
   --body: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
   --display: "Plus Jakarta Sans", var(--body);
   color-scheme: light;
@@ -16,14 +16,14 @@
     --bg: #111317; --ink: #f2f3f5; --muted: #a3aab6; --edge: #2d323b; --wash: #1b1e24; --card: #191c22;
     --brand: #6a86f5; --brand-hover: #8099f7; --brand-wash: #1d2540; --cta: #f2f3f5; --on-cta: #111317;
     --glass: rgb(26 29 35 / .72); --shadow: 0 24px 60px -28px rgb(0 0 0 / .8);
-    --alu: #4a4e56; --alu-dark: #34373d; color-scheme: dark;
+    --alu: #4a4e56; --alu-dark: #34373d; --dot: #2a2f38; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111317; --ink: #f2f3f5; --muted: #a3aab6; --edge: #2d323b; --wash: #1b1e24; --card: #191c22;
   --brand: #6a86f5; --brand-hover: #8099f7; --brand-wash: #1d2540; --cta: #f2f3f5; --on-cta: #111317;
   --glass: rgb(26 29 35 / .72); --shadow: 0 24px 60px -28px rgb(0 0 0 / .8);
-  --alu: #4a4e56; --alu-dark: #34373d; color-scheme: dark;
+  --alu: #4a4e56; --alu-dark: #34373d; --dot: #2a2f38; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -64,12 +64,30 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 .nav-download:hover { color: var(--on-cta); opacity: .88; }
 
 /* Hero: centred, one sentence, one action. */
-.hero { padding-block: clamp(72px, 11vh, 128px) 56px; display: grid; justify-items: center; text-align: center; }
+.hero { position: relative; isolation: isolate; padding-block: clamp(72px, 11vh, 128px) 56px; display: grid; justify-items: center; text-align: center; }
+/* Atmosphere: the DMG's dotted paper, lit from behind the headline in brand blue. */
+.hero-aura { position: absolute; z-index: -1; inset: -96px 0 -40px; pointer-events: none;
+  background: radial-gradient(ellipse 34% 38% at 50% 40%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 72%),
+    radial-gradient(circle, var(--dot) 1.1px, transparent 1.6px) center / 24px 24px;
+  -webkit-mask-image: radial-gradient(ellipse 58% 62% at 50% 42%, #000 25%, transparent 78%); mask-image: radial-gradient(ellipse 58% 62% at 50% 42%, #000 25%, transparent 78%); }
 .hero-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border: 1px solid var(--edge); border-radius: 999px; background: var(--card); font: 600 14px/1 var(--display); }
 .hero-chip img { border-radius: 6px; }
 .chip-sub { color: var(--muted); font-weight: 500; }
+/* A tiny level meter: the app is speaking. It moves while the headline is read
+   (the site never loops motion), then rests as a still meter. */
+.chip-wave { display: inline-flex; align-items: center; gap: 2px; height: 14px; margin-left: 2px; }
+.chip-wave i { width: 2.5px; height: 100%; border-radius: 2px; background: var(--brand); transform-origin: center; animation: level .42s ease-in-out 8 alternate; }
+.chip-wave i:nth-child(1) { height: 45%; animation-delay: .1s; } .chip-wave i:nth-child(2) { animation-delay: .35s; }
+.chip-wave i:nth-child(3) { height: 70%; animation-delay: .2s; } .chip-wave i:nth-child(4) { height: 35%; animation-delay: .45s; }
+@keyframes level { from { transform: scaleY(.3); } to { transform: scaleY(1); } }
 .hero h1 { margin-top: 28px; font-size: clamp(56px, 8.4vw, 112px); font-weight: 700; line-height: 1.02; letter-spacing: -.055em; }
-.hero h1 span { color: var(--brand); }
+.hero-voice { color: var(--brand); }
+/* The reading highlight from the app's reader, passing over each word once on load.
+   The words are always visible; only the pill behind them moves. */
+.hero-word { position: relative; z-index: 0; display: inline-block; }
+.hero-word::before { content: ""; position: absolute; z-index: -1; inset: .1em -.1em .02em; border-radius: .2em; background: var(--brand-wash);
+  opacity: 0; animation: read 1.1s cubic-bezier(.3, .7, .3, 1) calc(.5s + var(--i) * .75s) both; }
+@keyframes read { 0% { opacity: 0; transform: scaleX(.7); } 18%, 62% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
 .description { margin-top: 28px; max-width: 34ch; color: var(--muted); font-size: clamp(18px, 1.7vw, 21px); line-height: 1.55; text-wrap: pretty; }
 .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 36px; }
 .button { display: inline-flex; gap: 10px; align-items: center; justify-content: center; min-height: 52px; padding: 12px 26px; border-radius: 999px;
@@ -82,6 +100,10 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 /* The laptop. Width is bound to the viewport height too, so the pinned stage
    always fits the window (story.js refuses to pin a stage taller than it). */
 .laptop { --w: min(1040px, calc(100vw - 48px), calc((100svh - 230px) * 1.48)); width: var(--w); margin-inline: auto; }
+/* The showcase laptop rises out of the hero's light. */
+.showcase .laptop { position: relative; isolation: isolate; }
+.showcase .laptop::before { content: ""; position: absolute; z-index: -1; inset: -6% 6% 30%; border-radius: 50%; pointer-events: none;
+  background: color-mix(in srgb, var(--brand) 26%, transparent); filter: blur(72px); }
 .laptop-lid { position: relative; padding: 1.6% 1.6% 2.2%; border-radius: calc(var(--w) * .035) calc(var(--w) * .035) 6px 6px; background: var(--bezel);
   box-shadow: 0 0 0 1px var(--alu-dark), var(--shadow); }
 .laptop-notch { position: absolute; z-index: 2; top: 1.6%; left: 50%; width: 12%; height: 3.2%; min-height: 10px; transform: translateX(-50%); border-radius: 0 0 10px 10px; background: var(--bezel); }
