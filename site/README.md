@@ -32,30 +32,43 @@ files only; it does not cover untracked changes or certify deployment.
 
 ## Owners
 
-- `src/content.js`: VI/EN copy, alt text and FAQs.
-- `src/App.jsx`: shared Header, Hero, DownloadButton, Showcase, FeatureStory,
-  FAQ, Closing and Footer. React owns selection and release state.
+- `src/content.js`: VI/EN copy, alt text and FAQs. Every claim is one the
+  repository README makes about the app.
+- `src/App.jsx`: Header (floating pill), Hero, Laptop, Showcase, Ticker, Ways
+  (card scroller), Craft, Voices, More, Privacy, FAQ, Closing and Footer. React
+  owns selection and release state; GSAP loads once, on demand.
 - `src/story.js`: scoped GSAP ScrollTrigger lifecycle and navigation helpers.
 - `src/release.js`: trusted GitHub asset validation and cancellable fetch.
-- `site.js`: browser hydration entry, replacing the legacy DOM controller.
-- `style.css`: existing approved visual design and responsive/theme tokens.
-- `index.html`, `en/index.html`: localized SEO metadata and entry shells.
+- `site.js`: browser hydration entry.
+- `style.css`: the visual design, responsive rules and light/dark tokens.
+- `index.html`, `en/index.html`: localized SEO metadata, entry shells and the
+  one-line script that marks `<html class="js">` before first paint.
 - `vite.config.mjs`: static rendering, icon and six explicitly allowed screenshots.
 - `tests/`: behavior/SSR tests and independent built-output checks.
 
-The Pages workflow installs the lockfile, verifies, and uploads `site/dist`.
-This local update does not publish or enable Pages. Commit/push/deploy require
-separate approval.
+The Pages workflow installs the lockfile, verifies, and uploads `site/dist`
+on every push to `main` that touches `site/**`: a push to main IS a deploy.
 
-## Preserved design and product contract
+## Design contract (layout rebuilt 07/10/2026, after tryonenotch.com/vi)
 
-- Quiet asymmetric hero, sparse bilingual description, cobalt glass CTA,
-  compatibility note and small installation link beneath it.
-- Full-width header/footer; 1280px main-content maximum. Existing typography,
-  system light/dark theme, icon and spacing. No extra slogans or eyebrows.
-- Full-width, natural-aspect previews. Separate VI/EN sets of three screenshots
-  from `assets/screenshots` and `assets/screenshots/en`; no private books or generated art.
-  Paste/selection figures are labeled illustrations, not fake controls.
+The owner asked for this layout on 07/10. Structure follows the reference;
+assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
+
+- A floating glass pill nav, sticky at the top: brand, four section links
+  (hidden under 960px), language switch and a dark Download pill.
+- A centred hero: product chip, two-line headline, one-sentence description,
+  one dark download button, a Free · macOS 15+ · Apple Silicon line and the
+  install link.
+- A MacBook drawn in CSS (bezel, notch, screen, hinge) holding the three real
+  screenshots. Its width is bound to the viewport height so the pinned stage
+  always fits. A segmented tab bar sits under it.
+- A band of feature words that drifts with the scroll, then sections in this
+  order: card scroller (library, paste, selection, EPUB figures), craft (pauses,
+  chapter chimes, Markdown), voices (VieNeu, Kokoro), a 12-item grid, free and
+  private (stands where a pricing table would), FAQ, closing, column footer.
+- Dark ink CTA, cobalt accent, DS blue ramp, Be Vietnam Pro / Plus Jakarta Sans,
+  system light/dark. Diagrams and glyphs are CSS/SVG; no generated art, no
+  private books, no reference-site assets.
 - Vietnamese via VieNeu and English via Kokoro. Offline listening requires
   initial model setup. Optional external providers receive passages.
   Selection uses Accessibility and selected digital text, not monitoring/OCR.
@@ -64,28 +77,21 @@ separate approval.
 
 ## Interaction and motion contract
 
-- Without JavaScript, all three previews and fallback Releases links work in
-  the built HTML. Hydration enables ARIA tabs, roving focus, Left/Right and
-  Up/Down wrap, Home/End. No timer autoplay.
-- The stage is two columns above 960px - title and the vertical tab list on
-  the left, the screen on the right (`aria-orientation="vertical"`); one
-  column with a horizontal list below that. Pinned, the stage takes the
-  viewport height and centres its columns; in scroll mode the screen yields
-  height (`max-height: calc(100svh - 240px)`) so the stage fits and the
-  story engages on laptop viewports, not only tall ones.
-- GSAP/ScrollTrigger loads separately. It observes two scroll steps (70% of
-  viewport each, minimum 320px); CSS owns stickiness. Scroll down advances
-  Reader → Library → Voices; scrolling up reverses it. No wheel interception,
-  forced snap or scroll-smoother dependency.
-- Manual selection aligns scroll immediately only when the entire stage fits.
-  Short/tall-content layouts and reduced motion retain manual tabs.
-  Scroll never moves keyboard focus or hides a focused panel.
-- Effects dispose owned triggers, listeners, pending focus frames, animation
-  contexts and requests. Live reduced-motion changes cancel animation; rapid
-  tab changes revert the prior animation before starting the next.
-- Entrances use GSAP for 420ms directional opacity/translation. Existing CSS
-  view-timeline chapter accents keep their reduced-motion overrides.
-- Failed motion loading leaves manual tabs usable. Failed/invalid GitHub
+- Without JavaScript the three previews stack inside the laptop with their
+  captions, the card scroller scrolls natively and fallback Releases links work.
+  Hydration enables ARIA tabs (roving focus, arrows wrap, Home/End), the card
+  arrows and dots. No timer autoplay and no `infinite` animation.
+- `.js` (set before paint) layers the screens in one grid cell and cross-fades
+  the one marked `data-on`; captions become a shared line under the laptop.
+- The showcase pins only at 720px+ wide and 600px+ tall with motion allowed;
+  GSAP observes two scroll steps (70% of viewport each, minimum 320px) and CSS
+  owns stickiness. Scroll down advances Reader → Library → Voices; up reverses.
+  Elsewhere the tabs alone switch the screen.
+- The feature band translates with the scroll (scrub), never loops; with
+  reduced motion or no JS its words wrap, centred, and the duplicate set used
+  for the drift is hidden.
+- Effects dispose owned triggers, listeners, frames and animation contexts.
+  Failed motion loading leaves manual tabs usable. Failed/invalid GitHub
   responses preserve fallback links. Only HTTPS ARM64 assets under this
   repository's release-download path can replace the fallback.
 
@@ -105,6 +111,14 @@ Generated directories: `site/node_modules` (~57 MB locally, including dev cache)
 ~76 KB gzip; separate GSAP/ScrollTrigger chunks total ~45 KB gzip. This is
 larger than vanilla HTML, traded for shared components and explicit lifecycle.
 Prerendering preserves first content.
+
+## Local verification — 2026-10-07
+
+28 behavior/SSR tests + 3 built-output tests; public-release audit PASS.
+Browser (Chromium): 1440×900 light and dark through every section, the pinned
+showcase forward through Reader and Library, 390×844 with no horizontal
+overflow. No claim of Safari/Firefox or a physical iPhone. The screenshots are
+still the 22/09 captures.
 
 ## Local verification — 2026-09-22
 

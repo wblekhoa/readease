@@ -12,7 +12,9 @@ export const progressIndex = progress => Math.max(0, Math.min(2, Math.round(prog
 export function createStory(section, { ScrollTrigger, onSelect, win = window }) {
   const stage = section.querySelector('[data-stage]');
   const panels = [...section.querySelectorAll('[data-preview]')];
-  const motion = win.matchMedia('(prefers-reduced-motion: no-preference) and (min-height: 600px)');
+  // A phone-sized laptop pinned in a full-height stage is mostly empty space;
+  // there the tabs alone switch the screen.
+  const motion = win.matchMedia('(prefers-reduced-motion: no-preference) and (min-height: 600px) and (min-width: 720px)');
   let trigger;
   let disposed = false;
   let step = 1;

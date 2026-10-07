@@ -111,10 +111,15 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   const c = content[locale];
   assert.equal((html.match(/<h1 /g) || []).length, 1);
   assert.equal((html.match(/data-download=/g) || []).length, 2);
-  assert.equal((html.match(/<details>/g) || []).length, 3);
+  assert.equal((html.match(/<details>/g) || []).length, c.faq.length);
+  assert.equal(c.faq.length, 6);
   assert.equal((html.match(/class="preview"/g) || []).length, 3);
   assert.equal((html.match(/class="tab-icon"/g) || []).length, 3);
-  assert.equal((html.match(/<li>/g) || []).length, 3);
+  assert.equal((html.match(/<ol class="sample-passages">(.*?)<\/ol>/)[1].match(/<li>/g) || []).length, 3);
+  assert.equal((html.match(/<ul class="more-grid">(.*?)<\/ul>/)[1].match(/<li>/g) || []).length, 12);
+  // The ticker repeats its words for the drift; the copy is hidden from AT.
+  assert.equal((html.match(/<li aria-hidden="true">/g) || []).length, c.ticker.length);
+  for (const id of ['features', 'voices', 'privacy', 'faq']) assert.match(html, new RegExp(`id="${id}"`));
   assert.equal((html.match(/<mark>/g) || []).length, 1);
   assert.equal((html.match(/<kbd>/g) || []).length, 3);
   assert.match(html, /role="tablist"[^>]+hidden=""/);
@@ -130,9 +135,11 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   const base = locale === 'en' ? '../screenshots/en/' : 'screenshots/';
   assert.deepEqual(imageSources, ['reader', 'shelf', 'voices', 'shelf'].map(id => `${base}${id}.png`));
 });
-test('CSS retains full-width chrome, aligned images and reduced-motion fallback', () => {
+test('CSS keeps the floating nav, aligned images, JS-only stacking and reduced-motion fallback', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-  assert.match(css, /\.nav\.container, \.footer\.container \{ max-width: none/);
+  // A floating pill nav (07/10), and the three screens cross-fade in one place only with JS.
+  assert.match(css, /\.nav-shell \{ position: sticky/);
+  assert.match(css, /\.js \.preview \{ grid-area: 1 \/ 1/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /\.preview img \{ width: 100%/);
   assert.doesNotMatch(css, /infinite/);
