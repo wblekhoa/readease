@@ -32,8 +32,12 @@ OUT = ROOT / "assets/voice-demos"
 RATE = 48_000
 BARS = 34
 TEXT = {
-    "vi": "Để chữ cất lời. ReadEase đọc tài liệu, bài viết hay đoạn bạn vừa chọn, ngay trên máy Mac của bạn.",
-    "en": "Let words speak. ReadEase reads your documents, articles, or any passage you select, right on your Mac.",
+    "vi": ("Để chữ cất lời. ReadEase đọc tài liệu, bài viết hay đoạn bạn vừa chọn, ngay trên máy Mac của bạn. "
+           "Giọng đọc ngắt nghỉ theo dấu câu, nhấn nhẹ ở tiêu đề, và chờ bạn một nhịp khi sang chương mới. "
+           "Mọi thứ chạy ngay trên máy, không cần mạng, không cần tài khoản."),
+    "en": ("Let words speak. ReadEase reads your documents, articles, or any passage you select, right on your Mac. "
+           "The voice pauses where the punctuation asks, leans a little on headings, and takes a breath before each new chapter. "
+           "Everything runs on your Mac, with no account and no connection needed."),
 }
 VOICE = {"vi": "Ngọc Linh", "en": "af_heart"}
 
