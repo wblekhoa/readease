@@ -55,7 +55,8 @@ The owner asked for this layout on 07/10. Structure follows the reference;
 assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
 
 - A floating glass pill nav, sticky at the top: brand, four section links
-  (hidden under 960px), language switch and a dark Download pill.
+  (hidden under 960px), a GitHub link (icon only on phones), language switch
+  and a dark Download pill. The repository is never only in the footer.
 - A centred hero: product chip, two-line headline, one-sentence description,
   one dark download button, a Free · macOS 15+ · Apple Silicon line and the
   install link.
@@ -63,7 +64,8 @@ assets and copy are ReadEase's own. Do not move it back to the 22/09 design.
   screenshots as a three-step story (owner, 07/10): Library → Reader → Voices,
   open a document, read it, change the voice. Its width is bound to the viewport
   height so the pinned stage always fits. Numbered tabs sit under it.
-- A band of feature words that drifts with the scroll, then sections in this
+- A band of the big features only (owner, 07/10: pauses, chimes, figures and
+  Markdown are one entry, "natural reading") that drifts with the scroll, then sections in this
   order: card scroller (library, paste, selection, EPUB figures), craft (pauses,
   chapter chimes, Markdown), voices (VieNeu, Kokoro), a 6-item grid, free and
   private (stands where a pricing table would), FAQ, closing, column footer.

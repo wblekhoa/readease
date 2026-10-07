@@ -120,6 +120,8 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   // The ticker repeats its words for the drift; the copy is hidden from AT.
   assert.equal((html.match(/<li aria-hidden="true">/g) || []).length, c.ticker.length);
   for (const id of ['features', 'voices', 'privacy', 'faq']) assert.match(html, new RegExp(`id="${id}"`));
+  // The repository is one click from the header, not only the footer (owner, 07/10).
+  assert.match(html, /<header[\s\S]*class="nav-github" href="https:\/\/github\.com\/wblekhoa\/readease"[\s\S]*<\/header>/);
   assert.equal((html.match(/<mark>/g) || []).length, 1);
   assert.equal((html.match(/<kbd>/g) || []).length, 3);
   assert.match(html, /role="tablist"[^>]+hidden=""/);

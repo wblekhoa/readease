@@ -56,6 +56,9 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 .nav-links a { padding: 8px 12px; border-radius: 999px; }
 .nav-links a:hover { color: var(--ink); background: var(--wash); }
 .nav-end { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.nav-github { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding-inline: 10px; border-radius: 999px; color: var(--muted); }
+.nav-github:hover { color: var(--ink); background: var(--wash); }
+.nav-github svg { width: 18px; height: 18px; fill: currentColor; }
 .language { display: inline-flex; gap: 6px; align-items: center; min-height: 40px; padding-inline: 10px; color: var(--muted); }
 .nav-download { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: 999px; background: var(--cta); color: var(--on-cta); font-weight: 600; }
 .nav-download:hover { color: var(--on-cta); opacity: .88; }
@@ -251,6 +254,8 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .container { padding-inline: 20px; }
   .nav-shell { padding-inline: 10px; }
   .language { padding-inline: 6px; }
+  .nav-github { padding-inline: 8px; }
+  .nav-github span { display: none; }
   .more-grid { grid-template-columns: minmax(0, 1fr); }
   .footer-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .way-visual { min-height: 260px; padding: 20px; }
