@@ -80,7 +80,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 .chip-wave i:nth-child(1) { height: 45%; animation-delay: .1s; } .chip-wave i:nth-child(2) { animation-delay: .35s; }
 .chip-wave i:nth-child(3) { height: 70%; animation-delay: .2s; } .chip-wave i:nth-child(4) { height: 35%; animation-delay: .45s; }
 @keyframes level { from { transform: scaleY(.3); } to { transform: scaleY(1); } }
-.hero h1 { margin-top: 28px; font-size: clamp(56px, 8.4vw, 112px); font-weight: 700; line-height: 1.02; letter-spacing: -.055em; }
+.hero h1 { margin-top: 28px; font-size: clamp(48px, 7.2vw, 96px); font-weight: 500; line-height: 1.04; letter-spacing: -.045em; }
 .hero-voice { color: var(--brand); }
 /* The reading highlight from the app's reader, passing over each word once on load.
    The words are always visible; only the pill behind them moves. */
@@ -145,7 +145,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 
 /* Headings. */
 .split-heading { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: end; }
-.split-heading h2, .center-heading h2 { font-size: clamp(36px, 4.6vw, 60px); font-weight: 700; line-height: 1.08; letter-spacing: -.045em; }
+.split-heading h2, .center-heading h2 { font-size: clamp(32px, 4vw, 52px); font-weight: 500; line-height: 1.1; letter-spacing: -.035em; }
 .center-heading > p:not(.label) { color: var(--muted); font-size: 17px; max-width: 46ch; }
 .split-heading .label, .center-heading .label { margin-bottom: 14px; }
 .center-heading { display: grid; justify-items: center; text-align: center; gap: 0; }
@@ -170,7 +170,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent); }
 .way-text { padding: 24px 28px 28px; }
 .way-type { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: 12px; letter-spacing: .05em; }
-.way-card h3 { margin-top: 12px; font-size: clamp(22px, 2.2vw, 28px); line-height: 1.25; font-weight: 600; letter-spacing: -.03em; }
+.way-card h3 { margin-top: 12px; font-size: clamp(21px, 2vw, 26px); line-height: 1.25; font-weight: 500; letter-spacing: -.03em; }
 .library-visual { position: relative; width: 100%; height: 100%; }
 .library-visual img { position: absolute; inset: auto 0 0; margin-inline: auto; width: auto; max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: var(--shadow); }
 .reading-visual { width: 100%; max-width: 420px; }
@@ -209,7 +209,7 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
    piece of the app rising from the bottom edge. The window keeps the app's own
    dark palette in both themes, the way a screenshot would. */
 .craft-card { display: flex; flex-direction: column; align-items: center; padding: 40px 28px 0; border-radius: 28px; background: var(--card); text-align: center; overflow: hidden; }
-.craft-card h3 { margin-bottom: 36px; font: 600 24px/1.25 var(--display); letter-spacing: -.025em; text-wrap: balance; }
+.craft-card h3 { margin-bottom: 36px; font: 500 22px/1.25 var(--display); letter-spacing: -.025em; text-wrap: balance; }
 .craft-window { --win-ink: #eceef2; --win-muted: #8d95a3; --win-edge: #2a2e36; --win-brand: #7b93f7;
   width: 100%; max-width: 440px; height: 212px; margin-top: auto; overflow: hidden; padding: 22px 22px 30px; border: 1px solid var(--win-edge); border-bottom: 0;
   border-radius: 18px 18px 0 0; background: #15171c; color: var(--win-ink); text-align: left; box-shadow: 0 -12px 32px -20px rgb(0 0 0 / .55); }
@@ -233,7 +233,7 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .voices .split-heading { grid-template-columns: 1.35fr .65fr; }
 .voice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .voice-card { position: relative; overflow: hidden; min-height: 260px; }
-.voice-card h3 { margin-top: 8px; font-size: clamp(30px, 3.2vw, 40px); font-weight: 700; letter-spacing: -.04em; }
+.voice-card h3 { margin-top: 8px; font-size: clamp(28px, 2.8vw, 36px); font-weight: 500; letter-spacing: -.03em; }
 .fact-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 .fact-list li { padding: 6px 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--edge); font-size: 13px; }
 .voice-wave { position: absolute; left: 28px; right: 28px; bottom: 28px; height: 56px; display: flex; align-items: center; gap: 5px; }
@@ -249,7 +249,7 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .more-bell { background: #e0902f; } .more-hash { background: #64708a; } .more-speed { background: #d6457a; }
 .more-clock { background: #2b8fd6; } .more-menu { background: #7a5af5; } .more-books { background: #e0604a; }
 .more-globe { background: #1f9bb0; } .more-key { background: #2f9e6e; }
-.more-grid h3 { margin-top: 18px; font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
+.more-grid h3 { margin-top: 18px; font-size: 17px; font-weight: 500; letter-spacing: -.015em; }
 
 /* Free and private. */
 .pill-checks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
@@ -262,7 +262,7 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 /* FAQ. */
 .questions { max-width: 760px; margin: 48px auto 0; border-top: 1px solid var(--edge); }
 details { border-bottom: 1px solid var(--edge); }
-summary { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 68px; padding-block: 18px; cursor: pointer; list-style: none; font: 600 18px/1.4 var(--display); letter-spacing: -.02em; }
+summary { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 68px; padding-block: 18px; cursor: pointer; list-style: none; font: 500 18px/1.4 var(--display); letter-spacing: -.02em; }
 summary::-webkit-details-marker { display: none; }
 .summary-glyph { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; flex: none; transition: transform 200ms ease-out; }
 details[open] .summary-glyph { transform: rotate(45deg); }
@@ -278,7 +278,7 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
 .closing-tiles span:nth-child(7) { left: 4%; top: 82%; filter: blur(5px); opacity: .4; } .closing-tiles span:nth-child(8) { right: 4%; top: 86%; filter: blur(5px); opacity: .4; }
 .download-block { position: relative; display: grid; justify-items: center; gap: 0; }
 .app-icon { border-radius: 20px; box-shadow: var(--shadow); }
-.download-block h2 { margin-top: 28px; font-size: clamp(40px, 5vw, 64px); font-weight: 700; line-height: 1.08; letter-spacing: -.045em; }
+.download-block h2 { margin-top: 28px; font-size: clamp(36px, 4.4vw, 56px); font-weight: 500; line-height: 1.1; letter-spacing: -.035em; }
 .download-block > p { margin-top: 16px; color: var(--muted); }
 .download-block .button { margin-top: 32px; }
 .download-detail { font-size: 13px; }
