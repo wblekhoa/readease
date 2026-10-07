@@ -33,8 +33,8 @@ export const content = {
     figuresLabel: 'Minh họa lời nhắc xem hình trong lúc nghe', figureName: 'Hình 2', figureCue: 'Mời bạn xem Hình 2.', figuresChips: ['Đánh số theo thứ tự đọc'],
     craftLabel: 'Nghe ra hồn', craft: ['Ngắt đúng chỗ.', 'Nghỉ đúng lúc.'],
     pauses: ['NGẮT NGHỈ', [['Sang chương', 100], ['Hết đoạn', 68], ['Tiêu đề', 52], ['Dấu chấm', 36], ['Dấu phẩy', 18]]],
-    chimes: ['ÂM HIỆU CHƯƠNG', 'Chương 3', ['Marimba', 'Harp', 'Piano']],
-    markdown: ['MARKDOWN', '**Lưu ý:** đọc *kỹ* [hướng dẫn](https://…)', 'Lưu ý: đọc kỹ hướng dẫn'],
+    chimes: ['ÂM HIỆU CHƯƠNG', 'Chương 3', ['Marimba', 'Harp', 'Piano'], 'Hết chương 2'],
+    markdown: ['MARKDOWN', '**Lưu ý:** đọc *kỹ* [hướng dẫn](https://…)', 'Lưu ý: đọc kỹ hướng dẫn', ['Viết', 'Đọc']],
     voicesLabel: 'Giọng đọc', voicesTitle: ['Tiếng Việt hay English.', 'Ngay trên máy bạn.'],
     voices: [
       ['Tiếng Việt', 'VieNeu', ['Tiêu chuẩn · 330 MB', 'Cao nhất · 625 MB']],
@@ -101,8 +101,8 @@ export const content = {
     figuresLabel: 'Illustration of a figure cue while listening', figureName: 'Figure 2', figureCue: 'Please see Figure 2.', figuresChips: ['Numbered in reading order'],
     craftLabel: 'Read with care', craft: ['Pauses in the right places.', 'For the right length.'],
     pauses: ['PAUSES', [['New chapter', 100], ['End of paragraph', 68], ['Heading', 52], ['Full stop', 36], ['Comma', 18]]],
-    chimes: ['CHAPTER CHIMES', 'Chapter 3', ['Marimba', 'Harp', 'Piano']],
-    markdown: ['MARKDOWN', '**Note:** read [the guide](https://…) *carefully*', 'Note: read the guide carefully'],
+    chimes: ['CHAPTER CHIMES', 'Chapter 3', ['Marimba', 'Harp', 'Piano'], 'End of chapter 2'],
+    markdown: ['MARKDOWN', '**Note:** read [the guide](https://…) *carefully*', 'Note: read the guide carefully', ['Written', 'Spoken']],
     voicesLabel: 'Voices', voicesTitle: ['Tiếng Việt or English.', 'Right on your Mac.'],
     voices: [
       ['Tiếng Việt', 'VieNeu', ['Standard · 330 MB', 'Highest · 625 MB']],
