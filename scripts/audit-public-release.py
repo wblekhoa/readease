@@ -48,7 +48,7 @@ PUBLIC_MODEL_ASSETS = {
     "src/vieneu_reader/speech/chimes/harp.wav": "c47dcf36966ac8a6a0a6cda37e1e24655c47bcb13456221711c9618a7e83db45",
     "src/vieneu_reader/speech/chimes/piano.wav": "a1dfb65859aef7f9fbaae912450b26c79d6c7ff6b1ef3ed00a6bfed953ccc702",
     "src/vieneu_reader/speech/chimes/part-marimba.wav": "d7c69099fe1e202568724305054e00d8dc4dfdb94d657ec749d2cb7391d1d7d0",
-    "assets/voice-demos/vi.m4a": "e77827bdfa6440d9ebadadccd4cfd1143c0a5d06500101b34eab80a64554935a",
+    "assets/voice-demos/vi.m4a": "ba46222ac11a5b6d7047de88c68b5d69d32eacb14ab5ad79d8ee53fb6fb34951",
     "assets/voice-demos/en.m4a": "94d736f18fe9f78393229ceeb0e1a39c0282437c73cfc0662514309dea59495c",
 }
 FORBIDDEN_BUNDLE_NAMES = {

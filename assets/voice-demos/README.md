@@ -8,7 +8,7 @@ encoding (64 kb/s mono).
 
 | File | Model | Voice | Text |
 |---|---|---|---|
-| `vi.m4a` | VieNeu-TTS v3 Turbo (Apache-2.0) | Minh Đức (preset) | Để chữ cất lời. ReadEase đọc tài liệu, bài viết hay đoạn bạn vừa chọn, ngay trên máy Mac của bạn. |
+| `vi.m4a` | VieNeu-TTS v3 Turbo (Apache-2.0) | Ngọc Linh (preset) | Để chữ cất lời. ReadEase đọc tài liệu, bài viết hay đoạn bạn vừa chọn, ngay trên máy Mac của bạn. |
 | `en.m4a` | Kokoro-82M v1.0 (Apache-2.0) | Heart (`af_heart`) | Let words speak. ReadEase reads your documents, articles, or any passage you select, right on your Mac. |
 
 Model revisions and licences: `legal/MODEL_PROVENANCE.md`. The VieNeu model

@@ -35,7 +35,7 @@ TEXT = {
     "vi": "Để chữ cất lời. ReadEase đọc tài liệu, bài viết hay đoạn bạn vừa chọn, ngay trên máy Mac của bạn.",
     "en": "Let words speak. ReadEase reads your documents, articles, or any passage you select, right on your Mac.",
 }
-VOICE = {"vi": "Minh Đức", "en": "af_heart"}
+VOICE = {"vi": "Ngọc Linh", "en": "af_heart"}
 
 
 def engine_for(language: str, models: Path):
