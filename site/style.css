@@ -212,11 +212,16 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .api-panel { display: grid; gap: 10px; padding: 18px; border-radius: 20px; background: var(--bg); }
 .api-row { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--card); font-size: 14px; }
 .api-row b { font-weight: 500; } .api-row b span { color: var(--muted); font-weight: 400; }
-.api-provider { display: grid; gap: 10px; padding: 10px; border-radius: 16px; background: var(--card); }
-.api-provider .api-row { grid-template-columns: max-content minmax(0, 1fr) auto; padding: 2px 4px 0; background: none; }
-.api-provider .api-row b { white-space: nowrap; }
-.api-provider .voice-player { max-width: none; margin-top: 0; padding-block: 8px; }
-.api-provider .voice-play { width: 34px; height: 34px; }
+.api-row.api-provider { grid-template-columns: auto max-content minmax(0, 1fr) auto; padding-block: 8px; }
+.api-provider b { white-space: nowrap; }
+.voice-mini { position: relative; display: grid; place-items: center; width: 32px; height: 32px; }
+.voice-mini .voice-play { width: 32px; height: 32px; }
+.voice-mini .voice-play .glyph { width: 15px; height: 15px; }
+/* While it plays, a thin ring fills around the button with the clip's progress. */
+.voice-mini::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: conic-gradient(var(--brand) calc(var(--p) * 1turn), var(--edge) 0);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(closest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); transition: opacity 200ms ease-out; }
+.voice-mini.is-playing::after { opacity: 1; }
 .api-row code { overflow: hidden; color: var(--muted); font: 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .api-saved { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .api-saved .glyph { width: 16px; height: 16px; color: #2f9e6e; }
@@ -294,6 +299,7 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   .nav-github { padding-inline: 8px; }
   .nav-github span { display: none; }
   .tile-grid, .tile-grid.more-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .api-row.api-provider { grid-template-columns: auto minmax(0, 1fr) auto; } .api-provider code { display: none; }
   .api-card { padding: 24px 18px; } .api-row { grid-template-columns: 6.5em minmax(0, 1fr) auto; padding-inline: 12px; }
   .tile-grid li { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
   .tile-grid h3 { margin-top: 0; font-size: 16px; }

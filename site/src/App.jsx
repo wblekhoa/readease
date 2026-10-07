@@ -181,7 +181,7 @@ function Craft({ c }) {
 }
 /* A real sample from each local model (scripts/render-voice-demos.py). Plays on
    request only; starting one stops the other; the bars are the clip's own peaks. */
-function VoicePlayer({ src, bars, name, labels }) {
+function VoicePlayer({ src, bars, name, labels, compact = false }) {
   const audio = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -202,6 +202,9 @@ function VoicePlayer({ src, bars, name, labels }) {
     element.play().catch(() => setPlaying(false));
   }
   const lit = Math.round(progress * bars.length);
+  if (compact) return <span className={`voice-mini${playing ? ' is-playing' : ''}`} style={{ '--p': progress }}>
+    <button type="button" className="voice-play" onClick={toggle} aria-pressed={playing} aria-label={`${playing ? labels[1] : labels[0]}: ${name}`}><Glyph name={playing ? 'pause' : 'play'} /></button>
+    <audio ref={audio} src={src} preload="none" data-voice-demo="" /></span>;
   return <div className="voice-player">
     <button type="button" className="voice-play" onClick={toggle} aria-pressed={playing} aria-label={`${playing ? labels[1] : labels[0]}: ${name}`}><Glyph name={playing ? 'pause' : 'play'} /></button>
     <span className="voice-wave" aria-hidden="true">{bars.map((height, i) => <i key={i} className={i < lit ? 'is-played' : undefined} style={{ '--h': `${height}%` }} />)}</span>
@@ -227,9 +230,9 @@ function Voices({ c, prefix, locale }) {
           (same text as the local demos), then the per-session spending cap. */}
       <div className="api-panel">
         {[['openai', 'OpenAI', 'Marin', 'sk-••••••••••••3f9a'], ['elevenlabs', 'ElevenLabs', 'Sarah', '••••••••••••b21c']].map(([id, provider, voice, key]) =>
-          <div key={id} className="api-provider">
-            <p className="api-row"><b>{provider}<span> · {voice}</span></b><code aria-hidden="true">{key}</code><span className="api-saved"><Glyph name="check" />{c.apiRows[0]}</span></p>
-            <VoicePlayer src={`${prefix}voice-demos/${id}-${locale}.m4a`} bars={voiceBars[`${id}-${locale}`]} name={`${provider} ${voice}`} labels={c.listen} />
+          <div key={id} className="api-row api-provider">
+            <VoicePlayer compact src={`${prefix}voice-demos/${id}-${locale}.m4a`} bars={voiceBars[`${id}-${locale}`]} name={`${provider} ${voice}`} labels={c.listen} />
+            <b>{provider}<span> · {voice}</span></b><code aria-hidden="true">{key}</code><span className="api-saved"><Glyph name="check" />{c.apiRows[0]}</span>
           </div>)}
         <p className="api-row api-cap-row" aria-hidden="true"><b>{c.apiRows[1]}</b><span className="api-cap">$1.00</span></p>
       </div>
