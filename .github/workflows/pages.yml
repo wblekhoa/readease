@@ -10,6 +10,7 @@ on:
     paths:
       - "site/**"
       - "assets/screenshots/**"
+      - "assets/voice-demos/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

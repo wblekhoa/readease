@@ -208,6 +208,10 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .voice-wave i.is-played { background: var(--brand); }
 .api-card { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 32px; margin-top: 20px; padding: 32px; border-radius: 28px; background: var(--card); }
 .api-copy { display: grid; justify-items: start; gap: 20px; }
+.api-demos { display: grid; gap: 14px; width: 100%; margin-top: 4px; }
+.api-demo { display: grid; gap: 8px; }
+.api-demo p { color: var(--muted); font-size: 13px; } .api-demo b { color: var(--ink); font-weight: 500; }
+.api-demo .voice-player { max-width: none; margin-top: 0; background: var(--bg); }
 .api-copy h3 { font-size: clamp(24px, 2.4vw, 30px); font-weight: 500; line-height: 1.25; letter-spacing: -.025em; }
 .api-panel { display: grid; gap: 10px; padding: 18px; border-radius: 20px; background: var(--bg); }
 .api-row { display: grid; grid-template-columns: 7.5em minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--card); font-size: 14px; }

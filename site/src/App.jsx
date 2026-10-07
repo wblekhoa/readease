@@ -208,7 +208,7 @@ function VoicePlayer({ src, bars, name, labels }) {
     <audio ref={audio} src={src} preload="none" data-voice-demo="" />
   </div>;
 }
-function Voices({ c, prefix }) {
+function Voices({ c, prefix, locale }) {
   return <section className="voices section container" id="voices" aria-labelledby="voices-title">
     <div className="center-heading"><p className="label">{c.voicesLabel}</p><h2 id="voices-title"><Lines value={c.voicesTitle} /></h2></div>
     <div className="voice-grid">{c.voices.map(([flag, language, model, facts], i) => {
@@ -222,7 +222,11 @@ function Voices({ c, prefix }) {
     {/* The paid-voice option, drawn as the app's key settings: keys stay masked, a session cap,
         and the price shown on the read button before anything is sent (example figures). */}
     <article className="api-card">
-      <div className="api-copy"><span className="tile-icon"><Glyph name="key" /></span><h3>{c.apiTitle}</h3></div>
+      <div className="api-copy"><span className="tile-icon"><Glyph name="key" /></span><h3>{c.apiTitle}</h3>
+        {/* Real samples from each provider's stock voice, same text as the local demos. */}
+        <div className="api-demos">{[['openai', 'OpenAI', 'Marin'], ['elevenlabs', 'ElevenLabs', 'Sarah']].map(([id, provider, voice]) =>
+          <div key={id} className="api-demo"><p><b>{provider}</b> · {voice}</p>
+            <VoicePlayer src={`${prefix}voice-demos/${id}-${locale}.m4a`} bars={voiceBars[`${id}-${locale}`]} name={`${provider} ${voice}`} labels={c.listen} /></div>)}</div></div>
       <div className="api-panel" aria-hidden="true">
         {[['OpenAI', 'sk-••••••••••••3f9a'], ['ElevenLabs', '••••••••••••b21c']].map(([provider, key]) =>
           <p key={provider} className="api-row"><b>{provider}</b><code>{key}</code><span className="api-saved"><Glyph name="check" />{c.apiRows[0]}</span></p>)}
@@ -286,6 +290,6 @@ export function App({ locale = 'vi' }) {
   }, []);
   return <><a className="skip-link" href="#main">{c.skip}</a><Header c={c} prefix={prefix} />
     <main id="main"><div className="container"><Hero c={c} prefix={prefix} release={release} /></div><Showcase c={c} screenshots={screenshots} /><Ticker c={c} />
-      <Ways c={c} screenshots={screenshots} /><Craft c={c} /><Voices c={c} prefix={prefix} /><More c={c} /><Privacy c={c} /><FAQ c={c} /><Closing c={c} prefix={prefix} release={release} /></main>
+      <Ways c={c} screenshots={screenshots} /><Craft c={c} /><Voices c={c} prefix={prefix} locale={locale} /><More c={c} /><Privacy c={c} /><FAQ c={c} /><Closing c={c} prefix={prefix} release={release} /></main>
     <Footer c={c} prefix={prefix} release={release} /></>;
 }

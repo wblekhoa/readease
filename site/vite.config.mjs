@@ -10,7 +10,8 @@ const assets = new Map([
   ['icon.png', new URL('./icon.png', import.meta.url)],
   ...['', 'en/'].flatMap(locale => ['reader', 'shelf', 'voices'].map(id =>
     [`screenshots/${locale}${id}.png`, new URL(`../assets/screenshots/${locale}${id}.png`, import.meta.url)])),
-  ...['vi', 'en'].map(id => [`voice-demos/${id}.m4a`, new URL(`../assets/voice-demos/${id}.m4a`, import.meta.url)]),
+  ...['vi', 'en', 'openai-vi', 'openai-en', 'elevenlabs-vi', 'elevenlabs-en'].map(id =>
+    [`voice-demos/${id}.m4a`, new URL(`../assets/voice-demos/${id}.m4a`, import.meta.url)]),
 ]);
 
 export default defineConfig({

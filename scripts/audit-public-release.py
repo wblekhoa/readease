@@ -38,7 +38,8 @@ FORBIDDEN_SUFFIXES = {
 # chimes (owner's pick, 16/09), each under a second or two of generated
 # sound, provenance in `THIRD_PARTY_NOTICES.md`. The two ".m4a" files are the
 # landing page's voice demos (owner, 07/10): a short paragraph each, rendered by the
-# app's own models, provenance in `assets/voice-demos/README.md`. A re-export or re-render
+# app's own models, plus the paid-voice samples from each provider's stock
+# voice; provenance in `assets/voice-demos/README.md`. A re-export or re-render
 # changes the hash and has to come back here, which is the review it
 # deserves.
 PUBLIC_MODEL_ASSETS = {
@@ -50,6 +51,10 @@ PUBLIC_MODEL_ASSETS = {
     "src/vieneu_reader/speech/chimes/part-marimba.wav": "d7c69099fe1e202568724305054e00d8dc4dfdb94d657ec749d2cb7391d1d7d0",
     "assets/voice-demos/vi.m4a": "4eaddda0d9bbc4b95c9ca92df32ca53b844816693b90cbf027733af94345db60",
     "assets/voice-demos/en.m4a": "33e8e13a7d5e074fd1037b8500ce91ef85c2b300bc0e7243efcd59b6056a8168",
+    "assets/voice-demos/openai-vi.m4a": "796e26afb4bcebb09c1b32bbf898de602759ca4bc349818179a559c9ba52b6dd",
+    "assets/voice-demos/openai-en.m4a": "40fc42f5b5c662d8fdca53b638aa17b5a17d20a955ede75de165e96ba7bf5d48",
+    "assets/voice-demos/elevenlabs-vi.m4a": "50da3d1600e35c218d53f6c738c8ecf0617fd309ebaa5ce0203577a408435cb1",
+    "assets/voice-demos/elevenlabs-en.m4a": "538f86fe9ce3ee39b2caa590f1c857d3b67d4f93400a2b840bef2e33f587b29b",
 }
 FORBIDDEN_BUNDLE_NAMES = {
     "QtVirtualKeyboard",

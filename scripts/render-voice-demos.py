@@ -40,6 +40,10 @@ TEXT = {
            "Everything runs on your Mac, with no account and no connection needed."),
 }
 VOICE = {"vi": "Ngọc Linh", "en": "af_heart"}
+# Paid voices (--api): the providers' own stock voices, never a library or
+# cloned voice. Keys are read from the app's settings and never printed.
+API_VOICE = {"openai": ("marin", "Marin"), "elevenlabs": ("EXAVITQu4vr4xnSDxMaL", "Sarah")}
+API_RATE = 24_000
 
 
 def engine_for(language: str, models: Path):
@@ -75,30 +79,68 @@ def bars(audio: np.ndarray) -> list[int]:
     return [int(round(22 + 72 * p / peaks.max())) for p in peaks]
 
 
+def encode(audio: np.ndarray, rate: int, name: str) -> None:
+    with tempfile.TemporaryDirectory() as scratch:
+        wav = Path(scratch) / "demo.wav"
+        with wave.open(str(wav), "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(rate)
+            handle.writeframes((audio * 32767).astype("<i2").tobytes())
+        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "64000",
+                        str(wav), str(OUT / f"{name}.m4a")], check=True)
+
+
+def render_api(shapes: dict) -> None:
+    """Spends a few cents of the owner's own credit; sends only the demo text."""
+    from vieneu_reader.speech.external.elevenlabs import ElevenLabsVoiceProvider
+    from vieneu_reader.speech.external.openai import OpenAIVoiceProvider
+    settings = json.loads((Path.home() / "Library/Application Support/VieNeu Reader/settings.json").read_text())
+    makers = {"openai": lambda: OpenAIVoiceProvider(settings["openai_api_key"]),
+              "elevenlabs": lambda: ElevenLabsVoiceProvider(settings["elevenlabs_api_key"])}
+    for provider, make in makers.items():
+        voice, label = API_VOICE[provider]
+        for language, text in TEXT.items():
+            pcm = b"".join(make().synthesize(text, voice))
+            audio = level(np.frombuffer(pcm[: len(pcm) // 2 * 2], dtype="<i2").astype(np.float32) / 32768)
+            name = f"{provider}-{language}"
+            shapes[name] = bars(audio)
+            encode(audio, API_RATE, name)
+            print(f"VOICE_DEMO {name} {label} {audio.size / API_RATE:.2f}s")
+
+
+def write_bars(shapes: dict) -> None:
+    target = ROOT / "site/src/voiceBars.js"
+    if target.exists():
+        import re
+        found = re.search(r"= (\{.*\});", target.read_text())
+        shapes = {**(json.loads(found.group(1)) if found else {}), **shapes}
+    target.write_text(
+        "/* Peak heights (%) of the voice demos, written by\n"
+        "   scripts/render-voice-demos.py from the same render as the .m4a files. */\n"
+        f"export const voiceBars = {json.dumps(shapes)};\n", encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--models", type=Path, required=True)
+    parser.add_argument("--models", type=Path)
+    parser.add_argument("--api", action="store_true", help="render the paid-voice demos instead")
     args = parser.parse_args()
     sys.path.insert(0, str(ROOT / "src"))
     OUT.mkdir(parents=True, exist_ok=True)
     shapes = {}
+    if args.api:
+        render_api(shapes)
+        write_bars(shapes)
+        return
+    if not args.models:
+        parser.error("--models is required for the local demos")
     for language, text in TEXT.items():
         audio = level(render(engine_for(language, args.models), VOICE[language], text))
         shapes[language] = bars(audio)
-        with tempfile.TemporaryDirectory() as scratch:
-            wav = Path(scratch) / "demo.wav"
-            with wave.open(str(wav), "wb") as handle:
-                handle.setnchannels(1)
-                handle.setsampwidth(2)
-                handle.setframerate(RATE)
-                handle.writeframes((audio * 32767).astype("<i2").tobytes())
-            subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "64000",
-                            str(wav), str(OUT / f"{language}.m4a")], check=True)
+        encode(audio, RATE, language)
         print(f"VOICE_DEMO {language} {VOICE[language]} {audio.size / RATE:.2f}s")
-    (ROOT / "site/src/voiceBars.js").write_text(
-        "/* Peak heights (%) of the two voice demos, written by\n"
-        "   scripts/render-voice-demos.py from the same render as the .m4a files. */\n"
-        f"export const voiceBars = {json.dumps(shapes)};\n", encoding="utf-8")
+    write_bars(shapes)
 
 
 if __name__ == "__main__":
