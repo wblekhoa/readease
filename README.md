@@ -46,6 +46,7 @@ Chỉ có **một** bản app; giọng đọc thì bạn chọn ngay trong app v
 | --- | --- |
 | Máy Mac | Apple Silicon: M1, M2, M3, M4 hoặc mới hơn. Máy Intel không được hỗ trợ. |
 | macOS | macOS 15 trở lên |
+| Bộ nhớ (RAM) | 8 GB chạy được; 16 GB mượt hơn nếu bạn dùng cả giọng Việt lẫn giọng Anh. Giọng không dùng tới sau 5 phút được tự giải phóng. |
 | Dung lượng trống | Khoảng 220 MB cho app, cộng giọng đọc tải một lần: ~330 MB (Tiêu chuẩn) hoặc ~625 MB (Cao nhất) |
 | Kết nối mạng | Cần lúc tải app và lần chuẩn bị giọng đọc đầu tiên |
 
@@ -176,7 +177,7 @@ Download `ReadEase-<version>-arm64.dmg`, open it and drag `ReadEase.app` into Ap
 > [!NOTE]
 > Releases are signed with an Apple Developer ID certificate and notarized by Apple, so the app opens like any other. Full guide, including the older 0.1.0/0.1.1 builds that macOS blocks: [INSTALL.en.md](INSTALL.en.md).
 
-Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, about 220 MB for the app plus a one-time voice download (~330 MB Standard or ~625 MB Highest), and internet only for those two downloads. No API key, no account, no cost. In the app, click **Set up voice** once.
+Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, 8 GB of memory (16 GB is smoother if you use both the Vietnamese and the English voice; a voice left unused for five minutes is released), about 220 MB for the app plus a one-time voice download (~330 MB Standard or ~625 MB Highest), and internet only for those two downloads. No API key, no account, no cost. In the app, click **Set up voice** once.
 
 ## Main features
 

@@ -64,7 +64,7 @@ export const content = {
     license: 'Miễn phí cho mục đích phi thương mại.', privacyLink: 'Cách ReadEase giữ riêng tư',
     faqLabel: 'Trước khi bắt đầu', faqTitle: 'Thêm một chút an tâm.',
     faq: [
-      ['Máy Mac của tôi có dùng được không?', 'Cần Mac Apple Silicon (M1 trở lên) chạy macOS 15 trở lên. Máy Intel không được hỗ trợ. Mở file .dmg, kéo app vào Applications, rồi tải giọng đọc trong app.', 'Xem hướng dẫn cài đặt'],
+      ['Máy Mac của tôi có dùng được không?', 'Cần Mac Apple Silicon (M1 trở lên), macOS 15 trở lên và 8 GB RAM; 16 GB mượt hơn nếu dùng cả giọng Việt lẫn Anh. Máy Intel không được hỗ trợ. Mở file .dmg, kéo app vào Applications, rồi tải giọng đọc trong app.', 'Xem hướng dẫn cài đặt'],
       ['Có đọc offline được không?', 'Có. Sau khi tải mô hình, giọng VieNeu và Kokoro chạy hoàn toàn trên máy. Chỉ cần mạng lúc tải app và lần chuẩn bị giọng đầu tiên.'],
       ['Giọng AI bên ngoài thì sao?', 'OpenAI và ElevenLabs là lựa chọn trả phí, chỉ bật khi bạn tự thêm khóa. Đoạn đang đọc được gửi trực tiếp tới nhà cung cấp đó. Dùng giọng local thì nội dung ở lại trên máy.'],
       ['Quét đọc có tự xem màn hình không?', 'Không. ReadEase chỉ lấy phần chữ đã chọn khi bạn bấm phím tắt, cần quyền Trợ năng của macOS. App không tự theo dõi màn hình và chưa hỗ trợ OCR cho trang scan.'],
@@ -140,7 +140,7 @@ export const content = {
     license: 'Free for noncommercial use.', privacyLink: 'How ReadEase handles privacy',
     faqLabel: 'Before you start', faqTitle: 'A little more peace of mind.',
     faq: [
-      ['Will it run on my Mac?', 'You need an Apple Silicon Mac (M1 or newer) with macOS 15+. Intel Macs are not supported. Open the .dmg, drag the app to Applications, then set up a voice in the app.', 'Read the install guide'],
+      ['Will it run on my Mac?', 'You need an Apple Silicon Mac (M1 or newer) with macOS 15+ and 8 GB of memory; 16 GB is smoother with both the Vietnamese and the English voice. Intel Macs are not supported. Open the .dmg, drag the app to Applications, then set up a voice in the app.', 'Read the install guide'],
       ['Does it work offline?', 'Yes. Once a model is downloaded, VieNeu and Kokoro run entirely on your Mac. You only need a connection to get the app and prepare a voice the first time.'],
       ['What about outside AI voices?', 'OpenAI and ElevenLabs are optional paid providers, enabled only when you add your own key. The passage being read goes directly to that provider. With local voices, your content stays on your Mac.'],
       ['Does it watch my screen?', "No. ReadEase only copies selected text when you press the shortcut, with macOS Accessibility permission. It doesn't monitor your screen or provide OCR for scanned pages."],
