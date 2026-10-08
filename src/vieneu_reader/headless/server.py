@@ -183,6 +183,13 @@ MODEL_KEY_FOR_PROVIDER = {
     "openai": "openai_model",
     "elevenlabs": "elevenlabs_model",
 }
+# A local model unused this long is released (see `_release_idle_models`),
+# checked once a minute. Five minutes: long enough that switching between a
+# Vietnamese and an English book in one sitting never reloads, short enough
+# that an evening in one language does not carry the other.
+IDLE_RELEASE_SECONDS = 300.0
+IDLE_CHECK_SECONDS = 60.0
+
 DEFAULT_MODEL_FOR_PROVIDER = {
     # OpenAI's own words for it: "our newest and most reliable text-to-speech
     # model" [fetched 2026-09-10]. It replaced tts-1/tts-1-hd outright rather
@@ -357,6 +364,7 @@ class _Session:
         # test can wait for them; the app never needs to.
         self._warm_lock = threading.Lock()
         self._warmed: set[Any] = set()
+        self._idle_stop = threading.Event()
         self._warm_threads: list[threading.Thread] = []
         pump = threading.Thread(
             target=self._pump, args=(reader,), daemon=True
@@ -388,6 +396,33 @@ class _Session:
         threading.Thread(
             target=self._prefetch_catalogues, name="voices-prefetch", daemon=True
         ).start()
+        threading.Thread(
+            target=self._release_idle_models_forever, name="model-idle", daemon=True
+        ).start()
+
+    def _release_idle_models_forever(self) -> None:
+        while not self._idle_stop.wait(IDLE_CHECK_SECONDS):
+            self._release_idle_models()
+
+    def _release_idle_models(self, now: "float | None" = None) -> list[Any]:
+        """Free a local model nobody has used for `IDLE_RELEASE_SECONDS`
+        (decided 08/10 for the M1 8 GB floor: the two models together are
+        ~1.7 GB resident). Never the saved voice's model - that one stays
+        warm so the next reading starts at once - and never mid-reading,
+        because each engine stamps every chunk it speaks. A released model
+        loads again on its next sentence, about a second. Returns what went."""
+
+        saved = self._local_engine_of(str(self._settings_document().get("voice") or ""))
+        released: list[Any] = []
+        for engine in (self._engine, self._english_engine):
+            release = getattr(engine, "release_if_idle", None)
+            if engine is None or engine is saved or not callable(release):
+                continue
+            if release(IDLE_RELEASE_SECONDS, now):
+                with self._warm_lock:
+                    self._warmed.discard(engine)
+                released.append(engine)
+        return released
 
     def _warm_for_start(self) -> None:
         voice = str(self._settings_document().get("voice") or "")

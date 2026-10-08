@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from vieneu_reader.domain.models import AudioChunk, Voice
+from vieneu_reader.headless import server as server_module
 from vieneu_reader.headless.server import _Session, serve
 from vieneu_reader.speech.kokoro import VOICES
 
@@ -348,3 +349,53 @@ class WhichModelWarmsTests(unittest.TestCase):
             thread.join(timeout=5)
 
         self.assertEqual((vietnamese.warmed, english.warmed), (0, 0))
+
+
+class IdleModelReleaseTests(unittest.TestCase):
+    """08/10, for the M1 8 GB floor: a local model nobody has used for five
+    minutes is released - never the saved voice's, which stays warm."""
+
+    class Releasable:
+        def __init__(self, base):
+            self.base, self.calls = base, []
+
+        def __getattr__(self, name):
+            return getattr(self.base, name)
+
+        def release_if_idle(self, seconds, now=None):
+            self.calls.append(seconds)
+            return True
+
+    def _session(self, saved_voice):
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        settings_path = Path(directory.name) / "settings.json"
+        settings_path.write_text(json.dumps({"voice": saved_voice}), encoding="utf-8")
+        vietnamese = self.Releasable(FakeVietnamese())
+        english = self.Releasable(FakeEnglish(ready=True))
+        session = _Session(io.StringIO(""), io.StringIO(), vietnamese,
+                           settings_path=settings_path, english_engine=english)
+        return session, vietnamese, english
+
+    def test_the_other_language_is_released_and_the_saved_one_kept(self) -> None:
+        session, vietnamese, english = self._session("adam")
+        session._warmed.add(english)
+
+        released = session._release_idle_models(now=10_000.0)
+
+        self.assertEqual(released, [english])
+        self.assertEqual(vietnamese.calls, [])
+        self.assertEqual(english.calls, [server_module.IDLE_RELEASE_SECONDS])
+        # Released means it may warm again when a voice of it is chosen.
+        self.assertNotIn(english, session._warmed)
+
+    def test_a_saved_english_voice_keeps_the_english_model(self) -> None:
+        session, vietnamese, english = self._session("af_heart")
+
+        self.assertEqual(session._release_idle_models(now=10_000.0), [vietnamese])
+        self.assertEqual(english.calls, [])
+
+    def test_a_paid_voice_saved_lets_both_go_when_idle(self) -> None:
+        session, vietnamese, english = self._session("openai:gpt-4o-mini-tts:marin")
+
+        self.assertEqual(session._release_idle_models(now=10_000.0), [vietnamese, english])

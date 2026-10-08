@@ -135,6 +135,27 @@ class EnglishEngineTests(unittest.TestCase):
             engine.prepare_model(lambda progress, message: None)
         return engine
 
+    def test_an_idle_model_is_released_and_loads_again_on_the_next_sentence(self) -> None:
+        engine = self._prepared()
+        opened: list[str] = []
+        engine._session_factory = lambda path: opened.append(path.name) or self.session
+        list(engine.stream("Hello there.", "af_heart"))
+        used = engine._last_used
+
+        # Busy recently: kept.
+        self.assertFalse(engine.release_if_idle(300, now=used + 299))
+        # Idle long enough: everything heavy goes, the download stays.
+        self.assertTrue(engine.release_if_idle(300, now=used + 301))
+        self.assertIsNone(engine._session)
+        self.assertIsNone(engine._g2p)
+        self.assertTrue(engine.is_model_ready)
+        # Nothing left to release.
+        self.assertFalse(engine.release_if_idle(300, now=used + 999))
+
+        before = len(opened)
+        self.assertTrue(list(engine.stream("Hello again.", "af_heart")))
+        self.assertEqual(len(opened), before + 1)
+
     def test_not_ready_until_prepared_and_refuses_to_speak(self) -> None:
         engine = self._engine(Fixture(self.root))
 

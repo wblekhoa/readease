@@ -10,6 +10,7 @@ import shutil
 import stat
 import tempfile
 from contextlib import contextmanager
+import time
 from threading import RLock
 from typing import Any, Callable, Iterator
 
@@ -168,6 +169,8 @@ class VieNeuSpeechEngine:
         self._model_downloader = model_downloader or _download_snapshot
         self._sdk: Any | None = None
         self._lock = RLock()
+        # When the model last did anything, for `release_if_idle`.
+        self._last_used = 0.0
         self._generation = 0
 
     @property
@@ -478,6 +481,7 @@ class VieNeuSpeechEngine:
 
     def _instance(self) -> Any:
         with self._lock:
+            self._last_used = time.monotonic()
             if self._sdk is None:
                 prepared = self.is_model_ready
                 self._configure_huggingface_environment(offline=prepared)
@@ -540,6 +544,7 @@ class VieNeuSpeechEngine:
                 continue
             if getattr(raw, "ndim", 1) != 1:
                 raise ValueError("VieNeu returned non-mono audio")
+            self._last_used = time.monotonic()
             converted = raw.astype("<f4", copy=False)
             pcm = converted.tobytes()
             if pcm:
@@ -550,3 +555,24 @@ class VieNeuSpeechEngine:
     def cancel(self) -> None:
         with self._lock:
             self._generation += 1
+
+    def release_if_idle(self, idle_seconds: float, now: float | None = None) -> bool:
+        """Drop the loaded model when it has done nothing for `idle_seconds`,
+        so a Mac with 8 GB is not holding a voice nobody is using. The next
+        reading loads it again (about a second); the voice list stays, read
+        from the remembered copy. Returns whether anything was released."""
+
+        with self._lock:
+            if self._sdk is None:
+                return False
+            moment = time.monotonic() if now is None else now
+            if moment - self._last_used < idle_seconds:
+                return False
+            # Write the voice list down first: without it, the next listing
+            # would load the whole model back just to name its voices.
+            try:
+                self._remember_voices(self._voices_from_sdk())
+            except Exception:
+                pass
+            self._sdk = None
+            return True

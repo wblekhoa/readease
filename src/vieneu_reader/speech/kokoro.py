@@ -34,6 +34,7 @@ import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+import time
 from threading import RLock
 from typing import Any, Callable, Iterator
 
@@ -288,6 +289,8 @@ class KokoroSpeechEngine:
         self._g2p: Callable[[str], Any] | None = None
         self._vocab: dict[str, int] | None = None
         self._styles: dict[str, np.ndarray] = {}
+        # When the model last did anything, for `release_if_idle`.
+        self._last_used = 0.0
 
     # ---- identity -------------------------------------------------------
 
@@ -534,6 +537,7 @@ class KokoroSpeechEngine:
 
     def _loaded(self) -> tuple[Any, Callable[[str], Any], dict[str, int]]:
         with self._lock:
+            self._last_used = time.monotonic()
             if not self._assets_present():
                 raise EnglishModelNotReadyError(
                     "Giọng đọc tiếng Anh chưa được tải về máy."
@@ -629,6 +633,7 @@ class KokoroSpeechEngine:
             with self._lock:
                 if token != self._generation:
                     return
+            self._last_used = time.monotonic()
             audio = double_rate(piece)
             for start in range(0, audio.size, slice_length):
                 with self._lock:
@@ -641,6 +646,23 @@ class KokoroSpeechEngine:
     def cancel(self) -> None:
         with self._lock:
             self._generation += 1
+
+    def release_if_idle(self, idle_seconds: float, now: float | None = None) -> bool:
+        """Drop the session, tagger and voice packs when the English voice has
+        done nothing for `idle_seconds` (~0.5-0.9 GB on an 8 GB Mac). The next
+        English sentence loads them again. Returns whether anything went."""
+
+        with self._lock:
+            if self._session is None and self._g2p is None:
+                return False
+            moment = time.monotonic() if now is None else now
+            if moment - self._last_used < idle_seconds:
+                return False
+            self._session = None
+            self._g2p = None
+            self._vocab = None
+            self._styles = {}
+            return True
 
 
 def _mismatch_message(name: str) -> str:

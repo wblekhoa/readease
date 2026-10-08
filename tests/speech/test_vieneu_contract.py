@@ -522,6 +522,22 @@ class VoicesWithoutWakingTheModelTests(unittest.TestCase):
 
         self.assertEqual(len(created), 1)
 
+    def test_an_idle_model_is_released_and_the_voice_list_survives_it(self):
+        created: list = []
+        engine = self._engine(created)
+        list(engine.stream("Xin chào", "Adam"))
+        used = engine._last_used
+
+        self.assertFalse(engine.release_if_idle(300, now=used + 10))
+        self.assertTrue(engine.release_if_idle(300, now=used + 300))
+        self.assertIsNone(engine._sdk)
+        # Listing after a release reads the remembered list, not the model.
+        self.assertEqual([voice.id for voice in engine.voices()], ["Adam", "Trúc Ly"])
+        self.assertEqual(len(created), 1)
+        # The next reading loads it again.
+        list(engine.stream("Xin chào", "Adam"))
+        self.assertEqual(len(created), 2)
+
     def test_warm_loads_a_ready_model_once_and_leaves_an_unprepared_one_alone(self):
         created: list = []
         engine = self._engine(created)
