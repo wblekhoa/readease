@@ -52,9 +52,14 @@ Quyết định kèm theo:
   đọc được kích hoạt bằng phím tắt toàn cục (chưa hề click vào cửa sổ), và webview
   bị throttle khi ẩn. `rodio` nhận thẳng frame PCM từ stdout sidecar mà Rust vốn
   đang cầm. JS chỉ vẽ UI.
-- **Giữ nguyên bundle id `vn.dolenglish.vieneureader` và data root "VieNeu Reader"**
+- **Giữ nguyên bundle id (id cũ) và data root "VieNeu Reader"**
   → sách, model 626MB, cache, vị trí đọc, settings **không cần migrate byte nào**.
   (Accessibility sẽ hỏi lại một lần vì binary mới - hành vi TCC bình thường.)
+  *Cập nhật 08/10/2026:* bundle id đổi thành `com.wblekhoa.readease` (bỏ tên
+  công ty khỏi mã nguồn). Data root "VieNeu Reader" giữ nguyên nên sách, model,
+  cache, vị trí đọc vẫn không phải chuyển; lần mở đầu tiên, `identity.rs` chép
+  dữ liệu WebView (tuỳ chọn giao diện) và khung cửa sổ từ id cũ sang id mới.
+  Accessibility phải cấp lại một lần.
 - **Sửa luôn bug ngữ nghĩa cũ**: chỉ báo tray phải hiện cả khi PAUSED
   (bản Qt: `is_reading` loại PAUSED nên tray biến mất lúc tạm dừng).
 
@@ -241,7 +246,7 @@ thoát app ⇒ `pgrep` không còn python mồ côi · tab nav vẽ đúng token
   PyInstaller onedir 393M (loại PySide6/librosa/soxr/kaldi như Nuitka), `playback/__init__`
   lazy-Qt (PEP 562, test poison sys.modules — venv che lớp gãy này), `pnpm tauri build` →
   **ReadEase.app 403M + dmg**, engine BÊN TRONG .app ping được + fp32 ready + 20 giọng,
-  bundle id đúng `vn.dolenglish.vieneureader`, resources-first fallback venv.
+  bundle id đúng (id cũ, đã đổi 08/10/2026), resources-first fallback venv.
   **Advisor bắt 3 bug thật trước receipt, đã sửa + re-verify**: tabs cache ngôn ngữ (useMemo
   deps) · model.prepare chết ở timeout 30s (→ notify() + event `engine:orphan_reply`) ·
   MutexGuard giữ khoá suốt call chặn làm nút Dừng đứng hình (→ `client_of()` bind-then-drop).

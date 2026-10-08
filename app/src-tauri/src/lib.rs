@@ -1,5 +1,6 @@
 mod audio;
 mod engine;
+mod identity;
 
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -302,6 +303,8 @@ pub fn run() {
     // terminal is reading it (HIG 3.22).
     let context = tauri::generate_context!();
     log::capture_stderr(&log::bundle_version(&context.package_info().version.to_string()));
+    // Before the builder: the WebView must open the carried-over storage.
+    identity::carry_over_legacy_state();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

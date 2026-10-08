@@ -44,7 +44,7 @@ int main(void) {
         // A selection is read wherever it was made, except where it must not be.
         RDXAssert(RDXCanReadSelectionFrom(@"com.apple.Safari"), @"a browser selection must be readable");
         RDXAssert(RDXCanReadSelectionFrom(@"com.apple.TextEdit"), @"any ordinary app must be readable");
-        RDXAssert(!RDXCanReadSelectionFrom(@"vn.dolenglish.vieneureader"), @"ReadEase must not copy from itself");
+        RDXAssert(!RDXCanReadSelectionFrom(@"com.wblekhoa.readease"), @"ReadEase must not copy from itself");
         RDXAssert(!RDXCanReadSelectionFrom(@""), @"a process with no identity must fail closed");
         RDXAssert(!RDXCanReadSelectionFrom(nil), @"a missing identity must fail closed");
         RDXAssert(RDXParentMatches(42, 42), @"matching parent remains alive");
@@ -99,7 +99,7 @@ int main(void) {
         NSPasteboardItem *original = [[NSPasteboardItem alloc] init];
         [original setString:@"clipboard cũ" forType:NSPasteboardTypeString];
         [original setData:[NSData dataWithBytes:"\x01\x02\x03" length:3]
-                   forType:@"vn.dolenglish.readease.fixture"];
+                   forType:@"com.wblekhoa.readease.fixture"];
         [pasteboard clearContents];
         RDXAssert([pasteboard writeObjects:@[original]], @"seed pasteboard");
         NSArray *snapshot = RDXCapturePasteboard(pasteboard);

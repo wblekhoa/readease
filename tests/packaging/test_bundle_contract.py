@@ -49,7 +49,7 @@ class BundleContractTests(unittest.TestCase):
     def test_bundle_metadata(self) -> None:
         self.assertEqual(
             self.plist["CFBundleIdentifier"],
-            "vn.dolenglish.vieneureader",
+            "com.wblekhoa.readease",
         )
         self.assertEqual(self.plist["CFBundleName"], "ReadEase")
         self.assertEqual(self.plist["CFBundleDisplayName"], "ReadEase")

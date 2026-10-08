@@ -5,7 +5,7 @@
 #import <string.h>
 #import <unistd.h>
 
-static NSString *const RDXReadEaseBundleIdentifier = @"vn.dolenglish.vieneureader";
+static NSString *const RDXReadEaseBundleIdentifier = @"com.wblekhoa.readease";
 // Password managers mark their items with this so clipboard tools skip them.
 static NSString *const RDXConcealedType = @"org.nspasteboard.ConcealedType";
 static NSString *const RDXSnapshotTypeKey = @"type";
