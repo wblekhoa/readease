@@ -21,6 +21,11 @@ import { GroupedRow, GroupedSection } from "./patterns";
 import type { Language } from "./readingSources";
 import type { Models } from "./useModels";
 
+/** At or under this much RAM, the Standard build is suggested to somebody
+ * on Highest: measured 08/10 at M1-like threads, Standard holds ~0.44 GB
+ * less (963 vs 1,402 MB) and reads as fast (RTF 0.116 vs 0.127). */
+const LOW_MEMORY_BYTES = 8.5 * 1024 ** 3;
+
 const BUILDS = [
   { id: "int8", label: () => text("model.build_standard") },
   { id: "fp32", label: () => text("model.build_maximum") },
@@ -93,6 +98,11 @@ export function ModelRows({
         const chosen = status?.precision === build.id;
         const installed = (status?.installed[build.id] ?? 0) > 0;
         const active = chosen && installed && Boolean(status?.ready);
+        const suggested =
+          build.id === "int8" &&
+          status?.precision === "fp32" &&
+          typeof status?.memory_bytes === "number" &&
+          status.memory_bytes <= LOW_MEMORY_BYTES;
         return (
           <GroupedRow
             key={build.id}
@@ -100,9 +110,11 @@ export function ModelRows({
             subtitle={
               active
                 ? text("model.in_use")
-                : installed
-                  ? undefined
-                  : text("model.not_downloaded")
+                : suggested
+                  ? text("model.low_memory_hint")
+                  : installed
+                    ? undefined
+                    : text("model.not_downloaded")
             }
             trailing={
               !active && (

@@ -49,6 +49,7 @@ import argparse
 import base64
 from dataclasses import dataclass, replace
 import json
+import os
 import sys
 import threading
 import time
@@ -189,6 +190,15 @@ MODEL_KEY_FOR_PROVIDER = {
 # that an evening in one language does not carry the other.
 IDLE_RELEASE_SECONDS = 300.0
 IDLE_CHECK_SECONDS = 60.0
+
+def _physical_memory() -> "int | None":
+    """This Mac's RAM in bytes, or None when the system will not say."""
+
+    try:
+        return int(os.sysconf("SC_PAGE_SIZE")) * int(os.sysconf("SC_PHYS_PAGES"))
+    except (AttributeError, OSError, ValueError):
+        return None
+
 
 DEFAULT_MODEL_FOR_PROVIDER = {
     # OpenAI's own words for it: "our newest and most reliable text-to-speech
@@ -2105,6 +2115,8 @@ class _Session:
             "ready": bool(ready),
             "precision": precision,
             "installed": {str(key): int(value) for key, value in builds.items()},
+            # So the shell can suggest the lighter build on an 8 GB Mac.
+            "memory_bytes": _physical_memory(),
         }
         english = self._english_engine
         if english is not None:

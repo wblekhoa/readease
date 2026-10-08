@@ -1321,6 +1321,9 @@ class ProtocolTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(result["precision"], "fp32")
         self.assertEqual(result["installed"], {"fp32": 625_000_000})
+        # This Mac's RAM, so the shell can suggest the lighter build on 8 GB.
+        self.assertIsInstance(result["memory_bytes"], int)
+        self.assertGreater(result["memory_bytes"], 1024 ** 3)
 
     def test_a_crashing_handler_answers_and_the_server_survives(self) -> None:
         """model.status once killed the whole server on a fresh data root:

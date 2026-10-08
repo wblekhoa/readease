@@ -586,6 +586,10 @@ export const TEXT = {
   "model.build_standard": ["Tiêu chuẩn · 330 MB", "Standard · 330 MB"],
   "model.build_maximum": ["Cao nhất · 625 MB", "Highest · 625 MB"],
   "model.in_use": ["Đang dùng", "In use"],
+  "model.low_memory_hint": [
+    "Gợi ý cho máy 8 GB: nhẹ hơn khoảng 0,4 GB RAM, đọc nhanh như nhau",
+    "Suggested for 8 GB Macs: about 0.4 GB lighter, reads just as fast",
+  ],
   "model.use_build": ["Dùng bản này", "Use this build"],
   "model.not_downloaded": ["Chưa tải", "Not downloaded"],
   "model.switch_restart": [

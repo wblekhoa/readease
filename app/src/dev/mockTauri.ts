@@ -770,11 +770,14 @@ const MODEL: {
   ready: boolean;
   precision: string | null;
   installed: Record<string, number>;
+  memory_bytes: number;
   english: { ready: boolean; installed: number; download_bytes: number };
 } = {
   ready: true,
   precision: "fp32",
   installed: { fp32: 626_000_000 },
+  // `?memory=8` shows what an 8 GB Mac sees (the Standard build suggested).
+  memory_bytes: (Number(new URLSearchParams(globalThis.location?.search ?? "").get("memory")) || 64) * 1024 ** 3,
   // The English model, downloaded: its voices are in the list below. `?english=missing`
   // starts without it, which is what a fresh install looks like.
   english: { ready: true, installed: 335_000_000, download_bytes: 335_000_000 },

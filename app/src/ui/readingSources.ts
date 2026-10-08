@@ -25,6 +25,8 @@ export type ModelStatus = {
   ready: boolean;
   precision: string | null;
   installed: Record<string, number>;
+  /** This Mac's RAM; absent from an older engine. */
+  memory_bytes?: number | null;
   /** Absent on an engine without the English model at all. */
   english?: { ready: boolean; installed: number; download_bytes: number };
 };
