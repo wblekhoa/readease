@@ -529,7 +529,8 @@ class VoicesWithoutWakingTheModelTests(unittest.TestCase):
         used = engine._last_used
 
         self.assertFalse(engine.release_if_idle(300, now=used + 10))
-        self.assertTrue(engine.release_if_idle(300, now=used + 300))
+        # Clear of the 300 s line: floats near a large monotonic clock round.
+        self.assertTrue(engine.release_if_idle(300, now=used + 301))
         self.assertIsNone(engine._sdk)
         # Listing after a release reads the remembered list, not the model.
         self.assertEqual([voice.id for voice in engine.voices()], ["Adam", "Trúc Ly"])
