@@ -1476,10 +1476,7 @@ export default function App() {
         <ReadingSettingsIcon />
       </IconButton>
   );
-  const chrome = (
-    <>
-      {hubButton}
-      {themeSwitch}
+  const languageSelect = (
       <Select
         pill
         ghost
@@ -1490,6 +1487,12 @@ export default function App() {
         <option value="vi">🇻🇳 VI</option>
         <option value="en">🇬🇧 EN</option>
       </Select>
+  );
+  const chrome = (
+    <>
+      {hubButton}
+      {themeSwitch}
+      {languageSelect}
     </>
   );
 
@@ -1832,8 +1835,11 @@ export default function App() {
               language - is here only while the column is folded: one place
               at a time (HIG 3.16). A book's toolbar takes the appearance
               switch alone (owner, 06/09: beside AA; 16/09: "tối ưu UI tuỳ
-              layout") - the hub and the language are one unfold away. */}
-          {!sideOpen && (screen === "reader" && openBook ? themeSwitch : chrome)}
+              layout") - the hub and the language are one unfold away. At
+              home the folded column keeps the hub and the appearance in its
+              icon rail (09/10), so only the language, which a rail has no
+              room for, comes up here. */}
+          {!sideOpen && (screen === "reader" && openBook ? themeSwitch : inBook ? chrome : languageSelect)}
           </>
         }
       />
