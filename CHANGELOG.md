@@ -13,6 +13,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   the Mac's first preferred language (System Settings › General ›
   Language & Region), until a language is picked in the app. A language
   already picked stays.
+- The open side column leads with the app's name - its icon beside
+  "ReadEase", "Ease" in the brand blue - the same mark SpeakEase carries.
+- In the folded column the switch that opens it sits at the top, under
+  the window's buttons, instead of at the foot.
 - Dragging the column's edge across the line eases it to its new state -
   the rail opening out to your hand, the column settling back to the rail
   - and the content cross-fades, instead of jumping.

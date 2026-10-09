@@ -12,6 +12,7 @@ import { IconButton, ProgressBar, Surface } from "./controls";
 import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SidebarIcon } from "./icons";
 import { WINDOW_BUTTONS_IN_PAGE } from "./host";
 import { dragTarget } from "./sidebarState";
+import readeaseMark from "../assets/readease-mark.png";
 import { Presence } from "./motion";
 
 /** A row of controls that must share one corner.
@@ -1076,13 +1077,20 @@ export function SideColumn({
           {/* The same 60 px strip as the open column: the lights sit in it,
               and it is what the window is dragged by. */}
           <div data-tauri-drag-region className="h-[60px] w-full shrink-0" />
-          <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto pb-3">{rail}</div>
-          <div className="flex w-full shrink-0 flex-col items-center gap-1 border-t border-edge-alpha py-3">
-            {railFoot}
-            <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
+          {/* The switch that unfolds it leads, under the lights, where the
+              open column keeps it too (owner, 09/10: "đưa nút expand sidebar
+              lên trên") - SpeakEase's folded column does the same. */}
+          <div className="flex shrink-0 justify-center pb-2">
+            <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel} tipSide="right">
               <SidebarIcon />
             </IconButton>
           </div>
+          <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto pb-3">{rail}</div>
+          {railFoot && (
+            <div className="flex w-full shrink-0 flex-col items-center gap-1 border-t border-edge-alpha py-3">
+              {railFoot}
+            </div>
+          )}
         </div>
       )}
       {/* Mounted for the whole drag, even while it snaps the column to 0 -
@@ -1120,6 +1128,7 @@ export function SideColumn({
             <SidebarIcon />
           </IconButton>
         </div>
+        {rail !== undefined && <AppLogo className="mx-4 mt-1 mb-4" />}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         {foot && (
           <div className="flex shrink-0 items-center gap-2 border-t border-edge-alpha px-4 py-3">{foot}</div>
@@ -1178,6 +1187,30 @@ export function RailItem({
 /** A navigation entry of the folded column: the glyph alone, its name on
  * hover and to a screen reader, painted like `RailItem` when it is the
  * screen on show. */
+/** The app's name at the head of the open column: its icon, small, beside
+ * the name in the display face, "Ease" in the brand blue - the same mark
+ * SpeakEase carries, so the two apps read as one family (owner, 09/10:
+ * "hệ thống app đồng bộ với nhau"). A brand name, the same in every
+ * language. Home screens only: a book's column leads with the book. */
+export function AppLogo({ className = "" }: { className?: string }) {
+  return (
+    <div role="img" aria-label="ReadEase" className={`flex select-none items-center gap-2.5 ${className}`}>
+      <img
+        src={readeaseMark}
+        alt=""
+        width={31}
+        height={31}
+        draggable={false}
+        className="shrink-0 drop-shadow-[0_2px_6px_color-mix(in_srgb,var(--color-brand-600)_35%,transparent)]"
+      />
+      <span aria-hidden className="font-[family-name:var(--font-display)] text-[19px] font-bold leading-none tracking-[-0.02em]">
+        <span className="text-ink">Read</span>
+        <span className="text-brand-600">Ease</span>
+      </span>
+    </div>
+  );
+}
+
 export function RailIcon({
   icon,
   label,
