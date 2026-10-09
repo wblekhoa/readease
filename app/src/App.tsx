@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
-import { GradientBlur, MenuButton, RailDocument, RailGroup, RailItem, SideColumn, Toolbar, pressedByPointer } from "./ui/patterns";
+import { GradientBlur, MenuButton, RailDocument, RailGroup, RailCover,
+  RailIcon,
+  RailItem, SideColumn, Toolbar, pressedByPointer } from "./ui/patterns";
 import { useCover } from "./ui/useCover";
 import { useSideColumn } from "./ui/useSideColumn";
 import type { SidebarTab } from "./ui/sidebarState";
@@ -160,6 +162,12 @@ function anchor(element: HTMLElement) {
 /** A row of the column's "Đang đọc" group. The cover is fetched here, per
  * row, through the same cache the shelf fills - so a document already seen
  * on the shelf costs nothing to draw again. */
+/** A reading-now document in the folded column: its cover alone. */
+function ReadingNowCover({ book, onPress }: { book: LibraryBook; onPress: () => void }) {
+  const cover = useCover(book.id);
+  return <RailCover title={book.title} cover={cover} progress={book.progress_ratio} onPress={onPress} />;
+}
+
 function ReadingNowRow({ book, onPress }: { book: LibraryBook; onPress: () => void }) {
   const cover = useCover(book.id);
   return (
@@ -1450,8 +1458,7 @@ export default function App() {
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </IconButton>
   );
-  const chrome = (
-    <>
+  const hubButton = (
       <IconButton
         onClick={(event) => {
           // Lets go of the focus after a mouse press, like every opener (HIG
@@ -1468,6 +1475,10 @@ export default function App() {
       >
         <ReadingSettingsIcon />
       </IconButton>
+  );
+  const chrome = (
+    <>
+      {hubButton}
       {themeSwitch}
       <Select
         pill
@@ -1502,6 +1513,35 @@ export default function App() {
         toggleLabel={text(sideOpen ? "sidebar.close" : "sidebar.open")}
         resizeLabel={text("sidebar.resize")}
         foot={chrome}
+        /* Home screens fold to icons (owner, 09/10); a book's page folds
+           the column away, as it always has. */
+        rail={inBook ? undefined : (
+          <>
+            <nav aria-label={text("aria.workspace")} className="flex flex-col items-center gap-1">
+              {[...tabs, ...tools].map((item) => (
+                <RailIcon
+                  key={item.value}
+                  icon={item.icon}
+                  label={item.label}
+                  active={tab === item.value}
+                  onPress={() => setTab(item.value)}
+                />
+              ))}
+            </nav>
+            {readingNow.length > 0 && (
+              <div role="group" aria-label={text("sidebar.reading")} className="mt-2 flex flex-col items-center gap-1 border-t border-edge-alpha pt-2">
+                {readingNow.map((book) => (
+                  <ReadingNowCover
+                    key={book.id}
+                    book={book}
+                    onPress={() => { setTab("library"); setPosition(null); setOpenBook(book); }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        railFoot={<>{hubButton}{themeSwitch}</>}
       >
         {inBook ? (
           <>
@@ -1597,7 +1637,9 @@ export default function App() {
               arrangement. A book's toolbar has no such switch (owner, 16/09:
               "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
               search buttons each unfold the column on their own list. */}
-          {!sideOpen && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[64px] shrink-0" />}
+          {/* Only where the column folds away entirely - a book's page; at
+              home it folds to icons, and the lights sit over those. */}
+          {!sideOpen && inBook && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[64px] shrink-0" />}
           {/* A home screen's title, where a book's stands, with the mode
               switch before it (owner, 16/09: "trên title thì nút ở đây là
               nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of

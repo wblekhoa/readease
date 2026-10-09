@@ -961,6 +961,10 @@ export function MenuButton({
  * Whether it is open is not decided here: `ui/sidebarState.ts` holds the
  * rules (a hand beats the width, context changes the content), and the
  * caller passes the answer. */
+/** How wide the folded column stands when it folds to icons: room for the
+ * window's three lights (x 20-72) above a column of 40 px buttons. */
+export const RAIL_WIDTH = 80;
+
 export function SideColumn({
   open,
   width,
@@ -970,6 +974,8 @@ export function SideColumn({
   resizeLabel,
   children,
   foot,
+  rail,
+  railFoot,
 }: {
   open: boolean;
   /** How wide it stands when open, in px - the person's to drag. */
@@ -983,7 +989,15 @@ export function SideColumn({
   resizeLabel: string;
   children: ReactNode;
   foot?: ReactNode;
+  /** Folded, the column narrows to these icons instead of leaving the page
+   * (owner, 09/10: "collapse dạng icon gọn gàng thay vì ẩn đi hẳn"). None,
+   * and folding hides the column outright - a book's page, which asked for
+   * no sidebar of its own (16/09). */
+  rail?: ReactNode;
+  /** The folded column's foot, above the switch that unfolds it. */
+  railFoot?: ReactNode;
 }) {
+  const railed = !open && rail !== undefined;
   /* The edge as a handle (owner, 16/09: "sidebar có thể nắm kéo để
      resize"): a strip over the hairline, pointer-captured so the drag
      survives leaving it, the width reported per move and the transition
@@ -1016,12 +1030,26 @@ export function SideColumn({
       // Folded, the column is off the page for the keyboard and the screen
       // reader too, not only for the eye: `inert` takes its controls out of
       // the tab order (WebKit has had it since 16.4).
-      inert={!open || undefined}
-      style={{ width: open ? width : 0 }}
+      inert={(!open && !railed) || undefined}
+      style={{ width: open ? width : railed ? RAIL_WIDTH : 0 }}
       className={`relative shrink-0 overflow-hidden bg-column ${
         dragging ? "" : "transition-[width] duration-(--dur-move) ease-standard"
-      } ${open ? "border-r border-edge-alpha" : ""}`}
+      } ${open || railed ? "border-r border-edge-alpha" : ""}`}
     >
+      {railed && (
+        <div className="flex h-full flex-col items-center" style={{ width: RAIL_WIDTH }}>
+          {/* The same 60 px strip as the open column: the lights sit in it,
+              and it is what the window is dragged by. */}
+          <div data-tauri-drag-region className="h-[60px] w-full shrink-0" />
+          <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto pb-3">{rail}</div>
+          <div className="flex w-full shrink-0 flex-col items-center gap-1 border-t border-edge-alpha py-3">
+            {railFoot}
+            <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
+              <SidebarIcon />
+            </IconButton>
+          </div>
+        </div>
+      )}
       {open && (
         <div
           role="separator"
@@ -1034,7 +1062,7 @@ export function SideColumn({
           className="rail-grip absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
         />
       )}
-      <div className="flex h-full flex-col" style={{ width }}>
+      {!railed && <div className="flex h-full flex-col" style={{ width }}>
         {/* The lights live in the first 88px of this strip (x 20-72, then
             16px of air) - in the window; a browser has none, and leaves no
             hole for them. The switch takes the far end, where Codex puts it.
@@ -1055,7 +1083,7 @@ export function SideColumn({
         {foot && (
           <div className="flex shrink-0 items-center gap-2 border-t border-edge-alpha px-4 py-3">{foot}</div>
         )}
-      </div>
+      </div>}
     </aside>
   );
 }
@@ -1102,6 +1130,72 @@ export function RailItem({
       {icon && <span className="shrink-0">{icon}</span>}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {trailing}
+    </button>
+  );
+}
+
+/** A navigation entry of the folded column: the glyph alone, its name on
+ * hover and to a screen reader, painted like `RailItem` when it is the
+ * screen on show. */
+export function RailIcon({
+  icon,
+  label,
+  active = false,
+  onPress,
+}: {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <button
+      onClick={onPress}
+      aria-label={label}
+      title={label}
+      aria-current={active ? "page" : undefined}
+      className={`grid h-10 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)] transition-colors ${
+        active ? "bg-tint text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"
+      }`}
+    >
+      {icon}
+    </button>
+  );
+}
+
+/** A document of the "Đang đọc" group in the folded column: its cover and
+ * the progress strip `RailDocument` draws, the title on hover. */
+export function RailCover({
+  title,
+  cover,
+  progress = null,
+  onPress,
+}: {
+  title: string;
+  cover: string | null | undefined;
+  progress?: number | null;
+  onPress: () => void;
+}) {
+  const percent = progress === null ? null : Math.round(Math.min(1, Math.max(0, progress)) * 100);
+  return (
+    <button
+      onClick={onPress}
+      aria-label={title}
+      title={title}
+      className="grid h-12 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)] transition-colors hover:bg-wash"
+    >
+      <span className="relative h-9 w-6 overflow-hidden rounded-[3px] bg-tint shadow-edge">
+        {cover ? (
+          <img src={cover} alt="" className="h-full w-full object-cover" draggable={false} />
+        ) : (
+          <span className="absolute inset-y-0 left-0 w-[3px] bg-wash" />
+        )}
+        {percent !== null && (
+          <span className="absolute inset-x-0 bottom-0 h-[2px] bg-wash">
+            <span className="block h-full bg-progress" style={{ width: `${percent}%` }} />
+          </span>
+        )}
+      </span>
     </button>
   );
 }
