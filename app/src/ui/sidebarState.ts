@@ -52,6 +52,18 @@ export function clampWidth(width: number): number {
   return Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width)));
 }
 
+/** Where a drag on the column's edge lands (owner, 09/10: "nắm kéo thông
+ * minh để chuyển từ collapse sang expand"). The edge is one handle for both
+ * moves: pulled out of the folded column it opens, pushed in past the
+ * narrowest open width it folds. The line between is halfway from the
+ * folded width (the icon rail, or 0 where the column hides) to `MIN_WIDTH`,
+ * so neither state can be reached by a twitch, and an open width is always
+ * a width a chapter title fits in. */
+export function dragTarget(pointerWidth: number, folded: number): { open: boolean; width: number } {
+  const open = pointerWidth >= (folded + MIN_WIDTH) / 2;
+  return { open, width: open ? clampWidth(pointerWidth) : folded };
+}
+
 /** The remembered width, or the default for anything unusable. */
 export function storedWidth(remembered: string | null): number {
   const width = Number(remembered);

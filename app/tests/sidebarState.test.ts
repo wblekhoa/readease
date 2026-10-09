@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  DEFAULT_WIDTH, MAX_WIDTH, MIN_WIDTH, clampWidth, initialSidebar, sidebar, sidebarOpen, storedWidth,
+  DEFAULT_WIDTH, MAX_WIDTH, MIN_WIDTH, clampWidth, dragTarget, initialSidebar, sidebar, sidebarOpen, storedWidth,
   type SidebarEvent, type SidebarState,
 } from "../src/ui/sidebarState.ts";
 
@@ -99,4 +99,18 @@ test("a dragged width stays between the bounds, and a remembered one is read bac
   assert.equal(storedWidth("garbage"), DEFAULT_WIDTH);
   assert.equal(storedWidth("300"), 300);
   assert.equal(storedWidth("9999"), MAX_WIDTH);
+});
+
+test("a drag on the edge opens past halfway to the narrowest column and folds below it", () => {
+  const rail = 80;
+  const line = (rail + MIN_WIDTH) / 2;
+  assert.deepEqual(dragTarget(rail + 10, rail), { open: false, width: rail });
+  assert.deepEqual(dragTarget(line - 1, rail), { open: false, width: rail });
+  // Open, it is never narrower than a chapter title needs.
+  assert.deepEqual(dragTarget(line, rail), { open: true, width: MIN_WIDTH });
+  assert.deepEqual(dragTarget(300, rail), { open: true, width: 300 });
+  assert.deepEqual(dragTarget(MAX_WIDTH + 90, rail), { open: true, width: MAX_WIDTH });
+  // Where the column hides outright (a book), the line is halfway to 0.
+  assert.deepEqual(dragTarget(MIN_WIDTH / 2 - 1, 0), { open: false, width: 0 });
+  assert.deepEqual(dragTarget(MIN_WIDTH / 2, 0), { open: true, width: MIN_WIDTH });
 });

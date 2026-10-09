@@ -11,6 +11,7 @@ import { text } from "../i18n";
 import { IconButton, ProgressBar, Surface } from "./controls";
 import { BookClosedIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SidebarIcon } from "./icons";
 import { WINDOW_BUTTONS_IN_PAGE } from "./host";
+import { dragTarget } from "./sidebarState";
 import { Presence } from "./motion";
 
 /** A row of controls that must share one corner.
@@ -997,28 +998,49 @@ export function SideColumn({
   /** The folded column's foot, above the switch that unfolds it. */
   railFoot?: ReactNode;
 }) {
-  const railed = !open && rail !== undefined;
   /* The edge as a handle (owner, 16/09: "sidebar có thể nắm kéo để
      resize"): a strip over the hairline, pointer-captured so the drag
      survives leaving it, the width reported per move and the transition
      held off while a hand is on it - a column that eases after the cursor
-     is a column that lags. Double-click puts the default back. */
-  const [dragging, setDragging] = useState(false);
+     is a column that lags. Double-click puts the default back.
+     The same edge folds and unfolds (owner, 09/10: "nắm kéo thông minh"):
+     pulled out of the icons it opens, pushed in past the narrowest column
+     it folds, snapping live at the line `dragTarget` draws so the hand
+     sees where it will land before letting go. The fold itself is the
+     switch's (`onToggle`), so it is remembered as a choice like a click. */
+  const folded = rail !== undefined ? RAIL_WIDTH : 0;
+  const [drag, setDrag] = useState<{ open: boolean } | null>(null);
+  const dragging = drag !== null;
+  const shown = drag ? drag.open : open;
+  const railed = !shown && rail !== undefined;
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
     const handle = event.currentTarget;
     const start = event.clientX;
-    const from = width;
+    const wasOpen = open;
+    const from = open ? width : folded;
+    let landed = { open, width: from };
     handle.setPointerCapture(event.pointerId);
-    setDragging(true);
-    const move = (moved: PointerEvent) => onResize(from + moved.clientX - start);
+    setDrag({ open });
+    // The cursor stays a resize cursor while the column snaps away under it.
+    document.documentElement.style.cursor = "col-resize";
+    const move = (moved: PointerEvent) => {
+      landed = dragTarget(from + moved.clientX - start, folded);
+      setDrag({ open: landed.open });
+      if (landed.open) onResize(landed.width);
+    };
     const stop = () => {
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", stop);
       handle.removeEventListener("pointercancel", stop);
-      setDragging(false);
+      document.documentElement.style.cursor = "";
+      setDrag(null);
+      // Folded by the drag, the column keeps the width it had, for the
+      // next time it opens.
+      if (!landed.open && wasOpen) onResize(width);
       onResize(null);
+      if (landed.open !== wasOpen) onToggle();
     };
     handle.addEventListener("pointermove", move);
     handle.addEventListener("pointerup", stop);
@@ -1030,11 +1052,11 @@ export function SideColumn({
       // Folded, the column is off the page for the keyboard and the screen
       // reader too, not only for the eye: `inert` takes its controls out of
       // the tab order (WebKit has had it since 16.4).
-      inert={(!open && !railed) || undefined}
-      style={{ width: open ? width : railed ? RAIL_WIDTH : 0 }}
+      inert={(!shown && !railed) || undefined}
+      style={{ width: shown ? width : railed ? RAIL_WIDTH : 0 }}
       className={`relative shrink-0 overflow-hidden bg-column ${
-        dragging ? "" : "transition-[width] duration-(--dur-move) ease-standard"
-      } ${open || railed ? "border-r border-edge-alpha" : ""}`}
+        dragging && shown ? "" : "transition-[width] duration-(--dur-move) ease-standard"
+      } ${shown || railed ? "border-r border-edge-alpha" : ""}`}
     >
       {railed && (
         <div className="flex h-full flex-col items-center" style={{ width: RAIL_WIDTH }}>
@@ -1050,14 +1072,20 @@ export function SideColumn({
           </div>
         </div>
       )}
-      {open && (
+      {/* Mounted for the whole drag, even while it snaps the column to 0 -
+          the grip holds the pointer capture, and unmounting it would lose
+          the hand's release. */}
+      {(shown || railed || dragging) && (
         <div
           role="separator"
           aria-orientation="vertical"
           aria-label={resizeLabel}
           title={resizeLabel}
           onPointerDown={onPointerDown}
-          onDoubleClick={() => { onResize(Number.NaN); onResize(null); }}
+          onDoubleClick={() => {
+            if (!open) { onToggle(); return; }
+            onResize(Number.NaN); onResize(null);
+          }}
           data-dragging={dragging || undefined}
           className="rail-grip absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
         />

@@ -1514,7 +1514,7 @@ export default function App() {
         onResize={resizeSide}
         onToggle={() => dispatchSide({ type: "toggle" })}
         toggleLabel={text(sideOpen ? "sidebar.close" : "sidebar.open")}
-        resizeLabel={text("sidebar.resize")}
+        resizeLabel={text(sideOpen ? "sidebar.resize" : "sidebar.pull")}
         foot={chrome}
         /* Home screens fold to icons (owner, 09/10); a book's page folds
            the column away, as it always has. */
