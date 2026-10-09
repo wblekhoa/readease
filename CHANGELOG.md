@@ -4,7 +4,39 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.20
+
+The side column folds to a rail of icons and its edge folds and unfolds
+it; the reading status floats above the control bar; pasted Markdown reads
+as meant; voices can be previewed and starred from the Voice list; a local
+voice gives its memory back after five quiet minutes, so an 8 GB Mac has
+room; ElevenLabs reads with eleven_v4_turbo. The app has a new bundle id:
+installs over 0.1.19, or lets 0.1.19 install it, and asks once for
+Accessibility again.
+
+- The app's bundle id is now `com.wblekhoa.readease` (it named a company
+  the app has nothing to do with). The library, notes, voices, models and
+  settings stay where they were; the window's size and place and the
+  interface's own storage are copied over on the first launch. macOS ties
+  the Accessibility permission to the id, so Read a selection asks for it
+  once more after this update.
+- On the home screens the folded side column becomes a rail of icons -
+  Library, Paste text, Read a selection, Move notes, the books being read,
+  Voices & models and the theme - instead of leaving the page. Inside a
+  book it still folds away entirely. Folded at home, the toolbar keeps
+  only the language.
+- The column's edge folds and unfolds it: pull the rail's edge out and the
+  column opens at the width you let go at; push an open column's edge in
+  past its narrowest and it folds. It snaps at the halfway line while you
+  drag, so you see where it will land. Double-click the folded edge to
+  open it.
+- A local voice (Vietnamese or English) nobody has used for five minutes
+  gives its memory back; the next reading loads it again. On a Mac with
+  8 GB or less, Voices & models suggests the Standard build of the
+  Vietnamese voice.
+- ElevenLabs voices read with `eleven_v4_turbo` by default (it got
+  Vietnamese tones right where `eleven_flash_v2_5` did not), at its own
+  price.
 
 - Reading status now floats in a capsule just above the shared control
   bar in Reader, Paste text and Read a selection. Preparing, reading and
