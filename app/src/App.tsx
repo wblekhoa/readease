@@ -105,7 +105,7 @@ import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
 import { FirstRun } from "./screens/Setup";
 import { Transfer } from "./screens/Transfer";
-import { currentLanguage, engineMessage, setLanguage, text, type Language } from "./i18n";
+import { currentLanguage, engineMessage, setLanguage, systemLanguage, text, type Language } from "./i18n";
 
 const PASTE_LIMIT = 100_000;
 const RATES = [0.5, 0.75, 1.0, 1.15, 1.2, 1.25, 1.5, 2.0];
@@ -858,7 +858,11 @@ export default function App() {
         if (reply.result.value === "en" || reply.result.value === "vi") {
           setLanguage(reply.result.value);
           setLanguageState(reply.result.value);
+          return;
         }
+        // Never chosen: the Mac's language, remembered as the starting
+        // point so the engine reads pasted text in it too.
+        return invoke<string[]>("system_languages").then((preferred) => applyLanguage(systemLanguage(preferred)));
       })
       .catch(() => undefined);
   }, []);

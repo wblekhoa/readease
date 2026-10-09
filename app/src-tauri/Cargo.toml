@@ -31,7 +31,7 @@ tauri-plugin-window-state = "2.4.1"
 # Now Playing + the media keys (HIG 3.19): the MediaPlayer framework.
 objc2-media-player = { version = "0.3.2", features = ["MPNowPlayingInfoCenter", "MPRemoteCommandCenter", "MPRemoteCommand", "MPRemoteCommandEvent", "MPMediaItem", "block2", "objc2-app-kit", "objc2-core-foundation"] }
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSDictionary", "NSString", "NSValue", "NSData"] }
+objc2-foundation = { version = "0.3", features = ["NSDictionary", "NSString", "NSValue", "NSData", "NSLocale", "NSArray", "NSEnumerator"] }
 # The cover in Now Playing (HIG 3.19): an NSImage from the page's bytes,
 # handed to MPMediaItemArtwork's request block.
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSImage"] }

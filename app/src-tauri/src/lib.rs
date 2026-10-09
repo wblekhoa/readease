@@ -86,6 +86,25 @@ fn audio_output(slot: tauri::State<EngineSlot>) -> audio::AudioOutput {
     client_of(&slot).output.lock().unwrap().clone()
 }
 
+/// The Mac's preferred languages, first choice first (System Settings ›
+/// General › Language & Region). Not `navigator.language`: in the WebView
+/// that is the app's own localization, English for a bundle with no
+/// Vietnamese .lproj, so a Vietnamese Mac would read as English.
+#[tauri::command]
+fn system_languages() -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    {
+        objc2_foundation::NSLocale::preferredLanguages()
+            .iter()
+            .map(|language| language.to_string())
+            .collect()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Vec::new()
+    }
+}
+
 #[tauri::command]
 fn take_opened_files(queue: tauri::State<OpenedFiles>) -> Vec<String> {
     std::mem::take(&mut *queue.0.lock().unwrap())
@@ -407,6 +426,7 @@ pub fn run() {
             pause_audio,
             resume_audio,
             take_opened_files,
+            system_languages,
             audio_output,
             media::now_playing,
             log::log_path,

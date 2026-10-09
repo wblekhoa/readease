@@ -25,6 +25,10 @@ import {
 } from "../src/ui/voiceShortlist.ts";
 import { setLanguage } from "../src/i18n.ts";
 
+// These cases are written in Vietnamese, and the interface now starts in
+// English until the Mac says otherwise.
+setLanguage("vi");
+
 const CATALOGUE = [
   { id: "a", label: "Trúc Ly - Nữ · Bắc · Phong cách tự nhiên" },
   { id: "b", label: "Thái Sơn - Nam · Nam · Phong cách kể chuyện" },

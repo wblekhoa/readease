@@ -875,7 +875,18 @@ export type TextKey = keyof typeof TEXT;
 // One module-level language: every screen reads it through text(), and the
 // app re-renders the whole tree (key={language}) when it changes - the same
 // retranslate-everything shape the Qt shell used.
-let current: Language = "vi";
+// English until the Mac says otherwise (owner, 09/10: "ngôn ngữ mặc định
+// của app là EN ... detect theo system"); App replaces it with
+// `systemLanguage` of the Mac's own list, and a choice the person made
+// outranks both.
+let current: Language = "en";
+
+/** The interface language a Mac asks for before anyone picks one:
+ * Vietnamese when Vietnamese is its FIRST preferred language, English for
+ * everything else - the two the app speaks. */
+export function systemLanguage(preferred: readonly string[]): Language {
+  return (preferred[0] ?? "").trim().toLowerCase().startsWith("vi") ? "vi" : "en";
+}
 
 export function setLanguage(language: Language): void {
   current = language;

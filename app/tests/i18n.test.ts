@@ -118,3 +118,12 @@ test("a word chosen by a number names a number its string shows, and never reach
     }
   }
 });
+
+test("before a choice, the interface speaks the Mac's first language if it is Vietnamese, English otherwise", async () => {
+  const { systemLanguage } = await import("../src/i18n.ts");
+  assert.equal(systemLanguage(["vi-VN", "en-US"]), "vi");
+  assert.equal(systemLanguage(["vi"]), "vi");
+  assert.equal(systemLanguage(["en-US", "vi-VN"]), "en");
+  assert.equal(systemLanguage(["fr-FR"]), "en");
+  assert.equal(systemLanguage([]), "en");
+});

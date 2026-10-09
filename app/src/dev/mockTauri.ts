@@ -1228,6 +1228,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   // Nothing asked the mock to open a document (HIG 3.18): the window's
   // queue is empty, as it is for an app opened by its icon.
   if (command === "take_opened_files") return Promise.resolve([]);
+  if (command === "system_languages") return Promise.resolve([...navigator.languages]);
   // Now Playing (HIG 3.19) is the window's; the browser has no Control
   // Center to tell.
   if (command === "now_playing") return Promise.resolve(null);

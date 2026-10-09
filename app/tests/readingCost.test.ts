@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { buttonCost, costPhrase, formatCount, formatUsd, isPaidVoice, providerOf, PROVIDERS, SCOPES, type Estimate } from "../src/ui/readingCost.ts";
 import { setLanguage } from "../src/i18n.ts";
 
+// These cases are written in Vietnamese, and the interface now starts in
+// English until the Mac says otherwise.
+setLanguage("vi");
+
 const paid = (usd: number, over: Partial<Estimate & { paid: true }> = {}): Estimate => ({
   paid: true, provider: "elevenlabs", model: "eleven_flash_v2_5", chars: 1000,
   utterances: 3, chapters: 1, usd, units: 1000, unit: "credits",
