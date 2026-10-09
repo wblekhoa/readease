@@ -4,6 +4,15 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- In the folded side column every icon and cover names itself on hover,
+  beside it, with the app's own help tag (the browser's `title` never
+  showed in the window).
+- Dragging the column's edge across the line eases it to its new state -
+  the rail opening out to your hand, the column settling back to the rail
+  - and the content cross-fades, instead of jumping.
+
 ## 0.1.20
 
 The side column folds to a rail of icons and its edge folds and unfolds

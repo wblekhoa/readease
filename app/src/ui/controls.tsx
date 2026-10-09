@@ -125,6 +125,8 @@ export function IconButton({
   onFocus,
   onBlur,
   onPointerDown,
+  frame = "flex h-8 w-8 items-center justify-center rounded-full hover-wash",
+  tipSide = "below",
   ...rest
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> & {
   /* Wider than the DOM attribute on purpose: `title` never reaches the
@@ -136,9 +138,16 @@ export function IconButton({
   /** For a caller that hands the focus back to this button - a menu's
    * trigger, once its menu closes from the keyboard (HIG 4.2). */
   ref?: Ref<HTMLButtonElement>;
+  /** The button's own size and shape, for a button that is not the round
+   * 32 px one - the folded column's 40 px tiles. */
+  frame?: string;
+  /** Where the help tag goes: under the button, or beside it for a button
+   * in a vertical strip, where under would cover the next one (owner,
+   * 09/10: the folded column's icons). */
+  tipSide?: "below" | "right";
 }) {
   const [tip, setTip] = useState<
-    { centre: number; above: number; below: number } | null
+    { centre: number; above: number; below: number; right: number; middle: number } | null
   >(null);
   const [box, setBox] = useState<{ left: number; top: number } | null>(null);
   const bubble = useRef<HTMLDivElement>(null);
@@ -164,6 +173,13 @@ export function IconButton({
     const width = bubble.current.offsetWidth;
     const height = bubble.current.offsetHeight;
     const margin = 12;
+    if (tipSide === "right") {
+      setBox({
+        left: tip.right,
+        top: Math.min(Math.max(tip.middle - height / 2, margin), window.innerHeight - height - margin),
+      });
+      return;
+    }
     // Below by default, ABOVE when below would run off the bottom. Buttons in
     // the footer are the whole reason: their tooltip was drawn past the edge
     // of the window and cropped, so the one control that most needed naming
@@ -176,7 +192,7 @@ export function IconButton({
       ),
       top: fitsBelow ? tip.below : Math.max(margin, tip.above - height),
     });
-  }, [tip]);
+  }, [tip, tipSide]);
 
   const open = (element: HTMLElement) => {
     if (!title) return;
@@ -194,6 +210,8 @@ export function IconButton({
       centre: hit.left + hit.width / 2,
       above: mark.top - LAYER_GAP,
       below: mark.bottom + LAYER_GAP,
+      right: hit.right + LAYER_GAP,
+      middle: hit.top + hit.height / 2,
     });
     lastShown = performance.now();
   };
@@ -209,7 +227,7 @@ export function IconButton({
     <>
       <button
         type="button"
-        className={`icon-button flex h-8 w-8 items-center justify-center rounded-full transition-colors hover-wash disabled:text-ink-faint ${className}`}
+        className={`icon-button ${frame} transition-colors disabled:text-ink-faint ${className}`}
         onMouseEnter={(event) => { if (!pressed.current) hover(event.currentTarget); onMouseEnter?.(event); }}
         onMouseLeave={(event) => { pressed.current = false; close(); onMouseLeave?.(event); }}
         onPointerDown={(event) => { pressed.current = true; close(); onPointerDown?.(event); }}

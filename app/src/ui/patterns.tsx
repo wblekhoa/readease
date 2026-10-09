@@ -1011,6 +1011,12 @@ export function SideColumn({
   const folded = rail !== undefined ? RAIL_WIDTH : 0;
   const [drag, setDrag] = useState<{ open: boolean } | null>(null);
   const dragging = drag !== null;
+  /* Crossing the line, the column EASES to its new state (owner, 09/10:
+     "animation khi nắm kéo từ collapse -> expand") - for one --dur-move,
+     then it follows the hand again without a lag. */
+  const [snapping, setSnapping] = useState(false);
+  const snapTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (snapTimer.current !== null) window.clearTimeout(snapTimer.current); }, []);
   const shown = drag ? drag.open : open;
   const railed = !shown && rail !== undefined;
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1026,7 +1032,14 @@ export function SideColumn({
     // The cursor stays a resize cursor while the column snaps away under it.
     document.documentElement.style.cursor = "col-resize";
     const move = (moved: PointerEvent) => {
+      const before = landed.open;
       landed = dragTarget(from + moved.clientX - start, folded);
+      if (landed.open !== before) {
+        setSnapping(true);
+        if (snapTimer.current !== null) window.clearTimeout(snapTimer.current);
+        // --dur-move (240 ms); Reduce Motion zeroes the transition itself.
+        snapTimer.current = window.setTimeout(() => { snapTimer.current = null; setSnapping(false); }, 240);
+      }
       setDrag({ open: landed.open });
       if (landed.open) onResize(landed.width);
     };
@@ -1055,11 +1068,11 @@ export function SideColumn({
       inert={(!shown && !railed) || undefined}
       style={{ width: shown ? width : railed ? RAIL_WIDTH : 0 }}
       className={`relative shrink-0 overflow-hidden bg-column ${
-        dragging && shown ? "" : "transition-[width] duration-(--dur-move) ease-standard"
+        dragging && shown && !snapping ? "" : "transition-[width] duration-(--dur-move) ease-standard"
       } ${shown || railed ? "border-r border-edge-alpha" : ""}`}
     >
       {railed && (
-        <div className="flex h-full flex-col items-center" style={{ width: RAIL_WIDTH }}>
+        <div className="fade-in flex h-full flex-col items-center" style={{ width: RAIL_WIDTH }}>
           {/* The same 60 px strip as the open column: the lights sit in it,
               and it is what the window is dragged by. */}
           <div data-tauri-drag-region className="h-[60px] w-full shrink-0" />
@@ -1090,7 +1103,7 @@ export function SideColumn({
           className="rail-grip absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
         />
       )}
-      {!railed && <div className="flex h-full flex-col" style={{ width }}>
+      {!railed && <div className="fade-in flex h-full flex-col" style={{ width }}>
         {/* The lights live in the first 88px of this strip (x 20-72, then
             16px of air) - in the window; a browser has none, and leaves no
             hole for them. The switch takes the far end, where Codex puts it.
@@ -1176,18 +1189,20 @@ export function RailIcon({
   active?: boolean;
   onPress: () => void;
 }) {
+  // The app's own help tag, beside the icon: a folded column has no words,
+  // so the name is the tooltip (owner, 09/10). WKWebView shows no `title`.
   return (
-    <button
+    <IconButton
       onClick={onPress}
       aria-label={label}
       title={label}
+      tipSide="right"
       aria-current={active ? "page" : undefined}
-      className={`grid h-10 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)] transition-colors ${
-        active ? "bg-tint text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"
-      }`}
+      frame="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)]"
+      className={active ? "bg-tint text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"}
     >
       {icon}
-    </button>
+    </IconButton>
   );
 }
 
@@ -1206,11 +1221,12 @@ export function RailCover({
 }) {
   const percent = progress === null ? null : Math.round(Math.min(1, Math.max(0, progress)) * 100);
   return (
-    <button
+    <IconButton
       onClick={onPress}
       aria-label={title}
-      title={title}
-      className="grid h-12 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)] transition-colors hover:bg-wash"
+      title={hoverText(title)}
+      tipSide="right"
+      frame="grid h-12 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)] hover:bg-wash"
     >
       <span className="relative h-9 w-6 overflow-hidden rounded-[3px] bg-tint shadow-edge">
         {cover ? (
@@ -1224,7 +1240,7 @@ export function RailCover({
           </span>
         )}
       </span>
-    </button>
+    </IconButton>
   );
 }
 
