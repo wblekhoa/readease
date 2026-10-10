@@ -133,6 +133,10 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   assert.ok(html.includes(directDmg));
   assert.ok(html.includes(directZip));
   assert.doesNotMatch(html, /href="https:\/\/github\.com\/wblekhoa\/readease\/releases\/latest"/);
+  // Nothing better known, the way out is the repository's front page,
+  // which opens on a download link.
+  assert.equal(fallback, 'https://github.com/wblekhoa/readease');
+  assert.ok(html.includes(`href="${fallback}"`));
   assert.ok(html.includes(c.installFile));
   assert.match(html, /VieNeu/); assert.match(html, /Kokoro/); assert.match(html, /OpenAI/); assert.match(html, /OCR/);
   // Installing is one drag now (owner, 07/10): no install link in the hero;

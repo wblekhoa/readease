@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { content } from './content.js';
-import { directDmg, directZip, fetchRelease, mb, repository } from './release.js';
+import { directDmg, directZip, fallback, fetchRelease, mb, repository } from './release.js';
 import { glyphs } from './icons.js';
 import { voiceBars } from './voiceBars.js';
 import { createStory, keyboardIndex, viewIds } from './story.js';
@@ -27,7 +27,7 @@ const loadMotion = () => (motionEngine ??= Promise.all([import('gsap'), import('
   .then(([{ gsap }, { ScrollTrigger }]) => { gsap.registerPlugin(ScrollTrigger); return { gsap, ScrollTrigger }; }));
 
 function DownloadButton({ c, release, describedBy, className = 'button' }) {
-  return <a className={className} href={directDmg} data-download={c.cta} aria-describedby={describedBy}>
+  return <a className={className} href={release?.dmg.browser_download_url || directDmg} data-download={c.cta} aria-describedby={describedBy}>
     <Glyph name="down" className="button-glyph" /><span data-label="">{c.cta}</span>
   </a>;
 }
@@ -265,13 +265,13 @@ function Closing({ c, prefix, release }) {
     <div className="download-block">
       <img className="app-icon" src={`${prefix}icon.png`} width="84" height="84" alt="" loading="lazy" />
       <h2 id="download-title"><Lines value={c.closing} /></h2><p>{c.license}</p><DownloadButton c={c} release={release} />
-      <p className="download-detail"><span data-download-detail="">{release ? `${release.version} · ${mb(release.dmg.size)} MB · .dmg` : c.latest}</span><span aria-hidden="true"> · </span><a href={directZip} data-zip=".zip ({size} MB)">{release?.zip ? `.zip (${mb(release.zip.size)} MB)` : '.zip'}</a></p>
+      <p className="download-detail">{release ? <span data-download-detail="">{`${release.version} · ${mb(release.dmg.size)} MB · .dmg`}</span> : <a data-download-detail="" href={fallback}>{c.latest}</a>}<span aria-hidden="true"> · </span><a href={release?.zip?.browser_download_url || directZip} data-zip=".zip ({size} MB)">{release?.zip ? `.zip (${mb(release.zip.size)} MB)` : '.zip'}</a></p>
     </div>
   </section>;
 }
 function Footer({ c, prefix, release }) {
   const targets = {
-    download: directDmg, install: doc(c.installFile), releases: `${repository}/releases`,
+    download: release?.dmg.browser_download_url || directDmg, install: doc(c.installFile), releases: `${repository}/releases`,
     source: repository, issues: `${repository}/issues/new/choose`, privacy: doc('PRIVACY.md'), license: doc('LICENSE'),
   };
   return <footer className="footer container">
