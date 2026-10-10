@@ -5,8 +5,6 @@ product: readease
 title: "ReadEase — Product goal"
 status: active
 updated: 2026-10-10
-relations:
-  servesGoal: [hq:app-revenue]
 ---
 # ReadEase — Product goal
 
