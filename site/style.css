@@ -83,8 +83,9 @@ main { overflow-x: clip; }
 .hero-backdrop { position: absolute; z-index: -1; inset: 0 calc(50% - 50vw); pointer-events: none; }
 .hero-ring { position: absolute; left: 50%; top: 50%; width: min(1500px, 140vw); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; overflow: visible; opacity: var(--ring-opacity);
   -webkit-mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); }
-.ring-glow { filter: blur(56px); opacity: .6; }
-.ring-lines { filter: blur(5px); opacity: .38; }
+.hero-ring.ring-glow { filter: blur(56px); }
+.ring-glow g { opacity: .6; }
+.ring-lines g { filter: blur(5px); opacity: .38; }
 .hero h1 { margin-top: 28px; font-size: clamp(48px, 7.2vw, 96px); font-weight: 500; line-height: 1.04; letter-spacing: -.045em; }
 .hero-voice { color: var(--brand); }
 /* The reading highlight from the app's reader, passing over each word once on load.
@@ -322,6 +323,8 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
    compose with the reveal's `transform`. Reveals are scroll-driven CSS
    (animation-timeline: view()): browsers without it simply show the page. */
 @keyframes ring-in { from { opacity: 0; rotate: -18deg; scale: .9; } }
+@keyframes ring-turn { to { rotate: 360deg; } }
+@keyframes ring-breathe { from { scale: .97; } to { scale: 1.03; } }
 @media (prefers-reduced-motion: no-preference) {
   .tile-grid li, .voice-card, .api-card, .way-card, .api-row, .voice-lang {
     transition: translate 360ms cubic-bezier(.2, .7, .2, 1), background-color 240ms ease-out, box-shadow 360ms ease-out; }
@@ -341,7 +344,12 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   /* Page load: the hero arrives in one short cascade. */
   .hero > :not(.hero-aura, .hero-backdrop) { animation: rise 760ms cubic-bezier(.2, .7, .2, 1) both; }
   /* The ring turns into place once, as the light comes up - then stays. */
-  .hero-ring { animation: ring-in 1800ms cubic-bezier(.2, .7, .2, 1) both; }
+  .hero-ring { animation: ring-in 1800ms cubic-bezier(.2, .7, .2, 1) both, ring-turn 140s linear 1800ms infinite; }
+  /* The site's one looping motion, asked for (owner, 10/10: "vòng xoay nhẹ
+     ... motion như sound wave"): the ring turns slowly and its glow breathes;
+     both stop while the hero is out of view. */
+  .hero-ring.ring-glow { will-change: rotate, scale; animation: ring-in 1800ms cubic-bezier(.2, .7, .2, 1) both, ring-turn 140s linear 1800ms infinite, ring-breathe 5.2s ease-in-out 1800ms infinite alternate; }
+  .ring-paused .hero-ring { animation-play-state: paused; }
   .hero > :nth-child(3) { animation-delay: 80ms; }
   .hero > :nth-child(4) { animation-delay: 160ms; }
   .hero > :nth-child(5) { animation-delay: 240ms; }

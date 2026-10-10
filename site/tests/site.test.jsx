@@ -155,5 +155,12 @@ test('CSS keeps the floating nav, aligned images, JS-only stacking and reduced-m
   assert.match(css, /\.js \.preview \{ grid-area: 1 \/ 1/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /\.preview img \{ width: 100%/);
-  assert.doesNotMatch(css, /infinite/);
+  // One loop on the page, asked for (owner, 10/10): the hero's ring turns and
+  // breathes - only with motion allowed, and paused when out of view. Nothing
+  // else repeats forever.
+  const loops = css.split('\n').filter(line => /infinite/.test(line));
+  assert.ok(loops.length > 0 && loops.every(line => /\.hero-ring/.test(line)), loops.join('\n'));
+  const calm = css.slice(css.indexOf('@media (prefers-reduced-motion: no-preference)'));
+  assert.ok(calm.includes('ring-turn 140s linear'), 'the ring turns only when motion is allowed');
+  assert.match(css, /\.ring-paused \.hero-ring \{ animation-play-state: paused; \}/);
 });

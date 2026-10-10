@@ -57,22 +57,63 @@ function strand(waves, phase, amplitude, radius = 300) {
   return `M${points.join('L')}Z`;
 }
 const RING_PATHS = RING.map(([waves, phase, amplitude]) => strand(waves, phase, amplitude));
+/* Each fine strand swells and settles like a level meter under a voice, on
+   its own beat (owner, 10/10: "motion như sound wave"): louder and further
+   along, quieter, back where it began - a closed loop, so it never jumps.
+   SMIL, not CSS `d`, because Safari animates only SMIL path data. */
+const RING_BEATS = RING.map(([waves, phase, amplitude], i) => ({
+  dur: `${(3.2 + i * .47).toFixed(2)}s`,
+  values: [strand(waves, phase, amplitude), strand(waves, phase + .8, amplitude * 1.75),
+    strand(waves, phase + 1.5, amplitude * .55), strand(waves, phase, amplitude)].join(';'),
+}));
+function RingGradient({ id }) {
+  return <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stopColor="var(--ring-hi)" /><stop offset=".55" stopColor="var(--brand)" /><stop offset="1" stopColor="var(--ring-deep)" />
+  </linearGradient></defs>;
+}
+/* Two layers on purpose: the wide blur (the costly one) only turns and
+   breathes, which the compositor does without repainting it; the fine
+   strands are the ones that ripple. Everything stops while the hero is out
+   of sight, and nothing moves under Reduce Motion. */
 function HeroRing() {
-  return <svg className="hero-ring" viewBox="-500 -500 1000 1000" aria-hidden="true" focusable="false">
-    <defs>
-      <linearGradient id="ring-light" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="var(--ring-hi)" /><stop offset=".55" stopColor="var(--brand)" /><stop offset="1" stopColor="var(--ring-deep)" />
-      </linearGradient>
-    </defs>
-    <g className="ring-glow" fill="none" stroke="url(#ring-light)" strokeWidth="34">{RING_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
-    <g className="ring-lines" fill="none" stroke="url(#ring-light)" strokeWidth="2.5">{RING_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
-  </svg>;
+  const box = useRef(null);
+  const lines = useRef(null);
+  const [moving, setMoving] = useState(false);
+  useEffect(() => {
+    const quiet = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const follow = () => setMoving(!quiet.matches);
+    follow();
+    quiet.addEventListener('change', follow);
+    return () => quiet.removeEventListener('change', follow);
+  }, []);
+  useEffect(() => {
+    if (!moving || !box.current || !('IntersectionObserver' in window)) return;
+    const watch = new IntersectionObserver(([entry]) => {
+      box.current?.classList.toggle('ring-paused', !entry.isIntersecting);
+      if (entry.isIntersecting) lines.current?.unpauseAnimations?.(); else lines.current?.pauseAnimations?.();
+    });
+    watch.observe(box.current);
+    return () => watch.disconnect();
+  }, [moving]);
+  return <div className="hero-backdrop" aria-hidden="true" ref={box}>
+    <svg className="hero-ring ring-glow" viewBox="-500 -500 1000 1000" focusable="false">
+      <RingGradient id="ring-light-glow" />
+      <g fill="none" stroke="url(#ring-light-glow)" strokeWidth="34">{RING_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
+    </svg>
+    <svg className="hero-ring ring-lines" viewBox="-500 -500 1000 1000" focusable="false" ref={lines}>
+      <RingGradient id="ring-light-lines" />
+      <g fill="none" stroke="url(#ring-light-lines)" strokeWidth="2.5">{RING_PATHS.map((d, i) => <path key={i} d={d}>
+        {moving && <animate attributeName="d" dur={RING_BEATS[i].dur} values={RING_BEATS[i].values} repeatCount="indefinite"
+          calcMode="spline" keyTimes="0;.35;.7;1" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1" />}
+      </path>)}</g>
+    </svg>
+  </div>;
 }
 function Hero({ c, prefix, release }) {
   // The second line is read aloud the way the app reads: a highlight moves word by word.
   return <section className="hero" aria-labelledby="hero-title">
     <div className="hero-aura" aria-hidden="true" />
-    <div className="hero-backdrop" aria-hidden="true"><HeroRing /></div>
+    <HeroRing />
     <h1 id="hero-title">{c.hero[0]}<br /><span className="hero-voice">{c.hero[1].split(' ').map((word, i) =>
       <React.Fragment key={i}>{i > 0 && ' '}<span className="hero-word" style={{ '--i': i }}>{word}</span></React.Fragment>)}</span></h1>
     <p className="description">{c.description}</p>
