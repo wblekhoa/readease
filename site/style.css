@@ -8,6 +8,7 @@
   --cta: #141a24; --on-cta: #fff; --glass: rgb(255 255 255 / .72); --shadow: 0 24px 60px -28px rgb(20 26 36 / .35);
   --alu: #d8dbe0; --alu-dark: #b9bdc4; --bezel: #0b0c0f; --dot: #cfd5df;
   --ring-hi: #7fb4ff; --ring-deep: #3b2fd0; --ring-near: #2f6df0; --ring-opacity: .45;
+  --raised: #fff; --lift: 0 10px 28px -18px rgb(20 26 36 / .16);
   --body: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
   --display: "Plus Jakarta Sans", var(--body);
   color-scheme: light;
@@ -18,7 +19,7 @@
     --brand: #6a86f5; --brand-hover: #8099f7; --brand-wash: #1d2540; --cta: #f2f3f5; --on-cta: #111317;
     --glass: rgb(26 29 35 / .72); --shadow: 0 24px 60px -28px rgb(0 0 0 / .8);
     --alu: #4a4e56; --alu-dark: #34373d; --dot: #2a2f38; color-scheme: dark;
-    --ring-hi: #8cc8ff; --ring-deep: #3a3df0; --ring-near: #dff0ff; --ring-opacity: .72;
+    --ring-hi: #8cc8ff; --ring-deep: #3a3df0; --ring-near: #dff0ff; --ring-opacity: .72; --raised: #1f232a; --lift: 0 10px 28px -18px rgb(0 0 0 / .55);
   }
 }
 :root[data-theme="dark"] {
@@ -26,7 +27,7 @@
   --brand: #6a86f5; --brand-hover: #8099f7; --brand-wash: #1d2540; --cta: #f2f3f5; --on-cta: #111317;
   --glass: rgb(26 29 35 / .72); --shadow: 0 24px 60px -28px rgb(0 0 0 / .8);
   --alu: #4a4e56; --alu-dark: #34373d; --dot: #2a2f38; color-scheme: dark;
-  --ring-hi: #8cc8ff; --ring-deep: #3a3df0; --ring-near: #dff0ff; --ring-opacity: .72;
+  --ring-hi: #8cc8ff; --ring-deep: #3a3df0; --ring-near: #dff0ff; --ring-opacity: .72; --raised: #1f232a; --lift: 0 10px 28px -18px rgb(0 0 0 / .55);
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -274,6 +275,12 @@ kbd { display: inline-grid; place-items: center; min-width: 26px; height: 26px; 
 .tile-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 64px; }
 .tile-grid.more-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .tile-grid li { padding: 24px; border-radius: 22px; background: var(--card); }
+/* Hover lifts a card onto the page (owner, 10/10: "background trắng và có
+   border, shadow nhẹ nhàng hơn"): white, a hairline edge drawn as a ring so
+   nothing shifts, and a soft, short shadow. */
+.tile-grid li:hover, .voice-card:hover, .api-card:hover { background: var(--raised); box-shadow: 0 0 0 1px var(--edge), var(--lift); }
+/* The key panel and the players are white already: on a white card they keep a hairline of their own. */
+.api-card:hover .api-panel, .voice-card:hover .voice-player { box-shadow: 0 0 0 1px var(--edge); }
 .tile-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; }
 .tile-icon .glyph { width: 19px; height: 19px; }
 .more-speed { background: #d6457a; }
@@ -369,7 +376,7 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
 @media (prefers-reduced-motion: no-preference) {
   .tile-grid li, .voice-card, .api-card, .way-card, .api-row, .voice-lang {
     transition: translate 360ms cubic-bezier(.2, .7, .2, 1), background-color 240ms ease-out, box-shadow 360ms ease-out; }
-  .tile-grid li:hover, .voice-card:hover, .api-card:hover { translate: 0 -4px; box-shadow: 0 18px 40px -24px rgb(0 0 0 / .45); }
+  .tile-grid li:hover, .voice-card:hover, .api-card:hover { translate: 0 -4px; }
   .way-card:hover { translate: 0 -4px; }
   .api-row:hover { translate: 4px 0; }
   .tile-icon { transition: scale 360ms cubic-bezier(.3, 1.6, .5, 1), rotate 360ms cubic-bezier(.3, 1.6, .5, 1); }
