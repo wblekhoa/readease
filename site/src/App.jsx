@@ -47,7 +47,17 @@ function Header({ c, prefix }) {
 /* The brand's mark behind the headline: the icon's ring of light, drawn as
    six closed strands that ripple at different counts and phases, the way
    the icon's ribbons cross. Pure geometry, so it is SVG, not an image. */
-const RING = [[6, 0, 15], [5, 1.1, 18], [7, 2.3, 12], [6, 3.4, 16], [5, 4.6, 13], [7, 5.5, 17]];
+/* The brand's mark behind the headline: the icon's ring of light, drawn as
+   closed strands that ripple at different counts and phases, the way the
+   icon's ribbons cross. Pure geometry, so it is SVG, not an image.
+   In three depths (owner, 10/10: "create depth ... one less blurred than the
+   ones behind it"): far strands sit a little outside, wide, soft and deep
+   blue; near strands a little inside, fine, sharp and light. */
+const DEPTHS = [
+  { name: 'far', radius: 322, width: 7, strands: [[5, .4, 22], [6, 2.1, 18], [4, 4.0, 24]] },
+  { name: 'mid', radius: 302, width: 3, strands: [[6, 0, 15], [7, 2.3, 12], [5, 4.6, 13]] },
+  { name: 'near', radius: 286, width: 1.6, strands: [[6, 3.4, 16], [7, 5.5, 17], [5, 1.1, 18]] },
+];
 function strand(waves, phase, amplitude, radius = 300) {
   const points = Array.from({ length: 181 }, (_, i) => {
     const t = (i / 180) * Math.PI * 2;
@@ -56,28 +66,40 @@ function strand(waves, phase, amplitude, radius = 300) {
   });
   return `M${points.join('L')}Z`;
 }
-const RING_PATHS = RING.map(([waves, phase, amplitude]) => strand(waves, phase, amplitude));
-/* Each fine strand swells and settles like a level meter under a voice, on
-   its own beat (owner, 10/10: "motion như sound wave"): louder and further
-   along, quieter, back where it began - a closed loop, so it never jumps.
-   SMIL, not CSS `d`, because Safari animates only SMIL path data. */
-const RING_BEATS = RING.map(([waves, phase, amplitude], i) => ({
-  dur: `${(3.2 + i * .47).toFixed(2)}s`,
-  values: [strand(waves, phase, amplitude), strand(waves, phase + .8, amplitude * 1.75),
-    strand(waves, phase + 1.5, amplitude * .55), strand(waves, phase, amplitude)].join(';'),
+const LAYERS = DEPTHS.map((depth, layer) => ({
+  ...depth,
+  paths: depth.strands.map(([waves, phase, amplitude]) => strand(waves, phase, amplitude, depth.radius)),
+  /* Each strand swells and settles like a level meter under a voice, on its
+     own beat (owner, 10/10: "motion như sound wave") - louder and further
+     along, quieter, back where it began, a closed loop that never jumps.
+     Nearer strands beat faster and wider: what is close moves more. The far
+     layer only turns. SMIL, not CSS `d`, because Safari animates only SMIL
+     path data. */
+  beats: layer === 0 ? null : depth.strands.map(([waves, phase, amplitude], i) => ({
+    dur: `${(layer === 2 ? 3.1 : 4.4) + i * .53}s`,
+    values: [strand(waves, phase, amplitude, depth.radius), strand(waves, phase + .8, amplitude * (layer === 2 ? 1.9 : 1.5), depth.radius),
+      strand(waves, phase + 1.5, amplitude * .55, depth.radius), strand(waves, phase, amplitude, depth.radius)].join(';'),
+  })),
 }));
-function RingGradient({ id }) {
+const GLOW_PATHS = LAYERS[1].paths;
+const RING_STOPS = {
+  glow: ['var(--ring-hi)', 'var(--brand)', 'var(--ring-deep)'],
+  far: ['var(--brand)', 'var(--ring-deep)', 'var(--ring-deep)'],
+  mid: ['var(--ring-hi)', 'var(--brand)', 'var(--ring-deep)'],
+  near: ['var(--ring-near)', 'var(--ring-hi)', 'var(--brand)'],
+};
+function RingGradient({ id, stops }) {
   return <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stopColor="var(--ring-hi)" /><stop offset=".55" stopColor="var(--brand)" /><stop offset="1" stopColor="var(--ring-deep)" />
+    <stop offset="0" stopColor={stops[0]} /><stop offset=".55" stopColor={stops[1]} /><stop offset="1" stopColor={stops[2]} />
   </linearGradient></defs>;
 }
-/* Two layers on purpose: the wide blur (the costly one) only turns and
-   breathes, which the compositor does without repainting it; the fine
-   strands are the ones that ripple. Everything stops while the hero is out
-   of sight, and nothing moves under Reduce Motion. */
+/* One SVG per depth so each turns on the compositor at its own speed - the
+   parallax that sells the depth. The wide glow and the far strands never
+   change shape, so they are painted once; only the mid and near strands
+   ripple. Everything stops while the hero is out of sight, and nothing
+   moves under Reduce Motion. */
 function HeroRing() {
   const box = useRef(null);
-  const lines = useRef(null);
   const [moving, setMoving] = useState(false);
   useEffect(() => {
     const quiet = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -90,23 +112,23 @@ function HeroRing() {
     if (!moving || !box.current || !('IntersectionObserver' in window)) return;
     const watch = new IntersectionObserver(([entry]) => {
       box.current?.classList.toggle('ring-paused', !entry.isIntersecting);
-      if (entry.isIntersecting) lines.current?.unpauseAnimations?.(); else lines.current?.pauseAnimations?.();
+      box.current?.querySelectorAll('svg').forEach(svg => entry.isIntersecting ? svg.unpauseAnimations?.() : svg.pauseAnimations?.());
     });
     watch.observe(box.current);
     return () => watch.disconnect();
   }, [moving]);
   return <div className="hero-backdrop" aria-hidden="true" ref={box}>
     <svg className="hero-ring ring-glow" viewBox="-500 -500 1000 1000" focusable="false">
-      <RingGradient id="ring-light-glow" />
-      <g fill="none" stroke="url(#ring-light-glow)" strokeWidth="34">{RING_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
+      <RingGradient id="ring-glow" stops={RING_STOPS.glow} />
+      <g fill="none" stroke="url(#ring-glow)" strokeWidth="34">{GLOW_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
     </svg>
-    <svg className="hero-ring ring-lines" viewBox="-500 -500 1000 1000" focusable="false" ref={lines}>
-      <RingGradient id="ring-light-lines" />
-      <g fill="none" stroke="url(#ring-light-lines)" strokeWidth="2.5">{RING_PATHS.map((d, i) => <path key={i} d={d}>
-        {moving && <animate attributeName="d" dur={RING_BEATS[i].dur} values={RING_BEATS[i].values} repeatCount="indefinite"
+    {LAYERS.map(layer => <svg key={layer.name} className={`hero-ring ring-${layer.name}`} viewBox="-500 -500 1000 1000" focusable="false">
+      <RingGradient id={`ring-${layer.name}-light`} stops={RING_STOPS[layer.name]} />
+      <g fill="none" stroke={`url(#ring-${layer.name}-light)`} strokeWidth={layer.width} strokeLinejoin="round">{layer.paths.map((d, i) => <path key={i} d={d}>
+        {moving && layer.beats && <animate attributeName="d" dur={layer.beats[i].dur} values={layer.beats[i].values} repeatCount="indefinite"
           calcMode="spline" keyTimes="0;.35;.7;1" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1" />}
       </path>)}</g>
-    </svg>
+    </svg>)}
   </div>;
 }
 function Hero({ c, prefix, release }) {
