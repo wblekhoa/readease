@@ -31,6 +31,24 @@ function DownloadButton({ c, release, describedBy, className = 'button' }) {
     <Glyph name="down" className="button-glyph" /><span data-label="">{c.cta}</span>
   </a>;
 }
+/* Light or dark by hand (owner, 10/10: "thêm nút đổi theme trên header").
+   The page follows the system until the button is pressed; the choice is
+   kept and stamped on <html> by the head script before the first paint.
+   Both glyphs are in the markup - which one shows is CSS's call, from the
+   theme actually on screen - so the prerendered page never mismatches. */
+const THEME_KEY = 'readease-site-theme';
+function ThemeToggle({ label }) {
+  const flip = () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const next = dark ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* private window */ }
+  };
+  return <button type="button" className="theme-toggle" onClick={flip} aria-label={label} title={label}>
+    <span className="theme-to-dark"><Glyph name="moon" /></span><span className="theme-to-light"><Glyph name="sun" /></span>
+  </button>;
+}
 function Header({ c, prefix }) {
   return <header className="nav-shell"><div className="nav container">
     <a className="brand" href="./" aria-label={c.home}><img src={`${prefix}icon.png`} alt="" width="28" height="28" /><span>ReadEase</span></a>
@@ -39,6 +57,7 @@ function Header({ c, prefix }) {
     </nav>
     <div className="nav-end">
       <a className="nav-github" href={repository} aria-label={c.github} title={c.github}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={GITHUB} /></svg><span>GitHub</span></a>
+      <ThemeToggle label={c.theme} />
       <a className="language" href={c.other === 'en' ? 'en/' : '../'} lang={c.other} hrefLang={c.other} aria-label={c.switchLabel}><span aria-hidden="true">{c.flag}</span> {c.other.toUpperCase()}</a>
       <a className="nav-download" href={`#${c.downloadId}`}>{c.download}</a>
     </div>

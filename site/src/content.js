@@ -18,7 +18,7 @@ export const content = {
     // The big features only (owner, 07/10); pauses, chimes, figures and
     // Markdown are one thing to a listener: it reads naturally.
     ticker: [['shelf', 'Thư viện PDF & EPUB'], ['paste', 'Dán nội dung'], ['cursor', 'Quét đọc mọi ứng dụng'], ['voices', 'Đọc tự nhiên'], ['globe', 'Tiếng Việt & English'], ['offline', 'Nghe offline'], ['books', 'Apple Books']],
-    github: 'Mã nguồn trên GitHub',
+    github: 'Mã nguồn trên GitHub', theme: 'Đổi giao diện sáng hoặc tối',
     ways: ['Bắt đầu từ', 'điều bạn muốn đọc.'],
     carousel: 'Các cách bắt đầu đọc', previous: 'Thẻ trước', next: 'Thẻ sau', slide: 'Thẻ',
     library: ['THƯ VIỆN', 'EPUB / PDF', 'Tài liệu đang dở.', 'Nội dung còn tiếp.'],
@@ -94,7 +94,7 @@ export const content = {
     ],
     tickerLabel: 'What ReadEase reads',
     ticker: [['shelf', 'PDF & EPUB library'], ['paste', 'Paste text'], ['cursor', 'Read a selection anywhere'], ['voices', 'Natural reading'], ['globe', 'Tiếng Việt & English'], ['offline', 'Listen offline'], ['books', 'Apple Books']],
-    github: 'Source on GitHub',
+    github: 'Source on GitHub', theme: 'Switch between light and dark',
     ways: ['Start with what', 'you want to read.'],
     carousel: 'Ways to start reading', previous: 'Previous card', next: 'Next card', slide: 'Card',
     library: ['YOUR LIBRARY', 'EPUB / PDF', 'The document you started.', 'The rest is still ahead.'],

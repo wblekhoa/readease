@@ -137,6 +137,12 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   // which opens on a download link.
   assert.equal(fallback, 'https://github.com/wblekhoa/readease');
   assert.ok(html.includes(`href="${fallback}"`));
+  // Light or dark by hand from the header (owner, 10/10); the head script
+  // applies a kept choice before the first paint.
+  assert.match(html, /<header[\s\S]*class="theme-toggle"[\s\S]*<\/header>/);
+  for (const page of ['../index.html', '../en/index.html']) {
+    assert.match(readFileSync(new URL(page, import.meta.url), 'utf8'), /localStorage\.getItem\("readease-site-theme"\)/);
+  }
   assert.ok(html.includes(c.installFile));
   assert.match(html, /VieNeu/); assert.match(html, /Kokoro/); assert.match(html, /OpenAI/); assert.match(html, /OCR/);
   // Installing is one drag now (owner, 07/10): no install link in the hero;
