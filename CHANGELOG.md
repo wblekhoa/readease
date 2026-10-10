@@ -4,7 +4,12 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.21
+
+The folded side column names its icons on hover and opens from the top;
+dragging its edge eases between the rail and the column; the open column
+carries the ReadEase mark; the interface starts in the Mac's language.
+Installs over 0.1.20, or lets 0.1.20 install it.
 
 - In the folded side column every icon and cover names itself on hover,
   beside it, with the app's own help tag (the browser's `title` never
