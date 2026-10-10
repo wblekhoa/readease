@@ -24,6 +24,7 @@ KEY = "sk-proj-0123456789abcdefghijklmnopqrstuvwxyz"
 
 
 class RedactionTests(unittest.TestCase):
+    # RE-VOICE-013
     def test_a_provider_error_that_quotes_the_key_is_scrubbed(self) -> None:
         # Some providers echo the Authorization header back in a 401 body.
         # That string is on its way to a Notice on screen.

@@ -101,6 +101,7 @@ class PdfImporterTests(unittest.TestCase):
                     stable_id(chapter.id, "segment", str(segment_index)),
                 )
 
+    # RE-LIB-005
     def test_textless_pdf_reports_that_ocr_is_not_supported(self) -> None:
         path = make_blank_pdf(self.directory / "scan.pdf")
 

@@ -36,6 +36,7 @@ class RouteTests(unittest.TestCase):
         route = pick_voice_route("openai:tts-1:alloy", keys={})
         self.assertEqual(route.reason, "unknown_model")
 
+    # RE-VOICE-008
     def test_no_key_is_a_named_refusal_not_a_silent_fallback(self) -> None:
         # Falling back to the local voice without saying so would have the
         # reader hear a different voice than the one they picked and never

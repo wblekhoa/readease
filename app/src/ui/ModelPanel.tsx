@@ -24,7 +24,7 @@ import type { Models } from "./useModels";
 /** At or under this much RAM, the Standard build is suggested to somebody
  * on Highest: measured 08/10 at M1-like threads, Standard holds ~0.44 GB
  * less (963 vs 1,402 MB) and reads as fast (RTF 0.116 vs 0.127). */
-const LOW_MEMORY_BYTES = 8.5 * 1024 ** 3;
+const LOW_MEMORY_BYTES = 8.5 * 1024 ** 3; // RE-VOICE-006
 
 const BUILDS = [
   { id: "int8", label: () => text("model.build_standard") },

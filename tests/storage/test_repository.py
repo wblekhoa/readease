@@ -177,6 +177,7 @@ class LibraryRepositoryTests(unittest.TestCase):
             }
         self.assertEqual(tables, {"unknown_owner"})
 
+    # RE-LIB-008
     def test_progress_is_independent_per_book_and_updates_in_place(self):
         first = sample_book("first")
         second = sample_book("second")

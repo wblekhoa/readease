@@ -81,6 +81,7 @@ class PrecisionEngineTests(unittest.TestCase):
         markers = {p: self.engine(p)._ready_marker for p in PRECISIONS}
         self.assertEqual(len(set(markers.values())), len(PRECISIONS), markers)
 
+    # RE-VOICE-002
     def test_preparing_downloads_only_the_chosen_build(self):
         for precision, subfolder in PRECISIONS.items():
             with self.subTest(precision=precision):
@@ -210,6 +211,7 @@ class RemovingAnUnusedBuildTests(unittest.TestCase):
         self.assertTrue((self.root / "onnx_update").exists())
         self.assertTrue((self.codec / "keep-me").exists())
 
+    # RE-VOICE-003
     def test_the_build_in_use_is_refused(self):
         """Removing what the app is reading with would break a working install."""
         with self.assertRaises(ValueError):

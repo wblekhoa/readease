@@ -83,6 +83,7 @@ test("what can read a language: its model, or a paid voice that fits", () => {
   assert.equal(anythingReadable(null, [ALLOY], { openai: true }), true);
 });
 
+// RE-VOICE-001
 test("the first-run screen is due only while nothing at all can read", () => {
   const nothing: ModelStatus = { ready: false, precision: null, installed: {} };
   assert.equal(firstRunNeeded(nothing, {}), true);
@@ -95,6 +96,7 @@ test("the first-run screen is due only while nothing at all can read", () => {
   assert.equal(firstRunNeeded(null, {}), true);
 });
 
+// RE-VOICE-007
 test("the hint: a voice on text it was not made for, and what to do about it", () => {
   // The voice fits: nothing to say.
   assert.equal(languageHint("vi", ADAM, [HEART]), null);

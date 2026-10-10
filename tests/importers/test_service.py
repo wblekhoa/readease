@@ -79,6 +79,7 @@ class LibraryServiceTests(unittest.TestCase):
         self.repository.close()
         self.temp_dir.cleanup()
 
+    # RE-LIB-002
     def test_import_copies_source_into_managed_library(self):
         source = make_epub(self.sources)
 
@@ -154,6 +155,7 @@ class LibraryServiceTests(unittest.TestCase):
 
         self.assertEqual(presentation.chapters, ())
 
+    # RE-LIB-004
     def test_duplicate_import_focuses_existing_managed_book(self):
         source = make_epub(self.sources)
 
@@ -177,6 +179,7 @@ class LibraryServiceTests(unittest.TestCase):
         self.assertEqual(self.repository.count_books(), 0)
         self.assertEqual(list(self.paths.books.iterdir()), [])
 
+    # RE-LIB-001
     def test_unsupported_extension_is_rejected_without_copying(self):
         source = self.sources / "notes.txt"
         source.write_text("Nội dung", encoding="utf-8")
@@ -186,6 +189,7 @@ class LibraryServiceTests(unittest.TestCase):
 
         self.assertEqual(list(self.paths.books.iterdir()), [])
 
+    # RE-LIB-003
     def test_oversized_source_is_rejected_before_managed_copy(self):
         source = make_epub(self.sources)
 

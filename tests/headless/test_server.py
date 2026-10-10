@@ -108,6 +108,7 @@ def run_server(requests: list[dict], engine, repository=None, service=None,
 
 
 class ProtocolTests(unittest.TestCase):
+    # RE-PLAY-008
     def test_markdown_bold_is_removed_only_from_speech_and_its_estimate(self):
         raw = "**Câu chuyện.** Vy quay lại."
         engine = FakeEngine(chunks_per_sentence=1)
@@ -294,6 +295,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(pcm), SAMPLE_RATE * SENTENCE_PAUSE_MS // 1000)
         self.assertEqual(float(np.abs(pcm).max()), 0.0)
 
+    # RE-PLAY-009
     def test_a_faster_rate_shortens_the_rest_exactly(self) -> None:
         replies = run_server(
             [{
@@ -399,6 +401,7 @@ class ProtocolTests(unittest.TestCase):
             self.assertAlmostEqual(float(paragraph.max()), 0.25, places=3)
             self.assertAlmostEqual(float(heading.max()), 0.25 * HEADING_GAIN, places=2)
 
+    # RE-PLAY-006
     def test_a_chime_opens_each_later_chapter_unless_turned_off(self) -> None:
         """Owner, 16/09: "nhạc chờ ngắn giữa các chương". The chime the
         reader keeps sounds between chapters, in place of the flat rest, as
@@ -916,6 +919,7 @@ class ProtocolTests(unittest.TestCase):
             self.assertIsNone(repository.load_progress(book.id))
             self.assertTrue(replies[1]["ok"])
 
+    # RE-PLAY-001
     def test_read_book_resumes_from_saved_progress(self) -> None:
         from vieneu_reader.storage.repository import LibraryRepository, Progress
         from tempfile import TemporaryDirectory
@@ -997,6 +1001,7 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(opened["progress"]["segment_id"], first.id)
             self.assertEqual(opened["progress"]["rate"], 1.25)
 
+    # RE-LIB-007
     def test_import_and_remove_walk_through_the_real_service(self) -> None:
         """The pipe must import with the same locks, dedupe and managed copy
         the Qt app uses, and removal must not touch the source file."""
@@ -1433,6 +1438,7 @@ class ProtocolTests(unittest.TestCase):
         # sees its twenty voices without a relaunch.
         self.assertEqual(replies[-1], {"event": "voices", "providers": ["local"]})
 
+    # RE-VOICE-004
     def test_a_download_can_be_abandoned_from_the_shell(self) -> None:
         """453MB with no way out is not a download, it is a hostage.
 
@@ -3098,6 +3104,7 @@ class ProtocolTests(unittest.TestCase):
             requests.close()
             reader.close()
 
+    # RE-PLAY-007
     def test_stop_interrupts_a_reading_mid_stream(self) -> None:
         engine = FakeEngine(chunks_per_sentence=200, chunk_delay=0.01)
         request_read, request_write = os.pipe()
@@ -3175,6 +3182,7 @@ class ListeningProgressReceipts(unittest.TestCase):
         flat = [segment for chapter in book.chapters for segment in chapter.segments]
         return repository, flat
 
+    # RE-PLAY-002
     def test_the_shell_reporting_the_ear_writes_progress_for_that_reading(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path

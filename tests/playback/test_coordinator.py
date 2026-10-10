@@ -445,6 +445,7 @@ class PlaybackCoordinatorTests(unittest.TestCase):
         self.assertEqual(self.coordinator.snapshot.state, PlaybackState.PLAYING)
         self.assertEqual(self.output.events[-1], ("end",))
 
+    # RE-PLAY-003
     def test_selection_playback_never_changes_book_progress(self):
         self.coordinator.play(self.book, self.first.id, "Adam")
         self.scheduler.run_next()

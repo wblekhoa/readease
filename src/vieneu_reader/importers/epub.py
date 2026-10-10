@@ -85,6 +85,7 @@ def _validate_archive(infos: list[ZipInfo]) -> None:
         if safe_name in seen:
             raise CorruptBookError("EPUB chứa mục tệp trùng lặp.")
         seen.add(safe_name)
+        # RE-LIB-006
         if info.flag_bits & 0x1:
             raise CorruptBookError("EPUB được mã hóa nên không thể đọc.")
         if info.file_size < 0 or info.file_size > MAX_MEMBER_BYTES:

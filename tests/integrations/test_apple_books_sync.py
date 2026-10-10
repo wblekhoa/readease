@@ -49,6 +49,7 @@ class PackTests(unittest.TestCase):
                 self.assertNotIn(".DS_Store", names)
                 self.assertFalse(any(name.startswith("__MACOSX") for name in names))
 
+    # RE-LIB-009
     def test_font_obfuscation_is_not_drm_but_encrypted_content_is(self) -> None:
         fonts = b"""<encryption xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
           <EncryptedData xmlns="http://www.w3.org/2001/04/xmlenc#">

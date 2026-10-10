@@ -286,6 +286,7 @@ class TransientReadingsLeaveNothingBehind(_CacheCase):
             "params": {"text": text, "voice_id": "V", "rate": 1.0},
         }
 
+    # RE-PLAY-004
     def test_pasted_text_is_never_written_to_the_audio_cache(self) -> None:
         with TemporaryDirectory() as directory:
             audio = Path(directory) / "Audio"

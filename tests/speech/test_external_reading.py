@@ -212,6 +212,7 @@ class PaidReadingTests(unittest.TestCase):
             self.assertIn("no_key", replies[-1]["error"])
             self.assertEqual(FakeProvider.asked, [])
 
+    # RE-VOICE-011
     def test_the_budget_stops_it_before_the_characters_leave(self) -> None:
         self._patch_provider()
         with TemporaryDirectory() as directory:
@@ -394,6 +395,7 @@ class EstimateMethodTests(unittest.TestCase):
         self.assertEqual(result["billing"], "estimated")
         self.assertEqual(result["price_dated"], "2026-09-10")
 
+    # RE-VOICE-012
     def test_a_model_this_build_cannot_price_locks_the_button_rather_than_reading_free(self) -> None:
         # "paid: False" means the local model, and the button then carries no
         # figure and is enabled. Sending that for a PAID voice would put a
@@ -754,6 +756,7 @@ class VerifyKeyTests(unittest.TestCase):
         self.assertEqual(reply["result"], {"saved": True, "ok": True})
         self.assertEqual(stored["openai_api_key"], KEY)
 
+    # RE-VOICE-009
     def test_a_key_the_service_refuses_is_NOT_saved(self) -> None:
         reply, stored = self._ask(
             {}, {"provider": "openai", "value": "wrong"},
@@ -786,6 +789,7 @@ class VerifyKeyTests(unittest.TestCase):
         self.assertEqual(reply["result"]["code"], "no_key")
         self.assertFalse(stored.get("openai_api_key"))
 
+    # RE-VOICE-010
     def test_the_key_never_comes_back_out(self) -> None:
         reply, _ = self._ask({}, {"provider": "openai", "value": KEY})
         self.assertNotIn(KEY, json.dumps(reply))

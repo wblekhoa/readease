@@ -24,6 +24,7 @@ class ParagraphNormalizationTests(unittest.TestCase):
     def test_normalization_drops_empty_content(self):
         self.assertEqual(normalize_paragraph(" \n\t "), "")
 
+    # RE-PLAY-005
     def test_pasted_text_accepts_the_limit_and_rejects_larger_input(self):
         at_limit = "a" * MAX_PASTED_TEXT_CHARS
 
