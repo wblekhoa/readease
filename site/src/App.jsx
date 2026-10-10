@@ -56,7 +56,7 @@ function Header({ c, prefix }) {
 const DEPTHS = [
   { name: 'far', radius: 322, width: 7, strands: [[5, .4, 22], [6, 2.1, 18], [4, 4.0, 24]] },
   { name: 'mid', radius: 302, width: 3, strands: [[6, 0, 15], [7, 2.3, 12], [5, 4.6, 13]] },
-  { name: 'near', radius: 286, width: 1.6, strands: [[6, 3.4, 16], [7, 5.5, 17], [5, 1.1, 18]] },
+  { name: 'near', radius: 286, width: 1.3, strands: [[6, 3.4, 16], [7, 5.5, 17], [5, 1.1, 18]] },
 ];
 function strand(waves, phase, amplitude, radius = 300) {
   const points = Array.from({ length: 181 }, (_, i) => {
@@ -88,11 +88,21 @@ const RING_STOPS = {
   mid: ['var(--ring-hi)', 'var(--brand)', 'var(--ring-deep)'],
   near: ['var(--ring-near)', 'var(--ring-hi)', 'var(--brand)'],
 };
-function RingGradient({ id, stops }) {
-  return <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stopColor={stops[0]} /><stop offset=".55" stopColor={stops[1]} /><stop offset="1" stopColor={stops[2]} />
+/* Ribbons, not wires (owner, 10/10: "chưa hài hoà"): light runs along each
+   strand and dies away, the way the icon's ribbons glow in places and sink
+   into the dark in others. The bright reaches sit at a different angle in
+   each depth, so as the layers turn, light travels round the ring. */
+function RingGradient({ id, stops, angle = 45, ribbon = false }) {
+  const a = (angle * Math.PI) / 180;
+  const [x, y] = [Math.cos(a) * 340, Math.sin(a) * 340];
+  const shine = ribbon ? [.12, 1, .18, .95, .1] : [1, 1, 1, 1, 1];
+  const at = [0, .24, .48, .74, 1];
+  const color = [stops[0], stops[0], stops[1], stops[2], stops[2]];
+  return <defs><linearGradient id={id} gradientUnits="userSpaceOnUse" x1={-x} y1={-y} x2={x} y2={y}>
+    {at.map((offset, i) => <stop key={i} offset={offset} style={{ stopColor: color[i], stopOpacity: shine[i] }} />)}
   </linearGradient></defs>;
 }
+const RING_ANGLES = { glow: 45, far: 110, mid: 20, near: -40 };
 /* One SVG per depth so each turns on the compositor at its own speed - the
    parallax that sells the depth. The wide glow and the far strands never
    change shape, so they are painted once; only the mid and near strands
@@ -117,19 +127,19 @@ function HeroRing() {
     watch.observe(box.current);
     return () => watch.disconnect();
   }, [moving]);
-  return <div className="hero-backdrop" aria-hidden="true" ref={box}>
+  return <div className="hero-backdrop" aria-hidden="true" ref={box}><div className="ring-stage">
     <svg className="hero-ring ring-glow" viewBox="-500 -500 1000 1000" focusable="false">
-      <RingGradient id="ring-glow" stops={RING_STOPS.glow} />
+      <RingGradient id="ring-glow" stops={RING_STOPS.glow} angle={RING_ANGLES.glow} />
       <g fill="none" stroke="url(#ring-glow)" strokeWidth="34">{GLOW_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
     </svg>
     {LAYERS.map(layer => <svg key={layer.name} className={`hero-ring ring-${layer.name}`} viewBox="-500 -500 1000 1000" focusable="false">
-      <RingGradient id={`ring-${layer.name}-light`} stops={RING_STOPS[layer.name]} />
+      <RingGradient id={`ring-${layer.name}-light`} stops={RING_STOPS[layer.name]} angle={RING_ANGLES[layer.name]} ribbon />
       <g fill="none" stroke={`url(#ring-${layer.name}-light)`} strokeWidth={layer.width} strokeLinejoin="round">{layer.paths.map((d, i) => <path key={i} d={d}>
         {moving && layer.beats && <animate attributeName="d" dur={layer.beats[i].dur} values={layer.beats[i].values} repeatCount="indefinite"
           calcMode="spline" keyTimes="0;.35;.7;1" keySplines=".45 0 .55 1;.45 0 .55 1;.45 0 .55 1" />}
       </path>)}</g>
     </svg>)}
-  </div>;
+  </div></div>;
 }
 function Hero({ c, prefix, release }) {
   // The second line is read aloud the way the app reads: a highlight moves word by word.

@@ -80,16 +80,22 @@ main { overflow-x: clip; }
    headline, faint, and fading out at its rim. As wide as the window; `main`
    clips it across (100vw counts the scrollbar, and the blur spills), so it
    never widens the page. */
-.hero-backdrop { position: absolute; z-index: -1; inset: 0 calc(50% - 50vw); pointer-events: none; }
+.hero-backdrop { position: absolute; z-index: -1; inset: -140px calc(50% - 50vw) -40px; pointer-events: none;
+  /* It fades out before the nav and before the laptop, so the ring never
+     cuts across the menu or pools in a heavy band at the foot. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 26%, #000 70%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 26%, #000 70%, transparent 100%); }
+/* The ring seen a little from the front, as an ellipse: it fits the hero's
+   height, and turning reads as a ring in space rather than a disc spinning. */
+.ring-stage { position: absolute; inset: 0; scale: 1 .8; }
 .hero-ring { position: absolute; left: 50%; top: 50%; width: min(1640px, 150vw); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; overflow: visible; opacity: var(--ring-opacity);
   -webkit-mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); }
 .hero-ring.ring-glow { filter: blur(64px); }
-.ring-glow g { opacity: .55; }
+.ring-glow g { opacity: .42; }
 /* Depth by focus: far strands wide and soft, near strands fine and sharp
    with a little light of their own. */
-.ring-far g { filter: blur(18px); opacity: .5; }
-.ring-mid g { filter: blur(4.5px); opacity: .42; }
-.ring-near g { filter: drop-shadow(0 0 6px var(--ring-hi)); opacity: .48; }
+.ring-far g { filter: blur(18px); opacity: .6; }
+.ring-mid g { filter: blur(3.5px); opacity: .55; }
+.ring-near g { filter: blur(.5px) drop-shadow(0 0 4px var(--ring-hi)); opacity: .62; }
 .hero h1 { margin-top: 28px; font-size: clamp(48px, 7.2vw, 96px); font-weight: 500; line-height: 1.04; letter-spacing: -.045em; }
 .hero-voice { color: var(--brand); }
 /* The reading highlight from the app's reader, passing over each word once on load.
