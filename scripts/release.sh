@@ -47,6 +47,12 @@ zip_out="$out/ReadEase-$version-arm64.zip"
 dmg_out="$out/ReadEase-$version-arm64.dmg"
 tar_out="$out/ReadEase-$version-arm64.app.tar.gz"
 cp "$zip_built" "$zip_out"; cp "$dmg_built" "$dmg_out"; cp "$tar_built" "$tar_out"
+# The same two files under names with no version, for the landing page's
+# button: /releases/latest/download/ReadEase-arm64.dmg is always the newest
+# build, with no API call that a rate limit can refuse (10/10/2026).
+zip_plain="$out/ReadEase-arm64.zip"
+dmg_plain="$out/ReadEase-arm64.dmg"
+cp "$zip_built" "$zip_plain"; cp "$dmg_built" "$dmg_plain"
 
 build="$(git rev-parse --short HEAD)"
 echo "==> tagging $tag at $build"
@@ -54,7 +60,7 @@ git tag -a "$tag" -m "ReadEase $version"
 git push -q origin "$tag"
 
 echo "==> release $tag"
-gh release create "$tag" "$zip_out" "$dmg_out" "$tar_out" "$manifest" \
+gh release create "$tag" "$zip_out" "$dmg_out" "$tar_out" "$manifest" "$zip_plain" "$dmg_plain" \
   --repo "$repo" --title "ReadEase — Thư Âm $version" --notes-file "$notes"
 
 # Every link the README and the updater will follow, answered with the
@@ -77,6 +83,7 @@ check() {
   fi
 }
 check "$zip_out"; check "$dmg_out"; check "$tar_out"; check "$manifest"
+check "$zip_plain"; check "$dmg_plain"
 
 echo
 echo "PUBLISHED https://github.com/$repo/releases/tag/$tag"

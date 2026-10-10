@@ -5,7 +5,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { App } from '../src/App.jsx';
 import { content } from '../src/content.js';
-import { resolveRelease, fetchRelease, fallback } from '../src/release.js';
+import { resolveRelease, fetchRelease, fallback, directDmg, directZip } from '../src/release.js';
 import { createStory, keyboardIndex, progressIndex } from '../src/story.js';
 
 const asset = (extension, overrides = {}) => ({ name: `ReadEase-1.2.3-arm64.${extension}`, size: 132000000,
@@ -128,7 +128,11 @@ for (const locale of ['vi', 'en']) test(`${locale}: SSR keeps content, links, il
   assert.match(html, /role="tablist"[^>]+hidden=""/);
   assert.doesNotMatch(html, /<figure[^>]*hidden|eyebrow|story-link|scroll-hint/);
   assert.ok(html.includes(c.description));
-  assert.ok(html.includes(fallback));
+  // The button downloads the newest build itself, whether or not the
+  // GitHub API answers (it answered 403 to the live page, 10/10).
+  assert.ok(html.includes(directDmg));
+  assert.ok(html.includes(directZip));
+  assert.doesNotMatch(html, /href="https:\/\/github\.com\/wblekhoa\/readease\/releases\/latest"/);
   assert.ok(html.includes(c.installFile));
   assert.match(html, /VieNeu/); assert.match(html, /Kokoro/); assert.match(html, /OpenAI/); assert.match(html, /OCR/);
   // Installing is one drag now (owner, 07/10): no install link in the hero;

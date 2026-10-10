@@ -1,5 +1,12 @@
 export const repository = 'https://github.com/wblekhoa/readease';
 export const fallback = `${repository}/releases/latest`;
+// The newest build's file itself, with no API call to fail: GitHub sends
+// /releases/latest/download/<name> to the asset of that name in the latest
+// release, and scripts/release.sh uploads every build under these plain
+// names too. The API (60 calls an hour per address, 403 after) now only
+// writes the version and size beside the button.
+export const directDmg = `${repository}/releases/latest/download/ReadEase-arm64.dmg`;
+export const directZip = `${repository}/releases/latest/download/ReadEase-arm64.zip`;
 export function resolveRelease(release) {
   if (!release || release.draft || release.prerelease || typeof release.tag_name !== 'string') return null;
   const version = release.tag_name.replace(/^v/, '').trim();
