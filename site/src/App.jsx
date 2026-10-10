@@ -28,7 +28,7 @@ const loadMotion = () => (motionEngine ??= Promise.all([import('gsap'), import('
 
 function DownloadButton({ c, release, describedBy, className = 'button' }) {
   return <a className={className} href={release?.dmg.browser_download_url || directDmg} data-download={c.cta} aria-describedby={describedBy}>
-    <Glyph name="down" className="button-glyph" /><span data-label="">{c.cta}</span>
+    <Glyph name="apple" className="button-glyph" /><span data-label="">{c.cta}</span>
   </a>;
 }
 /* Light or dark by hand (owner, 10/10: "thêm nút đổi theme trên header").
