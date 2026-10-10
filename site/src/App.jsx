@@ -48,8 +48,6 @@ function Hero({ c, prefix, release }) {
   // The second line is read aloud the way the app reads: a highlight moves word by word.
   return <section className="hero" aria-labelledby="hero-title">
     <div className="hero-aura" aria-hidden="true" />
-    <p className="hero-chip"><img src={`${prefix}icon.png`} alt="" width="22" height="22" /><span>ReadEase</span><span className="chip-sub">{c.chip}</span>
-      <span className="chip-wave" aria-hidden="true"><i /><i /><i /><i /></span></p>
     <h1 id="hero-title">{c.hero[0]}<br /><span className="hero-voice">{c.hero[1].split(' ').map((word, i) =>
       <React.Fragment key={i}>{i > 0 && ' '}<span className="hero-word" style={{ '--i': i }}>{word}</span></React.Fragment>)}</span></h1>
     <p className="description">{c.description}</p>
