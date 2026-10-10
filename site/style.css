@@ -7,6 +7,7 @@
   --brand: #2b52d4; --brand-hover: #2446b4; --brand-wash: #e9eefc; --on-brand: #fff; --focus: #6f8ae2;
   --cta: #141a24; --on-cta: #fff; --glass: rgb(255 255 255 / .72); --shadow: 0 24px 60px -28px rgb(20 26 36 / .35);
   --alu: #d8dbe0; --alu-dark: #b9bdc4; --bezel: #0b0c0f; --dot: #cfd5df;
+  --ring-hi: #7fb4ff; --ring-deep: #3b2fd0; --ring-opacity: .55; --ring-blend: multiply;
   --body: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
   --display: "Plus Jakarta Sans", var(--body);
   color-scheme: light;
@@ -17,6 +18,7 @@
     --brand: #6a86f5; --brand-hover: #8099f7; --brand-wash: #1d2540; --cta: #f2f3f5; --on-cta: #111317;
     --glass: rgb(26 29 35 / .72); --shadow: 0 24px 60px -28px rgb(0 0 0 / .8);
     --alu: #4a4e56; --alu-dark: #34373d; --dot: #2a2f38; color-scheme: dark;
+    --ring-hi: #8cc8ff; --ring-deep: #3a3df0; --ring-opacity: .9; --ring-blend: screen;
   }
 }
 :root[data-theme="dark"] {
@@ -24,6 +26,7 @@
   --brand: #6a86f5; --brand-hover: #8099f7; --brand-wash: #1d2540; --cta: #f2f3f5; --on-cta: #111317;
   --glass: rgb(26 29 35 / .72); --shadow: 0 24px 60px -28px rgb(0 0 0 / .8);
   --alu: #4a4e56; --alu-dark: #34373d; --dot: #2a2f38; color-scheme: dark;
+  --ring-hi: #8cc8ff; --ring-deep: #3a3df0; --ring-opacity: .9; --ring-blend: screen;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -67,9 +70,18 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; }
 .hero { position: relative; isolation: isolate; padding-block: clamp(72px, 11vh, 128px) 56px; display: grid; justify-items: center; text-align: center; }
 /* Atmosphere: the DMG's dotted paper, lit from behind the headline in brand blue. */
 .hero-aura { position: absolute; z-index: -1; inset: -96px 0 -40px; pointer-events: none;
-  background: radial-gradient(ellipse 34% 38% at 50% 40%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 72%),
-    radial-gradient(circle, var(--dot) 1.1px, transparent 1.6px) center / 24px 24px;
+  background: radial-gradient(circle, var(--dot) 1.1px, transparent 1.6px) center / 24px 24px;
   -webkit-mask-image: radial-gradient(ellipse 58% 62% at 50% 42%, #000 25%, transparent 78%); mask-image: radial-gradient(ellipse 58% 62% at 50% 42%, #000 25%, transparent 78%); }
+/* The logo's ring of light, blurred behind the headline: a wide soft glow and
+   a few fine strands over it, so it reads as the mark, not a smudge. */
+/* Clipped across only, at the hero's own edges: the blur spills sideways and
+   would otherwise widen the page (by 76 px on a phone; and 100vw counts the
+   scrollbar, so a window-wide box overflowed by 8 px on a desktop). The ring
+   itself sits well inside; only the faintest blur meets the cut. */
+.hero-backdrop { position: absolute; z-index: -1; inset: 0; overflow-x: clip; pointer-events: none; }
+.hero-ring { position: absolute; left: 50%; top: 47%; width: min(860px, 100vw); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; overflow: visible; opacity: var(--ring-opacity); }
+.ring-glow { filter: blur(38px); opacity: .55; }
+.ring-lines { filter: blur(4px); opacity: .42; mix-blend-mode: var(--ring-blend); }
 .hero h1 { margin-top: 28px; font-size: clamp(48px, 7.2vw, 96px); font-weight: 500; line-height: 1.04; letter-spacing: -.045em; }
 .hero-voice { color: var(--brand); }
 /* The reading highlight from the app's reader, passing over each word once on load.
@@ -306,6 +318,7 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
    visible without it. Hover lifts use the separate `translate` property so they
    compose with the reveal's `transform`. Reveals are scroll-driven CSS
    (animation-timeline: view()): browsers without it simply show the page. */
+@keyframes ring-in { from { opacity: 0; rotate: -18deg; scale: .9; } }
 @media (prefers-reduced-motion: no-preference) {
   .tile-grid li, .voice-card, .api-card, .way-card, .api-row, .voice-lang {
     transition: translate 360ms cubic-bezier(.2, .7, .2, 1), background-color 240ms ease-out, box-shadow 360ms ease-out; }
@@ -323,7 +336,9 @@ details a { color: var(--ink); text-decoration: underline; text-underline-offset
   details[open] > :not(summary) { animation: rise 420ms cubic-bezier(.2, .7, .2, 1) both; }
 
   /* Page load: the hero arrives in one short cascade. */
-  .hero > :not(.hero-aura) { animation: rise 760ms cubic-bezier(.2, .7, .2, 1) both; }
+  .hero > :not(.hero-aura, .hero-backdrop) { animation: rise 760ms cubic-bezier(.2, .7, .2, 1) both; }
+  /* The ring turns into place once, as the light comes up - then stays. */
+  .hero-ring { animation: ring-in 1800ms cubic-bezier(.2, .7, .2, 1) both; }
   .hero > :nth-child(3) { animation-delay: 80ms; }
   .hero > :nth-child(4) { animation-delay: 160ms; }
   .hero > :nth-child(5) { animation-delay: 240ms; }

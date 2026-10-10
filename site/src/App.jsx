@@ -44,10 +44,35 @@ function Header({ c, prefix }) {
     </div>
   </div></header>;
 }
+/* The brand's mark behind the headline: the icon's ring of light, drawn as
+   six closed strands that ripple at different counts and phases, the way
+   the icon's ribbons cross. Pure geometry, so it is SVG, not an image. */
+const RING = [[6, 0, 15], [5, 1.1, 18], [7, 2.3, 12], [6, 3.4, 16], [5, 4.6, 13], [7, 5.5, 17]];
+function strand(waves, phase, amplitude, radius = 300) {
+  const points = Array.from({ length: 181 }, (_, i) => {
+    const t = (i / 180) * Math.PI * 2;
+    const r = radius + amplitude * Math.sin(waves * t + phase) + amplitude * .45 * Math.sin((waves - 2) * t - phase * 1.7);
+    return `${(r * Math.cos(t)).toFixed(1)} ${(r * Math.sin(t)).toFixed(1)}`;
+  });
+  return `M${points.join('L')}Z`;
+}
+const RING_PATHS = RING.map(([waves, phase, amplitude]) => strand(waves, phase, amplitude));
+function HeroRing() {
+  return <svg className="hero-ring" viewBox="-500 -500 1000 1000" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="ring-light" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="var(--ring-hi)" /><stop offset=".55" stopColor="var(--brand)" /><stop offset="1" stopColor="var(--ring-deep)" />
+      </linearGradient>
+    </defs>
+    <g className="ring-glow" fill="none" stroke="url(#ring-light)" strokeWidth="34">{RING_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
+    <g className="ring-lines" fill="none" stroke="url(#ring-light)" strokeWidth="2.5">{RING_PATHS.map((d, i) => <path key={i} d={d} />)}</g>
+  </svg>;
+}
 function Hero({ c, prefix, release }) {
   // The second line is read aloud the way the app reads: a highlight moves word by word.
   return <section className="hero" aria-labelledby="hero-title">
     <div className="hero-aura" aria-hidden="true" />
+    <div className="hero-backdrop" aria-hidden="true"><HeroRing /></div>
     <h1 id="hero-title">{c.hero[0]}<br /><span className="hero-voice">{c.hero[1].split(' ').map((word, i) =>
       <React.Fragment key={i}>{i > 0 && ' '}<span className="hero-word" style={{ '--i': i }}>{word}</span></React.Fragment>)}</span></h1>
     <p className="description">{c.description}</p>
