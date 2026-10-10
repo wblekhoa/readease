@@ -92,16 +92,13 @@ main { overflow-x: clip; }
    headline, faint, and fading out at its rim. As wide as the window; `main`
    clips it across (100vw counts the scrollbar, and the blur spills), so it
    never widens the page. */
-.hero-backdrop { position: absolute; z-index: -1; inset: -140px calc(50% - 50vw) -40px; pointer-events: none;
-  /* It fades out before the nav and before the laptop, so the ring never
-     cuts across the menu or pools in a heavy band at the foot. */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 26%, #000 70%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 26%, #000 70%, transparent 100%); }
-/* The ring seen a little from the front, as an ellipse: it fits the hero's
-   height, and turning reads as a ring in space rather than a disc spinning. */
-.ring-stage { position: absolute; inset: 0; scale: 1 .8; }
-/* On a phone the hero is taller than wide: the ring stays a circle there
-   (owner, 10/10: "ở mobile vẫn phải tròn"). */
-@media (max-width: 640px) { .ring-stage { scale: none; } }
+/* Round everywhere, and free to reach up behind the nav and down behind the
+   laptop (owner, 10/10: "vòng phải tròn ... lấn xuống phần trên và phần
+   mockup phía dưới"): the box runs well past the hero both ways and only
+   its outermost edge fades, so nothing ends in a hard line. */
+.hero-backdrop { position: absolute; z-index: -1; inset: -220px calc(50% - 50vw) -320px; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%); }
+.ring-stage { position: absolute; inset: 0; }
 .hero-ring { position: absolute; left: 50%; top: 50%; width: min(1640px, 150vw); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; overflow: visible; opacity: var(--ring-opacity);
   -webkit-mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); }
 .hero-ring.ring-glow { filter: blur(64px); }
