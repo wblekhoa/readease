@@ -101,10 +101,17 @@ main { overflow-x: clip; }
 .ring-stage { position: absolute; inset: 0; }
 /* On a phone the ring is one fixed, large size whatever the phone (owner,
    10/10: "a specific size ... bigger ... only the light parts above and
-   below"): about 456 px across its strands, wider than any phone, so the arc rises above the
-   headline, the other passes under the button, and the sides run off
-   screen. `main` clips them. */
-@media (max-width: 640px) { .hero-backdrop .hero-ring { width: 760px; top: calc(50% - 24px); } }
+   below"), and its innermost strand - at its widest swell - clears the
+   headline, the button and the line under it by about 40 px (owner, 10/10:
+   "vòng trong không được sát với text"). The text's far corners sit ~216 px
+   from its centre; 980 px keeps the inner edge ~40 px clear of it. The arcs pass
+   behind the nav above and the laptop below; the sides run off screen and
+   `main` clips them. */
+@media (max-width: 640px) {
+  .hero-backdrop .hero-ring { width: 980px; top: calc(50% - 48px); }
+  /* Room under the button for the lower arc before the laptop begins. */
+  .hero { padding-bottom: 146px; }
+}
 .hero-ring { position: absolute; left: 50%; top: 50%; width: min(1640px, 150vw); aspect-ratio: 1; translate: -50% -50%; pointer-events: none; overflow: visible; opacity: var(--ring-opacity);
   -webkit-mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); mask-image: radial-gradient(closest-side, #000 52%, transparent 96%); }
 .hero-ring.ring-glow { filter: blur(64px); }
