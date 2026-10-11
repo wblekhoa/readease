@@ -4,11 +4,39 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-10
+updated: 2026-10-11
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-10-11 · Design tokens re-synced from WAVE (snapshot of 2026-08-31 replaced)
+- **Context**: `app/src/styles/ds-tokens.css` is a verbatim, locked copy of the design system's token bundle. The design
+  system moved to WAVE; the copy was still the 2026-08-31 bundle. The re-sync waited until the owner settled which
+  colour ramps (success / warning / purple) are canonical: the ramps in use were kept.
+- **Decision**: replace the whole snapshot with WAVE's bundle (`npm run tokens:build` output, `wave@e69471c`), header
+  records the source, hash and date; no partial copy, no local edit. Every DS variable the app references still exists
+  (no renames needed). Resolved changes, of the 42 DS variables the app uses (12 light, 6 dark):
+
+  | Variable | Used for | Light | Dark |
+  |---|---|---|---|
+  | `--border-color-info-secondary` | focus ring | `#6f8ae2` → `#839ff9` | `#4159a6` → `#3456ae` |
+  | `--fill-info-haze`, `--border-color-info-haze` | blue highlight, info edge | `#002dca58` → `#003dee4e` | `#5881fd6d` → `#447afd73` |
+  | `--fill-info-wash` | info wash | = | `#4c6efa29` → `#3268f82d` |
+  | `--fill-warning-bold` | favourite star | `#b07e0f` → `#5f3a00` | = |
+  | `--text-color-warning-stress` | warning text | `#996d0d` → `#4c2f00` | = |
+  | `--fill-warning-haze` | yellow highlight (default) | `#dd99007b` → `#b97d0093` | = |
+  | `--yellow-alpha-ya50`, `--yellow-y100` | mark backgrounds | `#dd9a00c5` → `#9d6c00`; `#e0a011` → `#855300` | = |
+  | `--fill-success-primary`, `--fill-success-haze` | OK state, green highlight | `#329546` → `#006e25`; `#007a1659` → `#00a1278e` | = |
+  | `--fill-purple-haze` | purple highlight | `#2e00c652` → `#2f00cd4f` | = |
+  | `--fill-pink-haze` | pink highlight | `#c9052d4d` → `#d800515e` | `#fe5a7765` → `#fe5a7666` |
+  | `--border-color-neutral-soft` | input and secondary borders | = | `#444546` → `#363637` |
+
+  Info values follow the design system's new blue-violet brand ramp; warning/success/purple are the darker ramps the
+  design system now uses (more contrast on white). The app's own brand (`--blue-b100`) is unchanged.
+- **Evidence**: `app/src/styles/ds-tokens.css` header; Python `unittest` 915 OK (7 skipped) before and after; app
+  `node --test tests/*.test.ts` 218/218 before and after; `pnpm build` passes; CI on the temporary branch.
+- **Reversal**: restore the previous snapshot from git history; a new entry here.
 
 ## 2026-10-09 · Bundle id moves to `com.wblekhoa.readease`
 - **Context**: the previous bundle id referenced an organisation the app has nothing to do with.
