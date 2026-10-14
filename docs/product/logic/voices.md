@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Voices and models (logic)"
 status: active
-updated: 2026-10-10
+updated: 2026-10-15
 reqPrefix: RE-VOICE
 relations:
   specifiedBy: [readease-ux-voices]
@@ -28,6 +28,7 @@ relations:
 | RE-VOICE-006 | On a Mac with about 8 GB of memory or less, Voices & models suggests the Standard build. | live | `app/src/ui/ModelPanel.tsx` (`LOW_MEMORY_BYTES`) |
 | RE-VOICE-007 | A voice is never refused for the language of the text; the app only suggests a fitting voice or the download. | live | `app/tests/readingSources.test.ts` ("the hint: a voice on text it was not made for…") |
 | RE-VOICE-008 | A paid voice without a key is refused by name (`no_key`), never silently replaced by a local voice. | live | `tests/speech/test_external_route.py` (`test_no_key_is_a_named_refusal_not_a_silent_fallback`) |
+| RE-VOICE-009 | A reader who never chose a voice starts with Đức Trí, and Đức Trí is among the five voices the switcher starts with; a voice already chosen, and each book's own voice, are kept. | live | `tests/playback/test_preferences.py` (`test_the_default_voice_is_one_the_switcher_starts_with`, `test_nothing_stored_yet_reads_as_the_shipped_default`) |
 | RE-VOICE-009 | A key the provider refuses is not saved. | live | `tests/speech/test_external_reading.py` (`test_a_key_the_service_refuses_is_NOT_saved`) |
 | RE-VOICE-010 | A saved key never comes back out through the engine's replies. | live | `tests/speech/test_external_reading.py` (`test_the_key_never_comes_back_out`) |
 | RE-VOICE-011 | When the session budget would be exceeded, the reading stops before any text is sent to the provider. | live | `tests/speech/test_external_reading.py` (`test_the_budget_stops_it_before_the_characters_leave`) |
@@ -56,3 +57,4 @@ relations:
 
 ## Change log
 - 2026-10-10: created; REQ-IDs added as comments next to the evidence (tests, and `LOW_MEMORY_BYTES`) in the same commit.
+- 2026-10-15: RE-VOICE-009 - default voice Adam → Đức Trí on measurement (decisions.md, same date).

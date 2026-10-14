@@ -10,6 +10,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   build and the Mac's macOS version and chip already filled in, so a
   report no longer starts with looking them up. Nothing from your
   documents goes into it.
+- A new install reads with Đức Trí instead of Adam, and Đức Trí replaces
+  Thái Sơn among the five voices the switcher starts with. Listened back
+  by a speech recogniser, Đức Trí was heard exactly on 96 % of short
+  headings (Adam 64 %, Thái Sơn 31 %) and made the fewest word errors on
+  longer passages. A voice you already chose, and each book's voice, stay.
 - The Vietnamese voice reads "ThS." as "thạc sĩ", "TP. Đà Nẵng" as
   "thành phố Đà Nẵng", "tr. 45" as "trang 45" and "Q1/2025" as "quý 1
   năm 2025" - before, the first two left a full stop in mid-sentence,

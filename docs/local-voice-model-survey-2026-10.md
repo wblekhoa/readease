@@ -152,6 +152,20 @@ Trọng số cũ `2da0efab`, int8 (mặc định app), SDK 3.6.3, chỉ đổi `
 nhưng **nghe mù trước** 0,8 vs 0,3 trên các câu này để chắc không bị đều giọng. Riêng Adam cần thêm biện pháp (ví dụ
 sinh 2 bản, chọn bản không chạm trần / không thừa cụm âm) hoặc cân nhắc giọng mặc định khác.
 
+## 7. Chọn giọng mặc định (15/10)
+
+Cùng cách đo (Whisper large-v3-turbo, VieNeu 3.6.3 int8, câu ngắn ở nhiệt độ 0,3), sáu đoạn của bài A/B, mỗi giọng 3 lượt.
+
+| Giọng | Câu ngắn nghe đúng | Lỗi từ trung bình (6 đoạn) | Chỉ đoạn dài (3–6) |
+|---|---|---|---|
+| Đức Trí (Nam · Nam · đọc truyện) | 96 % | 5,7 % | 8,6 % |
+| Mai Anh (Nữ · Bắc · tin tức) | 98 % | 8,9 % | 9,2 % |
+| Trúc Ly (Nữ · Bắc · tự nhiên) | 96 % | 12,3 % | 10,2 % |
+| Ngọc Linh (Nữ · Bắc · kể chuyện) | 71 % | 23,6 % | 10,5 % |
+| Adam (Nam · Nam · tự nhiên, mặc định cũ) | 64 % | 24,5 % | 11,8 % |
+
+Đoạn dài chênh ít; khác biệt chủ yếu nằm ở câu ngắn ("Vâng." của Adam ra "Văng"/"Văn" cả 3 lượt). Whisper nghiêng về giọng Bắc mà Đức Trí là giọng Nam, nên xếp hạng còn bất lợi cho Đức Trí mà vẫn đứng đầu. Quyết định: mặc định đổi sang Đức Trí (RE-VOICE-009, `docs/product/decisions.md` 15/10).
+
 ## Nguồn `[fetched 2026-10-13]`
 
 - VieNeu: https://github.com/pnnbao97/VieNeu-TTS (README, `compare/v3.6.3...v3.8.3`, releases) ·

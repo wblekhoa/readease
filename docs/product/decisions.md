@@ -4,11 +4,26 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-10-15 · Default voice: Đức Trí instead of Adam, on measurement
+- **Context**: the roadmap (P1) asked for the default voice to be chosen on evidence. Adam, the default since the
+  start, missed short headings and replies most often (e.g. "Vâng." heard as "Văng"/"Văn" in 3 of 3 takes). The owner
+  asked for the roadmap to run without stopping for questions (15/10), so this is decided here and reported.
+- **Decision**: `DEFAULT_VOICE_ID` = "Đức Trí" (male, Southern, storytelling - same gender and region as Adam). In the
+  switcher's starting five, Đức Trí takes the male storytelling slot from Thái Sơn; Adam stays as the familiar natural
+  voice. Only readers who never chose a voice are affected; saved choices and each book's voice stay.
+- **Evidence**: Whisper large-v3-turbo listening back, VieNeu 3.6.3 int8, short sentences at temperature 0.3.
+  Short headings heard exactly: Mai Anh 98 %, Đức Trí 96 %, Trúc Ly 96 %, Ngọc Linh 71 %, Adam 64 %, Thái Sơn 31 %.
+  Six passages × 3 takes, mean word error: Đức Trí 5.7 %, Mai Anh 8.9 %, Trúc Ly 12.3 %, Ngọc Linh 23.6 %, Adam 24.5 %
+  (long passages only: 8.6 / 9.2 / 10.2 / 10.5 / 11.8 % - close; the gap is mostly short sentences). Caveat: Whisper
+  favours Northern speech, and Đức Trí is Southern, so the ranking leans against him and he still leads.
+  `docs/local-voice-model-survey-2026-10.md` §7.
+- **Reversal**: set `DEFAULT_VOICE_ID` back to "Adam" and restore "Thái Sơn" in `STARTING_VOICES`.
 
 ## 2026-10-14 · Review sentences: re-takes kept by sentence until the file is saved
 - **Context**: VieNeu samples (temperature 0.8), so a sentence never comes out the same way twice - the short-utterance

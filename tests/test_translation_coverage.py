@@ -148,6 +148,9 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/prosody.py", "Thạc sĩ"),
         ("domain/prosody.py", "Thành phố"),
         ("domain/prosody.py", r"quý \1 năm \2"),
+        # The default voice's id (RE-VOICE-009): a name, the same in every
+        # language, as the voice catalogue shows it.
+        ("playback/preferences.py", "Đức Trí"),
         # The footnote-shape matchers (16/09): the openers and publisher
         # words that make a note a bibliographic reference rather than words
         # ("Sđd., tr. 45", "NXB Trẻ, 2015"). Matcher data for book text,

@@ -10,7 +10,11 @@ from vieneu_reader.settings import load_settings, update_settings
 VOICE_SETTINGS_KEY = "voice"
 RATE_SETTINGS_KEY = "rate"
 
-DEFAULT_VOICE_ID = "Adam"
+# Measured, not picked by ear alone (RE-VOICE-009, 15/10/2026): of the
+# voices tried, Đức Trí was heard most exactly by a speech recogniser on both
+# short headings (96 %) and long passages (5.7 % word errors) - Adam, the
+# default before, 64 % and 24.5 %. docs/local-voice-model-survey-2026-10.md.
+DEFAULT_VOICE_ID = "Đức Trí"
 DEFAULT_RATE = 1.0
 
 MINIMUM_RATE = 0.5

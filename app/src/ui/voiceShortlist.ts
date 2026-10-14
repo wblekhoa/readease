@@ -248,16 +248,20 @@ export function matchesVoiceFilters(
  * Nobody arrives wanting to audition twenty voices before they can read a
  * book, so the switcher is not empty on a fresh install (owner, 03/09).
  * These are a SPREAD, not a ranking - there is no usage data to rank by:
- * the engine's own default, a natural voice of each gender, and a
+ * the app's default voice, a natural voice of each gender, and a
  * storytelling voice of each, which is what a book most often wants.
+ * Since 15/10 there IS measurement data (RE-VOICE-009): Đức Trí, the new
+ * default, took the male storytelling slot from Thái Sơn, who was heard
+ * exactly on only 31 % of short headings against Đức Trí's 96 %. Adam
+ * stays as the familiar natural voice. Do not swap back without measuring.
  * Anything not in this build's catalogue is dropped rather than offered.
  */
 export const STARTING_VOICES = [
+  "Đức Trí",
   "Adam",
   "Trúc Ly",
   "Phạm Tuyên",
   "Ngọc Linh",
-  "Thái Sơn",
 ] as const;
 
 /** The list to start from: the stored one, or the starting five.

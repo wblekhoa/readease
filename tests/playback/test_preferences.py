@@ -24,6 +24,16 @@ class VoicePreferenceStoreTests(unittest.TestCase):
         self.assertEqual(self.store.load_voice(), DEFAULT_VOICE_ID)
         self.assertEqual(self.store.load_rate(), DEFAULT_RATE)
 
+    # RE-VOICE-009
+    def test_the_default_voice_is_one_the_switcher_starts_with(self):
+        import re
+        import unicodedata
+
+        shortlist = (Path(__file__).resolve().parents[2] / "app/src/ui/voiceShortlist.ts").read_text(encoding="utf-8")
+        block = shortlist[shortlist.index("STARTING_VOICES = [") : shortlist.index("] as const;")]
+        self.assertIn(DEFAULT_VOICE_ID, re.findall(r'"([^"]+)"', block))
+        self.assertTrue(unicodedata.is_normalized("NFC", DEFAULT_VOICE_ID))
+
     def test_a_saved_choice_survives_a_new_store_over_the_same_file(self):
         self.store.save("Trúc Ly", 1.25)
 
