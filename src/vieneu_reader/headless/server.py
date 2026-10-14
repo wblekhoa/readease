@@ -1063,7 +1063,14 @@ class _Session:
         if not os.path.isdir(os.path.dirname(session.path)):
             self._fail(request_id, "the folder to save in does not exist")
             return
-        self._reply(request_id, self._write_export(session))
+        # One step, said as one: the row reads "exporting 0/1" rather than
+        # "preparing the voice" while the file is measured and written.
+        self._send({"id": request_id, "event": "export_progress", "done": 0, "total": 1})
+        written = self._write_export(session)
+        self._send({"id": request_id, "event": "export_progress", "done": 1, "total": 1})
+        # The session rides the answer, as it does an export's: the shell
+        # knows by it that this is the review's file, written anew.
+        self._reply(request_id, {**written, "session": session.token})
 
     def _close_export(self) -> None:
         if self._export is not None:

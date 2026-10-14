@@ -367,6 +367,9 @@ class RetakeTests(unittest.TestCase):
         self.assertTrue(retake["ok"], retake)
         self.assertEqual(engine.requests[-1], "Hai.")
         self.assertTrue(saved["ok"], saved)
+        # The answer names the review it wrote, as the export's did: the
+        # shell clears its "waiting to be written" by it.
+        self.assertEqual(saved["result"]["session"], result["session"])
         # Sentence 0 untouched; sentence 1 longer by the new take; 2 moved by
         # exactly that much.
         self.assertEqual(after[0], before[0])

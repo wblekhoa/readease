@@ -62,15 +62,14 @@ export function useExport() {
       setJob({ kind: "idle" });
     } else {
       setJob({ kind: "done", path: result.path, seconds: result.seconds ?? 0 });
-      if (result.session) {
-        // A fresh export brings its sentences; a re-save keeps the list and
-        // clears what was waiting to be written.
-        const session = result.session;
-        const sentences = result.sentences;
-        setReview((current) => sentences
-          ? { session, sentences, retake: Boolean(result.retake), changed: [], busy: null, error: null }
-          : current && { ...current, changed: [], error: null });
-      }
+      // A fresh export brings its sentences and a new review; a re-save of
+      // the review's file keeps the list and clears what waited to be
+      // written - whether or not the answer names the session.
+      const session = result.session;
+      const sentences = result.sentences;
+      setReview((current) => session && sentences
+        ? { session, sentences, retake: Boolean(result.retake), changed: [], busy: null, error: null }
+        : current && { ...current, changed: [], error: null });
     }
   }, []);
 

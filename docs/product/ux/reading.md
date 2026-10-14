@@ -54,6 +54,11 @@ relations:
   take". Nothing reaches the WAV until "Save file", which rewrites WAV and subtitles with the progress above; the
   footer says how many takes are waiting. "Done" ends the review; changing the pasted text or exporting again ends it
   too. Logic: RE-PLAY-016.
+  Known limits (2026-10-14): Cancel shown while the file is being saved again does nothing until the write ends (a
+  few seconds even for a long file); a "Say again" after five quiet minutes reloads the voice first; switching the
+  model build restarts the engine and ends the review (the next action says so); the list is not virtualised, so a
+  very long export lists thousands of rows; where the written and spoken sentences do not pair up, a row shows the
+  spoken words (a pronunciation then appears as said).
   While an export runs, every read in the app waits: the read buttons are disabled and a paragraph click does nothing.
   With a paid voice whose price could not be fetched, Export stays disabled and says "no price yet".
   Known limits (2026-10-14): the global Read a selection shortcut and a voice sample still queue behind an export (shown
