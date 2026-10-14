@@ -123,7 +123,7 @@ ReadEase lưu tài liệu đã nhập, vị trí đọc, mô hình và audio cac
 ~/Library/Application Support/VieNeu Reader/
 ```
 
-Tên thư mục cũ được giữ để người dùng nâng cấp không mất thư viện và tiến độ. Nội dung dán hoặc quét chọn không được thêm vào Thư viện, không ghi log và không lưu audio cache. Lần chuẩn bị mô hình đầu tiên cần mạng; sau đó việc đọc diễn ra cục bộ.
+Tên thư mục cũ được giữ để người dùng nâng cấp không mất thư viện và tiến độ. Nội dung dán hoặc quét chọn không được thêm vào Thư viện, không ghi log và không lưu audio cache. Màn Dán nội dung có thể xuất ra file WAV kèm phụ đề, vào nơi bạn chọn; metadata của file WAV ghi rõ đây là giọng do AI tạo (xem [PRIVACY.md](PRIVACY.md)). Lần chuẩn bị mô hình đầu tiên cần mạng; sau đó việc đọc diễn ra cục bộ.
 
 ## Giới hạn hiện tại
 

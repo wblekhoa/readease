@@ -24,6 +24,16 @@ Pasted text and text read from a selection are transient. They are not added
 to the library or persistent audio cache. The recent-reading list is held in
 memory and disappears when ReadEase exits.
 
+## Exported audio
+
+Paste text can be exported as a WAV file with subtitles (`.srt`) beside it.
+ReadEase writes only those two files, only where you choose them in the save
+panel; nothing of the text or its audio is kept anywhere else, and nothing is
+sent anywhere by the export itself (an API voice still sends the text to its
+provider, exactly as when it reads aloud). The WAV's own metadata says that the
+speech in it was made by a voice model, which voice, and with ReadEase. What
+you do with an exported file, and where you publish it, is up to you.
+
 ## Network use
 
 Network access is used when the user explicitly prepares the local VieNeu

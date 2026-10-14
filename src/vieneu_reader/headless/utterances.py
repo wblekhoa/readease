@@ -57,11 +57,15 @@ def _text_utterances(
     parts = split_transient_parts(text, settings.max_chars)
     if not parts:
         return []
+    # The words with their Markdown read as meant but NOT yet made speakable:
+    # what a subtitle shows. `speakable_text` lowers shouted runs and spells
+    # ordinals out, which is right for the ear and wrong on screen.
+    shown = markdown_speech_parts(
+        tuple(part.text for part in parts), tuple(part.joint for part in parts)
+    )
     spoken = tuple(
         speakable_text(text, language=language, citations=note_reading != "full", markdown=False)
-        for text in markdown_speech_parts(
-            tuple(part.text for part in parts), tuple(part.joint for part in parts)
-        )
+        for text in shown
     )
     return [
         _Utterance(
@@ -73,6 +77,7 @@ def _text_utterances(
             ),
             segment_id=f"part-{index}",
             source=parts[index].text,
+            shown=shown[index],
         )
         for index in range(len(parts))
     ]
@@ -156,6 +161,10 @@ class _Utterance:
     # event so the shell can bring the picture into view exactly when the ear
     # hears the cue, not when the model synthesised it.
     figure_id: str | None = None
+    # The words as a subtitle shows them: Markdown read as meant, not yet
+    # made speakable. Only pasted text sets it (`_text_utterances`); the
+    # export falls back to `text` where it is empty.
+    shown: str = ""
 
 
 # What the voice says when the reading reaches a picture, and the rest that

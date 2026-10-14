@@ -446,6 +446,7 @@ const FAIL_SAID = new URLSearchParams(window.location.search).get("said")
 const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const DOWNLOAD_HOLD = new URLSearchParams(window.location.search).get("download") === "hold";
+let mockExportId = 100;
 const WARM_HOLD = new URLSearchParams(window.location.search).get("warm") === "hold";
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
 const PERMISSION = new URLSearchParams(window.location.search).get("permission");
@@ -1284,6 +1285,28 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
      `library.import` below turns the path's file name into a book. */
   if (command === "plugin:dialog|open") {
     return Promise.resolve(["/Volumes/Sách/Sách mới.epub"]);
+  }
+  /* The save panel for an export, answered with a canned path, and the
+     export itself as the engine runs it: progress per part, then
+     `engine:export_done` under the id this returns. `?export=fail` answers
+     the refusal a vanished folder gets. */
+  if (command === "plugin:dialog|save") {
+    return Promise.resolve("/Volumes/Phim/ReadEase giọng đọc.wav");
+  }
+  if (command === "export_text") {
+    const id = ++mockExportId;
+    const total = 4;
+    const fail = new URLSearchParams(window.location.search).get("export") === "fail";
+    for (let done = 0; done <= total; done += 1) {
+      setTimeout(() => emit("engine:export_progress", { id, done, total }), 300 + done * 450);
+    }
+    setTimeout(() => emit("engine:export_done", fail
+      ? { id, ok: false, error: "export failed: the folder to save in does not exist" }
+      : { id, ok: true, result: {
+          stopped: false, path: "/Volumes/Phim/ReadEase giọng đọc.wav",
+          subtitles: "/Volumes/Phim/ReadEase giọng đọc.srt", seconds: 96.4, lufs: -14, cues: 12,
+        } }), 300 + (total + 1) * 450);
+    return Promise.resolve(id);
   }
   if (command === "prepare_model") {
     /* A download outlives any request timeout, so the app waits on EVENTS:

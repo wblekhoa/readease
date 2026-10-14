@@ -16,6 +16,7 @@ import { useUpdater } from "./ui/updates";
 import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { ExportAudio } from "./ui/ExportAudio";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
@@ -1372,6 +1373,9 @@ export default function App() {
   ]), [language]);
 
   const overLimit = content.length > PASTE_LIMIT;
+  // An export holds the engine the way a reading does; the read button
+  // waits for it rather than queueing a reading behind a file.
+  const [exporting, setExporting] = useState(false);
   const atOrigin =
     origin === null ||
     (origin.kind === "book"
@@ -1412,7 +1416,7 @@ export default function App() {
   const canStart = screen === "reader" || screen === "paste";
   const startDisabled =
     screen === "paste"
-      ? !content.trim() || overLimit || !voiceId
+      ? !content.trim() || overLimit || !voiceId || exporting
       : !openBook || !voiceId;
   // Voice and speed also drive the global shortcut, so they belong on the
   // selection screen too - just not on the notes utility.
@@ -1968,6 +1972,17 @@ export default function App() {
                   {text("paste.over_limit")}
                 </span>
               )}
+              <span className="ml-auto">
+                <ExportAudio
+                  content={content}
+                  voiceId={voiceId}
+                  voiceLabel={voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId}
+                  rate={rate}
+                  disabled={!content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
+                  cost={pricing && estimate !== null && !estimateFailed ? buttonCost(estimate) || null : null}
+                  onBusyChange={setExporting}
+                />
+              </span>
             </div>
           </section>
         ) : (

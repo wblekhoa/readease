@@ -174,6 +174,27 @@ fn read_text(
     }))
 }
 
+/// Pasted text read into a WAV (and its subtitles) at `path`, which the
+/// webview got from the save panel. Long work: the answer arrives as
+/// `engine:export_done`, progress as `engine:export_progress`, both carrying
+/// the id returned here. A stop (`stop_reading`) cancels it.
+#[tauri::command(async)]
+fn export_text(
+    app: tauri::AppHandle,
+    engine: tauri::State<EngineSlot>,
+    text: String,
+    voice_id: String,
+    voice_label: String,
+    rate: f64,
+    path: String,
+) -> Result<u64, String> {
+    let software = format!("ReadEase {}", app.package_info().version);
+    client_of(&engine).notify_as("export.text", serde_json::json!({
+        "text": text, "voice_id": voice_id, "voice_label": voice_label,
+        "rate": rate, "path": path, "software": software,
+    }), "engine:export_done")
+}
+
 #[tauri::command(async)]
 fn read_book(
     engine: tauri::State<EngineSlot>,
@@ -422,6 +443,7 @@ pub fn run() {
             set_selection_shortcut,
             restart_engine,
             prepare_model,
+            export_text,
             stop_reading,
             pause_audio,
             resume_audio,

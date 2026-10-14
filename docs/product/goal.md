@@ -40,7 +40,8 @@ Download counts include the maintainer's own test downloads; read them as an upp
 - No ReadEase account, no ReadEase server, no telemetry inside the app.
 - No OCR for scanned PDFs, no DRM- or password-protected books, no fixed-layout EPUB rendering.
 - No Intel Macs, Windows, Linux or iOS today.
-- No audio export today: generated audio stays in the app's on-device cache for re-listening (`README.en.md`, `PRIVACY.md`).
+- Audio export covers Paste text only (WAV + subtitles, since 2026-10-14); books, chapters and selections are not exported yet
+  (`PRIVACY.md` "Exported audio"). Where an exported file is published is the user's responsibility, not the app's.
 
 ## Links
 - UX: `ux/library.md` · `ux/reading.md` · `ux/voices.md`

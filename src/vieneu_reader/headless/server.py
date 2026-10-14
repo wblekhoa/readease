@@ -89,6 +89,7 @@ from vieneu_reader.domain.segmenter import split_transient_parts
 # and note cues, the rests. Imported under their own names so the reading and
 # the estimate keep sharing one builder - and re-exported, because the tests
 # that pin the shaping reach for `server._text_utterances`.
+from vieneu_reader.headless.export import ExportSink, normalised, write_srt, write_wav
 from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     CHIME_LEAD_MS,
     CHIME_TAIL_MS,
@@ -572,7 +573,7 @@ class _Session:
         if method == "stop":
             self._reply(request.get("id"), {"stopped": True})
             self._stop_pending = True
-            self._drop_queued("read", "read.book")
+            self._drop_queued("read", "read.book", "export.text")
         elif method == "model.cancel":
             # True when there is a download to cancel - running, or still
             # queued behind the reading this poll belongs to.
@@ -718,6 +719,8 @@ class _Session:
                 })
             elif method == "read":
                 self._read(request_id, request.get("params") or {})
+            elif method == "export.text":
+                self._export_text(request_id, request.get("params") or {})
             elif method == "text.parts":
                 self._text_parts(request_id, request.get("params") or {})
             elif method == "read.book":
@@ -822,6 +825,70 @@ class _Session:
             # the voice-preview sample - and not something the reader wrote
             # or captured. It is what makes the clip cacheable; see `_speak`.
             app_text=bool(params.get("app_text")),
+        )
+
+    def _export_text(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Pasted text read into a WAV, with subtitles beside it.
+
+        The same utterances, voice, rests and stretcher as `read` - an
+        export is a reading whose frames go to a file. Nothing is cached:
+        the text is the reader's, exactly as for `read` (PRIVACY.md); the
+        only thing kept is the file they asked for, where they asked.
+        """
+        text = str(params.get("text") or "")
+        voice_id = str(params.get("voice_id") or "")
+        rate = float(params.get("rate") or 1.0)
+        path = str(params.get("path") or "")
+        if not path.lower().endswith(".wav") or not os.path.isabs(path):
+            self._fail(request_id, "path must be an absolute .wav path")
+            return
+        if not os.path.isdir(os.path.dirname(path)):
+            self._fail(request_id, "the folder to save in does not exist")
+            return
+        if not 0.5 <= rate <= 2.0:
+            self._fail(request_id, f"rate {rate} is outside 0.5-2.0")
+            return
+        settings = SynthesisSettings()
+        language = language_of_text(text, self._reading_language())
+        utterances = _text_utterances(text, settings, language, note_reading_of(self._settings_document()))
+        if not utterances:
+            self._fail(request_id, "text is empty")
+            return
+        sink = ExportSink(SAMPLE_RATE, total=len(utterances))
+        software = str(params.get("software") or "ReadEase")
+        voice = str(params.get("voice_label") or voice_id)
+
+        def finish(stopped: bool) -> dict[str, Any]:
+            if stopped:
+                return {"stopped": True}
+            audio, loudness = normalised(sink.audio(), SAMPLE_RATE)
+            subtitles = path[:-4] + ".srt"
+            write_wav(path, audio, SAMPLE_RATE, {
+                "INAM": os.path.basename(path)[:-4],
+                "ISFT": software,
+                "ICRD": time.strftime("%Y-%m-%d"),
+                # The machine-readable mark: what made the speech, said in
+                # the field every editor and tagger keeps.
+                "ICMT": f"AI-generated speech (text-to-speech). Voice: {voice}. Made with {software}.",
+                "IKEY": "AI-generated; synthetic speech; text-to-speech",
+            })
+            write_srt(subtitles, sink.cues, SAMPLE_RATE)
+            self._send({
+                "id": request_id, "event": "export_progress",
+                "done": len(utterances), "total": len(utterances),
+            })
+            return {
+                "stopped": False,
+                "path": path,
+                "subtitles": subtitles,
+                "seconds": round(audio.size / SAMPLE_RATE, 2),
+                "lufs": round(loudness, 1) if loudness != float("-inf") else None,
+                "cues": len(sink.cues),
+            }
+
+        self._speak(
+            request_id, utterances, voice_id, rate, settings,
+            language=language, sink=sink, finish=finish,
         )
 
     def _text_parts(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -2626,6 +2693,8 @@ class _Session:
         window: Any = None,
         language: str | None = None,
         app_text: bool = False,
+        sink: ExportSink | None = None,
+        finish: Any = None,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
@@ -2725,6 +2794,14 @@ class _Session:
 
         def emit(pcm: bytes, *, from_voice: bool) -> None:
             nonlocal seq, voiced, samples_out
+            if sink is not None:
+                # A file, not the speakers: no window, nothing on the pipe.
+                sink.add(pcm)
+                seq += 1
+                samples_out += len(pcm) // 4
+                if from_voice:
+                    voiced += 1
+                return
             if not self._await_credit():
                 return
             self._send({
@@ -2755,7 +2832,15 @@ class _Session:
                     break
                 if position:
                     learn_pace(position)
-                if utterance.segment_id is not None:
+                if sink is not None:
+                    # How far the file has got - the only thing a person
+                    # waiting on an export needs, and no credit to spend.
+                    sink.done = position
+                    self._send({
+                        "id": request_id, "event": "export_progress",
+                        "done": position, "total": len(utterances),
+                    })
+                elif utterance.segment_id is not None:
                     # Not `position`: that name is the loop index just above,
                     # and shadowing it broke the is_last arithmetic once.
                     where: dict[str, Any] = {
@@ -2784,6 +2869,12 @@ class _Session:
                 sentences = split_sentences(utterance.text)
                 if not sentences and utterance.text.strip():
                     sentences = (utterance.text,)
+                # What the subtitles show for these sentences: the written
+                # words, one cue per sentence when the written and the
+                # spoken split the same way, one cue for the part when not.
+                shown_text = utterance.shown or utterance.text
+                shown = split_sentences(shown_text) if sink is not None else ()
+                paired = len(shown) == len(sentences)
                 # A heading is set apart: slower and a touch louder (the
                 # models take neither a pitch nor a tone). Gain is applied
                 # to the model's own samples, after the cache, and clipped -
@@ -2800,8 +2891,12 @@ class _Session:
 
                 for index, sentence in enumerate(sentences):
                     if index:
+                        if sink is not None and paired:
+                            sink.end()
                         emit(_silence(int(SENTENCE_PAUSE_MS / local_rate)),
                              from_voice=False)
+                    if sink is not None and (paired or index == 0):
+                        sink.begin(shown[index] if paired else shown_text)
                     # Anything the engine actually produced this time, kept so
                     # it can be remembered - but only once the sentence is
                     # WHOLE. Half a sentence in the cache would be handed back
@@ -2851,6 +2946,8 @@ class _Session:
                     if tail.size:
                         emit(tail.astype(np.float32).tobytes(),
                              from_voice=True)
+                if sink is not None:
+                    sink.end()
                 if stopped:
                     break
                 is_last = position + 1 == len(utterances)
@@ -2895,11 +2992,18 @@ class _Session:
         # for it to cut short, and it must not cut the next reading instead.
         self._stop_pending = False
         self._credits = None
-        self._reply(request_id, {
+        result: dict[str, Any] = {
             "frames": seq,
             "voiced_frames": voiced,
             "stopped": stopped,
-        })
+        }
+        if finish is not None:
+            try:
+                result = finish(stopped)
+            except Exception as error:  # noqa: BLE001 - the pipe must survive
+                self._fail(request_id, f"export failed: {error}")
+                return
+        self._reply(request_id, result)
 
 
 def serve(

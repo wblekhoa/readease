@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-10
+updated: 2026-10-14
 relations:
   specifies: [readease:app/src/screens/Reader.tsx, readease:app/src/ui/playback.ts]
   dependsOn: [readease-logic-reading, readease-ux-voices]
@@ -40,6 +40,10 @@ relations:
 - **Notes and citations**: bibliographic footnotes are not read, remarks keep their first two sentences, in-text
   citations are skipped - configurable in Voice settings. The text on the page never changes.
 - **EPUB figures** are shown in reading order, numbered (Figure 1, Figure 2…) and announced in place.
+- **Paste text → Export audio**: a button at the right of the character count ("Xuất âm thanh"; with a paid voice it
+  carries the same price as the read button). It opens the macOS save panel (proposed name "ReadEase <date> <time>.wav"),
+  then shows "Exporting n/N" with a bar and Cancel in its place; the read button waits while it runs. Done: "Saved ~N min of
+  audio and subtitles" with Show in Finder. The `.srt` lands beside the `.wav`. Logic: RE-PLAY-010…014.
 - **Paste text**: up to 100,000 characters; paragraph breaks kept; long text is split into parts ("Reading part 2/7").
   Markdown is read as meant (marks dropped, link text read, not the address). Pasted text is not added to the Library,
   not logged and not written to the audio cache.

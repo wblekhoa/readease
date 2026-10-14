@@ -4,6 +4,16 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- Paste text can be exported as audio: Export audio, beside the character
+  count, saves a WAV where you choose, with subtitles (`.srt`) beside it -
+  the same voice, rests and speed as reading aloud, set to -14 LUFS for
+  video with a gentle limiter keeping peaks under -1 dBFS. Subtitles show
+  the words as written, one per sentence, long sentences split into even
+  lines. The WAV's metadata says the speech is AI-generated and which voice
+  made it. Nothing else of the text is kept; Cancel leaves no file.
+
 ## 0.1.21
 
 The folded side column names its icons on hover and opens from the top;

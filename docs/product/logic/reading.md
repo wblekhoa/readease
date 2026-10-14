@@ -4,11 +4,11 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-10-10
+updated: 2026-10-14
 reqPrefix: RE-PLAY
 relations:
   specifiedBy: [readease-ux-reading]
-  implements: [readease:src/vieneu_reader/headless/server.py, readease:src/vieneu_reader/playback/coordinator.py, readease:src/vieneu_reader/domain/prosody.py, readease:src/vieneu_reader/domain/segmenter.py, readease:src/vieneu_reader/domain/markdown.py]
+  implements: [readease:src/vieneu_reader/headless/server.py, readease:src/vieneu_reader/playback/coordinator.py, readease:src/vieneu_reader/domain/prosody.py, readease:src/vieneu_reader/domain/segmenter.py, readease:src/vieneu_reader/domain/markdown.py, readease:src/vieneu_reader/headless/export.py]
 ---
 # ReadEase — Reading and playback (logic)
 
@@ -29,6 +29,11 @@ relations:
 | RE-PLAY-007 | Stop interrupts a reading mid-stream. | live | `tests/headless/test_server.py` (`test_stop_interrupts_a_reading_mid_stream`) |
 | RE-PLAY-008 | Markdown bold markers are removed from speech and its cost estimate only; the displayed text is unchanged. | live | `tests/headless/test_server.py` (`test_markdown_bold_is_removed_only_from_speech_and_its_estimate`) |
 | RE-PLAY-009 | A faster speed shortens the pauses between sentences in proportion. | live | `tests/headless/test_server.py` (`test_a_faster_rate_shortens_the_rest_exactly`) |
+| RE-PLAY-010 | Paste text exports to a 48 kHz 16-bit mono WAV at the chosen path, with an `.srt` beside it, spoken with the same utterances, rests and speed as reading aloud; nothing goes to the speakers. | live | `tests/headless/test_export.py` (`test_export_writes_a_marked_wav_and_timed_subtitles`) |
+| RE-PLAY-011 | An exported WAV states in its own metadata (RIFF INFO `ICMT`, `IKEY`, `ISFT`) that the speech is AI-generated, which voice made it, and the app version. | live | `tests/headless/test_export.py` (`test_export_writes_a_marked_wav_and_timed_subtitles`) |
+| RE-PLAY-012 | An export is set to -14 LUFS integrated (BS.1770) with peaks at or under -1 dBFS; a limiter may take at most 6 dB off peaks, past that the file stays quieter. | live | `tests/headless/test_export.py` (`test_full_scale_997_hz_sine_reads_minus_3_01`, `test_peaky_speech_reaches_the_target_under_the_ceiling`, `test_the_limiter_never_takes_more_than_its_share`) |
+| RE-PLAY-013 | Subtitles show the written words (Markdown read as meant), one cue per spoken sentence; a sentence over 84 characters becomes even whole-word cues timed by their share. | live | `tests/headless/test_export.py` (`CueTests`, `test_export_writes_a_marked_wav_and_timed_subtitles`) |
+| RE-PLAY-014 | Export keeps nothing but the two files: no audio cache, no library row; a stop cancels it and a cancelled export writes no file; a path that is not an absolute `.wav` in an existing folder, or a speed outside 0.5-2.0, is refused. | live | `tests/headless/test_export.py` (`test_a_stop_before_the_export_starts_writes_nothing`, `test_rejects_a_path_that_is_not_an_absolute_wav`, `test_rejects_a_rate_outside_the_reading_range`); a stop mid-export takes the reading's stop path (RE-PLAY-007) and `finish` returns before writing (`server.py` `_export_text`) |
 
 ## States and transitions
 | State | Trigger | Next state | Edge case |

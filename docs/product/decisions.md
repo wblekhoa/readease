@@ -4,11 +4,27 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-11
+updated: 2026-10-14
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-10-14 · Paste text can be exported as audio with subtitles (non-goal lifted)
+- **Context**: creators asked to use ReadEase's voices for video narration. The goal listed "no audio export" as a
+  non-goal. The owner's position (14/10): ReadEase is a tool; where a user publishes its output (YouTube or anywhere) and
+  that platform's rules are the user's responsibility, so the app adds no platform checks or warnings.
+- **Decision**: export Paste text only, as WAV (48 kHz, 16-bit) + SRT, normalised to -14 LUFS with a gentle limiter, and a
+  machine-readable AI-speech mark in the WAV's RIFF INFO chunk. The mark is the one duty that falls on the tool, not the
+  user: Vietnam's Law on AI (134/2025/QH15, in force 2026-03-01, implementing decree pending) and EU AI Act Art. 50(2)
+  (from 2026-08-02) ask providers of synthetic-audio tools for machine-readable marking (read from law-firm summaries,
+  not the official texts, 14/10). Metadata, not an audible watermark: it restricts nobody. Books, chapters, re-takes per
+  sentence and a pronunciation dictionary are later steps. `LICENSE` (PolyForm Noncommercial) is unchanged; whether a
+  commercial licence is offered is still the owner's call.
+- **Evidence**: VieNeu-TTS v3 Turbo model card (fetched 2026-10-14): preset voices are Apache-2.0 with the speakers'
+  consent, and generated audio "may be used in commercial and monetized content". Real-voice probe on a model copy:
+  14.6 s of Ngọc Linh exported in 3.9 s, -14.06 LUFS, peak -1.0 dBFS, 6 cues. RE-PLAY-010…014.
+- **Reversal**: drop the export button and `export.text`; nothing else depends on them.
 
 ## 2026-10-11 · Design tokens re-synced from WAVE (snapshot of 2026-08-31 replaced)
 - **Context**: `app/src/styles/ds-tokens.css` is a verbatim, locked copy of the design system's token bundle. The design

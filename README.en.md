@@ -117,7 +117,7 @@ ReadEase stores imported documents, reading progress, voice-model data and audio
 ~/Library/Application Support/VieNeu Reader/
 ```
 
-The legacy directory name is intentionally preserved so existing users do not lose their library or progress. Pasted or selected text is not added to the library, written to logs or stored in the audio cache. The first voice-model setup requires the internet; reading is local afterward.
+The legacy directory name is intentionally preserved so existing users do not lose their library or progress. Pasted or selected text is not added to the library, written to logs or stored in the audio cache. Paste text can be exported as a WAV with subtitles beside it, to a place you choose; the WAV's metadata marks the speech as AI-generated (see [PRIVACY.md](PRIVACY.md)). The first voice-model setup requires the internet; reading is local afterward.
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy boundary.
 

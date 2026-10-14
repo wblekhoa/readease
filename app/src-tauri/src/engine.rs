@@ -11,7 +11,7 @@
 //! positions announced when the ear reaches them, the replay after a break -
 //! is `audio.rs`; this file hands it frames and reads its answers.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -111,7 +111,7 @@ pub struct EngineClient {
     /// Requests whose reply nobody waits for. Only these may surface as
     /// `engine:orphan_reply`; a superseded reading's late reply is dropped
     /// instead of being broadcast at whatever listener happens to be mounted.
-    notified: Arc<Mutex<HashSet<u64>>>,
+    notified: Arc<Mutex<HashMap<u64, &'static str>>>,
 }
 
 fn repo_root() -> PathBuf {
@@ -191,7 +191,7 @@ pub(crate) struct Pump {
     audio: SyncSender<Frame>,
     epoch: Arc<AtomicU64>,
     voice_started: Arc<AtomicBool>,
-    notified: Arc<Mutex<HashSet<u64>>>,
+    notified: Arc<Mutex<HashMap<u64, &'static str>>>,
     shell: Arc<dyn Shell>,
 }
 
@@ -321,8 +321,12 @@ impl Pump {
                             // reading also lands here, and must not be
                             // broadcast - it would look like a download
                             // finishing to whatever listener is mounted.
-                            if self.notified.lock().unwrap().remove(&id) {
-                                self.shell.emit("engine:orphan_reply", message);
+                            // Each fire-and-forget request names the event
+                            // its answer goes out under, so an export ending
+                            // is never heard as a download ending.
+                            let event = self.notified.lock().unwrap().remove(&id);
+                            if let Some(event) = event {
+                                self.shell.emit(event, message);
                             }
                         }
                     }
@@ -378,7 +382,7 @@ impl EngineClient {
             paused_since: Mutex::new(None),
             rewind,
             start: Mutex::new(()),
-            notified: Arc::new(Mutex::new(HashSet::new())),
+            notified: Arc::new(Mutex::new(HashMap::new())),
             tray,
             voice_started: Arc::new(std::sync::atomic::AtomicBool::new(true)),
             output,
@@ -483,9 +487,17 @@ impl EngineClient {
     /// event instead of blocking a thread - for work that outlives any
     /// sane timeout, like a 625MB model download.
     pub fn notify(&self, method: &str, params: Value) -> Result<(), String> {
+        self.notify_as(method, params, "engine:orphan_reply").map(|_| ())
+    }
+
+    /// `notify`, with the answer emitted under `event` - for long work whose
+    /// ending must not reach the listeners of another (an export finishing
+    /// is not a model download finishing). Returns the request's id, which
+    /// its progress events carry too.
+    pub fn notify_as(&self, method: &str, params: Value, event: &'static str) -> Result<u64, String> {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        self.notified.lock().unwrap().insert(id);
-        self.send(id, method, params)
+        self.notified.lock().unwrap().insert(id, event);
+        self.send(id, method, params).map(|_| id)
     }
 
     pub fn is_reading(&self) -> bool {
@@ -727,7 +739,7 @@ mod tests {
             audio,
             epoch: epoch.clone(),
             voice_started: Arc::new(AtomicBool::new(true)),
-            notified: Arc::new(Mutex::new(HashSet::new())),
+            notified: Arc::new(Mutex::new(HashMap::new())),
             shell,
         };
         let (lines, feed) = channel::<String>();
