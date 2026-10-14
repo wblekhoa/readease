@@ -6,6 +6,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- The Vietnamese voice reads "ThS." as "thạc sĩ", "TP. Đà Nẵng" as
+  "thành phố Đà Nẵng", "tr. 45" as "trang 45" and "Q1/2025" as "quý 1
+  năm 2025" - before, the first two left a full stop in mid-sentence,
+  the third was read as letters and the quarter as "quý một hai không hai
+  lăm". The page and subtitles keep what is written.
 - Short sentences of one to three words - a heading such as "Mở đầu.",
   "Kết luận." or "Hình 3.", a reply such as "Vâng." - are read more
   steadily in the on-device Vietnamese voice: fewer wrong tones, repeats

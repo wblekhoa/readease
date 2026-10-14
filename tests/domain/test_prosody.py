@@ -12,6 +12,7 @@ from vieneu_reader.domain.prosody import (
     selection_pause_ms,
     cardinal_words,
     speak_links,
+    speak_vietnamese_abbreviations,
     speak_roman_numerals,
     spell_ordinal_marks,
     speak_with_notes,
@@ -903,3 +904,24 @@ class DivisionPauseTests(unittest.TestCase):
         # A chapter that opens right after the mark keeps its own rest.
         opening = _segment("Chương 2", kind="heading", chapter_id="chapter-2")
         self.assertEqual(pause_after_ms(mark, opening, divisions={opening.id: "chapter"}), CHAPTER_PAUSE_MS)
+
+
+class VietnameseAbbreviationTests(unittest.TestCase):
+    # RE-PLAY-018
+    def test_titles_the_sdk_leaves_with_a_full_stop_are_written_out(self):
+        self.assertEqual(speak_vietnamese_abbreviations("ThS. Trần B phát biểu."), "Thạc sĩ Trần B phát biểu.")
+        self.assertEqual(speak_vietnamese_abbreviations("TP. Đà Nẵng đẹp."), "Thành phố Đà Nẵng đẹp.")
+
+    def test_a_page_reference_says_trang(self):
+        self.assertEqual(speak_vietnamese_abbreviations("Xem tr. 45; Tr.46."), "Xem trang 45; trang 46.")
+
+    def test_a_quarter_with_its_year_reads_as_a_quarter(self):
+        self.assertEqual(speak_vietnamese_abbreviations("Q1/2025 và Q4-2024."), "quý 1 năm 2025 và quý 4 năm 2024.")
+
+    def test_what_is_not_an_abbreviation_is_left_alone(self):
+        for text in ("TP.HCM tăng.", "Ông Trần. Bà Lê.", "tr. Kết thúc", "Q5/2025", "Q1 tăng", "Phường Tr."):
+            self.assertEqual(speak_vietnamese_abbreviations(text), text, text)
+
+    def test_only_the_vietnamese_voice_gets_it(self):
+        self.assertIn("Thạc sĩ", speakable_text("ThS. Trần B nói.", language="vi"))
+        self.assertNotIn("Thạc sĩ", speakable_text("ThS. Trần B nói.", language="en"))

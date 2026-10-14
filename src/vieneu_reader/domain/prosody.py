@@ -429,6 +429,28 @@ def speak_attached_dashes(text: str) -> str:
     return _ATTACHED_DASH.sub(comma, text)
 
 
+# Vietnamese abbreviations the voice SDK's own normaliser leaves half-done,
+# measured on sea-g2p 0.9.1 (15/10): "ThS. Trần B" came out "thạc sĩ. trần
+# bê" and "TP. Đà Nẵng" "thành phố. đà nẵng" - a full stop in mid-sentence,
+# where the voice falls and rests; "Tr. 45" stayed "tr."; and "Q1/2025" was
+# read "quý một hai không hai lăm" (the SDK reads "quý 1/2025" right). The
+# words are written out here, before the SDK; GS., TS., PGS., BS., KS., Q.,
+# P., v.v. are already read right and are left to it. RE-PLAY-018.
+_VI_TITLE_WITH_DOT = re.compile(r"\b(ThS|TP|Tp)\.(?=\s+\w)")
+_VI_TITLES = {"ThS": "Thạc sĩ", "TP": "Thành phố", "Tp": "Thành phố"}
+_VI_PAGE = re.compile(r"\b[Tt]r\.\s*(?=\d)")
+_VI_QUARTER = re.compile(r"\bQ([1-4])\s*[/-]\s*((?:19|20)\d\d)\b")
+
+
+def speak_vietnamese_abbreviations(text: str) -> str:
+    """'ThS. A' → 'Thạc sĩ A', 'TP. Huế' → 'Thành phố Huế', 'tr. 45' → 'trang 45',
+    'Q1/2025' → 'quý 1 năm 2025' - for the Vietnamese voice only."""
+
+    text = _VI_TITLE_WITH_DOT.sub(lambda m: _VI_TITLES[m.group(1)], text)
+    text = _VI_PAGE.sub("trang ", text)
+    return _VI_QUARTER.sub(r"quý \1 năm \2", text)
+
+
 # English clock times, ranges and references, written out before the G2P sees
 # them (HIG 5.1, audit 23/09). The English G2P has no normaliser of its own:
 # measured on it, every "digit:digit" and every dash-joined pair of numbers
@@ -997,7 +1019,7 @@ def speakable_text(
     else:
         # The English G2P keeps an attached dash as a mark Kokoro pauses at;
         # the Vietnamese SDK would drop it (HIG 5.1).
-        spoken = speak_attached_dashes(spoken)
+        spoken = speak_vietnamese_abbreviations(speak_attached_dashes(spoken))
     spoken = speak_roman_numerals(speak_enumerators(spoken), language)
     spoken = spell_ordinal_marks(unshout(speak_links(spoken, language)), language)
     stripped = spoken.lstrip()

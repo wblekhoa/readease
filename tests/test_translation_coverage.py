@@ -143,6 +143,11 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/prosody.py", "địa chỉ"),
         ("domain/prosody.py", "địa chỉ "),
         ("domain/prosody.py", " chấm "),
+        # Abbreviations the voice SDK leaves half-read, written out for the
+        # Vietnamese voice only (RE-PLAY-018). Spoken, never shown.
+        ("domain/prosody.py", "Thạc sĩ"),
+        ("domain/prosody.py", "Thành phố"),
+        ("domain/prosody.py", r"quý \1 năm \2"),
         # The footnote-shape matchers (16/09): the openers and publisher
         # words that make a note a bibliographic reference rather than words
         # ("Sđd., tr. 45", "NXB Trẻ, 2015"). Matcher data for book text,

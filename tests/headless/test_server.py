@@ -2212,7 +2212,7 @@ class ProtocolTests(unittest.TestCase):
         from pathlib import Path
 
         for mode, expected in (
-            ("full", "Thị trường không đoán được (Trần, 2019) đâu. Nói thêm, Sđd., tr. 45. "
+            ("full", "Thị trường không đoán được (Trần, 2019) đâu. Nói thêm, Sđd., trang 45. "
                      "Câu này có lời bàn. Nói thêm, Lời bàn thứ nhất. Lời bàn thứ hai. Lời bàn thứ ba."),
             ("off", "Thị trường không đoán được đâu. Câu này có lời bàn."),
         ):
