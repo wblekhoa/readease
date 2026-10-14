@@ -17,6 +17,7 @@ import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ExportAudio } from "./ui/ExportAudio";
+import { ExportReviewPanel } from "./ui/ExportReviewPanel";
 import { useExport } from "./ui/useExport";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
@@ -442,6 +443,10 @@ export default function App() {
   // not by the Paste screen, so leaving the screen does not lose it.
   const exportJob = useExport();
   const exporting = exportJob.job.kind === "running";
+  // The text the review's sentences came from: edit it and they no longer
+  // exist, so the review ends and the engine lets the takes go.
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const exportedText = useRef<string | null>(null);
   const [estimateFailed, setEstimateFailed] = useState(false);
   /** Provider id → whether a key is stored. Never the key: the engine
    *  answers `config.get` for these with the fact and nothing else. */
@@ -1161,6 +1166,30 @@ export default function App() {
     // one place that can do it without a race (the Rust client).
     await readBookFrom(segments[index]);
   }, [segments, position, openBook, readBookFrom]);
+
+  /** One sentence of the last export, as it is in the file - the sample
+   * preview's road, so Stop and the player behave as they do for one. */
+  const playTake = useCallback((index: number) => {
+    const session = exportJob.review?.session;
+    if (!session) return;
+    onPlayer({ type: "start" });
+    setOrigin(null);
+    current.current = { kind: "preview" };
+    setPreviewing(`take:${index}`);
+    setPosition(null);
+    invoke("play_take", { session, index }).catch((error) => {
+      console.error(error);
+      onPlayer({ type: "failed", error: String(error) });
+      setPreviewing(null);
+    });
+  }, [exportJob.review?.session]);
+
+  useEffect(() => {
+    if (exportJob.review && exportedText.current !== null && content !== exportedText.current) {
+      setReviewOpen(false);
+      exportJob.close();
+    }
+  }, [content, exportJob]);
 
   const stopPreview = useCallback(() => {
     setPreviewing(null);
@@ -2000,12 +2029,13 @@ export default function App() {
                   cost={pricing && estimateFailed
                     ? text("cost.unavailable")
                     : pricing && estimate !== null ? buttonCost(estimate) || null : null}
-                  onStart={() => void exportJob.start({
+                  onReview={exportJob.review ? () => setReviewOpen(true) : null}
+                  onStart={() => void (exportedText.current = content, exportJob.start({
                     content,
                     voiceId,
                     voiceLabel: voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId,
                     rate,
-                  })}
+                  }))}
                   onCancel={exportJob.cancel}
                 />
               </span>
@@ -2543,6 +2573,22 @@ export default function App() {
           onRestart={updater.restart}
           onClose={updater.dismiss}
         />
+      </Presence>
+      <Presence open={reviewOpen && exportJob.review !== null}>
+        {exportJob.review && (
+          <ExportReviewPanel
+            review={exportJob.review}
+            playing={previewing?.startsWith("take:") ? Number(previewing.slice(5)) : null}
+            busy={reading !== "idle"}
+            saving={exportJob.job.kind === "running"}
+            onPlay={playTake}
+            onStop={stopPreview}
+            onRetake={(index) => void exportJob.retake(index)}
+            onSave={() => void exportJob.save()}
+            onDone={() => { setReviewOpen(false); exportJob.close(); }}
+            onClose={() => setReviewOpen(false)}
+          />
+        )}
       </Presence>
       <Presence open={pronounceOpen}>
         <PronunciationsPanel

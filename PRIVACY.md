@@ -28,7 +28,11 @@ memory and disappears when ReadEase exits.
 
 Paste text can be exported as a WAV file with subtitles (`.srt`) beside it.
 ReadEase writes only those two files, only where you choose them in the save
-panel; nothing of the text or its audio is kept anywhere else, and nothing is
+panel. So that a sentence can be said again before the file is saved anew, the
+last export's audio is held, sentence by sentence, in a temporary file with no
+name inside ReadEase; it is let go when you press Done in the review, change
+the pasted text, start another export, or quit. Nothing else of the text or its
+audio is kept anywhere, and nothing is
 sent anywhere by the export itself (an API voice still sends the text to its
 provider, exactly as when it reads aloud). The WAV's own metadata says that the
 speech in it was made by a voice model, which voice, and with ReadEase. What

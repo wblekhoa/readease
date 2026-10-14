@@ -195,6 +195,31 @@ fn export_text(
     }), "engine:export_done")
 }
 
+/// One sentence of the last export as it stands in the file, played like a
+/// reading (so Stop, the tray and the device all behave as they do for one).
+#[tauri::command(async)]
+fn play_take(
+    engine: tauri::State<EngineSlot>,
+    session: String,
+    index: u64,
+) -> Result<(), String> {
+    client_of(&engine).fire("export.play", serde_json::json!({
+        "session": session, "index": index,
+    }))
+}
+
+/// Rewrite the last export's WAV and subtitles from its takes as they now
+/// stand. Answered on `engine:export_done`, like the export itself.
+#[tauri::command(async)]
+fn save_export(
+    engine: tauri::State<EngineSlot>,
+    session: String,
+) -> Result<u64, String> {
+    client_of(&engine).notify_as("export.save", serde_json::json!({
+        "session": session,
+    }), "engine:export_done")
+}
+
 #[tauri::command(async)]
 fn read_book(
     engine: tauri::State<EngineSlot>,
@@ -444,6 +469,8 @@ pub fn run() {
             restart_engine,
             prepare_model,
             export_text,
+            play_take,
+            save_export,
             stop_reading,
             pause_audio,
             resume_audio,

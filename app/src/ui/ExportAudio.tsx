@@ -19,6 +19,7 @@ export function ExportAudio({
   cost,
   onStart,
   onCancel,
+  onReview,
 }: {
   job: ExportJob;
   /** Nothing to export, or a reading is under way. */
@@ -28,6 +29,8 @@ export function ExportAudio({
   cost: string | null;
   onStart: () => void;
   onCancel: () => void;
+  /** Open the sentence-by-sentence review, when the last export has one. */
+  onReview: (() => void) | null;
 }) {
   if (job.kind === "running") {
     const share = job.total > 0 ? job.done / job.total : 0;
@@ -56,6 +59,11 @@ export function ExportAudio({
           <Button size="sm" variant="ghost" onClick={() => void revealItemInDir(job.path)}>
             {text("export.reveal")}
           </Button>
+          {onReview && (
+            <Button size="sm" variant="ghost" onClick={onReview}>
+              {text("export.review")}
+            </Button>
+          )}
         </span>
       )}
       {job.kind === "failed" && (

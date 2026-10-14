@@ -48,6 +48,12 @@ relations:
   then shows "Exporting n/N" with a bar and Cancel in its place; the read button waits while it runs. Done: "Saved ~N min of
   audio and subtitles" with Show in Finder. The `.srt` lands beside the `.wav`. Logic: RE-PLAY-010…014.
   The job belongs to the app, not the screen: leave Paste text mid-export and come back to the same progress or result.
+- **Review sentences** (after an export, beside Show in Finder): a panel lists the export's sentences. ▶ plays a sentence
+  as it is in the file (Stop while it plays); "Say again" (local VieNeu voices only - Kokoro says a sentence the same way
+  every time and a paid voice would bill unquoted, and the caption says so) replaces it with a new take, marked "new
+  take". Nothing reaches the WAV until "Save file", which rewrites WAV and subtitles with the progress above; the
+  footer says how many takes are waiting. "Done" ends the review; changing the pasted text or exporting again ends it
+  too. Logic: RE-PLAY-016.
   While an export runs, every read in the app waits: the read buttons are disabled and a paragraph click does nothing.
   With a paid voice whose price could not be fetched, Export stays disabled and says "no price yet".
   Known limits (2026-10-14): the global Read a selection shortcut and a voice sample still queue behind an export (shown

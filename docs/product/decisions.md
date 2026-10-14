@@ -10,6 +10,18 @@ updated: 2026-10-14
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-14 · Review sentences: re-takes kept by sentence until the file is saved
+- **Context**: VieNeu samples (temperature 0.8), so a sentence never comes out the same way twice - the short-utterance
+  weakness measured on 13/10 is worst on titles. A creator needs to keep the take they like.
+- **Decision**: the export's audio is tagged by sentence; a finished export stays reviewable in the engine (nameless
+  temp file) until Done / text changed / new export / quit, stated in PRIVACY. Play = the stored take, never a new one;
+  Say again = VieNeu only (Kokoro is deterministic; paid voices would spend unquoted); the file is rewritten only on
+  Save, since a rewrite measures the whole file. In export mode the stretcher drains per sentence so a take is exactly
+  one sentence. The temperature change for short sentences stays out (its listening test is unanswered).
+- **Evidence**: RE-PLAY-016 tests (incl. rate 1.5); real-voice probe: "Mở đầu." 0.56 s → 0.72 s new take in 0.09 s,
+  later cue moved 160 ms, file re-saved at -14.0 LUFS.
+- **Reversal**: drop `export.play/retake/save/close` and close the sink in `_export_text` as before.
+
 ## 2026-10-14 · Pronunciations: the reader's own, applied before the text is made speakable
 - **Context**: a voice reads a brand, an acronym or an English word inside Vietnamese by its own guess - the error a
   creator hears most (14/10 analysis). The owner asked to proceed with the proposed steps.

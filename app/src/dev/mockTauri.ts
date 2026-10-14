@@ -447,6 +447,14 @@ const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const DOWNLOAD_HOLD = new URLSearchParams(window.location.search).get("download") === "hold";
 let mockExportId = 100;
+/** The pasted text split the way the engine splits sentences, near enough
+ * for the harness: at a full stop, question or exclamation mark. */
+function mockSentences(text: string): { index: number; text: string }[] {
+  return (text.match(/[^.!?]+[.!?]*/g) ?? [])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .map((sentence, index) => ({ index, text: sentence }));
+}
 const WARM_HOLD = new URLSearchParams(window.location.search).get("warm") === "hold";
 const UNREACHABLE = new URLSearchParams(window.location.search).get("unreachable");
 const PERMISSION = new URLSearchParams(window.location.search).get("permission");
@@ -1029,6 +1037,11 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         backup: "~/Library/…/AEAnnotation.sqlite.bak",
       };
     }
+    case "export.retake":
+      // The voice takes a moment to say a sentence again.
+      return new Promise((resolve) => setTimeout(() => resolve({ index: params.index, seconds: 2.1 }), 900));
+    case "export.close":
+      return { closed: true };
     case "config.get": {
       const key = String(params.key);
       // A provider key is WRITE-ONLY over this pipe, in the harness for the
@@ -1305,7 +1318,25 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
       : { id, ok: true, result: {
           stopped: false, path: "/Volumes/Phim/ReadEase giọng đọc.wav",
           subtitles: "/Volumes/Phim/ReadEase giọng đọc.srt", seconds: 96.4, lufs: -14, cues: 12,
+          // The review the engine keeps: the pasted text's own sentences.
+          session: `mock-${id}`, retake: true,
+          sentences: mockSentences(String((args as { text?: string } | undefined)?.text ?? "")),
         } }), 300 + (total + 1) * 450);
+    return Promise.resolve(id);
+  }
+  /* A take of the review, played like a sample: one short step, then done. */
+  if (command === "play_take") {
+    startMockReading(["take"]);
+    return Promise.resolve(null);
+  }
+  if (command === "save_export") {
+    const id = ++mockExportId;
+    setTimeout(() => emit("engine:export_progress", { id, done: 1, total: 1 }), 200);
+    setTimeout(() => emit("engine:export_done", { id, ok: true, result: {
+      stopped: false, path: "/Volumes/Phim/ReadEase giọng đọc.wav",
+      subtitles: "/Volumes/Phim/ReadEase giọng đọc.srt", seconds: 97.1, lufs: -14, cues: 12,
+      session: (args as { session?: string } | undefined)?.session,
+    } }), 900);
     return Promise.resolve(id);
   }
   if (command === "prepare_model") {

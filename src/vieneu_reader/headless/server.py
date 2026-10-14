@@ -50,6 +50,7 @@ import base64
 from dataclasses import dataclass, replace
 import json
 import os
+import secrets
 import sys
 import threading
 import time
@@ -90,7 +91,7 @@ from vieneu_reader.domain.segmenter import split_transient_parts
 # the estimate keep sharing one builder - and re-exported, because the tests
 # that pin the shaping reach for `server._text_utterances`.
 from vieneu_reader.domain.pronunciation import pronunciations_of
-from vieneu_reader.headless.export import ExportSink, write_srt, write_wav
+from vieneu_reader.headless.export import ExportSink, Said, write_srt, write_wav
 from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     CHIME_LEAD_MS,
     CHIME_TAIL_MS,
@@ -291,6 +292,23 @@ class _PreparationCancelled(BaseException):
     """
 
 
+@dataclass
+class _ExportSession:
+    """The last export, kept for its review: its takes, by sentence, in a
+    nameless temporary file, and what is needed to say one again."""
+
+    token: str
+    sink: ExportSink
+    path: str
+    voice_id: str
+    voice_label: str
+    software: str
+    language: str
+    settings: SynthesisSettings
+    retake: bool
+    dirty: bool = False
+
+
 class _Session:
     """One serve() call: a request pump, a reply channel, and the engine."""
 
@@ -318,6 +336,8 @@ class _Session:
         # app" is the question, and nothing on disk should accumulate a
         # record of what somebody has been reading.
         self._spend = SpendMeter()
+        # The last export, while its takes may still be reviewed.
+        self._export: "_ExportSession | None" = None
         self._repository = repository
         self._service = service
         self._settings_path = settings_path
@@ -574,7 +594,7 @@ class _Session:
         if method == "stop":
             self._reply(request.get("id"), {"stopped": True})
             self._stop_pending = True
-            self._drop_queued("read", "read.book", "export.text")
+            self._drop_queued("read", "read.book", "export.text", "export.play")
         elif method == "model.cancel":
             # True when there is a download to cancel - running, or still
             # queued behind the reading this poll belongs to.
@@ -683,6 +703,7 @@ class _Session:
         while True:
             request = self._next_request()
             if request is None:
+                self._close_export()
                 return
             method = request.get("method")
             request_id = request.get("id")
@@ -722,6 +743,15 @@ class _Session:
                 self._read(request_id, request.get("params") or {})
             elif method == "export.text":
                 self._export_text(request_id, request.get("params") or {})
+            elif method == "export.play":
+                self._export_play(request_id, request.get("params") or {})
+            elif method == "export.retake":
+                self._export_retake(request_id, request.get("params") or {})
+            elif method == "export.save":
+                self._export_save(request_id, request.get("params") or {})
+            elif method == "export.close":
+                self._close_export()
+                self._reply(request_id, {"closed": True})
             elif method == "text.parts":
                 self._text_parts(request_id, request.get("params") or {})
             elif method == "read.book":
@@ -855,47 +885,190 @@ class _Session:
         if not utterances:
             self._fail(request_id, "text is empty")
             return
-        sink = ExportSink(SAMPLE_RATE, total=len(utterances))
-        software = str(params.get("software") or "ReadEase")
-        voice = str(params.get("voice_label") or voice_id)
+        # A new export ends the last one's review: its takes were for a file
+        # that is now finished, and only one set of takes is ever kept.
+        self._close_export()
+        engine, price, _ = self._voice_engine(voice_id, self._settings_document(), language)
+        session = _ExportSession(
+            token=secrets.token_hex(8),
+            sink=ExportSink(SAMPLE_RATE, total=len(utterances)),
+            path=path,
+            voice_id=voice_id,
+            voice_label=str(params.get("voice_label") or voice_id),
+            software=str(params.get("software") or "ReadEase"),
+            language=language,
+            settings=settings,
+            # Saying a sentence again only means something to a voice that
+            # samples: VieNeu does; Kokoro gives the same take every time;
+            # a paid voice would spend money no button had quoted.
+            retake=engine is self._engine and price is None,
+        )
+        kept = False
 
         def finish(stopped: bool) -> dict[str, Any]:
+            nonlocal kept
             if stopped:
                 return {"stopped": True}
-            audio = sink.audio()
-            subtitles = path[:-4] + ".srt"
-            loudness = write_wav(path, audio, SAMPLE_RATE, {
-                "INAM": os.path.basename(path)[:-4],
-                "ISFT": software,
-                "ICRD": time.strftime("%Y-%m-%d"),
-                # The machine-readable mark: what made the speech, said in
-                # the field every editor and tagger keeps.
-                "ICMT": f"AI-generated speech (text-to-speech). Voice: {voice}. Made with {software}.",
-                "IKEY": "AI-generated; synthetic speech; text-to-speech",
-            })
-            write_srt(subtitles, sink.cues, SAMPLE_RATE)
+            result = self._write_export(session)
             self._send({
                 "id": request_id, "event": "export_progress",
                 "done": len(utterances), "total": len(utterances),
             })
+            self._export = session
+            kept = True
             return {
-                "stopped": False,
-                "path": path,
-                "subtitles": subtitles,
-                "seconds": round(len(audio) / SAMPLE_RATE, 2),
-                "lufs": round(loudness, 1) if loudness != float("-inf") else None,
-                "cues": len(sink.cues),
+                **result,
+                "session": session.token,
+                "retake": session.retake,
+                "sentences": [
+                    {"index": index, "text": said.shown}
+                    for index, said in enumerate(session.sink.said)
+                ],
             }
 
         try:
             self._speak(
                 request_id, utterances, voice_id, rate, settings,
-                language=language, sink=sink, finish=finish,
+                language=language, sink=session.sink, finish=finish,
             )
         finally:
-            # Written, stopped or failed: the audio was only ever in a
-            # nameless temporary file, and this is where it goes.
-            sink.close()
+            # Stopped or failed, the audio was only ever in a nameless
+            # temporary file, and this is where it goes. Written, it stays
+            # for the review (`export.retake`) until `export.close`, the
+            # next export, or the engine's exit.
+            if not kept:
+                session.sink.close()
+
+    def _write_export(self, session: "_ExportSession") -> dict[str, Any]:
+        """The WAV and its subtitles, from the takes as they now stand."""
+
+        sink = session.sink
+        audio = sink.audio()
+        path = session.path
+        subtitles = path[:-4] + ".srt"
+        loudness = write_wav(path, audio, SAMPLE_RATE, {
+            "INAM": os.path.basename(path)[:-4],
+            "ISFT": session.software,
+            "ICRD": time.strftime("%Y-%m-%d"),
+            # The machine-readable mark: what made the speech, said in the
+            # field every editor and tagger keeps.
+            "ICMT": f"AI-generated speech (text-to-speech). Voice: {session.voice_label}. Made with {session.software}.",
+            "IKEY": "AI-generated; synthetic speech; text-to-speech",
+        })
+        cues = sink.cues
+        write_srt(subtitles, cues, SAMPLE_RATE)
+        session.dirty = False
+        return {
+            "stopped": False,
+            "path": path,
+            "subtitles": subtitles,
+            "seconds": round(len(audio) / SAMPLE_RATE, 2),
+            "lufs": round(loudness, 1) if loudness != float("-inf") else None,
+            "cues": len(cues),
+        }
+
+    def _export_session(self, request_id: Any, params: dict[str, Any]) -> "_ExportSession | None":
+        session = self._export
+        if session is None or params.get("session") != session.token:
+            self._fail(request_id, "export_ended")
+            return None
+        return session
+
+    def _sentence_of(self, request_id: Any, session: "_ExportSession", params: dict[str, Any]) -> int | None:
+        try:
+            index = int(params.get("index"))
+        except (TypeError, ValueError):
+            index = -1
+        if not 0 <= index < len(session.sink.said):
+            self._fail(request_id, f"unknown sentence: {params.get('index')}")
+            return None
+        return index
+
+    def _export_play(self, request_id: Any, params: dict[str, Any]) -> None:
+        """One sentence of the export, AS IT IS IN THE FILE - not a new take.
+
+        Streamed the way a reading is (chunks, the shell's window, a stop
+        answered between frames), so the shell plays it with the player it
+        already has."""
+
+        session = self._export_session(request_id, params)
+        if session is None:
+            return
+        index = self._sentence_of(request_id, session, params)
+        if index is None:
+            return
+        samples = session.sink.take(index)
+        window = params.get("window")
+        self._credits = None if window is None else int(window)
+        self._credit_read = request_id
+        self._stop_pending = False
+        seq = 0
+        stopped = False
+        step = SAMPLE_RATE // 10
+        for start in range(0, samples.size, step):
+            if self._stop_requested() or not self._await_credit():
+                stopped = True
+                break
+            self._send({
+                "id": request_id, "event": "chunk", "seq": seq, "from_voice": True,
+                "pcm": base64.b64encode(samples[start:start + step].tobytes()).decode("ascii"),
+                "sample_rate": SAMPLE_RATE,
+            })
+            seq += 1
+        self._stop_pending = False
+        self._credits = None
+        self._reply(request_id, {"frames": seq, "voiced_frames": seq, "stopped": stopped})
+
+    def _export_retake(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Say one sentence of the export again and keep the new take in its
+        place. The file is not rewritten until `export.save`: a rewrite runs
+        the loudness over the whole file, and a person trying three takes of
+        one line should not wait for three."""
+
+        session = self._export_session(request_id, params)
+        if session is None:
+            return
+        index = self._sentence_of(request_id, session, params)
+        if index is None:
+            return
+        if not session.retake:
+            self._fail(request_id, "retake_unavailable")
+            return
+        engine, price, blocked = self._voice_engine(session.voice_id, self._settings_document(), session.language)
+        if engine is None or price is not None:
+            self._fail(request_id, f"voice_unavailable: {blocked}")
+            return
+        said = session.sink.said[index]
+        stretcher = TimeStretcher(said.rate) if said.rate != 1.0 else None
+        parts: list[np.ndarray] = []
+        for chunk in engine.stream(said.spoken, session.voice_id, session.settings):
+            samples = np.frombuffer(chunk.pcm, dtype=np.float32)
+            if said.gain != 1.0:
+                samples = np.clip(samples * said.gain, -1.0, 1.0)
+            parts.append(stretcher.feed(samples) if stretcher is not None else samples)
+        if stretcher is not None:
+            parts.append(stretcher.drain())
+        audio = np.concatenate(parts).astype(np.float32) if parts else np.zeros(0, dtype=np.float32)
+        if audio.size == 0:
+            self._fail(request_id, "the voice said nothing")
+            return
+        session.sink.replace(index, audio.tobytes())
+        session.dirty = True
+        self._reply(request_id, {"index": index, "seconds": round(audio.size / SAMPLE_RATE, 2)})
+
+    def _export_save(self, request_id: Any, params: dict[str, Any]) -> None:
+        session = self._export_session(request_id, params)
+        if session is None:
+            return
+        if not os.path.isdir(os.path.dirname(session.path)):
+            self._fail(request_id, "the folder to save in does not exist")
+            return
+        self._reply(request_id, self._write_export(session))
+
+    def _close_export(self) -> None:
+        if self._export is not None:
+            self._export.sink.close()
+            self._export = None
 
     def _text_parts(self, request_id: Any, params: dict[str, Any]) -> None:
         """The same parts a `read` of this text would speak, as WRITTEN.
@@ -2916,6 +3089,19 @@ class _Session:
                              from_voice=False)
                     if sink is not None and (paired or index == 0):
                         sink.begin(shown[index] if paired else shown_text)
+                    if sink is not None:
+                        # A file keeps its audio BY SENTENCE, so one can be
+                        # said again alone: each gets its own stretcher,
+                        # drained when it ends, so no tail of it lands
+                        # under the next sentence's name.
+                        if local_rate != 1.0:
+                            stretcher = TimeStretcher(local_rate)
+                        sink.open_sentence(Said(
+                            spoken=sentence,
+                            shown=shown[index] if paired else sentence,
+                            rate=local_rate,
+                            gain=gain,
+                        ))
                     # Anything the engine actually produced this time, kept so
                     # it can be remembered - but only once the sentence is
                     # WHOLE. Half a sentence in the cache would be handed back
@@ -2944,6 +3130,12 @@ class _Session:
                                      from_voice=True)
                     if stopped:
                         break
+                    if sink is not None:
+                        if stretcher is not None:
+                            tail = stretcher.drain()
+                            if tail.size:
+                                emit(tail.astype(np.float32).tobytes(), from_voice=True)
+                        sink.close_sentence()
                     self._remember_sentence(engine, sentence, voice_id, settings, fresh)
                     if price is not None and fresh:
                         # Only what was actually synthesised is counted: a

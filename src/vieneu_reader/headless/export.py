@@ -283,66 +283,145 @@ class Cue:
     text: str
 
 
-class _FileSamples:
-    """float32 samples on disk, sliced like an array. Read with `pread`, not
-    mapped: a mapping keeps every page it has touched resident, and an hour
-    of audio measured twice touched a gigabyte (14/10)."""
+@dataclass(frozen=True)
+class Said:
+    """One sentence as the voice said it, and how - enough to say it again."""
 
-    def __init__(self, descriptor: int, count: int) -> None:
+    spoken: str
+    shown: str
+    rate: float
+    gain: float
+
+
+class _Pieces:
+    """The export's audio as an ordered list of pieces of one file: slices
+    like an array, read with `pread`, never mapped (a mapping keeps every
+    page it touched resident - an hour of audio measured twice touched a
+    gigabyte, 14/10)."""
+
+    def __init__(self, descriptor: int, pieces: list[tuple[int, int]]) -> None:
         self._descriptor = descriptor
-        self._count = count
+        self._pieces = pieces
+        lengths = np.fromiter((length for _, length in pieces), dtype=np.int64, count=len(pieces))
+        self._starts = np.concatenate(([0], np.cumsum(lengths)))
 
     def __len__(self) -> int:
-        return self._count
+        return int(self._starts[-1])
 
     def __getitem__(self, where: slice) -> np.ndarray:
-        start, stop, _ = where.indices(self._count)
+        start, stop, _ = where.indices(len(self))
         if stop <= start:
             return np.zeros(0, dtype=np.float32)
-        data = os.pread(self._descriptor, (stop - start) * 4, start * 4)
-        return np.frombuffer(data, dtype=np.float32)
+        first = int(np.searchsorted(self._starts, start, side="right")) - 1
+        last = int(np.searchsorted(self._starts, stop, side="left")) - 1
+        parts = []
+        for index in range(first, last + 1):
+            offset, length = self._pieces[index]
+            begin = max(start, int(self._starts[index]))
+            end = min(stop, int(self._starts[index]) + length)
+            if end > begin:
+                skip = begin - int(self._starts[index])
+                data = os.pread(self._descriptor, (end - begin) * 4, (offset + skip) * 4)
+                parts.append(np.frombuffer(data, dtype=np.float32))
+        return np.concatenate(parts) if parts else np.zeros(0, dtype=np.float32)
 
 
 class ExportSink:
-    """Where `_speak` puts a reading meant for a file.
+    """Where `_speak` puts a reading meant for a file - kept by SENTENCE.
 
     The audio goes to an anonymous temporary file, not memory: an hour of
     float32 is 700 MB. The file has no name from the start, so it is gone
-    when the sink closes or the process dies - an export cut short leaves
-    nothing behind. `begin` and `end` bracket each sentence the voice says,
-    in samples of the output (after the stretcher), so a cue covers exactly
-    the voice and not the rest that follows it.
+    when the sink closes or the process dies.
+
+    Every piece of audio is tagged with the sentence it belongs to (-1 for a
+    rest or a chime), so one sentence can be said again (`replace`) without
+    touching the others, and the subtitles are timed from where the pieces
+    lie when the file is written - a longer new take moves every cue after
+    it. A cue covers a run of sentences: one, when the written and the spoken
+    split the same way, or a whole part when they do not.
     """
 
     def __init__(self, sample_rate: int, total: int = 0) -> None:
         self.sample_rate = sample_rate
         self.total = total
         self.done = 0
-        self.cues: list[Cue] = []
+        self.said: list[Said] = []
         self._file = tempfile.TemporaryFile()
-        self._samples = 0
-        self._open: tuple[int, str] | None = None
+        self._end = 0
+        self._pieces: list[list[int]] = []  # [offset, length, sentence]
+        self._sentence = -1
+        self._cues: list[tuple[int, int, str]] = []
+        self._cue: tuple[int, str] | None = None
 
+    # -- recording, as `_speak` goes ------------------------------------------
     def add(self, pcm: bytes) -> None:
+        self._file.seek(0, io.SEEK_END)
         self._file.write(pcm)
-        self._samples += len(pcm) // 4
+        count = len(pcm) // 4
+        self._pieces.append([self._end, count, self._sentence])
+        self._end += count
+
+    def open_sentence(self, said: Said) -> None:
+        self.said.append(said)
+        self._sentence = len(self.said) - 1
+
+    def close_sentence(self) -> None:
+        self._sentence = -1
 
     def begin(self, text: str) -> None:
-        self._open = (self._samples, text)
+        """A cue starts with the next sentence opened."""
+        self._cue = (len(self.said), text)
 
     def end(self) -> None:
-        if self._open is None:
+        if self._cue is None:
             return
-        start, text = self._open
-        self._open = None
-        if self._samples > start and text.strip():
-            self.cues.append(Cue(start, self._samples, text.strip()))
+        first, text = self._cue
+        self._cue = None
+        last = len(self.said) - 1
+        if last >= first and text.strip():
+            self._cues.append((first, last, text.strip()))
 
-    def audio(self) -> "_FileSamples":
-        """Everything said so far, read from the file a slice at a time."""
-
+    # -- reading back ----------------------------------------------------------
+    def audio(self) -> _Pieces:
         self._file.flush()
-        return _FileSamples(self._file.fileno(), self._samples)
+        return _Pieces(self._file.fileno(), [(offset, length) for offset, length, _ in self._pieces])
+
+    @property
+    def cues(self) -> list[Cue]:
+        """Cues in samples of the audio as it now stands."""
+        spans: dict[int, list[int]] = {}
+        at = 0
+        for _, length, sentence in self._pieces:
+            if sentence >= 0 and length:
+                span = spans.setdefault(sentence, [at, at + length])
+                span[1] = at + length
+            at += length
+        cues = []
+        for first, last, text in self._cues:
+            if first in spans and last in spans:
+                cues.append(Cue(spans[first][0], spans[last][1], text))
+        return cues
+
+    def take(self, sentence: int) -> np.ndarray:
+        """One sentence's audio, as it stands."""
+        self._file.flush()
+        parts = [
+            np.frombuffer(os.pread(self._file.fileno(), length * 4, offset * 4), dtype=np.float32)
+            for offset, length, tag in self._pieces if tag == sentence and length
+        ]
+        return np.concatenate(parts) if parts else np.zeros(0, dtype=np.float32)
+
+    def replace(self, sentence: int, pcm: bytes) -> None:
+        """A new take of one sentence, in the place of the old one."""
+        where = [index for index, piece in enumerate(self._pieces) if piece[2] == sentence]
+        if not where:
+            raise IndexError(f"no sentence {sentence}")
+        self._file.seek(0, io.SEEK_END)
+        self._file.write(pcm)
+        count = len(pcm) // 4
+        new = [self._end, count, sentence]
+        self._end += count
+        self._pieces[where[0]:where[-1] + 1] = [new]
 
     def close(self) -> None:
         self._file.close()

@@ -15,6 +15,7 @@ from vieneu_reader.domain.models import AudioChunk, Voice
 from vieneu_reader.headless.export import (
     Cue,
     ExportSink,
+    Said,
     integrated_loudness,
     read_wav_info,
     split_cue,
@@ -132,7 +133,9 @@ class CueTests(unittest.TestCase):
         sink = ExportSink(SAMPLE_RATE)
         self.addCleanup(sink.close)
         sink.begin("Câu một.")
+        sink.open_sentence(Said("Câu một.", "Câu một.", 1.0, 1.0))
         sink.add(np.ones(100, dtype=np.float32).tobytes())
+        sink.close_sentence()
         sink.end()
         sink.add(np.zeros(50, dtype=np.float32).tobytes())
         self.assertEqual([(c.start, c.end) for c in sink.cues], [(0, 100)])
@@ -276,3 +279,144 @@ class PronunciationReadingTests(unittest.TestCase):
             "book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}], engine, repository=repository)
         self.assertTrue(replies[-1]["ok"], replies[-1])
         self.assertIn("Đoạn về rít ít.", engine.requests)
+
+
+class GrowingEngine(ToneEngine):
+    """Each call a different take: the n-th is n quarter-seconds long, so a
+    new take is audibly - and measurably - not the old one."""
+
+    def stream(self, text, voice_id, settings):
+        self.requests.append(text)
+        length = SAMPLE_RATE // 4 * len(self.requests)
+        t = np.arange(length) / SAMPLE_RATE
+        yield AudioChunk(pcm=(0.05 * np.sin(2 * np.pi * 440 * t)).astype(np.float32).tobytes(),
+                         sample_rate=SAMPLE_RATE)
+
+
+def srt_spans(path):
+    import re
+    spans = []
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            match = re.match(r"(\d+):(\d+):(\d+),(\d+) --> (\d+):(\d+):(\d+),(\d+)", line)
+            if match:
+                h, m, s, ms, h2, m2, s2, ms2 = map(int, match.groups())
+                spans.append((((h * 60 + m) * 60 + s) * 1000 + ms, ((h2 * 60 + m2) * 60 + s2) * 1000 + ms2))
+    return spans
+
+
+class RetakeTests(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.mkdtemp()
+        self.path = os.path.join(self.folder, "takes.wav")
+
+    def run_review(self, engine, steps, rate=1.0):
+        """Export, then `steps(token)` in the same engine."""
+        import threading
+        from queue import Queue
+
+        lines: Queue = Queue()
+        reader_r, reader_w = os.pipe()
+        inbox = os.fdopen(reader_r, "r")
+        outbox = os.fdopen(reader_w, "w")
+
+        class Echo(io.StringIO):
+            def write(self, text):
+                for line in text.splitlines():
+                    if line.strip():
+                        lines.put(json.loads(line))
+                return len(text)
+
+        echo = Echo()
+        thread = threading.Thread(target=serve, args=(inbox, echo, engine))
+        thread.start()
+
+        def ask(request):
+            outbox.write(json.dumps(request) + "\n")
+            outbox.flush()
+            seen = []
+            while True:
+                message = lines.get(timeout=20)
+                seen.append(message)
+                if message.get("id") == request["id"] and "ok" in message:
+                    return message, seen
+
+        try:
+            reply, _ = ask({"id": 1, "method": "export.text", "params": {
+                "text": "Một. Hai. Ba.", "voice_id": "adam", "path": self.path, "rate": rate}})
+            self.assertTrue(reply["ok"], reply)
+            return reply["result"], steps(reply["result"]["session"], ask)
+        finally:
+            outbox.close()
+            thread.join(timeout=20)
+            inbox.close()
+
+    # RE-PLAY-016
+    def test_a_new_take_replaces_one_sentence_and_moves_only_what_follows(self):
+        engine = GrowingEngine()
+
+        def steps(token, ask):
+            before = srt_spans(self.path[:-4] + ".srt")
+            retake, _ = ask({"id": 2, "method": "export.retake", "params": {"session": token, "index": 1}})
+            saved, _ = ask({"id": 3, "method": "export.save", "params": {"session": token}})
+            return before, retake, saved, srt_spans(self.path[:-4] + ".srt")
+
+        result, (before, retake, saved, after) = self.run_review(engine, steps)
+        self.assertTrue(result["retake"])
+        self.assertEqual([s["text"] for s in result["sentences"]], ["Một.", "Hai.", "Ba."])
+        self.assertTrue(retake["ok"], retake)
+        self.assertEqual(engine.requests[-1], "Hai.")
+        self.assertTrue(saved["ok"], saved)
+        # Sentence 0 untouched; sentence 1 longer by the new take; 2 moved by
+        # exactly that much.
+        self.assertEqual(after[0], before[0])
+        grown = (after[1][1] - after[1][0]) - (before[1][1] - before[1][0])
+        # Takes are 0.25 s x call number: "Hai" was call 2 (0.5 s), its new
+        # take is call 4 (1.0 s).
+        self.assertAlmostEqual(grown, 1000 - 500, delta=2)
+        self.assertAlmostEqual(after[2][0] - before[2][0], grown, delta=2)
+        self.assertAlmostEqual(after[2][1] - after[2][0], before[2][1] - before[2][0], delta=2)
+
+    # RE-PLAY-016
+    def test_at_a_faster_speed_a_take_still_changes_only_its_own_cue(self):
+        engine = GrowingEngine()
+
+        def steps(token, ask):
+            before = srt_spans(self.path[:-4] + ".srt")
+            ask({"id": 2, "method": "export.retake", "params": {"session": token, "index": 1}})
+            ask({"id": 3, "method": "export.save", "params": {"session": token}})
+            return before, srt_spans(self.path[:-4] + ".srt")
+
+        _, (before, after) = self.run_review(engine, steps, rate=1.5)
+        self.assertEqual(after[0], before[0])
+        shift = after[2][0] - before[2][0]
+        self.assertGreater(shift, 0)
+        self.assertAlmostEqual(after[2][1] - after[2][0], before[2][1] - before[2][0], delta=2)
+
+    # RE-PLAY-016
+    def test_play_streams_the_take_in_the_file_not_a_new_one(self):
+        engine = GrowingEngine()
+
+        def steps(token, ask):
+            calls = len(engine.requests)
+            reply, seen = ask({"id": 2, "method": "export.play", "params": {"session": token, "index": 2}})
+            pcm = b"".join(__import__("base64").b64decode(m["pcm"]) for m in seen if m.get("event") == "chunk")
+            return calls, reply, np.frombuffer(pcm, dtype=np.float32)
+
+        _, (calls, reply, played) = self.run_review(engine, steps)
+        self.assertTrue(reply["ok"], reply)
+        self.assertEqual(len(engine.requests), calls)  # nothing synthesised
+        self.assertEqual(played.size, SAMPLE_RATE // 4 * 3)  # the third take
+
+    # RE-PLAY-016
+    def test_a_closed_or_foreign_session_is_refused(self):
+        def steps(token, ask):
+            wrong, _ = ask({"id": 2, "method": "export.retake", "params": {"session": "nope", "index": 0}})
+            ask({"id": 3, "method": "export.close", "params": {}})
+            closed, _ = ask({"id": 4, "method": "export.play", "params": {"session": token, "index": 0}})
+            return wrong, closed
+
+        _, (wrong, closed) = self.run_review(GrowingEngine(), steps)
+        self.assertFalse(wrong["ok"])
+        self.assertIn("export_ended", wrong["error"])
+        self.assertFalse(closed["ok"])

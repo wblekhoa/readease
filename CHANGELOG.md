@@ -6,6 +6,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Review sentences: after an export, listen to each sentence as it is in
+  the file and say again the ones that came out wrong - a short title, a
+  name - with the Vietnamese voice; Save file writes the WAV and subtitles
+  anew, later subtitles moving with the new takes. The takes wait in a
+  nameless temporary file until Done, a change to the text, another
+  export or quitting.
+
 - Pronunciations: in Voice settings, write a word as it appears and how it
   should be said ("ReadEase" → "rít ít", "AI" → "ây ai"). Every reading -
   books, pasted text, a selection, an export - says it that way from the
