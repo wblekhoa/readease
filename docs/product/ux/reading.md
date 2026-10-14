@@ -44,6 +44,11 @@ relations:
   carries the same price as the read button). It opens the macOS save panel (proposed name "ReadEase <date> <time>.wav"),
   then shows "Exporting n/N" with a bar and Cancel in its place; the read button waits while it runs. Done: "Saved ~N min of
   audio and subtitles" with Show in Finder. The `.srt` lands beside the `.wav`. Logic: RE-PLAY-010…014.
+  The job belongs to the app, not the screen: leave Paste text mid-export and come back to the same progress or result.
+  Known limits (2026-10-14): only Paste text's read button waits for an export - Read in the Reader, a paragraph click
+  and the selection shortcut queue behind it (shown as "preparing" until it ends), and Cancel or Stop drops them too;
+  with a paid voice whose price could not be fetched, Export stays disabled without saying why; a name typed without
+  `.wav` gets it appended after the save panel's overwrite check.
 - **Paste text**: up to 100,000 characters; paragraph breaks kept; long text is split into parts ("Reading part 2/7").
   Markdown is read as meant (marks dropped, link text read, not the address). Pasted text is not added to the Library,
   not logged and not written to the audio cache.
@@ -53,7 +58,7 @@ relations:
 | Screen | States | Entry | Exit / next |
 |---|---|---|---|
 | Reader | idle · preparing voice · reading · paused · error (reason shown, e.g. missing model, no key, budget) | open a book from the Library | back to Library; side column Contents / Notes / Search |
-| Paste text | empty · text entered · over the limit (count + "trim it") · reading part N/M · paused | side column "Paste text" | stop, or switch tab |
+| Paste text | empty · text entered · over the limit (count + "trim it") · reading part N/M · paused · exporting n/N · exported (Show in Finder) · export failed (reason) | side column "Paste text" | stop, or switch tab (an export goes on) |
 | Control bar (transport) | idle · reading · paused (pause button shows Resume) | always present on reading screens | Stop → idle |
 | Reading status capsule | preparing · reading · paused · hidden while a panel covers the bar | a reading starts | Stop removes it |
 | Voice settings panel | open · closed | gear on the control bar | closes back to the screen |

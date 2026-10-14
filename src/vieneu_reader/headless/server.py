@@ -89,7 +89,7 @@ from vieneu_reader.domain.segmenter import split_transient_parts
 # and note cues, the rests. Imported under their own names so the reading and
 # the estimate keep sharing one builder - and re-exported, because the tests
 # that pin the shaping reach for `server._text_utterances`.
-from vieneu_reader.headless.export import ExportSink, normalised, write_srt, write_wav
+from vieneu_reader.headless.export import ExportSink, write_srt, write_wav
 from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     CHIME_LEAD_MS,
     CHIME_TAIL_MS,
@@ -861,9 +861,9 @@ class _Session:
         def finish(stopped: bool) -> dict[str, Any]:
             if stopped:
                 return {"stopped": True}
-            audio, loudness = normalised(sink.audio(), SAMPLE_RATE)
+            audio = sink.audio()
             subtitles = path[:-4] + ".srt"
-            write_wav(path, audio, SAMPLE_RATE, {
+            loudness = write_wav(path, audio, SAMPLE_RATE, {
                 "INAM": os.path.basename(path)[:-4],
                 "ISFT": software,
                 "ICRD": time.strftime("%Y-%m-%d"),
@@ -881,15 +881,20 @@ class _Session:
                 "stopped": False,
                 "path": path,
                 "subtitles": subtitles,
-                "seconds": round(audio.size / SAMPLE_RATE, 2),
+                "seconds": round(len(audio) / SAMPLE_RATE, 2),
                 "lufs": round(loudness, 1) if loudness != float("-inf") else None,
                 "cues": len(sink.cues),
             }
 
-        self._speak(
-            request_id, utterances, voice_id, rate, settings,
-            language=language, sink=sink, finish=finish,
-        )
+        try:
+            self._speak(
+                request_id, utterances, voice_id, rate, settings,
+                language=language, sink=sink, finish=finish,
+            )
+        finally:
+            # Written, stopped or failed: the audio was only ever in a
+            # nameless temporary file, and this is where it goes.
+            sink.close()
 
     def _text_parts(self, request_id: Any, params: dict[str, Any]) -> None:
         """The same parts a `read` of this text would speak, as WRITTEN.

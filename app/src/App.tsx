@@ -17,6 +17,7 @@ import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ExportAudio } from "./ui/ExportAudio";
+import { useExport } from "./ui/useExport";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
@@ -1374,8 +1375,10 @@ export default function App() {
 
   const overLimit = content.length > PASTE_LIMIT;
   // An export holds the engine the way a reading does; the read button
-  // waits for it rather than queueing a reading behind a file.
-  const [exporting, setExporting] = useState(false);
+  // waits for it rather than queueing a reading behind a file. Owned here,
+  // not by the Paste screen, so leaving the screen does not lose it.
+  const exportJob = useExport();
+  const exporting = exportJob.job.kind === "running";
   const atOrigin =
     origin === null ||
     (origin.kind === "book"
@@ -1974,13 +1977,16 @@ export default function App() {
               )}
               <span className="ml-auto">
                 <ExportAudio
-                  content={content}
-                  voiceId={voiceId}
-                  voiceLabel={voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId}
-                  rate={rate}
+                  job={exportJob.job}
                   disabled={!content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
                   cost={pricing && estimate !== null && !estimateFailed ? buttonCost(estimate) || null : null}
-                  onBusyChange={setExporting}
+                  onStart={() => void exportJob.start({
+                    content,
+                    voiceId,
+                    voiceLabel: voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId,
+                    rate,
+                  })}
+                  onCancel={exportJob.cancel}
                 />
               </span>
             </div>

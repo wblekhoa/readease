@@ -90,6 +90,20 @@ class LoudnessMeterTests(unittest.TestCase):
         lifted_db = 20 * np.log10(np.abs(out).max() / 0.1)
         self.assertLessEqual(lifted_db, PEAK_CEILING_DBFS + MAX_LIMIT_DB - 20 * np.log10(0.1) + 0.01)
 
+    # RE-PLAY-012
+    def test_the_limiter_holds_after_a_peak_and_starts_only_just_before_it(self):
+        from vieneu_reader.headless.export import _held_gain
+
+        peaks = np.full(40, 0.1)
+        peaks[20] = 2.0  # one block a ceiling of 1.0 must pull down by half
+        held = _held_gain(peaks, 1.0)
+        self.assertAlmostEqual(held[20], 0.5)
+        self.assertAlmostEqual(held[19], 0.5)      # one block of look-ahead
+        self.assertAlmostEqual(held[26], 0.5)      # still held 30 ms after
+        self.assertAlmostEqual(held[32], 0.5)      # and at 60 ms
+        self.assertEqual(held[33], 1.0)            # then let go
+        self.assertEqual(held[14], 1.0)            # 30 ms before: untouched
+
     def test_silence_has_no_loudness(self):
         self.assertEqual(integrated_loudness(np.zeros(SAMPLE_RATE), SAMPLE_RATE), float("-inf"))
 

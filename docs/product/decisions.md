@@ -23,7 +23,8 @@ Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs
   commercial licence is offered is still the owner's call.
 - **Evidence**: VieNeu-TTS v3 Turbo model card (fetched 2026-10-14): preset voices are Apache-2.0 with the speakers'
   consent, and generated audio "may be used in commercial and monetized content". Real-voice probe on a model copy:
-  14.6 s of Ngọc Linh exported in 3.9 s, -14.06 LUFS, peak -1.0 dBFS, 6 cues. RE-PLAY-010…014.
+  14.6 s of Ngọc Linh exported in 3.9 s, -14.06 LUFS, peak -1.0 dBFS, 6 cues. A 90-minute export (test voice, 92 489
+  characters) peaked at 213 MB resident: audio is staged in a temporary file and processed in batches. RE-PLAY-010…014.
 - **Reversal**: drop the export button and `export.text`; nothing else depends on them.
 
 ## 2026-10-11 · Design tokens re-synced from WAVE (snapshot of 2026-08-31 replaced)

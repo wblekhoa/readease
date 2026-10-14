@@ -20,9 +20,11 @@ from __future__ import annotations
 
 import io
 import math
+import os
 import struct
+import tempfile
 import wave
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -60,32 +62,54 @@ def _k_weight_power(size: int, sample_rate: int) -> np.ndarray:
     return power
 
 
-def integrated_loudness(samples: np.ndarray, sample_rate: int) -> float:
-    """Gated integrated loudness of mono audio, in LUFS (-inf for silence).
+# Blocks measured per FFT batch, and samples per write: a few MB of working
+# memory whatever the length of the file. A paste may be 100 000 characters -
+# an hour and more of audio - and the reading engine shares an 8 GB Mac.
+_BATCH_BLOCKS = 128
+_WRITE_SAMPLES = 1 << 20
 
-    400 ms blocks with 75 % overlap, an absolute gate at -70 LUFS and a
-    relative gate 10 LU under the mean of what passed it (BS.1770-4). Each
-    block's K-weighted energy is taken in the frequency domain (Parseval), so
-    a long file costs a few FFTs per second rather than a Python loop per
-    sample.
+
+def _block_energies(samples, sample_rate: int, transform=None) -> np.ndarray:
+    """Mean-square K-weighted energy of each 400 ms block, 75 % overlap.
+
+    Taken in the frequency domain (Parseval), a batch of blocks per FFT, so
+    a long file costs a few FFTs per second and never more than one batch
+    in memory. `transform(segment, start)` changes the samples on the way
+    in - the gain a file will be written with, measured before it is.
     """
 
     block = int(0.4 * sample_rate)
     hop = block // 4
-    samples = np.asarray(samples, dtype=np.float64).reshape(-1)
-    if samples.size < block:
-        samples = np.pad(samples, (0, block - samples.size))
+    total = len(samples)
+    if total < block:
+        samples = np.pad(np.asarray(samples, dtype=np.float64), (0, block - total))
+        total = block
     weight = _k_weight_power(block, sample_rate)
-    starts = range(0, samples.size - block + 1, hop)
-    energies = []
-    for start in starts:
-        spectrum = np.fft.rfft(samples[start:start + block])
-        power = np.abs(spectrum) ** 2 * weight
-        # One-sided spectrum back to the mean square of the block: the bins
-        # other than DC (and Nyquist, for an even size) stand for two.
-        power[1:-1 if block % 2 == 0 else None] *= 2
-        energies.append(power.sum() / (block * block))
-    energies = np.asarray(energies)
+    count = (total - block) // hop + 1
+    energies = np.empty(count)
+    for first in range(0, count, _BATCH_BLOCKS):
+        last = min(count, first + _BATCH_BLOCKS)
+        start, stop = first * hop, (last - 1) * hop + block
+        segment = np.asarray(samples[start:stop], dtype=np.float64)
+        if transform is not None:
+            segment = transform(segment, start)
+        frames = np.lib.stride_tricks.sliding_window_view(segment, block)[::hop]
+        power = np.abs(np.fft.rfft(frames, axis=1)) ** 2 * weight
+        # One-sided spectrum back to the mean square: every bin but DC and
+        # Nyquist (the block is an even size) stands for two.
+        power[:, 1:-1] *= 2
+        energies[first:last] = power.sum(axis=1) / (block * block)
+    return energies
+
+
+def integrated_loudness(samples, sample_rate: int, transform=None) -> float:
+    """Gated integrated loudness of mono audio, in LUFS (-inf for silence).
+
+    ITU-R BS.1770-4: K-weighted 400 ms blocks, an absolute gate at -70 LUFS
+    and a relative gate 10 LU under the mean of what passed it.
+    """
+
+    energies = _block_energies(samples, sample_rate, transform)
     loudness = -0.691 + 10 * np.log10(np.maximum(energies, 1e-20))
     passed = energies[loudness > -70.0]
     if passed.size == 0:
@@ -98,65 +122,93 @@ def integrated_loudness(samples: np.ndarray, sample_rate: int) -> float:
 
 
 # The most a peak may be pulled down to let the rest reach the target. Speech
-# has sharp peaks - a voice model's sit some 15 dB over its loudness - so a
-# single gain stops near -17 LUFS (measured on VieNeu, 14/10). A few dB off
-# the loudest syllables is inaudible; more starts to flatten the voice, and
-# then the file is left quieter rather than squashed.
+# has sharp peaks - VieNeu's sat 15.7 dB over its loudness (14/10) - so one
+# gain alone stops near -17 LUFS. A few dB off the loudest syllables is not
+# heard; more starts to flatten the voice, and then the file is left quieter
+# rather than squashed.
 MAX_LIMIT_DB = 6.0
 _LIMIT_BLOCK_S = 0.005
+# How long a reduction holds after the peak that asked for it (12 blocks,
+# 60 ms) before the gain comes back. It starts one block early.
 _LIMIT_RELEASE_BLOCKS = 12
 
 
-def _limited(samples: np.ndarray, sample_rate: int, ceiling: float) -> np.ndarray:
-    """Peaks over `ceiling` pulled down by a smooth gain, block by block.
-
-    5 ms blocks: each gets the gain its own peak needs; the gain then holds
-    for the next 60 ms (release) and starts one block early (look-ahead),
-    and moves linearly between block centres, so nothing clicks. A last hard
-    clip at the ceiling catches what interpolation lets through - a few
-    samples at most.
-    """
-
+def _block_peaks(samples, sample_rate: int) -> np.ndarray:
     block = max(1, int(_LIMIT_BLOCK_S * sample_rate))
-    count = -(-samples.size // block)
-    padded = np.pad(np.abs(samples), (0, count * block - samples.size))
-    peaks = padded.reshape(count, block).max(axis=1)
-    need = np.minimum(1.0, ceiling / np.maximum(peaks, 1e-12))
+    total = len(samples)
+    count = -(-total // block)
+    peaks = np.empty(count, dtype=np.float32)
+    step = block * 4096
+    for start in range(0, total, step):
+        segment = np.abs(np.asarray(samples[start:start + step], dtype=np.float32))
+        blocks = -(-segment.size // block)
+        segment = np.pad(segment, (0, blocks * block - segment.size))
+        peaks[start // block:start // block + blocks] = segment.reshape(blocks, block).max(axis=1)
+    return peaks
+
+
+def _held_gain(peaks: np.ndarray, ceiling: float) -> np.ndarray:
+    """Each block's gain: the least any block from 60 ms before it to one
+    after it needs to stay under the ceiling - one block of look-ahead, a
+    60 ms hold before it lets go."""
+
+    need = np.minimum(1.0, ceiling / np.maximum(peaks.astype(np.float64), 1e-12))
     window = _LIMIT_RELEASE_BLOCKS + 2
-    extended = np.pad(need, (1, window), constant_values=1.0)
-    held = np.lib.stride_tricks.sliding_window_view(extended, window).min(axis=1)[:count]
-    centres = (np.arange(count) + 0.5) * block
-    gain = np.interp(np.arange(samples.size), centres, held)
-    return np.clip(samples * gain, -ceiling, ceiling).astype(np.float32)
+    extended = np.pad(need, (_LIMIT_RELEASE_BLOCKS, 1), constant_values=1.0)
+    return np.lib.stride_tricks.sliding_window_view(extended, window).min(axis=1)[:need.size]
 
 
-def normalised(samples: np.ndarray, sample_rate: int) -> tuple[np.ndarray, float]:
-    """The audio at TARGET_LUFS with its peaks under PEAK_CEILING_DBFS.
+@dataclass(frozen=True)
+class _Gain:
+    """One lift for the whole file, then the limiter's gain moving linearly
+    between 5 ms block centres, then a hard clip at the ceiling for the few
+    samples interpolation lets through."""
 
-    One gain lifts the whole file; where that would push a peak over the
-    ceiling, a limiter takes the peak down (`_limited`), never by more than
-    MAX_LIMIT_DB. Returns the new samples and the loudness they measure.
-    """
+    lift: float
+    held: np.ndarray
+    block: int
+    ceiling: float
+
+    def __call__(self, segment: np.ndarray, start: int) -> np.ndarray:
+        centres = (np.arange(self.held.size) + 0.5) * self.block
+        gain = np.interp(np.arange(start, start + segment.size), centres, self.held)
+        return np.clip(segment * (self.lift * gain), -self.ceiling, self.ceiling)
+
+
+def _plan(samples, sample_rate: int) -> tuple[_Gain | None, float]:
+    """The gain that puts the file at TARGET_LUFS with its peaks under
+    PEAK_CEILING_DBFS, never limiting more than MAX_LIMIT_DB; and the
+    loudness the file will then measure."""
 
     measured = integrated_loudness(samples, sample_rate)
     if not math.isfinite(measured):
-        return samples, measured
+        return None, measured
     ceiling = 10 ** (PEAK_CEILING_DBFS / 20)
-    peak = float(np.max(np.abs(samples)))
-    # The gain the target asks for, but no more than the limiter may absorb.
-    gain_db = min(TARGET_LUFS - measured,
-                  PEAK_CEILING_DBFS + MAX_LIMIT_DB - 20 * math.log10(peak))
-    out = samples
-    for _ in range(3):
-        lifted = (samples * 10 ** (gain_db / 20)).astype(np.float32)
-        out = _limited(lifted, sample_rate, ceiling)
-        now = integrated_loudness(out, sample_rate)
+    peaks = _block_peaks(samples, sample_rate)
+    peak_db = 20 * math.log10(float(peaks.max()))
+    most = PEAK_CEILING_DBFS + MAX_LIMIT_DB - peak_db
+    gain_db = min(TARGET_LUFS - measured, most)
+    block = max(1, int(_LIMIT_BLOCK_S * sample_rate))
+    for attempt in range(4):
+        lift = 10 ** (gain_db / 20)
+        plan = _Gain(lift, _held_gain(peaks * lift, ceiling), block, ceiling)
+        now = integrated_loudness(samples, sample_rate, plan)
         # Limiting took a little loudness away; give it back, within bounds.
         short = TARGET_LUFS - now
-        if abs(short) < 0.1 or 20 * math.log10(peak) + gain_db + short > PEAK_CEILING_DBFS + MAX_LIMIT_DB:
-            break
-        gain_db += short
-    return out, integrated_loudness(out, sample_rate)
+        if abs(short) < 0.1 or gain_db >= most or attempt == 3:
+            return plan, now
+        gain_db = min(gain_db + short, most)
+    return plan, now
+
+
+def normalised(samples: np.ndarray, sample_rate: int) -> tuple[np.ndarray, float]:
+    """The audio at TARGET_LUFS with its peaks under PEAK_CEILING_DBFS (in
+    memory - `write_wav` does the same a batch at a time)."""
+
+    plan, loudness = _plan(samples, sample_rate)
+    if plan is None:
+        return samples, loudness
+    return plan(np.asarray(samples, dtype=np.float64), 0).astype(np.float32), loudness
 
 
 def _info_chunk(tags: dict[str, str]) -> bytes:
@@ -173,24 +225,33 @@ def _info_chunk(tags: dict[str, str]) -> bytes:
     return b"LIST" + struct.pack("<I", len(body)) + body
 
 
-def write_wav(path: str, samples: np.ndarray, sample_rate: int, tags: dict[str, str]) -> None:
-    """16-bit mono PCM with the INFO chunk after the audio."""
+def write_wav(path: str, samples, sample_rate: int, tags: dict[str, str]) -> float:
+    """16-bit mono PCM at the export loudness, the INFO chunk after the audio.
 
-    pcm = (np.clip(samples, -1.0, 1.0) * 32767).round().astype("<i2").tobytes()
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as handle:
+    Returns the loudness written (-inf for silence). The samples may be a
+    memory map: they are read, gained and written a batch at a time.
+    """
+
+    plan, loudness = _plan(samples, sample_rate)
+    with wave.open(path, "wb") as handle:
         handle.setnchannels(1)
         handle.setsampwidth(2)
         handle.setframerate(sample_rate)
-        handle.writeframes(pcm)
-    riff = bytearray(buffer.getvalue())
-    if len(riff) % 2:
-        riff += b"\0"
-    riff += _info_chunk(tags)
-    # The RIFF size counts everything after its own eight bytes.
-    riff[4:8] = struct.pack("<I", len(riff) - 8)
-    with open(path, "wb") as handle:
-        handle.write(bytes(riff))
+        for start in range(0, len(samples), _WRITE_SAMPLES):
+            segment = np.asarray(samples[start:start + _WRITE_SAMPLES], dtype=np.float64)
+            if plan is not None:
+                segment = plan(segment, start)
+            handle.writeframes((np.clip(segment, -1.0, 1.0) * 32767).round().astype("<i2").tobytes())
+    with open(path, "r+b") as handle:
+        handle.seek(0, io.SEEK_END)
+        if handle.tell() % 2:
+            handle.write(b"\0")
+        handle.write(_info_chunk(tags))
+        size = handle.tell()
+        # The RIFF size counts everything after its own eight bytes.
+        handle.seek(4)
+        handle.write(struct.pack("<I", size - 8))
+    return loudness
 
 
 def read_wav_info(path: str) -> dict[str, str]:
@@ -222,27 +283,49 @@ class Cue:
     text: str
 
 
-@dataclass
+class _FileSamples:
+    """float32 samples on disk, sliced like an array. Read with `pread`, not
+    mapped: a mapping keeps every page it has touched resident, and an hour
+    of audio measured twice touched a gigabyte (14/10)."""
+
+    def __init__(self, descriptor: int, count: int) -> None:
+        self._descriptor = descriptor
+        self._count = count
+
+    def __len__(self) -> int:
+        return self._count
+
+    def __getitem__(self, where: slice) -> np.ndarray:
+        start, stop, _ = where.indices(self._count)
+        if stop <= start:
+            return np.zeros(0, dtype=np.float32)
+        data = os.pread(self._descriptor, (stop - start) * 4, start * 4)
+        return np.frombuffer(data, dtype=np.float32)
+
+
 class ExportSink:
     """Where `_speak` puts a reading meant for a file.
 
-    `begin` and `end` bracket each sentence the voice says, in samples of
-    the output (after the stretcher), so a cue covers exactly the voice and
-    not the rest that follows it.
+    The audio goes to an anonymous temporary file, not memory: an hour of
+    float32 is 700 MB. The file has no name from the start, so it is gone
+    when the sink closes or the process dies - an export cut short leaves
+    nothing behind. `begin` and `end` bracket each sentence the voice says,
+    in samples of the output (after the stretcher), so a cue covers exactly
+    the voice and not the rest that follows it.
     """
 
-    sample_rate: int
-    total: int = 0
-    done: int = 0
-    _chunks: list[np.ndarray] = field(default_factory=list)
-    _samples: int = 0
-    _open: tuple[int, str] | None = None
-    cues: list[Cue] = field(default_factory=list)
+    def __init__(self, sample_rate: int, total: int = 0) -> None:
+        self.sample_rate = sample_rate
+        self.total = total
+        self.done = 0
+        self.cues: list[Cue] = []
+        self._file = tempfile.TemporaryFile()
+        self._samples = 0
+        self._open: tuple[int, str] | None = None
 
     def add(self, pcm: bytes) -> None:
-        samples = np.frombuffer(pcm, dtype=np.float32)
-        self._chunks.append(samples)
-        self._samples += samples.size
+        self._file.write(pcm)
+        self._samples += len(pcm) // 4
 
     def begin(self, text: str) -> None:
         self._open = (self._samples, text)
@@ -255,10 +338,14 @@ class ExportSink:
         if self._samples > start and text.strip():
             self.cues.append(Cue(start, self._samples, text.strip()))
 
-    def audio(self) -> np.ndarray:
-        if not self._chunks:
-            return np.zeros(0, dtype=np.float32)
-        return np.concatenate(self._chunks)
+    def audio(self) -> "_FileSamples":
+        """Everything said so far, read from the file a slice at a time."""
+
+        self._file.flush()
+        return _FileSamples(self._file.fileno(), self._samples)
+
+    def close(self) -> None:
+        self._file.close()
 
 
 def split_cue(cue: Cue, limit: int = CUE_MAX_CHARS) -> list[Cue]:
