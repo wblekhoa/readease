@@ -6,6 +6,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Short sentences of one to three words - a heading such as "Mở đầu.",
+  "Kết luận." or "Hình 3.", a reply such as "Vâng." - are read more
+  steadily in the on-device Vietnamese voice: fewer wrong tones, repeats
+  and slipped first sounds. Listened back by a speech recogniser over
+  180 renders, the share heard exactly rose from 61 % to 71 %.
 - Review sentences: after an export, listen to each sentence as it is in
   the file and say again the ones that came out wrong - a short title, a
   name - with the Vietnamese voice; Save file writes the WAV and subtitles

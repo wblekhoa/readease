@@ -15,6 +15,7 @@ from vieneu_reader.speech.vieneu import (
     CODEC_FILES,
     CODEC_REPO,
     CODEC_REVISION,
+    ENGINE_VERSION,
     MODEL_DIRECTORY,
     MODEL_FILES,
     MODEL_REPO,
@@ -145,6 +146,7 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         self.assertEqual(self.created, [])
 
     def test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble(self):
+        # RE-PLAY-017
         # The SDK generates a one-to-three-word chunk again when it "said
         # more" after a slipped stop token; that guard only exists on the
         # whole-utterance path, streaming has already emitted the audio.
@@ -160,7 +162,8 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         text, settings = sdk.infer_calls[0]
         self.assertEqual(text, "Được rồi nhé.")
         self.assertEqual(settings["voice"], "Adam")
-        self.assertEqual(settings["temperature"], 0.7)
+        # Sampled more carefully than a sentence (SHORT_UTTERANCE_TEMPERATURE).
+        self.assertEqual(settings["temperature"], 0.3)
         self.assertEqual(settings["max_chars"], 240)
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0].pcm, struct.pack("<2f", 0.3, -0.3))
@@ -171,6 +174,26 @@ class VieNeuSpeechEngineContractTests(unittest.TestCase):
         sdk = self.created[0]
         self.assertEqual(sdk.infer_calls, [])
         self.assertEqual(len(sdk.stream_calls), 1)
+
+    def test_a_sentence_keeps_the_readers_temperature(self):
+        # RE-PLAY-017
+        tuple(self.engine.stream("Được rồi nhé ạ.", "Adam", SynthesisSettings(temperature=0.7)))
+
+        sdk = self.created[0]
+        _, settings = sdk.stream_calls[0]
+        self.assertEqual(settings["temperature"], 0.7)
+
+    def test_a_short_utterance_never_samples_hotter_than_asked(self):
+        tuple(self.engine.stream("Vâng.", "Adam", SynthesisSettings(temperature=0.1)))
+
+        _, settings = self.created[0].infer_calls[0]
+        self.assertEqual(settings["temperature"], 0.1)
+
+    def test_the_audio_cache_sees_the_new_way_short_sentences_are_made(self):
+        # RE-PLAY-017
+        # A short sentence cached by a build that sampled it at 0.8 is not what
+        # this build says; the engine's identity, part of every cache key, says so.
+        self.assertEqual(self.engine.engine_version, f"{ENGINE_VERSION}+short-t0.3")
 
     def test_model_and_codec_revisions_are_full_pinned_commits(self):
         self.assertEqual(

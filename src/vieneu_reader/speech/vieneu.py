@@ -76,6 +76,18 @@ _MARKER_GATE = ("codec_revision", "model_revision")
 # the whole utterance - 0.1-0.4 s on this Mac - and the queue running ahead of
 # the ear hides that everywhere but the first sentence of a reading.
 SHORT_UTTERANCE_WORDS = 3
+# The same short utterances are sampled more carefully than a sentence: one to
+# three words carry no context to settle their tones, and at the 0.8 used for
+# sentences a third came out with a wrong tone, a repeat or a slipped initial.
+# Measured 13/10 on ten book-like utterances, ten renders each, two voices,
+# Whisper large-v3-turbo listening back: 61 % heard exactly at 0.8, 71 % at 0.3,
+# 74 % at 0.1, with Whisper's "made-up sentence" (its tell for broken audio)
+# 10 -> 3 -> 0 (docs/local-voice-model-survey-2026-10.md, section 6).
+SHORT_UTTERANCE_TEMPERATURE = 0.3
+# How a sentence becomes sound in this adapter, beyond the SDK version: part of
+# `engine_version`, so the audio cache never serves a short sentence made the
+# old way. Bump it whenever this file changes what the SDK is asked.
+SYNTHESIS_REVISION = "short-t0.3"
 _SDK_LOAD_LOCK = RLock()
 
 
@@ -175,7 +187,7 @@ class VieNeuSpeechEngine:
 
     @property
     def engine_version(self) -> str:
-        return ENGINE_VERSION
+        return f"{ENGINE_VERSION}+{SYNTHESIS_REVISION}"
 
     @property
     def precision(self) -> str:
@@ -533,6 +545,9 @@ class VieNeuSpeechEngine:
             "repetition_penalty": settings.repetition_penalty,
         }
         if len(normalized.split()) <= SHORT_UTTERANCE_WORDS:
+            sampling["temperature"] = min(
+                settings.temperature, SHORT_UTTERANCE_TEMPERATURE
+            )
             raw_stream = (sdk.infer(normalized, **sampling),)
         else:
             raw_stream = sdk.infer_stream(normalized, **sampling)

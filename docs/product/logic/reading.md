@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-10-14
+updated: 2026-10-15
 reqPrefix: RE-PLAY
 relations:
   specifiedBy: [readease-ux-reading]
@@ -36,6 +36,7 @@ relations:
 | RE-PLAY-015 | The reader's pronunciations (settings key `pronunciations`, up to 300 rows) replace a written word or phrase by how it should be said in every reading - books, pasted text, selection, export - before the text is made speakable: whole words only, any case, the longest written form first; the estimate counts and the audio cache keys on the replaced words; the page, `text.parts` and subtitles keep the written ones; malformed rows are skipped, a word written twice keeps its last spelling. | live | `tests/domain/test_pronunciation.py`; `tests/headless/test_export.py` (`PronunciationReadingTests`) |
 | RE-PLAY-016 | A finished export is kept for review, by sentence, in a nameless temporary file: `export.play` streams one sentence as it is in the file (no synthesis), `export.retake` says one sentence again with the same speed and heading gain and replaces only that sentence, `export.save` rewrites WAV and SRT from the takes as they stand (later cues move by the change, the others keep their times); a retake is offered only for the local VieNeu voice; the review ends on `export.close`, a new export, or the engine's exit, and a request naming another session is refused. | live | `tests/headless/test_export.py` (`RetakeTests`) |
 | RE-PLAY-014 | Export keeps nothing but the two files: no audio cache, no library row; the audio waits in a nameless temporary file (gone on close or crash) and is written a batch at a time, so memory does not grow with length; a stop cancels it and a cancelled export writes no file; a path that is not an absolute `.wav` in an existing folder, or a speed outside 0.5-2.0, is refused. | live | `tests/headless/test_export.py` (`test_a_stop_before_the_export_starts_writes_nothing`, `test_rejects_a_path_that_is_not_an_absolute_wav`, `test_rejects_a_rate_outside_the_reading_range`); a stop mid-export takes the reading's stop path (RE-PLAY-007) and `finish` returns before writing (`server.py` `_export_text`) |
+| RE-PLAY-017 | A sentence of one to three words is generated whole (so the voice SDK can catch and redo a "said more" take) and sampled at temperature 0.3 or lower, while longer sentences keep the reading temperature; the change is part of the VieNeu engine identity so cached short sentences made the old way are not replayed. | live | `tests/speech/test_vieneu_contract.py` (`test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble`, `test_a_sentence_keeps_the_readers_temperature`, `test_the_audio_cache_sees_the_new_way_short_sentences_are_made`) |
 
 ## States and transitions
 | State | Trigger | Next state | Edge case |
@@ -58,4 +59,5 @@ relations:
 - None recorded.
 
 ## Change log
+- 2026-10-15: RE-PLAY-017 (short sentences sampled at 0.3; measured in `docs/local-voice-model-survey-2026-10.md` §6).
 - 2026-10-10: created; REQ-IDs added as comments next to the evidence tests in the same commit.
