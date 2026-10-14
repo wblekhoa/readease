@@ -89,6 +89,7 @@ from vieneu_reader.domain.segmenter import split_transient_parts
 # and note cues, the rests. Imported under their own names so the reading and
 # the estimate keep sharing one builder - and re-exported, because the tests
 # that pin the shaping reach for `server._text_utterances`.
+from vieneu_reader.domain.pronunciation import pronunciations_of
 from vieneu_reader.headless.export import ExportSink, write_srt, write_wav
 from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     CHIME_LEAD_MS,
@@ -805,7 +806,7 @@ class _Session:
         # setting got the commonest case wrong - a Vietnamese interface and
         # an English paragraph pasted out of a browser.
         language = language_of_text(text, self._reading_language())
-        utterances = _text_utterances(text, settings, language, note_reading_of(self._settings_document()))
+        utterances = _text_utterances(text, settings, language, note_reading_of(self._settings_document()), self._pronunciations())
         if not utterances:
             self._fail(request_id, "text is empty")
             return
@@ -850,7 +851,7 @@ class _Session:
             return
         settings = SynthesisSettings()
         language = language_of_text(text, self._reading_language())
-        utterances = _text_utterances(text, settings, language, note_reading_of(self._settings_document()))
+        utterances = _text_utterances(text, settings, language, note_reading_of(self._settings_document()), self._pronunciations())
         if not utterances:
             self._fail(request_id, "text is empty")
             return
@@ -1184,7 +1185,7 @@ class _Session:
             # gets before the read - what the shell's language hint stands
             # on.
             language = language_of_text(pasted, self._reading_language())
-            utterances = _text_utterances(pasted, SynthesisSettings(), language, note_reading_of(self._settings_document()))
+            utterances = _text_utterances(pasted, SynthesisSettings(), language, note_reading_of(self._settings_document()), self._pronunciations())
             chars = sum(len(utterance.text) for utterance in utterances)
             remaining_s = self._remaining_s(voice_id, chars, params.get("rate"), language)
             if price is None:
@@ -1298,6 +1299,9 @@ class _Session:
 
         language = speech_language(language)
         note_reading = note_reading_of(self._settings_document())
+        # The reader's own pronunciations, on the written words before they
+        # are made speakable - the same place the pasted builder applies them.
+        say = self._pronunciations().apply
         segments: list[Segment] = [
             segment
             for chapter in stored.book.chapters
@@ -1439,17 +1443,17 @@ class _Session:
                         continue
                     spoken_pieces.append((
                         NOTE_CUE[language].format(
-                            text=speakable_text(body, language=language, citations=note_reading != "full")
+                            text=speakable_text(say(body), language=language, citations=note_reading != "full")
                         ),
                         True,
                     ))
                 else:
                     spoken_pieces.append((
-                        speakable_text(piece, segment.kind, language, citations=note_reading != "full"),
+                        speakable_text(say(piece), segment.kind, language, citations=note_reading != "full"),
                         False,
                     ))
             if not spoken_pieces:
-                spoken_pieces.append((speakable_text(segment.text, segment.kind, language), False))
+                spoken_pieces.append((speakable_text(say(segment.text), segment.kind, language), False))
             if segment.id in spoken_markers and not spoken_pieces[0][1]:
                 # On the words, not on `segment.text`: the note marks above
                 # are offsets into the stored text, and a prefix there would
@@ -2089,7 +2093,17 @@ class _Session:
         # footnote is read (full / short / off).
         "chapter_chime",
         "note_reading",
+        # How a written word is said (14/10): [{"written", "spoken"}, ...],
+        # applied to every reading before the text is made speakable
+        # (`domain/pronunciation.py`).
+        "pronunciations",
     }) | _SECRET_CONFIG_KEYS
+
+    def _pronunciations(self):
+        """The reader's pronunciations, read fresh: a change applies at the
+        next press of Read, as the chime and the notes setting do."""
+
+        return pronunciations_of(self._settings_document())
 
     def _config_get(self, request_id: Any, params: dict[str, Any]) -> None:
         from vieneu_reader.settings import load_settings

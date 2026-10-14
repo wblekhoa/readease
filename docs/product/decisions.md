@@ -10,6 +10,17 @@ updated: 2026-10-14
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-14 · Pronunciations: the reader's own, applied before the text is made speakable
+- **Context**: a voice reads a brand, an acronym or an English word inside Vietnamese by its own guess - the error a
+  creator hears most (14/10 analysis). The owner asked to proceed with the proposed steps.
+- **Decision**: one list in settings (`pronunciations`), applied in both utterance builders to the written words before
+  `speakable_text`, so the voice, the estimate and the cache key move together and display/subtitles never change.
+  Whole-word, case-insensitive, longest first; no per-language or per-voice lists in v1. Edited in a panel opened from
+  Voice settings; each change saves at once and re-counts a paid price.
+- **Evidence**: RE-PLAY-015 tests; real-voice A/B export of one sentence with and without three entries, sent to the
+  owner for listening (14/10).
+- **Reversal**: remove the key from `_CONFIG_KEYS` and the `say`/`pronounce` calls; stored rows are then ignored.
+
 ## 2026-10-14 · Paste text can be exported as audio with subtitles (non-goal lifted)
 - **Context**: creators asked to use ReadEase's voices for video narration. The goal listed "no audio export" as a
   non-goal. The owner's position (14/10): ReadEase is a tool; where a user publishes its output (YouTube or anywhere) and

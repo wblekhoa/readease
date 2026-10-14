@@ -130,6 +130,7 @@ class CueTests(unittest.TestCase):
     # RE-PLAY-013
     def test_sink_cue_covers_voice_not_the_rest_after_it(self):
         sink = ExportSink(SAMPLE_RATE)
+        self.addCleanup(sink.close)
         sink.begin("Câu một.")
         sink.add(np.ones(100, dtype=np.float32).tobytes())
         sink.end()
@@ -216,3 +217,62 @@ class ExportProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PronunciationReadingTests(unittest.TestCase):
+    """The dictionary reaches what is SAID and priced, never what is shown."""
+
+    def setUp(self):
+        self.folder = tempfile.mkdtemp()
+        self.settings = os.path.join(self.folder, "settings.json")
+        with open(self.settings, "w", encoding="utf-8") as handle:
+            json.dump({"pronunciations": [{"written": "ReadEase", "spoken": "rít ít"}]}, handle)
+
+    def serve(self, requests, engine, **kwargs):
+        from pathlib import Path
+
+        reader = io.StringIO("".join(json.dumps(r) + "\n" for r in requests))
+        writer = io.StringIO()
+        serve(reader, writer, engine, settings_path=Path(self.settings), **kwargs)
+        return [json.loads(line) for line in writer.getvalue().splitlines()]
+
+    # RE-PLAY-015
+    def test_pasted_text_is_said_and_priced_as_the_reader_wrote_it_should_be(self):
+        engine = ToneEngine()
+        replies = self.serve([
+            {"id": 1, "method": "estimate", "params": {"text": "Mở ReadEase.", "voice_id": "adam"}},
+            {"id": 2, "method": "read", "params": {"text": "Mở ReadEase.", "voice_id": "adam"}},
+        ], engine)
+        self.assertEqual(engine.requests, ["Mở rít ít."])
+        estimate = next(r for r in replies if r.get("id") == 1)
+        self.assertEqual(estimate["result"]["chars"], len("Mở rít ít."))
+
+    # RE-PLAY-015
+    def test_an_export_says_it_and_its_subtitles_keep_the_written_word(self):
+        engine = ToneEngine()
+        path = os.path.join(self.folder, "a.wav")
+        replies = self.serve([{"id": 1, "method": "export.text", "params": {
+            "text": "Mở ReadEase.", "voice_id": "adam", "path": path}}], engine)
+        self.assertTrue(replies[-1]["ok"], replies[-1])
+        self.assertEqual(engine.requests, ["Mở rít ít."])
+        with open(path[:-4] + ".srt", encoding="utf-8") as handle:
+            self.assertIn("Mở ReadEase.", handle.read())
+
+    # RE-PLAY-015
+    def test_a_book_is_said_with_it_too(self):
+        from pathlib import Path
+        from tests.headless.test_server import BOOK_ID, build_book
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        root = Path(self.folder)
+        repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
+        book = build_book([("Một", [("Đoạn về ReadEase.", "paragraph")])])
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        repository.add_book(book, source)
+        engine = ToneEngine()
+        replies = self.serve([{"id": 1, "method": "read.book", "params": {
+            "book_id": BOOK_ID, "voice_id": "adam", "rate": 1.0}}], engine, repository=repository)
+        self.assertTrue(replies[-1]["ok"], replies[-1])
+        self.assertIn("Đoạn về rít ít.", engine.requests)

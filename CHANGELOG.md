@@ -6,6 +6,15 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Pronunciations: in Voice settings, write a word as it appears and how it
+  should be said ("ReadEase" → "rít ít", "AI" → "ây ai"). Every reading -
+  books, pasted text, a selection, an export - says it that way from the
+  next press of Read; whole words only, any case, the longest phrase first.
+  The page and subtitles keep the word as written.
+- While an export runs, every read button waits for it, and a paragraph
+  click does nothing; with a paid voice whose price could not be fetched,
+  Export says so instead of only greying out.
+
 - Paste text can be exported as audio: Export audio, beside the character
   count, saves a WAV where you choose, with subtitles (`.srt`) beside it -
   the same voice, rests and speed as reading aloud, set to -14 LUFS for

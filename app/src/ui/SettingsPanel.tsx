@@ -97,6 +97,8 @@ export function SettingsPanel({
   onNoteReading,
   onManageVoices,
   onOpenHub,
+  pronunciations,
+  onPronunciations,
   output = null,
   onClose,
 }: {
@@ -147,6 +149,9 @@ export function SettingsPanel({
   onNoteReading: (reading: NoteReading) => void;
   onManageVoices: () => void;
   onOpenHub: () => void;
+  /** How many words the reader has a pronunciation for. */
+  pronunciations: number;
+  onPronunciations: () => void;
   /** The device the voice plays through, from the host (HIG 3.21). */
   output?: { name: string; default: boolean } | null;
   onClose: () => void;
@@ -356,6 +361,17 @@ export function SettingsPanel({
                     ))}
                   </Select>
                 )}
+              />
+              {/* The reader's own pronunciations (14/10): a row that says how
+                  many, and the list behind it - the voices row's pattern. */}
+              <GroupedRow
+                title={text("settings.pronounce")}
+                subtitle={pronunciations > 0
+                  ? text("settings.pronounce_hint", { count: pronunciations })
+                  : text("settings.pronounce_none")}
+                trailing={
+                  <Button size="sm" onClick={onPronunciations}>{text("settings.pronounce_edit")}</Button>
+                }
               />
               {/* How far a press reads and where the money stops - only
                   under a voice that bills. The same two controls the panel

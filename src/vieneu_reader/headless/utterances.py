@@ -22,6 +22,7 @@ import numpy as np
 
 from vieneu_reader.domain.presentation import figure_label
 from vieneu_reader.domain.markdown import markdown_speech_parts
+from vieneu_reader.domain.pronunciation import NONE as NO_PRONUNCIATIONS, Pronunciations
 from vieneu_reader.domain.prosody import (
     DEFAULT_NOTE_READING,
     DEFAULT_SPEECH_LANGUAGE,
@@ -40,6 +41,7 @@ def _text_utterances(
     settings: SynthesisSettings,
     language: str = DEFAULT_SPEECH_LANGUAGE,
     note_reading: str = DEFAULT_NOTE_READING,
+    pronounce: Pronunciations = NO_PRONUNCIATIONS,
 ) -> list[_Utterance]:
     """Pasted or captured text, shaped exactly as the reading will send it.
 
@@ -64,7 +66,7 @@ def _text_utterances(
         tuple(part.text for part in parts), tuple(part.joint for part in parts)
     )
     spoken = tuple(
-        speakable_text(text, language=language, citations=note_reading != "full", markdown=False)
+        speakable_text(pronounce.apply(text), language=language, citations=note_reading != "full", markdown=False)
         for text in shown
     )
     return [

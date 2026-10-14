@@ -176,6 +176,8 @@ sensitive text from ordinary text. Reading from ReadEase itself is refused.
 
 The shortcut itself can be changed in the Read a selection view. The chosen key and
 modifiers are stored in `settings.json`, beside the other preferences kept there
+- the pronunciations you write (a word and how it should be said), which stay
+  on this Mac like every other setting;
 - the interface language, the voice and reading speed the app starts with, and
   which build of the reading model it uses;
 nothing about your keyboard is recorded anywhere else.

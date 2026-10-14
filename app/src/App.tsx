@@ -27,6 +27,8 @@ import {
   type Chime, type NoteReading,
 } from "./ui/SettingsPanel";
 import { VoicesPanel } from "./ui/VoicesPanel";
+import { PronunciationsPanel } from "./ui/PronunciationsPanel";
+import { readPronunciations } from "./ui/pronunciations";
 import {
   canSpeak,
   favoritesFirst,
@@ -217,6 +219,19 @@ export default function App() {
    * shortlist decides what is offered, the star decides the order. */
   const [favorites, setFavorites] = useState<string[]>([]);
   const [voicesOpen, setVoicesOpen] = useState(false);
+  // The reader's pronunciations: the panel owns the list; the app keeps the
+  // count for the settings row and a version so a price re-counts the words.
+  const [pronounceOpen, setPronounceOpen] = useState(false);
+  const [pronunciations, setPronunciations] = useState(0);
+  const [pronounceVersion, setPronounceVersion] = useState(0);
+  useEffect(() => {
+    invoke<{ result: { value: unknown } }>("engine_request", {
+      method: "config.get",
+      params: { key: "pronunciations" },
+    })
+      .then((reply) => setPronunciations(readPronunciations(reply.result.value).length))
+      .catch(() => undefined);
+  }, [pronounceVersion]);
   /** What the menu asked the shelf to do (HIG 4.1): the picker or the Apple
    * Books sheet live in `Library`, which may not even be on screen when the
    * command arrives - so the command waits here until the shelf mounts. */
@@ -508,7 +523,7 @@ export default function App() {
     // synchronous with the choice, the effect follows the render), and the
     // engine answers requests in the order they arrive. `rate` only moves
     // the time forecast that rides along (HIG 3.24), never the price.
-  }, [openBook, position, voiceId, scope, content, noteReading, rate]);
+  }, [openBook, position, voiceId, scope, content, noteReading, rate, pronounceVersion]);
 
   const changeScope = useCallback((chapters: number | null) => {
     setScope(chapters);
@@ -2484,6 +2499,8 @@ export default function App() {
           onChime={rememberChime}
           onNoteReading={rememberNoteReading}
           onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
+          pronunciations={pronunciations}
+          onPronunciations={() => { setSettingsOpen(false); setPronounceOpen(true); }}
           onOpenHub={() => { setSettingsOpen(false); setHubOpen(true); }}
           output={audioOutput}
           /* Just close. This used to re-list the catalogue on the way out,
@@ -2525,6 +2542,12 @@ export default function App() {
           onAuto={updater.setAuto}
           onRestart={updater.restart}
           onClose={updater.dismiss}
+        />
+      </Presence>
+      <Presence open={pronounceOpen}>
+        <PronunciationsPanel
+          onChanged={() => setPronounceVersion((version) => version + 1)}
+          onClose={() => setPronounceOpen(false)}
         />
       </Presence>
       <Presence open={voicesOpen}>

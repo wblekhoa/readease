@@ -8,7 +8,7 @@ updated: 2026-10-14
 reqPrefix: RE-PLAY
 relations:
   specifiedBy: [readease-ux-reading]
-  implements: [readease:src/vieneu_reader/headless/server.py, readease:src/vieneu_reader/playback/coordinator.py, readease:src/vieneu_reader/domain/prosody.py, readease:src/vieneu_reader/domain/segmenter.py, readease:src/vieneu_reader/domain/markdown.py, readease:src/vieneu_reader/headless/export.py]
+  implements: [readease:src/vieneu_reader/headless/server.py, readease:src/vieneu_reader/playback/coordinator.py, readease:src/vieneu_reader/domain/prosody.py, readease:src/vieneu_reader/domain/segmenter.py, readease:src/vieneu_reader/domain/markdown.py, readease:src/vieneu_reader/headless/export.py, readease:src/vieneu_reader/domain/pronunciation.py]
 ---
 # ReadEase — Reading and playback (logic)
 
@@ -33,6 +33,7 @@ relations:
 | RE-PLAY-011 | An exported WAV states in its own metadata (RIFF INFO `ICMT`, `IKEY`, `ISFT`) that the speech is AI-generated, which voice made it, and the app version. | live | `tests/headless/test_export.py` (`test_export_writes_a_marked_wav_and_timed_subtitles`) |
 | RE-PLAY-012 | An export is set to -14 LUFS integrated (BS.1770) with peaks at or under -1 dBFS; a limiter may take at most 6 dB off peaks, past that the file stays quieter. | live | `tests/headless/test_export.py` (`test_full_scale_997_hz_sine_reads_minus_3_01`, `test_peaky_speech_reaches_the_target_under_the_ceiling`, `test_the_limiter_never_takes_more_than_its_share`) |
 | RE-PLAY-013 | Subtitles show the written words (Markdown read as meant), one cue per spoken sentence; a sentence over 84 characters becomes even whole-word cues timed by their share. | live | `tests/headless/test_export.py` (`CueTests`, `test_export_writes_a_marked_wav_and_timed_subtitles`) |
+| RE-PLAY-015 | The reader's pronunciations (settings key `pronunciations`, up to 300 rows) replace a written word or phrase by how it should be said in every reading - books, pasted text, selection, export - before the text is made speakable: whole words only, any case, the longest written form first; the estimate counts and the audio cache keys on the replaced words; the page, `text.parts` and subtitles keep the written ones; malformed rows are skipped, a word written twice keeps its last spelling. | live | `tests/domain/test_pronunciation.py`; `tests/headless/test_export.py` (`PronunciationReadingTests`) |
 | RE-PLAY-014 | Export keeps nothing but the two files: no audio cache, no library row; the audio waits in a nameless temporary file (gone on close or crash) and is written a batch at a time, so memory does not grow with length; a stop cancels it and a cancelled export writes no file; a path that is not an absolute `.wav` in an existing folder, or a speed outside 0.5-2.0, is refused. | live | `tests/headless/test_export.py` (`test_a_stop_before_the_export_starts_writes_nothing`, `test_rejects_a_path_that_is_not_an_absolute_wav`, `test_rejects_a_rate_outside_the_reading_range`); a stop mid-export takes the reading's stop path (RE-PLAY-007) and `finish` returns before writing (`server.py` `_export_text`) |
 
 ## States and transitions

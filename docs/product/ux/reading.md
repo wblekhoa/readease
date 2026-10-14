@@ -39,6 +39,9 @@ relations:
   section with a shorter, softer one. Faster speed shortens the pauses.
 - **Notes and citations**: bibliographic footnotes are not read, remarks keep their first two sentences, in-text
   citations are skipped - configurable in Voice settings. The text on the page never changes.
+- **Pronunciations** (Voice settings → "Pronunciations", Edit…): the reader writes a word as it appears and how it
+  should be said ("ReadEase → rít ít"). Every reading and export says it that way from the next press of Read; the page
+  and subtitles keep the written word. The row says how many words are set. Logic: RE-PLAY-015.
 - **EPUB figures** are shown in reading order, numbered (Figure 1, Figure 2…) and announced in place.
 - **Paste text → Export audio**: a button at the right of the character count ("Xuất âm thanh"; with a paid voice it
   carries the same price as the read button). It opens the macOS save panel (proposed name "ReadEase <date> <time>.wav"),
