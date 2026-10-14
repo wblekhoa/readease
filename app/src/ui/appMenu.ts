@@ -12,6 +12,7 @@
  * open or not, the reading state, the column, the appearance) - a handful
  * of times a session, cheaper than keeping hold of every item.
  */
+import { NEW_ISSUE_URL } from "./feedback";
 import { getVersion } from "@tauri-apps/api/app";
 import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { text } from "../i18n";
@@ -52,7 +53,7 @@ export interface MenuState {
 
 export const HELP_URLS = {
   "help-guide": "https://github.com/wblekhoa/readease#readme",
-  "help-feedback": "https://github.com/wblekhoa/readease/issues/new",
+  "help-feedback": NEW_ISSUE_URL,
   "help-releases": "https://github.com/wblekhoa/readease/releases/latest",
 } as const;
 

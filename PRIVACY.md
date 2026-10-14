@@ -56,6 +56,12 @@ that voice afterwards is entirely local.
 The other time ReadEase reaches the network is an outside AI voice, described
 next. There is no third.
 
+**Help › Report a Problem or Suggest…** does not send anything itself: it
+opens GitHub's issue form in your browser with three facts already filled
+into the address - the app's build, the macOS version and the chip family
+(Apple silicon or Intel). Nothing from your documents, library or settings
+is added, and nothing reaches GitHub until you submit the form yourself.
+
 ## The website
 
 The landing page (wblekhoa.github.io/readease) counts visits with Google

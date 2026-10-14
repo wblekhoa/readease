@@ -479,6 +479,7 @@ pub fn run() {
             audio_output,
             media::now_playing,
             log::log_path,
+            log::feedback_facts,
             set_install_on_quit,
             exit_now
         ])

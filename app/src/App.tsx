@@ -16,6 +16,7 @@ import { useUpdater } from "./ui/updates";
 import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { feedbackUrl, type FeedbackFacts } from "./ui/feedback";
 import { ExportAudio } from "./ui/ExportAudio";
 import { ExportReviewPanel } from "./ui/ExportReviewPanel";
 import { useExport } from "./ui/useExport";
@@ -1342,8 +1343,14 @@ export default function App() {
       case "hub":
         setSettingsOpen(false); setVoicesOpen(false); setHubOpen((open) => !open);
         return;
-      case "help-guide": case "help-feedback": case "help-releases":
+      case "help-guide": case "help-releases":
         void openUrl(HELP_URLS[command]).catch(console.error);
+        return;
+      case "help-feedback": // RE-HELP-001
+        void invoke<FeedbackFacts>("feedback_facts")
+          .catch(() => null)
+          .then((facts) => openUrl(feedbackUrl(facts)))
+          .catch(console.error);
         return;
       case "check-updates":
         void updater.checkNow();

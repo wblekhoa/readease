@@ -32,17 +32,44 @@ pub fn bundle_version(fallback: &str) -> String {
 /// The `CFBundleVersion` string out of an XML plist, without a plist
 /// parser: the bundler writes the key and its value on adjacent lines.
 fn version_from_plist(text: &str) -> Option<String> {
-    let key = "<key>CFBundleVersion</key>";
-    let at = text.find(key)? + key.len();
+    string_after_key(text, "CFBundleVersion")
+}
+
+/// The `<string>` that follows `<key>name</key>` in an XML plist.
+fn string_after_key(text: &str, name: &str) -> Option<String> {
+    let key = format!("<key>{name}</key>");
+    let at = text.find(&key)? + key.len();
     let rest = &text[at..];
     let start = rest.find("<string>")? + "<string>".len();
     let end = rest[start..].find("</string>")? + start;
     Some(rest[start..end].to_string())
 }
 
+/// What a bug report needs to be read (RE-HELP-001): this build, the macOS
+/// version and the chip family. Nothing from the document, the library or
+/// the settings - these three go into a GitHub address the reader can see.
+#[derive(serde::Serialize)]
+pub struct FeedbackFacts {
+    build: String,
+    macos: Option<String>,
+    arch: &'static str,
+}
+
+#[tauri::command]
+pub fn feedback_facts(app: tauri::AppHandle) -> FeedbackFacts {
+    let macos = fs::read_to_string("/System/Library/CoreServices/SystemVersion.plist")
+        .ok()
+        .and_then(|text| string_after_key(&text, "ProductVersion"));
+    FeedbackFacts {
+        build: bundle_version(&app.package_info().version.to_string()),
+        macos,
+        arch: std::env::consts::ARCH,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::version_from_plist;
+    use super::{string_after_key, version_from_plist};
 
     #[test]
     fn the_stamped_build_id_is_read_out_of_the_plist() {
@@ -54,6 +81,14 @@ mod tests {
     #[test]
     fn a_plist_without_the_key_yields_nothing() {
         assert_eq!(version_from_plist("<key>Other</key><string>x</string>"), None);
+    }
+
+    // RE-HELP-001
+    #[test]
+    fn the_macos_version_is_read_out_of_the_system_plist() {
+        let plist = "<key>ProductBuildVersion</key>\n<string>27A123</string>\n\
+                     <key>ProductVersion</key>\n\t<string>27.0</string>\n";
+        assert_eq!(string_after_key(plist, "ProductVersion").as_deref(), Some("27.0"));
     }
 }
 

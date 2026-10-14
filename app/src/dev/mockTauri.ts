@@ -1250,6 +1250,8 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "audio_output") return Promise.resolve({ name: "Mock speakers", default: true });
   // No log file in the browser (HIG 3.22): the menu item does nothing here.
   if (command === "log_path") return Promise.resolve(null);
+  // A bug report's facts (RE-HELP-001), as a Mac would answer them.
+  if (command === "feedback_facts") return Promise.resolve({ build: "0.1.21+mock", macos: "27.0", arch: "aarch64" });
   // Install-on-quit is the window's (HIG 3.20); the browser never quits.
   if (command === "set_install_on_quit") return Promise.resolve(null);
   /* The updater (HIG 3.20), answered as the plugin answers, so the update

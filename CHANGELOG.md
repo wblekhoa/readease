@@ -6,6 +6,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Help › Report a Problem or Suggest… opens the bug form with the app's
+  build and the Mac's macOS version and chip already filled in, so a
+  report no longer starts with looking them up. Nothing from your
+  documents goes into it.
 - The Vietnamese voice reads "ThS." as "thạc sĩ", "TP. Đà Nẵng" as
   "thành phố Đà Nẵng", "tr. 45" as "trang 45" and "Q1/2025" as "quý 1
   năm 2025" - before, the first two left a full stop in mid-sentence,
