@@ -45,10 +45,11 @@ relations:
   then shows "Exporting n/N" with a bar and Cancel in its place; the read button waits while it runs. Done: "Saved ~N min of
   audio and subtitles" with Show in Finder. The `.srt` lands beside the `.wav`. Logic: RE-PLAY-010…014.
   The job belongs to the app, not the screen: leave Paste text mid-export and come back to the same progress or result.
-  Known limits (2026-10-14): only Paste text's read button waits for an export - Read in the Reader, a paragraph click
-  and the selection shortcut queue behind it (shown as "preparing" until it ends), and Cancel or Stop drops them too;
-  with a paid voice whose price could not be fetched, Export stays disabled without saying why; a name typed without
-  `.wav` gets it appended after the save panel's overwrite check.
+  While an export runs, every read in the app waits: the read buttons are disabled and a paragraph click does nothing.
+  With a paid voice whose price could not be fetched, Export stays disabled and says "no price yet".
+  Known limits (2026-10-14): the global Read a selection shortcut and a voice sample still queue behind an export (shown
+  as "preparing" until it ends), and Cancel drops them too; a name typed without `.wav` gets it appended after the save
+  panel's overwrite check.
 - **Paste text**: up to 100,000 characters; paragraph breaks kept; long text is split into parts ("Reading part 2/7").
   Markdown is read as meant (marks dropped, link text read, not the address). Pasted text is not added to the Library,
   not logged and not written to the audio cache.

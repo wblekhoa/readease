@@ -422,6 +422,11 @@ export default function App() {
   const [scope, setScope] = useState<number | null>(storedScope);
   const [budget, setBudget] = useState<number | null>(null);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
+  // An export holds the engine the way a reading does; every read button
+  // waits for it rather than queueing a reading behind a file. Owned here,
+  // not by the Paste screen, so leaving the screen does not lose it.
+  const exportJob = useExport();
+  const exporting = exportJob.job.kind === "running";
   const [estimateFailed, setEstimateFailed] = useState(false);
   /** Provider id → whether a key is stored. Never the key: the engine
    *  answers `config.get` for these with the fact and nothing else. */
@@ -992,7 +997,7 @@ export default function App() {
   }, []);
 
   const startReading = useCallback(async () => {
-    if (!content.trim() || !voiceId) return;
+    if (!content.trim() || !voiceId || exporting) return;
     onPlayer({ type: "start" });
     setOrigin({ kind: "paste" });
     current.current = { kind: "text", text: content };
@@ -1003,10 +1008,11 @@ export default function App() {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
     }
-  }, [content, voiceId, rate]);
+  }, [content, voiceId, rate, exporting]);
 
   const readBookFrom = useCallback(async (segmentId: string | null) => {
-    if (!openBook || !voiceId) return;
+    // A paragraph clicked while an export runs would queue behind it.
+    if (!openBook || !voiceId || exporting) return;
     onPlayer({ type: "start" });
     setRemaining(null);
     setOrigin({ kind: "book", book: openBook });
@@ -1022,7 +1028,7 @@ export default function App() {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
     }
-  }, [openBook, voiceId, rate, scope]);
+  }, [openBook, voiceId, rate, scope, exporting]);
 
   /** Change the voice, and carry on with it.
    *
@@ -1374,11 +1380,6 @@ export default function App() {
   ]), [language]);
 
   const overLimit = content.length > PASTE_LIMIT;
-  // An export holds the engine the way a reading does; the read button
-  // waits for it rather than queueing a reading behind a file. Owned here,
-  // not by the Paste screen, so leaving the screen does not lose it.
-  const exportJob = useExport();
-  const exporting = exportJob.job.kind === "running";
   const atOrigin =
     origin === null ||
     (origin.kind === "book"
@@ -1420,7 +1421,7 @@ export default function App() {
   const startDisabled =
     screen === "paste"
       ? !content.trim() || overLimit || !voiceId || exporting
-      : !openBook || !voiceId;
+      : !openBook || !voiceId || exporting;
   // Voice and speed also drive the global shortcut, so they belong on the
   // selection screen too - just not on the notes utility.
   const speechSettings = canStart || screen === "external";
@@ -1979,7 +1980,11 @@ export default function App() {
                 <ExportAudio
                   job={exportJob.job}
                   disabled={!content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
-                  cost={pricing && estimate !== null && !estimateFailed ? buttonCost(estimate) || null : null}
+                  /* The read button's own words for a price it could not
+                     fetch: a disabled export with no reason was a dead end. */
+                  cost={pricing && estimateFailed
+                    ? text("cost.unavailable")
+                    : pricing && estimate !== null ? buttonCost(estimate) || null : null}
                   onStart={() => void exportJob.start({
                     content,
                     voiceId,
