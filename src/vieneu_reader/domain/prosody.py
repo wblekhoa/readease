@@ -440,6 +440,12 @@ _VI_TITLE_WITH_DOT = re.compile(r"\b(ThS|TP|Tp)\.(?=\s+\w)")
 _VI_TITLES = {"ThS": "Thạc sĩ", "TP": "Thành phố", "Tp": "Thành phố"}
 _VI_PAGE = re.compile(r"\b[Tt]r\.\s*(?=\d)")
 _VI_QUARTER = re.compile(r"\bQ([1-4])\s*[/-]\s*((?:19|20)\d\d)\b")
+# Citation words the SDK spells letter by letter (probe 15/10): "Nxb." →
+# "nxb.", "Sđd" → "sđd", and "H.:" (the place of publication) → "hát". The
+# dot after one is the abbreviation's, unless the sentence ends there.
+_VI_CITATION = re.compile(r"(?<![\w])(Nxb|nxb|Sđd|sđd|Tlđd|tlđd)(?:\.(?=\s+\w|[,;:]))?(?![\w])")
+_VI_CITATION_WORDS = {"nxb": "Nhà xuất bản", "sđd": "Sách đã dẫn", "tlđd": "Tài liệu đã dẫn"}
+_VI_HANOI_IMPRINT = re.compile(r"(?<![\w])H\.\s*:")
 # The SDK reads a lone "OK" by Vietnamese letter names, "ô ca" (RE-PLAY-019):
 # 0 of 3 renders heard as "OK", 3 of 3 once written "ô kê". Measured on 15/10
 # with 19 other tech terms the SDK already reads right raw - a respelling made
@@ -449,11 +455,14 @@ _VI_OK = re.compile(r"(?<![\w-])(?:OK|Ok)(?![\w-])")
 
 def speak_vietnamese_abbreviations(text: str) -> str:
     """'ThS. A' → 'Thạc sĩ A', 'TP. Huế' → 'Thành phố Huế', 'tr. 45' → 'trang 45',
-    'Q1/2025' → 'quý 1 năm 2025', 'OK' → 'ô kê' - for the Vietnamese voice only."""
+    'Q1/2025' → 'quý 1 năm 2025', 'OK' → 'ô kê',
+    'Nxb.'/'Sđd'/'Tlđd' and an imprint's 'H.:' in words - for the Vietnamese voice only."""
 
     text = _VI_TITLE_WITH_DOT.sub(lambda m: _VI_TITLES[m.group(1)], text)
     text = _VI_PAGE.sub("trang ", text)
     text = _VI_OK.sub("ô kê", text)
+    text = _VI_CITATION.sub(lambda m: _VI_CITATION_WORDS[m.group(1).lower()], text)
+    text = _VI_HANOI_IMPRINT.sub("Hà Nội:", text)
     return _VI_QUARTER.sub(r"quý \1 năm \2", text)
 
 

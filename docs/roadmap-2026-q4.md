@@ -69,6 +69,8 @@ helper vừa dựng cho D.
    (`babble_suspect` của SDK) thì sinh thêm tối đa 1 bản và giữ bản không nghi ngờ.
    → verify: đo lại bằng bộ đo 10 câu × 10 lần × 2 giọng (Whisper) — mục tiêu **≥ 80 % đúng chữ**, Adam **≥ 75 %**,
    "Whisper bịa câu" = 0; độ trễ âm đầu câu ngắn tăng ≤ 0,3 s (đo `gen_s`).
+   **15/10: đã có sẵn trong SDK** (`babble_retries` = 2 trong `infer`, giữ bản không nghi) — số đo §6/§7 đã gồm nó.
+   Lỗi còn lại chủ yếu là sai thanh, bộ dò cụm âm không thấy được. Giọng mặc định mới (Đức Trí) đạt 96 %.
 4. **Bộ đo câu ngắn thành công cụ của repo**: `scripts/measure-short-utterances.py` (render) — phần chấm Whisper chạy
    trong môi trường riêng ngoài repo, không vào bundle. **Phụ thuộc dev mới (mlx-whisper) → hỏi chủ trước.**
    → verify: một lệnh in bảng như §6 tài liệu khảo sát; ghi hướng dẫn chạy trong `docs/`.
@@ -77,6 +79,9 @@ helper vừa dựng cho D.
 6. **Chuẩn hoá văn bản**: bộ test số (12,5 · 3,2 tỷ · 2025 · số La Mã chương), ngày tháng, đơn vị, viết tắt hay gặp
    (TP.HCM, v.v., GS., ThS.); sửa ở tầng chuẩn hoá trước SDK.
    → verify: test mới trong `tests/domain/`; Whisper đọc lại đúng ≥ 90 % mẫu.
+   **15/10:** dò 34 dạng qua bộ chuẩn hoá SDK — số, ngày, giờ, đơn vị, %, La Mã, TP.HCM, GS./PGS.TS., UBND… đã đúng.
+   Đã thêm ThS./TP./tr./Q1/2025 (RE-PLAY-018), OK (RE-PLAY-019), Nxb./Sđd/Tlđd/"H.:" (RE-PLAY-018). Chưa nghe lại
+   bằng Whisper các dạng mới (chúng thành chữ thường mà SDK đọc như mọi câu).
 7. **Gói phát âm dựng sẵn** (tuỳ chọn nhập): thuật ngữ công nghệ, tên riêng phổ biến — nhập vào từ điển phát âm hiện có,
    người dùng xoá được từng dòng.
    → verify: nhập không vượt trần 300 dòng; trùng từ thì hỏi giữ bản nào.

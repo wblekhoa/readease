@@ -6,6 +6,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- In footnotes and references the Vietnamese voice says "Nxb." as "nhà
+  xuất bản", "Sđd" as "sách đã dẫn", "Tlđd" as "tài liệu đã dẫn" and
+  an imprint's "H.:" as "Hà Nội" - before, they were spelled out.
 - The Vietnamese voice says "OK" as "ô kê" instead of spelling it "ô ca".
 - Help › Report a Problem or Suggest… opens the bug form with the app's
   build and the Mac's macOS version and chip already filled in, so a
