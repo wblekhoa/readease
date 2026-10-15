@@ -440,14 +440,20 @@ _VI_TITLE_WITH_DOT = re.compile(r"\b(ThS|TP|Tp)\.(?=\s+\w)")
 _VI_TITLES = {"ThS": "Thạc sĩ", "TP": "Thành phố", "Tp": "Thành phố"}
 _VI_PAGE = re.compile(r"\b[Tt]r\.\s*(?=\d)")
 _VI_QUARTER = re.compile(r"\bQ([1-4])\s*[/-]\s*((?:19|20)\d\d)\b")
+# The SDK reads a lone "OK" by Vietnamese letter names, "ô ca" (RE-PLAY-019):
+# 0 of 3 renders heard as "OK", 3 of 3 once written "ô kê". Measured on 15/10
+# with 19 other tech terms the SDK already reads right raw - a respelling made
+# them worse (KPI 3/3 → 0/3), so only this one is rewritten.
+_VI_OK = re.compile(r"(?<![\w-])(?:OK|Ok)(?![\w-])")
 
 
 def speak_vietnamese_abbreviations(text: str) -> str:
     """'ThS. A' → 'Thạc sĩ A', 'TP. Huế' → 'Thành phố Huế', 'tr. 45' → 'trang 45',
-    'Q1/2025' → 'quý 1 năm 2025' - for the Vietnamese voice only."""
+    'Q1/2025' → 'quý 1 năm 2025', 'OK' → 'ô kê' - for the Vietnamese voice only."""
 
     text = _VI_TITLE_WITH_DOT.sub(lambda m: _VI_TITLES[m.group(1)], text)
     text = _VI_PAGE.sub("trang ", text)
+    text = _VI_OK.sub("ô kê", text)
     return _VI_QUARTER.sub(r"quý \1 năm \2", text)
 
 

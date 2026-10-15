@@ -6,6 +6,7 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- The Vietnamese voice says "OK" as "ô kê" instead of spelling it "ô ca".
 - Help › Report a Problem or Suggest… opens the bug form with the app's
   build and the Mac's macOS version and chip already filled in, so a
   report no longer starts with looking them up. Nothing from your

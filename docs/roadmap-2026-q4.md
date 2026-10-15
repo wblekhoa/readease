@@ -80,6 +80,8 @@ helper vừa dựng cho D.
 7. **Gói phát âm dựng sẵn** (tuỳ chọn nhập): thuật ngữ công nghệ, tên riêng phổ biến — nhập vào từ điển phát âm hiện có,
    người dùng xoá được từng dòng.
    → verify: nhập không vượt trần 300 dòng; trùng từ thì hỏi giữ bản nào.
+   **Kết quả 15/10: bỏ.** Đo 20 từ: nguyên văn 54/60, viết kiểu Việt 49/60 — gói làm tệ hơn. Chỉ sửa "OK" →
+   "ô kê" (RE-PLAY-019). Khảo sát §8, `decisions.md` 15/10.
 8. Phát hành 0.1.22 (chờ "phát hành").
 
 ## P2 · B — Xuất chương / cả sách thành sách nói M4B
