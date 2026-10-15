@@ -922,6 +922,23 @@ class VietnameseAbbreviationTests(unittest.TestCase):
         for text in ("TP.HCM tăng.", "Ông Trần. Bà Lê.", "tr. Kết thúc", "Q5/2025", "Q1 tăng", "Phường Tr."):
             self.assertEqual(speak_vietnamese_abbreviations(text), text, text)
 
+    def test_citation_words_are_said_in_full(self):
+        self.assertEqual(
+            speak_vietnamese_abbreviations("H.: Nxb. Văn học, 2001. Sđd, trang 4; xem Tlđd."),
+            "Hà Nội: Nhà xuất bản Văn học, 2001. Sách đã dẫn, trang 4; xem Tài liệu đã dẫn.",
+        )
+        self.assertEqual(speak_vietnamese_abbreviations("nxb Trẻ"), "Nhà xuất bản Trẻ")
+        self.assertEqual(speak_vietnamese_abbreviations("Sđd., tr. 45"), "Sách đã dẫn, trang 45")
+        for text in ("Nxbx", "Hà H. Lan", "H.Lan", "NXB Trẻ"):
+            self.assertEqual(speak_vietnamese_abbreviations(text), text, text)
+
+    # RE-PLAY-019
+    def test_ok_is_said_as_the_word_not_as_letters(self):
+        self.assertEqual(speak_vietnamese_abbreviations("OK, mình đi. Ok nhé."), "ô kê, mình đi. ô kê nhé.")
+        for text in ("OKR quý này", "BOOK", "ok", "OK-1", "Hà Nội OKE"):
+            self.assertEqual(speak_vietnamese_abbreviations(text), text, text)
+        self.assertNotIn("ô kê", speakable_text("OK, let's go.", language="en"))
+
     def test_only_the_vietnamese_voice_gets_it(self):
         self.assertIn("Thạc sĩ", speakable_text("ThS. Trần B nói.", language="vi"))
         self.assertNotIn("Thạc sĩ", speakable_text("ThS. Trần B nói.", language="en"))

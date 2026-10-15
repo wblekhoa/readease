@@ -166,6 +166,16 @@ Cùng cách đo (Whisper large-v3-turbo, VieNeu 3.6.3 int8, câu ngắn ở nhi�
 
 Đoạn dài chênh ít; khác biệt chủ yếu nằm ở câu ngắn ("Vâng." của Adam ra "Văng"/"Văn" cả 3 lượt). Whisper nghiêng về giọng Bắc mà Đức Trí là giọng Nam, nên xếp hạng còn bất lợi cho Đức Trí mà vẫn đứng đầu. Quyết định: mặc định đổi sang Đức Trí (RE-VOICE-009, `docs/product/decisions.md` 15/10).
 
+## 8. Gói phát âm dựng sẵn — đo trước khi làm (15/10)
+
+20 thuật ngữ (AI, CEO, KPI, USB, PDF, Wi-Fi, iPhone, email, Facebook, YouTube, Google, Zalo, app, online, OK, laptop, website, MacBook, ChatGPT, TikTok), mỗi từ đặt trong câu "Hôm nay tôi muốn nói về … với các bạn.", đọc nguyên văn và đọc theo cách viết kiểu Việt ("kây pi ai", "phây búc"…), 3 lượt mỗi cách, giọng Đức Trí. Whisper nghe lại; tính đúng khi nghe ra từ gốc hoặc cách viết kiểu Việt.
+
+- Nguyên văn: **54/60** · viết kiểu Việt: **49/60**.
+- Viết kiểu Việt làm hỏng: KPI 3/3 → 0/3, online 3/3 → 1/3, ChatGPT 3/3 → 1/3, USB 3/3 → 2/3.
+- Chỉ "OK" được lợi: 0/3 ("ô ca") → 3/3. Zalo 0/3 cả hai cách (Whisper nghe "gia lô", có thể do máy nghe).
+
+Kết luận: không làm gói chung; sửa riêng "OK" ở tầng chuẩn hoá (RE-PLAY-019).
+
 ## Nguồn `[fetched 2026-10-13]`
 
 - VieNeu: https://github.com/pnnbao97/VieNeu-TTS (README, `compare/v3.6.3...v3.8.3`, releases) ·

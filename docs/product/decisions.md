@@ -12,6 +12,17 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-15 · No ready-made pronunciation pack; only "OK" is rewritten
+- **Context**: roadmap P1 step 7 proposed an optional pack of tech terms and common names to import into the
+  reader's pronunciation list.
+- **Decision**: no pack ships. The voice SDK already reads English tech words and acronyms well; respelling them the
+  Vietnamese way made them worse. The one clear failure, "OK" read as letters, is fixed in the Vietnamese normaliser
+  (RE-PLAY-019) for everyone instead of behind an import.
+- **Evidence**: 20 terms × raw vs respelled × 3 renders (Đức Trí, int8), Whisper large-v3-turbo: heard right 54/60
+  raw vs 49/60 respelled; KPI 3/3 → 0/3, online 3/3 → 1/3, ChatGPT 3/3 → 1/3; OK 0/3 → 3/3.
+  `docs/local-voice-model-survey-2026-10.md` §8.
+- **Reversal**: a pack can still be added later from words readers actually add (needs the feedback channel, P0).
+
 ## 2026-10-15 · Default voice: Đức Trí instead of Adam, on measurement
 - **Context**: the roadmap (P1) asked for the default voice to be chosen on evidence. Adam, the default since the
   start, missed short headings and replies most often (e.g. "Vâng." heard as "Văng"/"Văn" in 3 of 3 takes). The owner

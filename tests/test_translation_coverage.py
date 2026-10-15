@@ -148,6 +148,14 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/prosody.py", "Thạc sĩ"),
         ("domain/prosody.py", "Thành phố"),
         ("domain/prosody.py", r"quý \1 năm \2"),
+        ("domain/prosody.py", "ô kê"),
+        ("domain/prosody.py", "Nhà xuất bản"),
+        ("domain/prosody.py", "Sách đã dẫn"),
+        ("domain/prosody.py", "Tài liệu đã dẫn"),
+        ("domain/prosody.py", "Hà Nội:"),
+        ("domain/prosody.py", r"(?<![\w])(Nxb|nxb|Sđd|sđd|Tlđd|tlđd)(?:\.(?=\s+\w|[,;:]))?(?![\w])"),
+        ("domain/prosody.py", "sđd"),
+        ("domain/prosody.py", "tlđd"),
         # The default voice's id (RE-VOICE-009): a name, the same in every
         # language, as the voice catalogue shows it.
         ("playback/preferences.py", "Đức Trí"),
