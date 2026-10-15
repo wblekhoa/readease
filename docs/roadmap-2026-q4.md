@@ -95,6 +95,9 @@ helper vừa dựng cho D.
    (`AVAssetWriter` + nhóm metadata chương) qua Swift helper, so với `afconvert` + ghi atom chương bằng tay.
    → verify: file mở trong Apple Books và QuickTime trên Mac, danh sách chương đúng tên/mốc; nếu cả hai hỏng → đề xuất
    phụ thuộc (ví dụ ffmpeg) và **hỏi chủ**.
+   **15/10: đạt (trừ mở tay trong Books).** `afconvert` + track chương QuickTime tự ghi bằng Python
+   (`src/vieneu_reader/headless/m4b.py`), AVFoundation đọc lại đủ chương/tiêu đề tiếng Việt; không thêm phụ thuộc.
+   `decisions.md` 15/10.
 2. **Engine `export.book`** (nối đường xuất 14/10): phạm vi = một chương / từ chương X đến Y / cả sách; mỗi chương là
    một mốc; dùng chung ngắt nghỉ, chuông, phát âm, −14 LUFS, metadata giọng AI; ghi dần ra đĩa (không giữ cả sách trong
    RAM); huỷ được; xuất xong không để lại gì ngoài file.

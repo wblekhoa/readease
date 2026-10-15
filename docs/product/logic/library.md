@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Library (logic)"
 status: active
-updated: 2026-10-10
+updated: 2026-10-15
 summary: "Import and library rules (RE-LIB): only text-based PDF and EPUB up to 200 MiB, copied into the app library with the original untouched, duplicates focused, DRM and scans refused with a reason, per-book progress."
 tags: [area/data-import, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-LIB
@@ -52,3 +52,4 @@ relations:
 
 ## Change log
 - 2026-10-10: created; REQ-IDs added as comments next to the evidence tests in the same commit.
+- 2026-10-15: no rule change; `tests/headless/test_server.py` now expects the note "Sđd., tr. 45" spoken as "Sách đã dẫn, trang 45" (RE-PLAY-018 in reading.md).

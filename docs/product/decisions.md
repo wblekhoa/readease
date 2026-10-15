@@ -12,6 +12,20 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-15 · Audiobook export (.m4b): macOS encodes, the engine writes the chapter track itself
+- **Context**: roadmap P2 asks for chapter-marked audiobooks without a new dependency (no ffmpeg, no mutagen).
+- **Decision**: the WAV the export already makes is encoded by `/usr/bin/afconvert` (AAC 64 kbit/s, on every Mac);
+  `headless/m4b.py` (stdlib only) lays the file out as ftyp · mdat · moov and adds a QuickTime chapter track - the
+  layout AVFoundation itself wrote in the spike: a disabled 'text' track, one UTF-8 sample per chapter with an 'encd'
+  atom, the audio track pointing at it through tref/chap - plus iTunes tags (title, artist, comment, cover, stik =
+  audiobook). Rejected: AVFoundation from Rust (needs a new `objc2-core-media` crate) and a timed-metadata chapter
+  track (AVAssetWriter refuses metadata tracks in .m4a).
+- **Evidence**: a Swift probe reading the Python-written file through AVFoundation (`scripts/check-m4b-chapters.swift`):
+  playable, 3 chapters at 0/4/8 s with Vietnamese titles, title/artist tags; `afinfo` reports file type m4bf;
+  decoded back, each chapter's tone is intact (440/550/660 Hz, same level). 8 tests in `tests/headless/test_m4b.py`,
+  including a real encode on macOS. Not yet opened in Apple Books by hand.
+- **Reversal**: delete `headless/m4b.py`; nothing else uses it yet.
+
 ## 2026-10-15 · No ready-made pronunciation pack; only "OK" is rewritten
 - **Context**: roadmap P1 step 7 proposed an optional pack of tech terms and common names to import into the
   reader's pronunciation list.
