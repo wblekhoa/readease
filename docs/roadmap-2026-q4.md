@@ -103,6 +103,9 @@ helper vừa dựng cho D.
    RAM); huỷ được; xuất xong không để lại gì ngoài file.
    → verify: test engine (mốc chương khớp ranh giới chương, tổng thời lượng = tổng câu + nghỉ, huỷ giữa chừng không để
    file dở); bộ nhớ đỉnh khi xuất sách 300 trang < +300 MB so với lúc đọc.
+   **15/10: engine xong** (`export.book`: `from_chapter` + `chapters`, mốc tính theo câu như phụ đề, AAC chép dần 1 MB
+   một lần). Chỉ giọng trên máy; giọng trả phí bị từ chối có tên (`paid_voice_export`) tới bước 3. Chưa đo bộ nhớ đỉnh
+   trên sách 300 trang thật; chưa có ảnh bìa.
 3. **Ước lượng trước khi bấm**: thời lượng nghe dự kiến, dung lượng file, thời gian xuất trên máy này; **giọng trả phí
    hiện giá cả cuốn** và chịu trần ngân sách như lúc đọc.
    → verify: test cost guard với cả sách (vượt ngân sách → dừng trước khi gửi ký tự); sai số ước lượng thời lượng ≤ 10 %.

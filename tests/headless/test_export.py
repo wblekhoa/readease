@@ -218,6 +218,82 @@ class ExportProtocolTests(unittest.TestCase):
         self.assertFalse(os.path.exists(self.path))
 
 
+@unittest.skipUnless(os.path.exists("/usr/bin/afconvert"), "needs macOS's encoder")
+class BookExportTests(unittest.TestCase):
+    """A book as an audiobook: one mark per chapter (RE-PLAY-020)."""
+
+    def setUp(self):
+        from pathlib import Path
+        from tests.headless.test_server import build_book
+        from vieneu_reader.storage.repository import LibraryRepository
+
+        self.folder = tempfile.mkdtemp()
+        root = Path(self.folder)
+        self.repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(self.repository.close)
+        book = build_book([
+            ("Mở đầu", [("Câu thứ nhất.", "paragraph")]),
+            ("Chương hai", [("Câu thứ hai.", "paragraph"), ("Câu thứ ba.", "paragraph")]),
+            ("Chương ba", [("Câu cuối.", "paragraph")]),
+        ])
+        source = root / "book.epub"
+        source.write_bytes(b"fixture")
+        self.repository.add_book(book, source)
+        self.out = os.path.join(self.folder, "Sách.m4b")
+
+    def export(self, engine, **extra):
+        from tests.headless.test_server import BOOK_ID
+
+        params = {"book_id": BOOK_ID, "voice_id": "adam", "path": self.out,
+                  "voice_label": "Adam", "software": "ReadEase 0.1.22"}
+        params.update(extra)
+        reader = io.StringIO(json.dumps({"id": 1, "method": "export.book", "params": params}) + "\n")
+        writer = io.StringIO()
+        serve(reader, writer, engine, repository=self.repository)
+        replies = [json.loads(line) for line in writer.getvalue().splitlines()]
+        return next(r for r in replies if r.get("id") == 1 and "ok" in r)
+
+    # RE-PLAY-020
+    def test_the_whole_book_becomes_one_file_with_a_mark_per_chapter(self):
+        from vieneu_reader.headless.m4b import read_chapters
+
+        engine = ToneEngine()
+        reply = self.export(engine)
+        self.assertTrue(reply["ok"], reply)
+        result = reply["result"]
+        titles = [c["title"] for c in result["chapters"]]
+        self.assertEqual(titles, ["Mở đầu", "Chương hai", "Chương ba"])
+        starts = [c["start"] for c in result["chapters"]]
+        self.assertEqual(starts[0], 0.0)
+        self.assertEqual(starts, sorted(starts))
+        self.assertLess(starts[-1], result["seconds"])
+        with open(self.out, "rb") as made:
+            data = made.read()
+        written = read_chapters(data)
+        self.assertEqual([c.title for c in written], titles)
+        for mine, theirs in zip(written, starts):
+            self.assertAlmostEqual(mine.start, theirs, delta=0.01)
+        self.assertIn(b"AI-generated speech", data)
+        # Nothing but the asked-for file is left beside it.
+        audio = [name for name in os.listdir(self.folder) if name.rsplit(".", 1)[-1] in ("m4b", "m4a", "wav")]
+        self.assertEqual(audio, ["Sách.m4b"])
+
+    def test_a_range_of_chapters_reads_only_those(self):
+        engine = ToneEngine()
+        reply = self.export(engine, from_chapter=1, chapters=1)
+        self.assertTrue(reply["ok"], reply)
+        self.assertEqual([c["title"] for c in reply["result"]["chapters"]], ["Chương hai"])
+        self.assertTrue(all("Câu thứ" in said for said in engine.requests if said.startswith("Câu")))
+        self.assertNotIn("Câu cuối.", engine.requests)
+
+    def test_refuses_a_path_that_is_not_an_absolute_m4b(self):
+        reply = self.export(ToneEngine(), path="relative.m4b")
+        self.assertFalse(reply["ok"])
+        reply = self.export(ToneEngine(), path=os.path.join(self.folder, "x.wav"))
+        self.assertFalse(reply["ok"])
+        self.assertFalse(os.path.exists(self.out))
+
+
 if __name__ == "__main__":
     unittest.main()
 

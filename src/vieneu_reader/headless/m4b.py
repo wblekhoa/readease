@@ -164,22 +164,22 @@ def _rebuild(data: bytes, start: int, end: int, path: tuple[bytes, ...], edit) -
     return bytes(out)
 
 
-def add_chapters(m4a: bytes, chapters: list[Chapter], tags: dict[str, str], cover: bytes | None = None) -> bytes:
-    """An AAC .m4a (one audio track) as an .m4b with chapters and tags."""
-    ftyp = _child(m4a, 0, len(m4a), b"ftyp")
-    moov = _child(m4a, 0, len(m4a), b"moov")
-    mdat = _child(m4a, 0, len(m4a), b"mdat")
-    if not (ftyp and moov and mdat):
-        raise ValueError("not an MPEG-4 audio file")
-    moov_start, moov_body, moov_end = moov
-    traks = [box for box in _boxes(m4a, moov_body, moov_end) if box[0] == b"trak"]
+def _plan(moov: bytes, audio_start: int, audio_length: int, chapters: list[Chapter],
+          tags: dict[str, str], cover: bytes | None) -> tuple[bytes, bytes, bytes]:
+    """What goes around the audio: (ftyp + mdat header, chapter samples, moov).
+
+    `moov` is the encoder's moov box; the audio is the `audio_length` bytes
+    that sat at `audio_start` in its file. Only these small parts are held in
+    memory - the audio itself is copied by the caller.
+    """
+    _, _, moov_body, moov_end = next(_boxes(moov, 0, len(moov)))
+    traks = [box for box in _boxes(moov, moov_body, moov_end) if box[0] == b"trak"]
     if len(traks) != 1:
         raise ValueError(f"expected one audio track, found {len(traks)}")
-    mvhd = _child(m4a, moov_body, moov_end, b"mvhd")
-    version = m4a[mvhd[1]]
-    if version != 0:
-        raise ValueError("64-bit movie header not handled")
-    timescale, duration = struct.unpack(">II", m4a[mvhd[1] + 12:mvhd[1] + 20])
+    mvhd = _child(moov, moov_body, moov_end, b"mvhd")
+    if mvhd is None or moov[mvhd[1]] != 0:
+        raise ValueError("missing or 64-bit movie header")
+    timescale, duration = struct.unpack(">II", moov[mvhd[1] + 12:mvhd[1] + 20])
     total = duration / timescale
 
     marks = sorted((c for c in chapters if 0 <= c.start < total), key=lambda c: c.start)
@@ -192,21 +192,23 @@ def add_chapters(m4a: bytes, chapters: list[Chapter], tags: dict[str, str], cove
     total_ms = round(total * 1000)
     durations = [max(1, b - a) for a, b in zip(starts_ms, starts_ms[1:] + [total_ms])]
     samples = [_chapter_sample(c.title) for c in marks]
+    sample_bytes = b"".join(samples)
 
-    ftyp_bytes = _box(b"ftyp", b"M4B ", struct.pack(">I", 0), b"M4B ", b"M4A ", b"mp42", b"isom")
-    audio = m4a[mdat[1]:mdat[2]]
-    mdat_body = audio + b"".join(samples)
-    large = len(mdat_body) + 8 > 0xFFFFFFFF
-    mdat_header = struct.pack(">I4sQ", 1, b"mdat", len(mdat_body) + 16) if large else struct.pack(">I4s", len(mdat_body) + 8, b"mdat")
-    new_audio_start = len(ftyp_bytes) + len(mdat_header)
-    shift = new_audio_start - mdat[1]
+    ftyp = _box(b"ftyp", b"M4B ", struct.pack(">I", 0), b"M4B ", b"M4A ", b"mp42", b"isom")
+    body_length = audio_length + len(sample_bytes)
+    if body_length + 8 > 0xFFFFFFFF:
+        mdat_header = struct.pack(">I4sQ", 1, b"mdat", body_length + 16)
+    else:
+        mdat_header = struct.pack(">I4s", body_length + 8, b"mdat")
+    new_audio_start = len(ftyp) + len(mdat_header)
+    shift = new_audio_start - audio_start
     text_offsets = []
-    at = new_audio_start + len(audio)
+    at = new_audio_start + audio_length
     for sample in samples:
         text_offsets.append(at)
         at += len(sample)
 
-    next_id = struct.unpack(">I", m4a[mvhd[1] + 96:mvhd[1] + 100])[0]
+    next_id = struct.unpack(">I", moov[mvhd[1] + 96:mvhd[1] + 100])[0]
     chapter_id = max(next_id, 2)
 
     def edit(kind: bytes, body: bytes) -> bytes:
@@ -224,7 +226,7 @@ def add_chapters(m4a: bytes, chapters: list[Chapter], tags: dict[str, str], cove
             return bytes(out)
         return body
 
-    moov_inner = _rebuild(m4a, moov_body, moov_end, (b"trak", b"mdia", b"minf", b"stbl"), edit)
+    moov_inner = _rebuild(moov, moov_body, moov_end, (b"trak", b"mdia", b"minf", b"stbl"), edit)
     # Drop the encoder's own tags; ours replace them. Next track id moves on.
     kept = bytearray()
     for kind, s, b, e in _boxes(moov_inner, 0, len(moov_inner)):
@@ -236,7 +238,62 @@ def add_chapters(m4a: bytes, chapters: list[Chapter], tags: dict[str, str], cove
         kept += box
     kept += _chapter_trak(chapter_id, durations, [len(s) for s in samples], text_offsets, timescale, tags.get("language", ""))
     kept += _udta(tags, cover)
-    return ftyp_bytes + mdat_header + mdat_body + _box(b"moov", bytes(kept))
+    return ftyp + mdat_header, sample_bytes, _box(b"moov", bytes(kept))
+
+
+def _top_level(read_at, size: int) -> dict[bytes, tuple[int, int, int]]:
+    """{kind: (box start, body start, box end)} of a file's top-level boxes,
+    reading only their headers."""
+    found: dict[bytes, tuple[int, int, int]] = {}
+    at = 0
+    while at + 8 <= size:
+        head = read_at(at, 16)
+        length, kind = struct.unpack(">I4s", head[:8])
+        body = at + 8
+        if length == 1:
+            length = struct.unpack(">Q", head[8:16])[0]
+            body = at + 16
+        elif length == 0:
+            length = size - at
+        if length < 8 or at + length > size:
+            raise ValueError(f"damaged box {kind!r} at {at}")
+        found.setdefault(kind, (at, body, at + length))
+        at += length
+    if not all(kind in found for kind in (b"ftyp", b"moov", b"mdat")):
+        raise ValueError("not an MPEG-4 audio file")
+    return found
+
+
+def add_chapters(m4a: bytes, chapters: list[Chapter], tags: dict[str, str], cover: bytes | None = None) -> bytes:
+    """An AAC .m4a (one audio track) as an .m4b with chapters and tags."""
+    boxes = _top_level(lambda at, n: m4a[at:at + n], len(m4a))
+    moov_start, _, moov_end = boxes[b"moov"]
+    _, audio_start, audio_end = boxes[b"mdat"]
+    head, samples, moov = _plan(m4a[moov_start:moov_end], audio_start, audio_end - audio_start, chapters, tags, cover)
+    return head + m4a[audio_start:audio_end] + samples + moov
+
+
+def _add_chapters_file(source: str, target: str, chapters: list[Chapter], tags: dict[str, str], cover: bytes | None) -> None:
+    """`add_chapters` from file to file, the audio copied a megabyte at a
+    time: a ten-hour book is about 300 MB of AAC, never held in memory."""
+    with open(source, "rb") as src:
+        size = os.fstat(src.fileno()).st_size
+        boxes = _top_level(lambda at, n: os.pread(src.fileno(), n, at), size)
+        moov_start, _, moov_end = boxes[b"moov"]
+        _, audio_start, audio_end = boxes[b"mdat"]
+        moov = os.pread(src.fileno(), moov_end - moov_start, moov_start)
+        head, samples, new_moov = _plan(moov, audio_start, audio_end - audio_start, chapters, tags, cover)
+        with open(target, "wb") as out:
+            out.write(head)
+            at = audio_start
+            while at < audio_end:
+                piece = os.pread(src.fileno(), min(1 << 20, audio_end - at), at)
+                if not piece:
+                    raise ValueError("audio ended early")
+                out.write(piece)
+                at += len(piece)
+            out.write(samples)
+            out.write(new_moov)
 
 
 def read_chapters(m4b: bytes) -> list[Chapter]:
@@ -286,10 +343,7 @@ def write_m4b(wav_path: str, path: str, chapters: list[Chapter], tags: dict[str,
             ["/usr/bin/afconvert", "-f", "m4af", "-d", "aac", "-b", str(bitrate), wav_path, encoded],
             check=True, capture_output=True, timeout=3600,
         )
-        with open(encoded, "rb") as source:
-            result = add_chapters(source.read(), chapters, tags, cover)
-        with open(staged, "wb") as target:
-            target.write(result)
+        _add_chapters_file(encoded, staged, chapters, tags, cover)
         os.replace(staged, path)
     finally:
         for leftover in (encoded, staged):

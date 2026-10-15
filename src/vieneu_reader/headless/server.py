@@ -53,6 +53,7 @@ import os
 import secrets
 import sys
 import threading
+import tempfile
 import time
 from hashlib import sha256
 from pathlib import Path
@@ -92,6 +93,7 @@ from vieneu_reader.domain.segmenter import split_transient_parts
 # that pin the shaping reach for `server._text_utterances`.
 from vieneu_reader.domain.pronunciation import pronunciations_of
 from vieneu_reader.headless.export import ExportSink, Said, write_srt, write_wav
+from vieneu_reader.headless.m4b import Chapter as AudiobookChapter, write_m4b
 from vieneu_reader.headless.utterances import (  # noqa: F401 - re-exported
     CHIME_LEAD_MS,
     CHIME_TAIL_MS,
@@ -594,7 +596,7 @@ class _Session:
         if method == "stop":
             self._reply(request.get("id"), {"stopped": True})
             self._stop_pending = True
-            self._drop_queued("read", "read.book", "export.text", "export.play")
+            self._drop_queued("read", "read.book", "export.text", "export.book", "export.play")
         elif method == "model.cancel":
             # True when there is a download to cancel - running, or still
             # queued behind the reading this poll belongs to.
@@ -743,6 +745,8 @@ class _Session:
                 self._read(request_id, request.get("params") or {})
             elif method == "export.text":
                 self._export_text(request_id, request.get("params") or {})
+            elif method == "export.book":
+                self._export_book(request_id, request.get("params") or {})
             elif method == "export.play":
                 self._export_play(request_id, request.get("params") or {})
             elif method == "export.retake":
@@ -938,6 +942,97 @@ class _Session:
             # next export, or the engine's exit.
             if not kept:
                 session.sink.close()
+
+    def _export_book(self, request_id: Any, params: dict[str, Any]) -> None:
+        """A chapter, a run of chapters or the whole book as an audiobook
+        (.m4b), one chapter mark per chapter (RE-PLAY-020).
+
+        The same utterances as `read.book` - notes, breaks, pronunciations -
+        go to the same sink as `export.text`, and macOS's own encoder turns
+        the result into AAC (`m4b.write_m4b`). The audio lives in a nameless
+        temporary file until then, and a stopped or failed export leaves no
+        file at `path`. Local voices only for now: a paid voice would spend
+        money no button has quoted for a whole book.
+        """
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        stored = self._repository.get_book(str(params.get("book_id") or ""))
+        if stored is None:
+            self._fail(request_id, f"unknown book: {params.get('book_id')}")
+            return
+        voice_id = str(params.get("voice_id") or "")
+        rate = float(params.get("rate") or 1.0)
+        path = str(params.get("path") or "")
+        if not path.lower().endswith(".m4b") or not os.path.isabs(path):
+            self._fail(request_id, "path must be an absolute .m4b path")
+            return
+        if not os.path.isdir(os.path.dirname(path)):
+            self._fail(request_id, "the folder to save in does not exist")
+            return
+        if not 0.5 <= rate <= 2.0:
+            self._fail(request_id, f"rate {rate} is outside 0.5-2.0")
+            return
+        settings_document = self._settings_document()
+        language = self._book_language(stored)
+        engine, price, refused = self._voice_engine(voice_id, settings_document, language)
+        if price is not None or refused:
+            self._fail(request_id, refused or "paid_voice_export")
+            return
+        utterances, chapter_of = self._book_utterances(stored, language)
+        first = int(params.get("from_chapter") or 0)
+        start = next((i for i, chapter in enumerate(chapter_of) if chapter >= first), len(utterances))
+        raw = params.get("chapters")
+        end = scope_end(chapter_of, start, None if raw is None else int(raw))
+        utterances = utterances[start:end]
+        if not utterances:
+            self._fail(request_id, "nothing to read in that range")
+            return
+        titles = [chapter.title for chapter in stored.book.chapters]
+        sink = ExportSink(SAMPLE_RATE, total=len(utterances))
+        for offset, chapter in enumerate(chapter_of[start:end]):
+            if offset == 0 or chapter != chapter_of[start + offset - 1]:
+                title = titles[chapter] if 0 <= chapter < len(titles) and titles[chapter] else f"{chapter + 1}"
+                sink.chapter_titles[offset] = title
+        voice_label = str(params.get("voice_label") or voice_id)
+        software = str(params.get("software") or "ReadEase")
+
+        def finish(stopped: bool) -> dict[str, Any]:
+            if stopped:
+                return {"stopped": True}
+            fd, wav = tempfile.mkstemp(suffix=".wav", dir=os.path.dirname(path))
+            os.close(fd)
+            try:
+                loudness = write_wav(wav, sink.audio(), SAMPLE_RATE, {})
+                marks = sink.marks
+                write_m4b(wav, path, [AudiobookChapter(title, sample / SAMPLE_RATE) for sample, title in marks], {
+                    "title": stored.book.title,
+                    "album": stored.book.title,
+                    "artist": voice_label,
+                    "software": software,
+                    "year": time.strftime("%Y"),
+                    "language": language,
+                    # The machine-readable mark, as in the WAV export.
+                    "comment": f"AI-generated speech (text-to-speech). Voice: {voice_label}. Made with {software}.",
+                })
+            finally:
+                os.remove(wav)
+            self._send({"id": request_id, "event": "export_progress", "done": len(utterances), "total": len(utterances)})
+            return {
+                "stopped": False,
+                "path": path,
+                "seconds": round(len(sink.audio()) / SAMPLE_RATE, 2),
+                "lufs": round(loudness, 1) if loudness != float("-inf") else None,
+                "chapters": [{"title": title, "start": round(sample / SAMPLE_RATE, 2)} for sample, title in marks],
+            }
+
+        try:
+            self._speak(
+                request_id, utterances, voice_id, rate, SynthesisSettings(),
+                language=language, sink=sink, finish=finish,
+            )
+        finally:
+            sink.close()
 
     def _write_export(self, session: "_ExportSession") -> dict[str, Any]:
         """The WAV and its subtitles, from the takes as they now stand."""
@@ -3035,6 +3130,7 @@ class _Session:
                     # How far the file has got - the only thing a person
                     # waiting on an export needs, and no credit to spend.
                     sink.done = position
+                    sink.at_utterance(position)
                     self._send({
                         "id": request_id, "event": "export_progress",
                         "done": position, "total": len(utterances),

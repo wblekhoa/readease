@@ -41,7 +41,7 @@ relations:
 | RE-PLAY-017 | A sentence of one to three words is generated whole (so the voice SDK can catch and redo a "said more" take) and sampled at temperature 0.3 or lower, while longer sentences keep the reading temperature; the change is part of the VieNeu engine identity so cached short sentences made the old way are not replayed. | live | `tests/speech/test_vieneu_contract.py` (`test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble`, `test_a_sentence_keeps_the_readers_temperature`, `test_the_audio_cache_sees_the_new_way_short_sentences_are_made`) |
 | RE-PLAY-018 | For the Vietnamese voice, abbreviations the voice SDK leaves half-read are written out before it: "ThS." → "Thạc sĩ", "TP."/"Tp." before a name → "Thành phố", "tr."/"Tr." before a number → "trang", "Q1/2025" → "quý 1 năm 2025", and in citations "Nxb."/"nxb" → "Nhà xuất bản", "Sđd" → "Sách đã dẫn", "Tlđd" → "Tài liệu đã dẫn", an imprint's "H.:" → "Hà Nội:"; the page and subtitles keep the written form. | live | `tests/domain/test_prosody.py` (`VietnameseAbbreviationTests`) |
 | RE-PLAY-019 | For the Vietnamese voice, a standalone "OK"/"Ok" is said "ô kê" (the SDK spells it "ô ca"); words that only contain it ("OKR", "BOOK") and lowercase "ok" are left alone. | live | `tests/domain/test_prosody.py` (`test_ok_is_said_as_the_word_not_as_letters`) |
-| RE-PLAY-020 | A chapter or a whole book can be exported as an audiobook (.m4b) with one chapter mark per chapter, its title and cover, the AI-speech mark in its comment, encoded by macOS itself with no added dependency; a stopped or failed export leaves no file. | not built | Writer done and tested (`tests/headless/test_m4b.py`, `src/vieneu_reader/headless/m4b.py`); the engine method and the export sheet are not built yet. |
+| RE-PLAY-020 | A chapter or a whole book can be exported as an audiobook (.m4b) with one chapter mark per chapter, its title and cover, the AI-speech mark in its comment, encoded by macOS itself with no added dependency; a stopped or failed export leaves no file. | not built | Engine `export.book` and writer done and tested (`tests/headless/test_export.py` `BookExportTests`, `tests/headless/test_m4b.py`); the export sheet in the app and the cover are not built yet; local voices only. |
 
 ## States and transitions
 | State | Trigger | Next state | Edge case |
@@ -65,6 +65,7 @@ relations:
 
 ## Change log
 - 2026-10-15: RE-PLAY-018 extended to citation words (Nxb., Sđd, Tlđd, "H.:"), found by probing the SDK normaliser on 34 common forms.
+- 2026-10-15: RE-PLAY-020 engine method `export.book` (range by chapter, marks timed from the audio, audio streamed to disk).
 - 2026-10-15: RE-PLAY-020 added (not built): the .m4b writer and its tests; spike result in decisions.md.
 - 2026-10-15: RE-PLAY-019 ("OK" said "ô kê"; a general tech-term pack measured worse and was not shipped - survey §8).
 - 2026-10-15: RE-PLAY-018 (abbreviations written out for the Vietnamese voice).

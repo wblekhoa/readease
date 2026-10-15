@@ -352,6 +352,11 @@ class ExportSink:
         self._sentence = -1
         self._cues: list[tuple[int, int, str]] = []
         self._cue: tuple[int, str] | None = None
+        # Chapter marks for an audiobook (RE-PLAY-020): the utterance a
+        # chapter starts at -> its title, and, once reached, the sentence it
+        # starts with - timed like a cue, so a retake moves it too.
+        self.chapter_titles: dict[int, str] = {}
+        self._marks: list[tuple[int, str]] = []
 
     # -- recording, as `_speak` goes ------------------------------------------
     def add(self, pcm: bytes) -> None:
@@ -360,6 +365,12 @@ class ExportSink:
         count = len(pcm) // 4
         self._pieces.append([self._end, count, self._sentence])
         self._end += count
+
+    def at_utterance(self, position: int) -> None:
+        """The reading reached utterance `position`: a chapter starts here?"""
+        title = self.chapter_titles.get(position)
+        if title is not None:
+            self._marks.append((len(self.said), title))
 
     def open_sentence(self, said: Said) -> None:
         self.said.append(said)
@@ -401,6 +412,17 @@ class ExportSink:
             if first in spans and last in spans:
                 cues.append(Cue(spans[first][0], spans[last][1], text))
         return cues
+
+    @property
+    def marks(self) -> list[tuple[int, str]]:
+        """(sample, title) for each chapter that got at least one sentence."""
+        starts: dict[int, int] = {}
+        at = 0
+        for _, length, sentence in self._pieces:
+            if sentence >= 0 and length and sentence not in starts:
+                starts[sentence] = at
+            at += length
+        return [(starts[first], title) for first, title in self._marks if first in starts]
 
     def take(self, sentence: int) -> np.ndarray:
         """One sentence's audio, as it stands."""
