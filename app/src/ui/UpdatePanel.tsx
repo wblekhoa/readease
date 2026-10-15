@@ -17,6 +17,7 @@ export function UpdatePanel({
   phase,
   auto,
   onQuit,
+  exportBlocked = false,
   onInstallNow,
   onInstallOnQuit,
   onSkip,
@@ -27,6 +28,7 @@ export function UpdatePanel({
   phase: UpdatePhase;
   auto: boolean;
   onQuit: boolean;
+  exportBlocked?: boolean;
   onInstallNow: () => void;
   onInstallOnQuit: () => void;
   onSkip: () => void;
@@ -65,6 +67,7 @@ export function UpdatePanel({
             </IconButton>
           )}
         </div>
+        {exportBlocked && <p role="status" className="m-0 px-6 py-2 text-sm text-ink-mute">{text("audiobook.update_wait")}</p>}
         {offer && phase.notes && (
           // The release's notes as paragraphs: a note is a note, not a page;
           // the whole of it is on the release. The half in the reader's
@@ -103,7 +106,7 @@ export function UpdatePanel({
             <>
               <Button variant="ghost" onClick={onClose}>{text("update.later")}</Button>
               <Button onClick={onInstallOnQuit}>{text("update.on_quit")}</Button>
-              <Button variant="primary" onClick={onInstallNow}>{text("update.install")}</Button>
+              <Button variant="primary" disabled={exportBlocked} onClick={onInstallNow}>{text("update.install")}</Button>
             </>
           )}
           {phase.kind === "ready" && (
@@ -111,11 +114,11 @@ export function UpdatePanel({
               {onQuit
                 ? <Button variant="ghost" onClick={onClose}>{text("aria.close")}</Button>
                 : <Button onClick={onInstallOnQuit}>{text("update.on_quit")}</Button>}
-              <Button variant="primary" onClick={onInstallNow}>{text("update.install_now")}</Button>
+              <Button variant="primary" disabled={exportBlocked} onClick={onInstallNow}>{text("update.install_now")}</Button>
             </>
           )}
           {phase.kind === "installed" && (
-            <Button variant="primary" onClick={onRestart}>{text("update.relaunch")}</Button>
+            <Button variant="primary" disabled={exportBlocked} onClick={onRestart}>{text("update.relaunch")}</Button>
           )}
           {phase.kind === "failed" && (
             <Button onClick={() => void openUrl(RELEASES).catch(() => undefined)}>{text("update.open_releases")}</Button>

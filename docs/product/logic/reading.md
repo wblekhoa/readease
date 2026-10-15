@@ -5,7 +5,7 @@ product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
 updated: 2026-10-15
-summary: "Reading and playback rules (RE-PLAY): resume from heard progress, transient text never stored, Stop always wins, chapter chimes, pronunciations, Vietnamese abbreviations, and Paste-text audio export with AI-speech mark, loudness, subtitles and re-takes."
+summary: "Reading and playback rules (RE-PLAY): resume from heard progress, transient text never stored, Stop always wins, chapter chimes, pronunciations, Vietnamese abbreviations, Paste-text audio export and sentence review, and background M4B audiobook export with bounded batches and cancellation."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
 relations:
@@ -41,7 +41,9 @@ relations:
 | RE-PLAY-017 | A sentence of one to three words is generated whole (so the voice SDK can catch and redo a "said more" take) and sampled at temperature 0.3 or lower, while longer sentences keep the reading temperature; the change is part of the VieNeu engine identity so cached short sentences made the old way are not replayed. | live | `tests/speech/test_vieneu_contract.py` (`test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble`, `test_a_sentence_keeps_the_readers_temperature`, `test_the_audio_cache_sees_the_new_way_short_sentences_are_made`) |
 | RE-PLAY-018 | For the Vietnamese voice, abbreviations the voice SDK leaves half-read are written out before it: "ThS." → "Thạc sĩ", "TP."/"Tp." before a name → "Thành phố", "tr."/"Tr." before a number → "trang", "Q1/2025" → "quý 1 năm 2025", and in citations "Nxb."/"nxb" → "Nhà xuất bản", "Sđd" → "Sách đã dẫn", "Tlđd" → "Tài liệu đã dẫn", an imprint's "H.:" → "Hà Nội:"; the page and subtitles keep the written form. | live | `tests/domain/test_prosody.py` (`VietnameseAbbreviationTests`) |
 | RE-PLAY-019 | For the Vietnamese voice, a standalone "OK"/"Ok" is said "ô kê" (the SDK spells it "ô ca"); words that only contain it ("OKR", "BOOK") and lowercase "ok" are left alone. | live | `tests/domain/test_prosody.py` (`test_ok_is_said_as_the_word_not_as_letters`) |
-| RE-PLAY-020 | A chapter or a whole book can be exported as an audiobook (.m4b) with one chapter mark per chapter, its title and cover, the AI-speech mark in its comment, encoded by macOS itself with no added dependency; a stopped or failed export leaves no file. | not built | Engine `export.book` and writer done and tested (`tests/headless/test_export.py` `BookExportTests`, `tests/headless/test_m4b.py`); the export sheet in the app and the cover are not built yet; local voices only. |
+| RE-PLAY-020 | A chosen chapter range (including the whole book) exports as M4B with chapter marks, available JPEG/PNG cover, AI-speech metadata, the reading's voice, speed, pronunciation and chimes. On-device voices only; paid voices are refused before synthesis. Stopped/failed exports leave the destination unchanged; staging files are cleared on normal cancellation/failure. | live | `tests/headless/test_export.py` (`BookExportTests`), `tests/headless/test_m4b.py`; `BookExportPanel.tsx` and `useExport.ts` |
+| RE-PLAY-021 | One export owns the voice until its receipt arrives: the native boundary rejects another reading/export and model restart. Navigation remains available during synthesis and finalisation; audio is staged on disk, loudness is processed in batches, AAC is copied 1 MB at a time, and synthesis progress emits at most four times per second. Normalisation and encoding are cancellable, including termination of the encoder child. | live | `BookExportTests.test_library_responds_during_finalisation_and_cancel_preserves_existing_file`; `CancelWriterTests`; `engine.rs` `is_exporting`; `scripts/measure-audiobook-export.py` |
+| RE-PLAY-022 | Closing the window during export minimises it and keeps the job alive. Quit asks whether to keep exporting or cancel then quit; cancellation waits for the job's final receipt. Engine EOF ends the export with an error. Completion/error requests Dock attention when the window is unfocused. No notification permission or new dependency is needed. | live | `app/src-tauri/src/lib.rs` close/exit handlers; `engine.rs` `engine_exit_ends_an_export_instead_of_leaving_it_running`; `ExportQuitPanel.tsx`; native Dock/window behaviour still needs manual macOS smoke verification |
 
 ## States and transitions
 | State | Trigger | Next state | Edge case |
@@ -60,10 +62,28 @@ relations:
 - Flexible (UI may explore): the control bar layout, the status capsule, how chapters and figures are presented, chime
   choice and pause lengths within the prosody rules.
 
+## Export performance verification
+- Reproduce without a model, network or user library: `PYTHONPATH=src:. uv run --frozen python scripts/measure-audiobook-export.py`.
+  The script uses a 300-chapter / 6,000-paragraph fixture and real loudness processing plus macOS AAC encoding; temporary
+  files are removed when it exits. This measures export overhead, **not voice-model speed or its memory**.
+- Implementation bounds: a single voice job; selecting the next voice does not warm another model during export; progress at most 4 Hz; timer ticks only inside the status component;
+  32 loudness blocks per FFT batch, 262,144 samples per WAV write; limiter interpolation uses only nearby blocks.
+- Measured on macOS 27.0 arm64, 2026-10-15: 300 chapters / 6,000 paragraphs → 95.0 minutes of synthetic audio,
+  23.30 s wall time, -14.0 LUFS, 342.6 MiB peak RSS / +276.7 MiB over the fixture baseline. Library-response p95:
+  77.8 ms during synthesis, 41.3 ms during normalisation, 41.9 ms during encoding; maximum during finalisation 55.3 ms.
+  The earlier 128-block / 1,048,576-sample batches measured +299.6 MiB. These figures exclude voice-model costs and
+  do not establish the roadmap's memory target against a real reading on an 8 GB Mac.
+- Verification: Python full suite 968 tests OK (8 skipped; existing SQLite ResourceWarnings remain), app `pnpm build`
+  with 229 tests plus UI/mock audits, Rust `cargo test --offline --lib` 36 passed, native selection bridge PASS.
+  Browser audit: 48 cases passed, axe-watch=0, VI/EN × light/dark at 960×600; native window/Dock behaviour remains source/test-only.
+- Pending: model-inclusive CPU/RAM on an 8 GB Mac; native close/quit/Dock smoke; opening the final file by hand in
+  Apple Books; pre-export time/size forecasts and paid-voice whole-book pricing. No accuracy target for forecasts is claimed.
+
 ## Open questions
 - None recorded.
 
 ## Change log
+- 2026-10-15: RE-PLAY-020 connected to the app; RE-PLAY-021/022 cover background export, cancellation, resource bounds and lifecycle.
 - 2026-10-15: RE-PLAY-018 extended to citation words (Nxb., Sđd, Tlđd, "H.:"), found by probing the SDK normaliser on 34 common forms.
 - 2026-10-15: RE-PLAY-020 engine method `export.book` (range by chapter, marks timed from the audio, audio streamed to disk).
 - 2026-10-15: RE-PLAY-020 added (not built): the .m4b writer and its tests; spike result in decisions.md.

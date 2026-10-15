@@ -105,7 +105,8 @@ helper vừa dựng cho D.
    file dở); bộ nhớ đỉnh khi xuất sách 300 trang < +300 MB so với lúc đọc.
    **15/10: engine xong** (`export.book`: `from_chapter` + `chapters`, mốc tính theo câu như phụ đề, AAC chép dần 1 MB
    một lần). Chỉ giọng trên máy; giọng trả phí bị từ chối có tên (`paid_voice_export`) tới bước 3. Chưa đo bộ nhớ đỉnh
-   trên sách 300 trang thật; chưa có ảnh bìa.
+   trên sách 300 trang thật. Đợt tiếp nối: đã nối ảnh bìa JPEG/PNG nếu có; có phép đo fixture dài trong
+   `scripts/measure-audiobook-export.py`, chưa đo với model thật trên Mac 8 GB.
 3. **Ước lượng trước khi bấm**: thời lượng nghe dự kiến, dung lượng file, thời gian xuất trên máy này; **giọng trả phí
    hiện giá cả cuốn** và chịu trần ngân sách như lúc đọc.
    → verify: test cost guard với cả sách (vượt ngân sách → dừng trước khi gửi ký tự); sai số ước lượng thời lượng ≤ 10 %.
@@ -113,6 +114,9 @@ helper vừa dựng cho D.
    "Mở trong Finder". Xuất chạy nền, đọc sách khác vẫn được hay phải chờ — theo luật hiện tại "mọi nút đọc chờ khi đang
    xuất" (giữ nguyên trừ khi chủ đổi).
    → verify: kiểm thử UI (pnpm build), render audit trạng thái xuất; ảnh chụp sáng/tối.
+   **15/10, tiếp nối:** UI M4B có khoảng chương, chọn nơi lưu và trạng thái toàn app (tạo giọng / chuẩn hoá / mã hoá,
+   thời gian đã chạy, Huỷ, Finder). Điều hướng tiếp tục, phát âm thanh chờ; đóng cửa sổ thu nhỏ, Thoát hỏi huỷ trước.
+   Chưa có lựa chọn WAV cho sách, báo giá giọng trả phí hay ước lượng trước khi xuất; chưa smoke native cửa sổ/Dock.
 5. **Xuất phần quét chọn** (dùng chung engine với Dán nội dung).
    → verify: test; non-goal trong `goal.md` cập nhật theo quyết định của chủ.
 6. Cập nhật `README`, `PRIVACY.md` (mục Exported audio), landing page (một khối "Mang sách đi nghe"). Phát hành.

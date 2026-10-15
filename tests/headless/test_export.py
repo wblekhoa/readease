@@ -286,6 +286,73 @@ class BookExportTests(unittest.TestCase):
         self.assertTrue(all("Câu thứ" in said for said in engine.requests if said.startswith("Câu")))
         self.assertNotIn("Câu cuối.", engine.requests)
 
+    def test_choosing_the_next_voice_during_export_does_not_load_another_model(self):
+        from pathlib import Path
+        from unittest.mock import patch
+        from vieneu_reader.headless.server import _Session
+        from tests.headless.test_server import BOOK_ID
+        session = None
+        class ChoosingVoice(ToneEngine):
+            def stream(inner, text, voice_id, settings):
+                session._requests.put(json.dumps({"id": 19, "method": "config.set", "params": {"key": "voice", "value": "kokoro:af_heart"}}))
+                yield from super().stream(text, voice_id, settings)
+        session = _Session(io.StringIO(), io.StringIO(), ChoosingVoice(), repository=self.repository,
+                           settings_path=Path(self.folder) / "settings.json")
+        with patch.object(session, "_warm_later") as warm:
+            session._export_book(1, {"book_id": BOOK_ID, "voice_id": "adam", "path": self.out})
+            self.assertFalse(warm.called, "choosing the next voice loaded another model during export")
+            session._config_set(20, {"key": "voice", "value": "adam"})
+            warm.assert_called_once()
+
+    def test_an_export_keeps_chapter_chimes_but_never_moves_listening_progress(self):
+        from unittest.mock import patch
+        from tests.headless.test_server import BOOK_ID
+        with patch("vieneu_reader.headless.server.load_chime", return_value=np.zeros(4800, dtype=np.float32)) as chime:
+            reply = self.export(ToneEngine())
+        self.assertTrue(reply["ok"], reply)
+        self.assertTrue(chime.called, "book export lost the chapter sound")
+        self.assertIsNone(self.repository.load_progress(BOOK_ID))
+
+    def test_a_disk_error_during_finalisation_returns_instead_of_waiting_forever(self):
+        from unittest.mock import patch
+        with patch("vieneu_reader.headless.server.tempfile.mkstemp", side_effect=OSError("disk full")):
+            reply = self.export(ToneEngine())
+        self.assertFalse(reply["ok"], reply)
+        self.assertIn("disk full", reply["error"])
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_library_responds_during_finalisation_and_cancel_preserves_existing_file(self):
+        from unittest.mock import patch
+        from vieneu_reader.headless.server import _Session
+        from tests.headless.test_server import BOOK_ID
+        import threading
+        writer = io.StringIO()
+        session = _Session(io.StringIO(), writer, ToneEngine(), repository=self.repository)
+        checked = threading.Event()
+        def slow_write(*args, **kwargs):
+            session._requests.put(json.dumps({"id": 9, "method": "library.list"}))
+            import time
+            deadline = time.monotonic() + 1
+            while time.monotonic() < deadline:
+                if '"id": 9' in writer.getvalue():
+                    checked.set()
+                    session._requests.put(json.dumps({"id": 10, "method": "stop"}))
+                    while time.monotonic() < deadline and '"id": 10' not in writer.getvalue():
+                        time.sleep(0.01)
+                    break
+                time.sleep(0.01)
+            # The finaliser must observe the cancellation before publishing.
+            kwargs.get("checkpoint", lambda: None)()
+            return -14.0
+        from pathlib import Path
+        Path(self.out).write_bytes(b"previous audiobook")
+        with patch("vieneu_reader.headless.server.write_wav", side_effect=slow_write):
+            session._export_book(1, {"book_id": BOOK_ID, "voice_id": "adam", "path": self.out})
+        self.assertTrue(checked.is_set(), "library request waited for finalisation")
+        reply = [json.loads(line) for line in writer.getvalue().splitlines() if '"ok"' in line and '"id": 1,' in line][-1]
+        self.assertTrue(reply["result"]["stopped"], reply)
+        self.assertEqual(Path(self.out).read_bytes(), b"previous audiobook")
+
     def test_refuses_a_path_that_is_not_an_absolute_m4b(self):
         reply = self.export(ToneEngine(), path="relative.m4b")
         self.assertFalse(reply["ok"])

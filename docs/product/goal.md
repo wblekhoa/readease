@@ -4,7 +4,7 @@ type: goal
 product: readease
 title: "ReadEase — Product goal"
 status: active
-updated: 2026-10-10
+updated: 2026-10-15
 summary: "Why ReadEase exists: listen to Vietnamese and English EPUB, PDF and pasted text in a natural voice on an Apple Silicon Mac without uploading documents, plus its audience, success measures and non-goals."
 tags: [area/reading, area/voice, area/audio, surface/macos]
 ---
@@ -42,8 +42,9 @@ Download counts include the maintainer's own test downloads; read them as an upp
 - No ReadEase account, no ReadEase server, no telemetry inside the app.
 - No OCR for scanned PDFs, no DRM- or password-protected books, no fixed-layout EPUB rendering.
 - No Intel Macs, Windows, Linux or iOS today.
-- Audio export covers Paste text only (WAV + subtitles, since 2026-10-14); books, chapters and selections are not exported yet
-  (`PRIVACY.md` "Exported audio"). Where an exported file is published is the user's responsibility, not the app's.
+- Audio export covers Paste text (WAV + subtitles) and a chapter range or whole book (M4B, on-device voices).
+  Selection export, paid-voice book export and resume after quitting are not supported yet. Where an exported file
+  is published is the user's responsibility, not the app's (`PRIVACY.md` "Exported audio").
 
 ## Links
 - UX: `ux/library.md` · `ux/reading.md` · `ux/voices.md`

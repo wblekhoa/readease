@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { save as savePanel } from "@tauri-apps/plugin-dialog";
 import { engineMessage } from "../i18n";
+import { audiobookName, progressFor, type ExportPhase } from "./audiobook";
 import { asWavPath, defaultExportName } from "./exportName";
 
 type Result = {
@@ -27,9 +28,10 @@ type Finished = { id: number; ok: boolean; error?: string; result?: Result };
 
 export type ExportJob =
   | { kind: "idle" }
-  | { kind: "running"; done: number; total: number }
-  | { kind: "done"; path: string; seconds: number }
-  | { kind: "failed"; message: string };
+  | { kind: "running"; done: number; total: number; phase?: ExportPhase; title?: string; startedAt?: number; cancelling?: boolean; cancelError?: string }
+  | { kind: "done"; path: string; seconds: number; title?: string; book?: boolean }
+  | { kind: "cancelled"; title?: string }
+  | { kind: "failed"; message: string; title?: string };
 
 export type ExportRequest = { content: string; voiceId: string; voiceLabel: string; rate: number };
 
@@ -48,20 +50,24 @@ export type ExportReview = {
 export function useExport() {
   const [job, setJob] = useState<ExportJob>({ kind: "idle" });
   const [review, setReview] = useState<ExportReview | null>(null);
+  const active = useRef(false);
+  const context = useRef<{ title?: string; book?: boolean }>({});
   const jobId = useRef<number | null>(null);
   // An answer can beat `invoke` home: a refusal (a folder that vanished)
   // comes back before the id does. Kept by id until the id is known.
   const early = useRef(new Map<number, Finished>());
+  const listeners = useRef<Promise<unknown>>(Promise.resolve());
 
   const settle = useCallback((payload: Finished) => {
     jobId.current = null;
+    active.current = false;
     const result = payload.result;
     if (!payload.ok) {
-      setJob({ kind: "failed", message: engineMessage(payload.error ?? "") });
+      setJob({ kind: "failed", message: engineMessage(payload.error ?? ""), title: context.current.title });
     } else if (result?.stopped || !result?.path) {
-      setJob({ kind: "idle" });
+      setJob({ kind: "cancelled", title: context.current.title });
     } else {
-      setJob({ kind: "done", path: result.path, seconds: result.seconds ?? 0 });
+      setJob({ kind: "done", path: result.path, seconds: result.seconds ?? 0, ...context.current });
       // A fresh export brings its sentences and a new review; a re-save of
       // the review's file keeps the list and clears what waited to be
       // written - whether or not the answer names the session.
@@ -74,20 +80,24 @@ export function useExport() {
   }, []);
 
   useEffect(() => {
-    const progress = listen<{ id: number; done: number; total: number }>(
+    const progress = listen<{ id: number; done: number; total: number; phase?: string }>(
       "engine:export_progress",
       (event) => {
         if (event.payload.id !== jobId.current) return;
-        setJob({ kind: "running", done: event.payload.done, total: event.payload.total });
+        setJob(current => progressFor(current, event.payload));
       },
     );
     const finished = listen<Finished>("engine:export_done", (event) => {
       if (event.payload.id !== jobId.current) {
-        early.current.set(event.payload.id, event.payload);
+        if (active.current && jobId.current === null) {
+          if (early.current.size >= 4) early.current.clear();
+          early.current.set(event.payload.id, event.payload);
+        }
         return;
       }
       settle(event.payload);
     });
+    listeners.current = Promise.all([progress, finished]);
     return () => {
       progress.then((unlisten) => unlisten());
       finished.then((unlisten) => unlisten());
@@ -95,14 +105,18 @@ export function useExport() {
   }, [settle]);
 
   const start = useCallback(async (request: ExportRequest) => {
-    const chosen = await savePanel({
-      defaultPath: defaultExportName(),
-      filters: [{ name: "WAV", extensions: ["wav"] }],
-    });
-    if (!chosen) return;
-    setJob({ kind: "running", done: 0, total: 0 });
-    setReview(null);
+    if (active.current) return;
+    active.current = true;
+    context.current = {};
     try {
+      const chosen = await savePanel({
+        defaultPath: defaultExportName(),
+        filters: [{ name: "WAV", extensions: ["wav"] }],
+      });
+      if (!chosen) { active.current = false; return; }
+      setJob({ kind: "running", done: 0, total: 0, startedAt: Date.now() });
+      setReview(null);
+      await listeners.current;
       const id = await invoke<number>("export_text", {
         text: request.content,
         voiceId: request.voiceId,
@@ -115,12 +129,47 @@ export function useExport() {
       early.current.clear();
       if (already) settle(already);
     } catch (error) {
-      setJob({ kind: "failed", message: engineMessage(error) });
+      active.current = false;
+      jobId.current = null;
+      setJob({ kind: "failed", message: engineMessage(error), title: context.current.title });
+    }
+  }, [settle]);
+
+  const startBook = useCallback(async (request: {
+    bookId: string; title: string; fromChapter: number; chapters: number;
+    voiceId: string; voiceLabel: string; rate: number;
+  }) => {
+    if (active.current) return;
+    active.current = true;
+    context.current = { title: request.title, book: true };
+    try {
+      const chosen = await savePanel({ defaultPath: audiobookName(request.title), filters: [{ name: "M4B", extensions: ["m4b"] }] });
+      if (!chosen) { active.current = false; return; }
+      setReview(null);
+      setJob({ kind: "running", done: 0, total: 0, title: request.title, startedAt: Date.now() });
+      await listeners.current;
+      const id = await invoke<number>("export_book", { ...request, path: /\.m4b$/i.test(chosen) ? chosen : `${chosen}.m4b` });
+      jobId.current = id;
+      const already = early.current.get(id);
+      early.current.clear();
+      if (already) settle(already);
+    } catch (error) {
+      active.current = false;
+      jobId.current = null;
+      setJob({ kind: "failed", message: engineMessage(error), title: context.current.title });
     }
   }, [settle]);
 
   // The reading's own stop: the engine treats an export as a reading.
-  const cancel = useCallback(() => void invoke("stop_reading"), []);
+  const cancel = useCallback(() => {
+    setJob(current => current.kind === "running" ? { ...current, cancelling: true } : current);
+    void invoke("stop_reading").catch(error => {
+      // A timeout is not proof of a dead engine. Keep its job/id until
+      // the actual completion/EOF event, so another export cannot queue.
+      setJob(current => current.kind === "running"
+        ? { ...current, cancelling: false, cancelError: engineMessage(error) } : current);
+    });
+  }, []);
 
   /** Say one sentence again; the new take replaces it in the review, and
    * reaches the file at the next `save`. */
@@ -143,16 +192,21 @@ export function useExport() {
   /** Write the file again from the takes as they stand. */
   const save = useCallback(async () => {
     const session = review?.session;
-    if (!session) return;
-    setJob({ kind: "running", done: 0, total: 0 });
+    if (!session || active.current) return;
+    active.current = true;
+    context.current = {};
+    setJob({ kind: "running", done: 0, total: 0, startedAt: Date.now() });
     try {
+      await listeners.current;
       const id = await invoke<number>("save_export", { session });
       jobId.current = id;
       const already = early.current.get(id);
       early.current.clear();
       if (already) settle(already);
     } catch (error) {
-      setJob({ kind: "failed", message: engineMessage(error) });
+      active.current = false;
+      jobId.current = null;
+      setJob({ kind: "failed", message: engineMessage(error), title: context.current.title });
     }
   }, [review?.session, settle]);
 
@@ -162,5 +216,5 @@ export function useExport() {
     void invoke("engine_request", { method: "export.close", params: {} }).catch(() => undefined);
   }, []);
 
-  return { job, start, cancel, review, retake, save, close };
+  return { job, start, startBook, cancel, review, retake, save, close, dismiss: () => setJob({ kind: "idle" }) };
 }

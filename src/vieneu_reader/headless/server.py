@@ -340,6 +340,7 @@ class _Session:
         self._spend = SpendMeter()
         # The last export, while its takes may still be reviewed.
         self._export: "_ExportSession | None" = None
+        self._exporting_audio = False
         self._repository = repository
         self._service = service
         self._settings_path = settings_path
@@ -930,12 +931,14 @@ class _Session:
                 ],
             }
 
+        self._exporting_audio = True
         try:
             self._speak(
                 request_id, utterances, voice_id, rate, settings,
                 language=language, sink=session.sink, finish=finish,
             )
         finally:
+            self._exporting_audio = False
             # Stopped or failed, the audio was only ever in a nameless
             # temporary file, and this is where it goes. Written, it stays
             # for the review (`export.retake`) until `export.close`, the
@@ -997,41 +1000,82 @@ class _Session:
         voice_label = str(params.get("voice_label") or voice_id)
         software = str(params.get("software") or "ReadEase")
 
+        # The finaliser uses no model or repository. The request thread
+        # stays available for navigation and cancellation during FFT/AAC.
+        cover = None
+        if self._service is not None:
+            found = self._service.cover_for(stored.book, stored.managed_path)
+            if found is not None and found[1] in ("image/jpeg", "image/png"):
+                cover = found[0]
+
         def finish(stopped: bool) -> dict[str, Any]:
             if stopped:
                 return {"stopped": True}
-            fd, wav = tempfile.mkstemp(suffix=".wav", dir=os.path.dirname(path))
-            os.close(fd)
-            try:
-                loudness = write_wav(wav, sink.audio(), SAMPLE_RATE, {})
-                marks = sink.marks
-                write_m4b(wav, path, [AudiobookChapter(title, sample / SAMPLE_RATE) for sample, title in marks], {
-                    "title": stored.book.title,
-                    "album": stored.book.title,
-                    "artist": voice_label,
-                    "software": software,
-                    "year": time.strftime("%Y"),
-                    "language": language,
-                    # The machine-readable mark, as in the WAV export.
-                    "comment": f"AI-generated speech (text-to-speech). Voice: {voice_label}. Made with {software}.",
-                })
-            finally:
-                os.remove(wav)
-            self._send({"id": request_id, "event": "export_progress", "done": len(utterances), "total": len(utterances)})
-            return {
-                "stopped": False,
-                "path": path,
-                "seconds": round(len(sink.audio()) / SAMPLE_RATE, 2),
-                "lufs": round(loudness, 1) if loudness != float("-inf") else None,
-                "chapters": [{"title": title, "start": round(sample / SAMPLE_RATE, 2)} for sample, title in marks],
-            }
+            cancelled = threading.Event()
+            finished = threading.Event()
+            outcome: dict[str, Any] = {}
 
+            def checkpoint() -> None:
+                if cancelled.is_set():
+                    raise InterruptedError("export cancelled")
+
+            def progress(phase: str) -> None:
+                self._send({"id": request_id, "event": "export_progress",
+                            "done": len(utterances), "total": len(utterances), "phase": phase})
+
+            def finalise() -> None:
+                wav = None
+                try:
+                    fd, wav = tempfile.mkstemp(suffix=".wav", dir=os.path.dirname(path))
+                    os.close(fd)
+                    progress("normalising")
+                    loudness = write_wav(wav, sink.audio(), SAMPLE_RATE, {}, checkpoint=checkpoint)
+                    checkpoint()
+                    progress("encoding")
+                    marks = sink.marks
+                    write_m4b(wav, path, [AudiobookChapter(title, sample / SAMPLE_RATE) for sample, title in marks], {
+                        "title": stored.book.title, "album": stored.book.title,
+                        "artist": voice_label, "software": software,
+                        "year": time.strftime("%Y"), "language": language,
+                        "comment": f"AI-generated speech (text-to-speech). Voice: {voice_label}. Made with {software}.",
+                    }, cover, checkpoint=checkpoint)
+                    outcome["result"] = {
+                        "stopped": False, "path": path,
+                        "seconds": round(len(sink.audio()) / SAMPLE_RATE, 2),
+                        "lufs": round(loudness, 1) if loudness != float("-inf") else None,
+                        "chapters": [{"title": title, "start": round(sample / SAMPLE_RATE, 2)} for sample, title in marks],
+                    }
+                except InterruptedError:
+                    outcome["result"] = {"stopped": True}
+                except Exception as error:
+                    outcome["error"] = error
+                finally:
+                    try:
+                        if wav is not None:
+                            os.remove(wav)
+                    finally:
+                        finished.set()
+
+            worker = threading.Thread(target=finalise, name="audiobook-finalise")
+            worker.start()
+            while not finished.wait(0.025):
+                if self._stop_requested():
+                    cancelled.set()
+            worker.join()
+            # Drain a final stop; never let it cancel the next reading.
+            self._stop_requested()
+            if "error" in outcome:
+                raise outcome["error"]
+            return outcome["result"]
+
+        self._exporting_audio = True
         try:
             self._speak(
                 request_id, utterances, voice_id, rate, SynthesisSettings(),
-                language=language, sink=sink, finish=finish,
+                language=language, sink=sink, finish=finish, book_audio=True,
             )
         finally:
+            self._exporting_audio = False
             sink.close()
 
     def _write_export(self, session: "_ExportSession") -> dict[str, Any]:
@@ -2408,7 +2452,7 @@ class _Session:
         # A voice chosen is a model about to be needed: start loading it
         # now, behind the reply, so the first sentence in it waits less -
         # or not at all, if the play button comes a few seconds later.
-        if key == "voice":
+        if key == "voice" and not self._exporting_audio:
             self._warm_later(self._local_engine_of(str(params.get("value") or "")))
 
     def _config_verify_key(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -2984,6 +3028,7 @@ class _Session:
         settings: SynthesisSettings,
         *,
         book_id: str | None = None,
+        book_audio: bool = False,
         window: Any = None,
         language: str | None = None,
         app_text: bool = False,
@@ -3017,7 +3062,7 @@ class _Session:
         chime = None
         part_chime = None
         section_chime = None
-        if book_id is not None:
+        if book_id is not None or book_audio:
             chosen = chime_choice(document.get("chapter_chime"))
             if chosen is not None:
                 try:
@@ -3119,6 +3164,7 @@ class _Session:
             measured_upto = upto
             measured_samples = samples_out
 
+        last_export_progress = -float("inf")
         try:
             for position, utterance in enumerate(utterances):
                 if self._stop_requested():
@@ -3131,10 +3177,13 @@ class _Session:
                     # waiting on an export needs, and no credit to spend.
                     sink.done = position
                     sink.at_utterance(position)
-                    self._send({
-                        "id": request_id, "event": "export_progress",
-                        "done": position, "total": len(utterances),
-                    })
+                    now = time.monotonic()
+                    if now - last_export_progress >= 0.25:
+                        self._send({
+                            "id": request_id, "event": "export_progress",
+                            "done": position, "total": len(utterances), "phase": "synthesising",
+                        })
+                        last_export_progress = now
                 elif utterance.segment_id is not None:
                     # Not `position`: that name is the loop index just above,
                     # and shadowing it broke the is_last arithmetic once.

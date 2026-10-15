@@ -146,6 +146,9 @@ struct TauriShell {
 
 impl Shell for TauriShell {
     fn emit(&self, event: &str, payload: Value) {
+        if event == "engine:export_done" {
+            crate::export_attention(self.app.clone());
+        }
         let _ = self.app.emit(event, payload);
     }
     fn tray(&self, visible: bool) {
@@ -221,6 +224,11 @@ impl Pump {
         // in the device still plays and a stop meanwhile (epoch moved) makes
         // this nobody's business - the same two rules `Frame::Done` follows
         // for an ordinary reply.
+        // Long jobs have no timeout waiter: EOF must finish every one.
+        let notifications: Vec<_> = self.notified.lock().unwrap().drain().collect();
+        for (id, event) in notifications {
+            self.shell.emit(event, json!({"id": id, "ok": false, "error": ENGINE_GONE}));
+        }
         let mut reading = self.current_read.lock().unwrap();
         if reading.take().is_some() {
             drop(reading);
@@ -453,6 +461,7 @@ impl EngineClient {
     /// is the epoch bumped to kill frames already past that filter.
     pub fn fire(&self, method: &str, mut params: Value) -> Result<(), String> {
         let _serialised = self.start.lock().unwrap();
+        if self.is_exporting() { return Err("export_busy".into()); }
         // The engine's window onto our queue. Sent with every reading so a
         // shell without it (a batch caller, an old build) still gets the
         // unbounded stream it always did.
@@ -495,9 +504,21 @@ impl EngineClient {
     /// is not a model download finishing). Returns the request's id, which
     /// its progress events carry too.
     pub fn notify_as(&self, method: &str, params: Value, event: &'static str) -> Result<u64, String> {
+        let _serialised = self.start.lock().unwrap();
+        if event == "engine:export_done" && (self.is_exporting() || self.is_reading()) {
+            return Err("export_busy".into());
+        }
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         self.notified.lock().unwrap().insert(id, event);
-        self.send(id, method, params).map(|_| id)
+        if let Err(error) = self.send(id, method, params) {
+            self.notified.lock().unwrap().remove(&id);
+            return Err(error);
+        }
+        Ok(id)
+    }
+
+    pub fn is_exporting(&self) -> bool {
+        self.notified.lock().unwrap().values().any(|event| *event == "engine:export_done")
     }
 
     pub fn is_reading(&self) -> bool {
@@ -1302,4 +1323,20 @@ mod tests {
         std::thread::sleep(Duration::from_millis(200));
         assert!(!h.shell.saw("reading:done"));
     }
+    #[test]
+    fn engine_exit_ends_an_export_instead_of_leaving_it_running() {
+        let recorder = Arc::new(RecordingShell { events: Mutex::new(Vec::new()) });
+        let (audio, _frames) = sync_channel::<Frame>(2);
+        let notified = Arc::new(Mutex::new(HashMap::from([(9, "engine:export_done")])));
+        let pump = Pump {
+            pending: Arc::new(Mutex::new(HashMap::new())),
+            current_read: Arc::new(Mutex::new(None)), audio,
+            epoch: Arc::new(AtomicU64::new(0)), voice_started: Arc::new(AtomicBool::new(false)),
+            notified: notified.clone(), shell: recorder.clone(),
+        };
+        pump.run(std::iter::empty());
+        assert_eq!(recorder.count("engine:export_done"), 1);
+        assert!(notified.lock().unwrap().is_empty());
+    }
+
 }

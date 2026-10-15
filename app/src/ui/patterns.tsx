@@ -955,8 +955,8 @@ export function MenuButton({
  * inside the column - `trafficLightPosition` in tauri.conf.json) with the
  * collapse switch at its right; a body the caller fills (navigation at
  * home, a book's lists inside one); a foot for what the app carries
- * everywhere. Closed is `width: 0` with the inner column kept at its full
- * width, so the text does not rewrap while the column slides; no
+ * everywhere. Folded is an 80px icon rail when supplied, otherwise 0; the
+ * inner column keeps its full width so text does not rewrap while it slides; no
  * `@starting-style` - in a hidden WKWebView the timeline stands still and
  * an element stays at its starting style (measured 16/09).
  *
@@ -978,6 +978,7 @@ export function SideColumn({
   foot,
   rail,
   railFoot,
+  showLogo = true,
 }: {
   open: boolean;
   /** How wide it stands when open, in px - the person's to drag. */
@@ -993,9 +994,11 @@ export function SideColumn({
   foot?: ReactNode;
   /** Folded, the column narrows to these icons instead of leaving the page
    * (owner, 09/10: "collapse dạng icon gọn gàng thay vì ẩn đi hẳn"). None,
-   * and folding hides the column outright - a book's page, which asked for
-   * no sidebar of its own (16/09). */
+   * and folding hides the column outright. App and reader both supply a
+   * rail so their collapse, expand and drag behaviour stays the same. */
   rail?: ReactNode;
+  /** Home navigation carries the app logo; document lists start directly. */
+  showLogo?: boolean;
   /** The folded column's foot, above the switch that unfolds it. */
   railFoot?: ReactNode;
 }) {
@@ -1081,7 +1084,7 @@ export function SideColumn({
               open column keeps it too (owner, 09/10: "đưa nút expand sidebar
               lên trên") - SpeakEase's folded column does the same. */}
           <div className="flex shrink-0 justify-center pb-2">
-            <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel} tipSide="right">
+            <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel} aria-expanded={shown} tipSide="right">
               <SidebarIcon />
             </IconButton>
           </div>
@@ -1124,11 +1127,11 @@ export function SideColumn({
           data-tauri-drag-region
           className={`flex h-[60px] shrink-0 items-center justify-end pr-3 ${WINDOW_BUTTONS_IN_PAGE ? "pl-[88px]" : "pl-4"}`}
         >
-          <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel}>
+          <IconButton onClick={onToggle} aria-label={toggleLabel} title={toggleLabel} aria-expanded={shown}>
             <SidebarIcon />
           </IconButton>
         </div>
-        {rail !== undefined && <AppLogo className="mx-4 mt-1 mb-4" />}
+        {rail !== undefined && showLogo && <AppLogo className="mx-4 mt-1 mb-4" />}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         {foot && (
           <div className="flex shrink-0 items-center gap-2 border-t border-edge-alpha px-4 py-3">{foot}</div>
@@ -1216,11 +1219,16 @@ export function RailIcon({
   label,
   active = false,
   onPress,
+  preview = false,
+  expanded,
 }: {
   icon: ReactNode;
   label: string;
   active?: boolean;
   onPress: () => void;
+  /** A reader list has an interactive preview instead of a help tag. */
+  preview?: boolean;
+  expanded?: boolean;
 }) {
   // The app's own help tag, beside the icon: a folded column has no words,
   // so the name is the tooltip (owner, 09/10). WKWebView shows no `title`.
@@ -1228,9 +1236,10 @@ export function RailIcon({
     <IconButton
       onClick={onPress}
       aria-label={label}
-      title={label}
+      title={preview ? undefined : label}
       tipSide="right"
       aria-current={active ? "page" : undefined}
+      aria-expanded={expanded}
       frame="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--ctl-radius)]"
       className={active ? "bg-tint text-ink" : "text-ink-mute hover:bg-wash hover:text-ink"}
     >

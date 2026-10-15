@@ -84,7 +84,20 @@ const SEARCH = [...OPEN_BOOK, ["click", /^Tìm trong tài liệu$|^Search in doc
 const HUB = [...SHELF, ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Giọng đọc & mô hình$|^Voices & models$/]];
 const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highlights and notes$/], ["wait", /^\d+ highlights?$/],
   ["click", /những phương án đầu tiên của họ/], ["click-at", "button.note-nudge"], ["wait", /^Sửa ghi chú$|^Edit this note$/, "textarea"]];
+const BOOK_EXPORT = [...OPEN_BOOK, ["click", /^Xuất sách nói…$|^Export audiobook…$/], ["wait", /^Chọn nơi lưu và xuất$|^Choose location and export$/]];
+const BOOK_EXPORT_START = [...BOOK_EXPORT, ["click", /^Chọn nơi lưu và xuất$|^Choose location and export$/], ["wait", /Đang tạo giọng|Generating voice|Đang xuất|Exporting/, "[data-export-status]"]];
 const SCREENS = {
+  audiobook_form: BOOK_EXPORT,
+  audiobook_range: [...BOOK_EXPORT, ["choose", /^Từ chương$|^From chapter$/, "5"], ["choose", /^Đến chương$|^To chapter$/, "2"], ["wait", /Chương kết thúc|The last chapter/, "[role=alert]"]],
+  audiobook_running: BOOK_EXPORT_START,
+  audiobook_normalising: [...BOOK_EXPORT_START, ["wait", /Đang chuẩn hoá âm lượng|Normalising loudness/, "[data-export-status]"]],
+  audiobook_encoding: [...BOOK_EXPORT_START, ["wait", /Đang ghi sách nói M4B|Writing the M4B audiobook/, "[data-export-status]"]],
+  audiobook_quit: [...BOOK_EXPORT_START, ["emit", "export:quit-requested"], ["wait", /^Tiếp tục xuất$|^Keep exporting$/]],
+  audiobook_quit_cancel: [...BOOK_EXPORT_START, ["emit", "export:quit-requested"], ["click", /^Huỷ xuất và thoát$|^Cancel export and quit$/], ["wait", /Đã huỷ xuất|Export cancelled/, "[data-export-status]"]],
+  audiobook_navigate: [...BOOK_EXPORT_START, ["click", /^Quay lại thư viện$|^Back to library$/], ["wait", /Đang tạo giọng|Generating voice|Đang xuất|Exporting/, "[data-export-status]"]],
+  audiobook_cancelled: [...BOOK_EXPORT_START, ["click", /^Huỷ$|^Cancel$/], ["wait", /Đã huỷ xuất|Export cancelled/, "[data-export-status]"]],
+  audiobook_done: [...BOOK_EXPORT_START, ["wait", /Đã lưu sách nói|Audiobook saved/, "[data-export-status]"]],
+  audiobook_failed: [...BOOK_EXPORT_START, ["wait", /./, "[data-export-status] [role=alert]"]],
   shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
   paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
   // Pasted text past the limit (100 000 characters): the count turns to
@@ -241,6 +254,17 @@ const SCREENS = {
 // states: opened in all sixteen they would add 120 cells (~6 min of a
 // ~31 min run) saying the same thing, for these 28.
 const ONLY_IN = {
+  audiobook_form: ["default", "paid"],
+  audiobook_range: ["default"],
+  audiobook_running: ["export_hold"],
+  audiobook_normalising: ["default"],
+  audiobook_encoding: ["default"],
+  audiobook_quit: ["export_hold"],
+  audiobook_quit_cancel: ["export_hold"],
+  audiobook_navigate: ["export_hold"],
+  audiobook_cancelled: ["export_hold"],
+  audiobook_done: ["default"],
+  audiobook_failed: ["export_fail"],
   player_settings: ["default", "sidebar", "english_missing", "english_partial", "vietnamese_missing", "paid"],
   voice_picker: ["default"],
   reading_settings: ["default", "sidebar"],
@@ -292,6 +316,8 @@ const ONLY_IN = {
 // fault. Exceptions are never excused.
 const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): /, note_save_failed: /annotations\.update/, price_failed: /estimate/ };
 const STATES = {
+  export_hold: "export=hold",
+  export_fail: "export=fail",
   default: "",
   empty: "empty=all",
   fail: "fail=1",
@@ -338,8 +364,10 @@ const STATES = {
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
+  export_hold: ["audiobook_running", "audiobook_navigate", "audiobook_cancelled", "audiobook_quit", "audiobook_quit_cancel"],
+  export_fail: ["audiobook_failed"],
   long: ["shelf", "reader", "contents", "book_notes", "search"],
-  paid: ["reader", "cost", "player_settings"],
+  paid: ["reader", "cost", "player_settings", "audiobook_form"],
   paid_eleven: ["reader", "cost"],
   voicefail_network: ["reading_failed"],
   voicefail_blocked: ["reading_failed"],
@@ -545,6 +573,7 @@ async function main() {
                 : kind === "click?" ? (await findAndClick(re, 600), true)
                 : kind === "open-figure" ? await openFigure()
                 : kind === "click-at" ? await clickAt(re)
+                : kind === "emit" ? await evalJs(`typeof window.__mockEmit === "function" && (window.__mockEmit(${JSON.stringify(re)}, {}), true)`)
                 : kind === "perform" ? await perform(re, within)
                 : kind === "choose" ? await choose(re, within)
                 : kind === "rest" ? await rest()
@@ -555,6 +584,30 @@ async function main() {
             }
             if (!reached) continue;
             await sleep(500);
+            if (["audiobook_normalising", "audiobook_encoding"].includes(screen)) {
+              const indeterminate = await evalJs(`(() => {
+                const bar = document.querySelector('[data-export-status] [role="progressbar"]');
+                return bar && !bar.hasAttribute('aria-valuenow');
+              })()`);
+              if (!indeterminate) findings.push({ cell, kind: "export-stage", detail: "finalisation must not claim a completed percentage before saving" });
+            }
+            if (screen === "audiobook_form" && stateName === "paid") {
+              const blocked = await evalJs(`(() => {
+                const sheet = document.querySelector('[role="dialog"]');
+                const button = [...(sheet?.querySelectorAll('button') ?? [])].find(e => /Chọn nơi lưu và xuất|Choose location and export/.test(e.textContent));
+                return button?.disabled && /giọng API|API voices/.test(sheet.textContent);
+              })()`);
+              if (!blocked) findings.push({ cell, kind: "export-paid", detail: "book export must explain why an API voice cannot start" });
+            }
+            if (screen.startsWith("audiobook_") && !["audiobook_form", "audiobook_range"].includes(screen)) {
+              const statusInWindow = await evalJs(`(() => {
+                const el = document.querySelector('[data-export-status]');
+                if (!el) return false;
+                const r = el.getBoundingClientRect();
+                return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+              })()`);
+              if (!statusInWindow) findings.push({ cell, kind: "export-status", detail: "export receipt must remain inside the window" });
+            }
             if (["reading_now", "reading_paused", "reading_warming", "reading_paste", "reading_scan", "reading_returned", "reading_follow"].includes(screen)) {
               // Floats above the transport (owner, 06/10), clear of it, and
               // inside the window.
@@ -710,7 +763,8 @@ async function main() {
           const ok = kind === "click" ? await findAndClick(re)
             : kind === "click?" ? (await findAndClick(re, 600), true)
             : kind === "click-at" ? await clickAt(re)
-            : kind === "perform" ? await perform(re, within)
+            : kind === "emit" ? await evalJs(`typeof window.__mockEmit === "function" && (window.__mockEmit(${JSON.stringify(re)}, {}), true)`)
+                : kind === "perform" ? await perform(re, within)
             : kind === "choose" ? await choose(re, within)
             : kind === "rest" ? await rest()
             : kind === "type" ? await type(re)

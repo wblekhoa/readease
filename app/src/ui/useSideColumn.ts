@@ -4,7 +4,7 @@
  * the notes tab should land on. App only reads the answers and forwards
  * the person's choices.
  */
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   NARROW,
   STORAGE_KEY,
@@ -17,7 +17,7 @@ import {
   type SidebarTab,
 } from "./sidebarState";
 
-export function useSideColumn(inBook: boolean) {
+export function useSideColumn(inBook: boolean, bookId?: string) {
   /* The remembered choice and the window's width at start are the
      column's starting point. */
   const [side, dispatchSide] = useReducer(sidebar, undefined, () => {
@@ -26,6 +26,37 @@ export function useSideColumn(inBook: boolean) {
     return initialSidebar(remembered, window.innerWidth < NARROW);
   });
   const sideOpen = sidebarOpen(side);
+  // One timer, only while crossing the rail/panel. No pointermove work,
+  // layout measurement, or storage writes for a temporary preview.
+  const previewTimer = useRef<number | null>(null);
+  const holdPreview = useCallback(() => {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+    previewTimer.current = null;
+  }, []);
+  const previewSide = useCallback((tab: SidebarTab) => {
+    holdPreview();
+    previewTimer.current = window.setTimeout(() => {
+      previewTimer.current = null;
+      dispatchSide({ type: "preview", tab });
+    }, 180);
+  }, [holdPreview]);
+  const leavePreview = useCallback(() => {
+    holdPreview();
+    previewTimer.current = window.setTimeout(() => {
+      previewTimer.current = null;
+      // A blur or delayed leave may arrive while the pointer is already
+      // inside the panel. Either pointer or keyboard engagement keeps it.
+      if (document.querySelector("[data-sidebar-preview]:hover")
+        || document.activeElement?.closest("[data-sidebar-preview]")) return;
+      dispatchSide({ type: "dismiss-preview" });
+    }, 240);
+  }, [holdPreview]);
+  const dismissPreview = useCallback(() => {
+    holdPreview();
+    dispatchSide({ type: "dismiss-preview" });
+  }, [holdPreview]);
+  useEffect(() => holdPreview, [holdPreview]);
+  useEffect(() => { if (sideOpen) holdPreview(); }, [sideOpen, holdPreview]);
 
   /* The column's width, the person's to drag; remembered when the hand
      lets go, not per move. */
@@ -75,9 +106,11 @@ export function useSideColumn(inBook: boolean) {
   /* A document puts its lists in the column; leaving it puts the
      navigation back. */
   useEffect(() => {
+    holdPreview();
     dispatchSide({ type: "book", open: inBook });
     if (!inBook) setNotesFocus(null);
-  }, [inBook]);
+  }, [inBook, bookId, holdPreview]);
 
-  return { side, dispatchSide, sideOpen, sideWidth, resizeSide, sideTab, notesFocus, setNotesFocus };
+  return { side, dispatchSide, sideOpen, sideWidth, resizeSide, sideTab, notesFocus, setNotesFocus,
+    previewSide, holdPreview, leavePreview, dismissPreview };
 }

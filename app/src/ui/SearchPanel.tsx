@@ -21,10 +21,15 @@ export type SearchMarks = {
   current: { segmentId: string; occurrence: number } | null;
 };
 
+/** Owned by Reader so moving the list from preview to column keeps it. */
+export type SearchState = { query: string; chosen: number | null };
+
 export function SearchPanel({
   chapters,
   onJump,
   onMarks,
+  autoFocus = true,
+  session,
 }: {
   chapters: readonly SearchChapter[];
   onJump: (hit: SearchHit) => void;
@@ -32,9 +37,15 @@ export function SearchPanel({
    * when the panel goes away - the page's marks live exactly as long as
    * the Tìm tab holds a query (HIG 3.16, owner 17/09). */
   onMarks?: (marks: SearchMarks) => void;
+  autoFocus?: boolean;
+  session: { current: SearchState };
 }) {
-  const [query, setQuery] = useState("");
-  const [chosen, setChosen] = useState<number | null>(null);
+  const [state, setState] = useState(() => session.current);
+  const onState = (next: SearchState) => {
+    session.current = next;
+    setState(next);
+  };
+  const { query, chosen } = state;
   const hits = useMemo(() => searchBook(chapters, query), [chapters, query]);
   const enough = foldQuery(query).length >= MIN_QUERY;
   /* Hits come in chapter order, so a chapter's hits are one run; each run
@@ -64,7 +75,7 @@ export function SearchPanel({
   const pick = (index: number) => {
     const hit = hits[index];
     if (!hit) return;
-    setChosen(index);
+    onState({ query, chosen: index });
     onJump(hit);
   };
 
@@ -80,15 +91,15 @@ export function SearchPanel({
             in a form (owner, 17/09: "input size lớn hơn xíu"). Escape clears
             the query here, before anything around the column sees it. */}
         <SearchField
-          autoFocus
+          autoFocus={autoFocus}
           material
           value={query}
           label={text("reader.search")}
           placeholder={text("reader.search_placeholder")}
-          onChange={(event) => { setQuery(event.target.value); setChosen(null); }}
+          onChange={(event) => onState({ query: event.target.value, chosen: null })}
           onKeyDown={(event) => {
             if (event.key === "Enter") pick(chosen === null ? 0 : Math.min(hits.length - 1, chosen + 1));
-            if (event.key === "Escape" && query) { event.stopPropagation(); setQuery(""); setChosen(null); }
+            if (event.key === "Escape" && query) { event.stopPropagation(); onState({ query: "", chosen: null }); }
           }}
           className="w-full"
         />

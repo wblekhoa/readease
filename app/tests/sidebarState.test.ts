@@ -114,3 +114,39 @@ test("a drag on the edge opens past halfway to the narrowest column and folds be
   assert.deepEqual(dragTarget(MIN_WIDTH / 2 - 1, 0), { open: false, width: 0 });
   assert.deepEqual(dragTarget(MIN_WIDTH / 2, 0), { open: true, width: MIN_WIDTH });
 });
+
+test("hover previews a folded book list without changing the remembered choice or selected tab", () => {
+  const folded = run([{ type: "book", open: true }], initialSidebar("closed", false));
+  const preview = sidebar(folded, { type: "preview", tab: "notes" });
+  assert.equal(preview?.preview, "notes");
+  assert.equal(preview.choice, "closed");
+  assert.equal(preview.tab, "contents");
+  assert.equal(sidebarOpen(preview), false);
+  assert.equal(sidebar(preview, { type: "preview", tab: "search" }).preview, "search");
+  assert.equal(sidebar(preview, { type: "dismiss-preview" }).preview, null);
+});
+
+test("expanded columns and screens outside a book cannot be previewed", () => {
+  const expanded = run([{ type: "book", open: true }]);
+  assert.equal(sidebar(expanded, { type: "preview", tab: "search" })?.preview, null);
+  const home = initialSidebar("closed", false);
+  assert.equal(sidebar(home, { type: "preview", tab: "contents" })?.preview, null);
+});
+
+test("pinning, toggling, navigating and automatic expansion discard the temporary preview", () => {
+  const preview = run([
+    { type: "book", open: true }, { type: "preview", tab: "notes" },
+  ], initialSidebar("closed", false));
+  assert.equal(preview?.preview, "notes");
+  const pinned = sidebar(preview, { type: "show", tab: "notes" });
+  assert.equal(pinned.preview, null);
+  assert.equal(pinned.tab, "notes");
+  assert.equal(sidebarOpen(pinned), true);
+  assert.equal(sidebar(preview, { type: "toggle" }).preview, null);
+  assert.equal(sidebar(preview, { type: "book", open: false }).preview, null);
+  assert.equal(sidebar(preview, { type: "book", open: true }).preview, null);
+  const auto = run([
+    { type: "book", open: true }, { type: "preview", tab: "contents" },
+  ], initialSidebar(null, true));
+  assert.equal(sidebar(auto, { type: "width", narrow: false }).preview, null);
+});

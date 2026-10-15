@@ -564,6 +564,13 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
   của nó đã sống trong `background-image`.
 
 ### 3.9d Panel nổi trên trang (popover) — lót 24, bo cỡ sheet (03/09, nhắc lại 06/09)
+- **Một popover chính mỗi lúc** (audit Reader 15/10): Cài đặt đọc, Cài đặt giọng, Chi phí và Xuất sách nói
+  dùng chung một trạng thái mở. Mở cái khác thay cái hiện tại; bấm lại nút mở thì đóng. Chuyển màn/sách xoá trạng
+  thái này. Picker chọn giọng là lớp con của Cài đặt giọng, Esc đóng lớp con trước. Trong lúc tải mô hình,
+  Escape và bấm ngoài không đóng Cài đặt giọng; chuyển panel/màn vẫn giữ tác vụ tải ở owner chung.
+- **Neo và giới hạn chung**: cách mép control trên/dưới 12 px (`--layer-gap`); thân cuộn dọc trong `layer-capped`,
+  header/đóng giữ nguyên. Xuất sách nói giữ thêm footer hành động, các nhóm nội dung cách 24 px. Đo chrome theo
+  resize, gộp bằng animation frame; cập nhật vị trí phát hoặc mở/đóng popover không tạo lại observer.
 - **Mọi panel nổi trên nội dung** (`SettingsPanel` dưới footer, `ReadingSettingsPanel` dưới header, panel chi phí…)
   dùng `Surface radius="sheet"` (`rounded-3xl`) và **lót nội dung 24 px** (`px-6`, `pt-5`/`pb-6`) — cùng một inset với
   sheet, không phải 16 của card. Lý do: panel là một LỚP đứng trên trang, cần đọc như lớp; 16/2xl làm nó lẫn với thẻ
@@ -1492,6 +1499,15 @@ chương". Thay cho ba thẻ đục rời (mục lục 288, ghi chú 368, tìm 3
 
 ### 3.16 `SideColumn` — cột trái thật trong layout, thu/mở như Codex (16/09)
 
+- **Xem nhanh khi thu gọn trong Reader** (chủ 15/10): hover Mục lục, Ghi chú hoặc Tìm kiếm 180ms mở đúng
+  danh sách cạnh rail; chỉ là lớp tạm, không đẩy trang và không ghi lại lựa chọn thu/mở. Rời icon sang panel vẫn
+  giữ; rời cả hai 240ms thì đóng, trừ khi con trỏ hoặc focus còn trong panel (blur không đóng khi vẫn hover).
+  Escape/nút đóng/bấm ngoài đóng ngay; ô tìm có chữ thì Escape đầu xoá chữ, Escape tiếp đóng. Hover không lấy focus. Bấm icon hoặc nút mở trong panel đưa
+  danh sách vào cột cố định, giữ từ khoá và kết quả tìm đang chọn. Dùng lại portal của Reader, không dựng hai
+  danh sách; chỉ một timer theo lượt hover, không đo layout theo pointermove. Lớp tạm cách rail và mép cửa sổ đều
+  12px, rộng tối thiểu 320px có chặn theo viewport; header đứng yên, thân cuộn. Mở panel chrome khác hoặc đổi
+  màn/sách xoá preview. Các luật cột cố định bên dưới vẫn áp dụng khi cột được mở.
+
 Chủ 16/09, sau khi xem 0.1.5: "tôi muốn nó là một sidebar riêng nằm một bên của layout luôn chứ không phải là
 popover như hiện tại. giống như cách codex làm" + "cột trái sẽ có thể ẩn hiện thông minh tuỳ vào nhu cầu. User
 có thể tắt/mở giống codex. màu đèn giao thông là các nút của app macOS có sẵn". Điều này **đảo** lựa chọn 02/09
@@ -1535,16 +1551,18 @@ ngại đó.
   px không đủ cho ba nhãn, "Tìm" từng bị cắt) rồi danh sách của tab đó — Reader vẫn là CHỦ ba danh sách và render chúng
   vào slot của cột bằng portal (state chương, scroll-spy, xoá ghi chú không rời Reader); *chân* — bánh răng
   Giọng đọc & mô hình · sáng/tối · ngôn ngữ, cùng một hàng. *content* = cột nội dung `relative flex-1 min-w-0`,
-  header/main/footer vẫn là overlay bên trong nó, inset đo như cũ; dải trên 52 px cũng là vùng kéo. Cột thu
-  = `width: 0` (transition width `--dur-move` 240 ms `--ease-standard` — 20/09, §3.17; trước là 200 ms `ease-out`; `motion-reduce` tắt; KHÔNG dùng `@starting-style` — trong
-  một WKWebView bị ẩn, timeline đứng và phần tử kẹt ở trạng thái đầu, đo 16/09), thân giữ bề rộng 240 để chữ
-  không gãy trong lúc thu; khi thu, đèn nằm trên góc trái của cột nội dung → dải trên chừa **88 px** (đèn
-  chiếm x 20–72, rồi 16 px thở), nút mở đứng ngay cạnh đèn (Codex làm đúng thế).
+  header/main/footer vẫn là overlay bên trong nó, inset đo như cũ. **Thu gọn thống nhất ở mọi màn**, kể cả trang đọc
+  (chủ 15/10): cột thu thành thanh icon **80 px**, nút mở ở trên, bên dưới vùng đèn cửa sổ. Trang ngoài giữ icon điều
+  hướng; trang đọc giữ Mục lục · Ghi chú · Tìm. Nhấn icon mở cột đúng danh sách; nút mở chung khôi phục tab trước đó.
+  Giọng đọc & mô hình và sáng/tối ở chân thanh icon; ngôn ngữ chuyển lên toolbar. Đèn cửa sổ vẫn nằm trên thanh icon,
+  toolbar sách không thêm spacer khi thu. Transition width `--dur-move` 240 ms `--ease-standard` (§3.17),
+  `motion-reduce` tắt; không dùng `@starting-style` vì timeline WKWebView ẩn có thể đứng. Thân giữ bề rộng đã chọn
+  để chữ không gãy trong lúc thu.
   **Kéo mép phải để đổi bề rộng** (chủ 16/09: "sidebar có thể nắm kéo để resize"): tay nắm là dải 6 px đè lên hairline
   (`role=separator`, con trỏ `col-resize`, pointer capture nên kéo ra ngoài dải vẫn ăn; rê vào hoặc đang kéo thì
   hairline đậm lên — mực 35 % thay `edge`, qua `aside:has(.rail-grip:hover)`, chủ 17/09), bề rộng **200–400**, mặc định
   240, nhớ trong `localStorage["readease.sidebar-width"]` lúc thả tay (không ghi từng pixel); bấm đúp về 240; trong lúc
-  kéo tắt transition (cột chạy đuổi theo con trỏ thì lag). Thu/mở vẫn là 0 ↔ bề rộng đã chọn.
+  kéo tắt transition (cột chạy đuổi theo con trỏ thì lag). Thu/mở là 80 px ↔ bề rộng đã chọn ở cả trang ngoài và trang đọc; kéo cùng một mép để chuyển hai trạng thái.
 - **Cửa sổ nhớ khung** (20/09, `tauri-plugin-window-state` 2.4.1): kích thước + vị trí được lưu khi thoát và trả lại
   khi mở (chỉ khi màn hình đã lưu còn đó — plugin tự kiểm; không lưu fullscreen/visible: trả cờ fullscreen lên cửa sổ
   trong suốt có title bar overlay là lỗi vibrancy kinh điển). Cửa sổ mới lần đầu vẫn 1060×720 của `tauri.conf.json`.
@@ -1556,12 +1574,9 @@ ngại đó.
   đánh dấu và cuộn tới), quay lại thư viện → điều hướng; (4) `show(tab)` — ▤ · nút ghi chú · nút tìm · ⌘F · icon
   ghi chú trong đoạn — MỞ cột và chọn tab; bấm lại đúng tab đang hiện = thu (công tắc thật, không cần
   `data-popover-trigger` nữa); (5) chọn chương / ghi chú / kết quả tìm → nhảy, cột GIỮ NGUYÊN (một cột không
-  biến mất khi được dùng); (6) không Escape, không bấm-ngoài; (7) toolbar mang bánh răng / theme / ngôn ngữ
-  CHỈ khi cột thu — cột mang gì thì toolbar bỏ nấy; tab và công cụ rời hẳn toolbar; Reader giữ back · ▤ ·
-  ghi chú · tên · ⓘ · AA · tìm; (8) **tối ưu theo layout** (chủ 16/09: "UI đọc sách thì sẽ không cần icon
-  sidebar"): nút mở cột chỉ có ở toolbar TRANG CHỦ khi cột thu — trong sách, ▤ / ghi chú / tìm đã là ba nút
-  mở cột đúng danh sách, thêm một nút mở chung là thừa; và toolbar sách khi cột thu chỉ nhận lại nút
-  sáng/tối (luật 06/09: cạnh AA), không nhận bánh răng lẫn ngôn ngữ — chúng cách một lần mở cột.
+  biến mất khi được dùng); (6) không Escape, không bấm-ngoài; (7) bánh răng và sáng/tối luôn ở cột hoặc thanh icon,
+  ngôn ngữ chỉ chuyển lên toolbar khi thu; (8) Reader giữ back · ▤ · ghi chú · tên · ⓘ · AA · tìm; công tắc thu/mở
+  chung luôn ở cột/thanh icon, cùng vị trí và hành vi với trang ngoài (chủ 15/10).
 - **Tìm tô lên trang** (17/09, chủ: "thêm highlight nội dung trong bài với các keyword khớp"): trong lúc tab Tìm
   có từ khoá (≥ 2 chữ), MỌI chỗ khớp trong chương đang mở được tô `mark[data-search]` (**vàng** `--yellow-alpha-ya50` — "tìm" là màu vàng
   trên mọi máy Mac, Safari lẫn Books; đậm hơn highlight vàng ya30 của người đọc để phân biệt; chủ 17/09 đổi từ brand đỏ) — cùng

@@ -172,3 +172,62 @@ class AudiobookFileTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CancelWriterTests(unittest.TestCase):
+    def test_cancel_before_encoding_preserves_destination_and_cleans_staging(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "old.m4b"
+            out.write_bytes(b"old")
+            def cancelled():
+                raise InterruptedError("cancelled")
+            with self.assertRaises(InterruptedError):
+                write_m4b("unused.wav", str(out), [Chapter("One", 0)], {}, checkpoint=cancelled)
+            self.assertEqual(out.read_bytes(), b"old")
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ["old.m4b"])
+
+
+    def test_cancel_during_encoding_terminates_the_encoder_and_preserves_destination(self):
+        from pathlib import Path
+        from unittest.mock import patch
+        import sys
+        import time
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "old.m4b"
+            out.write_bytes(b"old")
+            process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+            calls = 0
+            def checkpoint():
+                nonlocal calls
+                calls += 1
+                if calls >= 3:
+                    raise InterruptedError("cancelled")
+            started = time.monotonic()
+            with patch("vieneu_reader.headless.m4b.subprocess.Popen", return_value=process):
+                with self.assertRaises(InterruptedError):
+                    write_m4b("unused.wav", str(out), [Chapter("One", 0)], {}, checkpoint=checkpoint)
+            self.assertIsNotNone(process.poll())
+            self.assertLess(time.monotonic() - started, 2)
+            self.assertEqual(out.read_bytes(), b"old")
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ["old.m4b"])
+
+
+    def test_a_second_staging_file_failure_cleans_the_first(self):
+        from pathlib import Path
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "old.m4b"
+            out.write_bytes(b"old")
+            make = tempfile.mkstemp
+            calls = 0
+            def failing_second(*args, **kwargs):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("disk full")
+                return make(*args, **kwargs)
+            with patch("vieneu_reader.headless.m4b.tempfile.mkstemp", side_effect=failing_second):
+                with self.assertRaises(OSError):
+                    write_m4b("unused.wav", str(out), [Chapter("One", 0)], {})
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ["old.m4b"])

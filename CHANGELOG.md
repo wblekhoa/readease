@@ -4,7 +4,22 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.22
+
+- The Reader shares the Library’s collapsible sidebar. Hover Contents, Notes or
+  Search in the folded rail to use the matching floating panel without moving
+  the page; it stays while the pointer or keyboard focus is inside. Expand
+  preserves a search query and selected result. Consistent panel spacing,
+  scrolling and mutually exclusive Reader settings keep the workspace clear.
+
+- Export a chapter range or a whole book as an M4B audiobook with chapter marks,
+  available cover and AI-speech metadata, using an on-device voice. Browse or
+  minimise while it runs; the app-wide receipt shows voice generation, loudness
+  normalisation, file encoding, elapsed time and Cancel. Playback waits. Closing
+  the window minimises during export; Quit offers to keep exporting or cancel
+  first. Completion/error requests Dock attention when the window is in the
+  background. Audio is staged on disk and processed in bounded batches; failed
+  or cancelled exports leave an existing destination unchanged.
 
 - In footnotes and references the Vietnamese voice says "Nxb." as "nhà
   xuất bản", "Sđd" as "sách đã dẫn", "Tlđd" as "tài liệu đã dẫn" and

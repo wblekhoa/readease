@@ -24,7 +24,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { engineMessage, text, textIn } from "../i18n";
 import { continues, listLead, quoteRole, type Joint } from "../ui/blockStyle";
 import { measureEm, type ReadingPrefs } from "../ui/readingPrefs";
-import { SearchPanel, type SearchMarks } from "../ui/SearchPanel";
+import { SearchPanel, type SearchMarks, type SearchState } from "../ui/SearchPanel";
 import { matchRanges } from "../ui/textSearch";
 import { Button, IconButton, InlineIconButton, LAYER_GAP, Notice, Surface, Textarea } from "../ui/controls";
 import { ListRow, pressedByPointer, useLayerFocus } from "../ui/patterns";
@@ -323,6 +323,7 @@ export function Reader({
   mode,
   sidebarTab,
   sidebarSlot,
+  sidebarPreview = false,
   prefs,
   notesFocus,
   onShowNotes,
@@ -351,6 +352,7 @@ export function Reader({
    * them into the column's slot through a portal (HIG 3.16). */
   sidebarTab: SidebarTab | null;
   sidebarSlot: HTMLElement | null;
+  sidebarPreview?: boolean;
   /** Line spacing, margins, columns, justification, weight - the reader's
    * own setting of the page (ui/readingPrefs). */
   prefs: ReadingPrefs;
@@ -373,6 +375,12 @@ export function Reader({
   const [opened, setOpened] = useState<OpenedBook | null>(null);
   /** What the Tìm tab is looking for, so the page can mark it (HIG 3.16). */
   const [searchMarks, setSearchMarks] = useState<SearchMarks>({ query: "", current: null });
+  // The portal can move between preview and pinned column. Keep its small
+  // session here without making each keystroke render the whole book twice.
+  const searchSession = useRef<SearchState>({ query: "", chosen: null });
+  useEffect(() => {
+    if (sidebarTab !== "search") searchSession.current = { query: "", chosen: null };
+  }, [sidebarTab]);
   /** Why the book would not open, and why one that was deleted came back. */
   const [openError, setOpenError] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -1145,6 +1153,8 @@ export function Reader({
    * In a scroll the same comes from the spoken line leaving the view. */
   const search = sidebarTab === "search" && (
     <SearchPanel
+      autoFocus={!sidebarPreview}
+      session={searchSession}
       chapters={opened.book.chapters}
       onMarks={setSearchMarks}
       onJump={(hit) => {

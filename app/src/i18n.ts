@@ -31,6 +31,32 @@ export const TEXT = {
   "paste.over_limit": ["Nội dung dài hơn giới hạn - hãy bớt lại rồi đọc.", "Longer than the limit - trim it, then read."],
   "paste.read": ["Đọc nội dung", "Read text"],
   "paste.count": ["{count} / {limit} ký tự", "{count} / {limit} characters"],
+  "audiobook.title": ["Xuất sách nói…", "Export audiobook…"],
+  "audiobook.voice": ["Giọng đọc", "Voice"],
+  "audiobook.rate": ["Tốc độ", "Speed"],
+  "audiobook.format": ["Định dạng", "Format"],
+  "audiobook.range": ["Phạm vi chương", "Chapter range"],
+  "audiobook.from": ["Từ chương", "From chapter"],
+  "audiobook.to": ["Đến chương", "To chapter"],
+  "audiobook.save": ["Chọn nơi lưu và xuất", "Choose location and export"],
+  "audiobook.background": ["Xuất ngầm khi bạn xem sách hoặc thu nhỏ cửa sổ. Giữ ReadEase mở và máy thức; phát âm thanh sẽ chờ xuất xong.", "Exports in the background while you browse or minimise the window. Keep ReadEase open and your Mac awake; playback waits until export finishes."],
+  "audiobook.background_short": ["Bạn có thể xem sách hoặc thu nhỏ cửa sổ. Phát âm thanh sẽ chờ xuất xong.", "You can browse or minimise the window. Playback waits until export finishes."],
+  "audiobook.local_only": ["Chọn một giọng đã tải trên máy trong Cài đặt giọng đọc. Xuất sách chưa hỗ trợ giọng API.", "Choose a downloaded on-device voice in Voice settings. Audiobook export does not support API voices yet."],
+  "audiobook.range_error": ["Chương kết thúc phải nằm sau hoặc trùng chương bắt đầu.", "The last chapter must be at or after the first chapter."],
+  "audiobook.synthesising": ["Đang tạo giọng · {done}/{total} đoạn", "Generating voice · {done}/{total} parts"],
+  "audiobook.generating": ["Đang tạo giọng…", "Generating voice…"],
+  "audiobook.update_wait": ["Chờ xuất âm thanh xong trước khi cài bản mới hoặc khởi động lại.", "Wait for the audio export to finish before installing or restarting."],
+  "audiobook.normalising": ["Đang chuẩn hoá âm lượng…", "Normalising loudness…"],
+  "audiobook.encoding": ["Đang ghi sách nói M4B…", "Writing the M4B audiobook…"],
+  "audiobook.cancelling": ["Đang huỷ và dọn tệp tạm…", "Cancelling and clearing temporary files…"],
+  "audiobook.cancelled": ["Đã huỷ xuất. Tệp có sẵn được giữ nguyên.", "Export cancelled. Existing files are unchanged."],
+  "audiobook.done": ["Đã lưu sách nói · ~{minutes} phút", "Audiobook saved · ~{minutes} min"],
+  "audiobook.busy": ["Đang xuất âm thanh. Chờ xuất xong hoặc huỷ trước khi đọc.", "An audio export is running. Wait for it to finish or cancel before playing."],
+  "audiobook.elapsed": ["Đã chạy {time}", "Elapsed {time}"],
+  "audiobook.quit_title": ["Âm thanh đang được xuất", "An audio export is running"],
+  "audiobook.quit_body": ["Tiếp tục xuất, hoặc huỷ xuất rồi thoát ReadEase?", "Keep exporting, or cancel the export and quit ReadEase?"],
+  "audiobook.keep": ["Tiếp tục xuất", "Keep exporting"],
+  "audiobook.quit": ["Huỷ xuất và thoát", "Cancel export and quit"],
   "export.action": ["Xuất âm thanh", "Export audio"],
   "export.starting": ["Đang chuẩn bị giọng…", "Preparing the voice…"],
   "export.progress": ["Đang xuất {done}/{total}", "Exporting {done}/{total}"],
@@ -1199,5 +1225,6 @@ export function runtime(message: string): string {
  * in front of a sentence written for them, and an English one stops seeing the
  * sentence in Vietnamese. */
 export function engineMessage(error: unknown): string {
+  if (String(error).includes("export_busy")) return text("audiobook.busy");
   return runtime(String(error).replace(ENGINE_REFUSAL, ""));
 }

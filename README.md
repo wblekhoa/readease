@@ -21,9 +21,9 @@
 
 ## Tải và cài ngay
 
-### [⬇️ Tải ReadEase 0.1.21 cho Mac Apple Silicon — 125 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.dmg)
+### [⬇️ Tải ReadEase 0.1.22 cho Mac Apple Silicon — 125 MB](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.dmg)
 
-Bấm là tải ngay file `.dmg`. Mở nó, rồi **kéo `ReadEase.app` vào thư mục Applications** ngay trong cửa sổ đó. Không cần Terminal, không cần cài công cụ gì. Thích file `.zip` hơn thì có [bản zip](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.zip) (115 MB) — giải nén rồi kéo tương tự. Từ bản này app tự báo khi có bản mới (menu ReadEase › Kiểm tra bản mới…). Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
+Bấm là tải ngay file `.dmg`. Mở nó, rồi **kéo `ReadEase.app` vào thư mục Applications** ngay trong cửa sổ đó. Không cần Terminal, không cần cài công cụ gì. Thích file `.zip` hơn thì có [bản zip](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.zip) (115 MB) — giải nén rồi kéo tương tự. Từ bản này app tự báo khi có bản mới (menu ReadEase › Kiểm tra bản mới…). Các bản khác và ghi chú phát hành: [trang Releases](https://github.com/wblekhoa/readease/releases).
 
 ### Chọn theo mục tiêu của bạn
 
@@ -31,11 +31,11 @@ Chỉ có **một** bản app; giọng đọc thì bạn chọn ngay trong app v
 
 | Bạn muốn | Tải gì | Tổng | Lấy ở đâu |
 | --- | --- | --- | --- |
-| Đọc **tiếng Việt**, gọn nhẹ | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.zip) + giọng Việt *Tiêu chuẩn* | 115 MB + 330 MB | Màn đầu tiên "Chọn cách đọc để bắt đầu" → Tiếng Việt → **Tải và dùng** ở dòng *Tiêu chuẩn · 330 MB* |
-| Đọc **tiếng Việt**, chất lượng cao nhất | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.zip) + giọng Việt *Cao nhất* | 115 MB + 625 MB | Cùng màn đó → **Tải và dùng** ở dòng *Cao nhất · 625 MB* (đọc chậm hơn ~11 %) |
-| Đọc **tiếng Anh** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.zip) + giọng Anh Kokoro (6 giọng Mỹ) | 115 MB + 330 MB | Màn đầu tiên (hoặc **Giọng đọc & mô hình** trên trang chủ) → Tiếng Anh → **Tải về** |
-| Đọc **cả hai thứ tiếng** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.zip) + giọng Việt + giọng Anh | 115 MB + 660–955 MB | Hai bước trên; tải bản nào cũng xoá được sau |
-| Dùng **giọng AI trả phí** (OpenAI / ElevenLabs), không tải mô hình | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.21/ReadEase-0.1.21-arm64.zip) + khoá API của bạn | 115 MB | **Giọng đọc & mô hình → Giọng API → Thêm khoá**; đọc được cả hai thứ tiếng, tính phí theo ký tự |
+| Đọc **tiếng Việt**, gọn nhẹ | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.zip) + giọng Việt *Tiêu chuẩn* | 115 MB + 330 MB | Màn đầu tiên "Chọn cách đọc để bắt đầu" → Tiếng Việt → **Tải và dùng** ở dòng *Tiêu chuẩn · 330 MB* |
+| Đọc **tiếng Việt**, chất lượng cao nhất | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.zip) + giọng Việt *Cao nhất* | 115 MB + 625 MB | Cùng màn đó → **Tải và dùng** ở dòng *Cao nhất · 625 MB* (đọc chậm hơn ~11 %) |
+| Đọc **tiếng Anh** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.zip) + giọng Anh Kokoro (6 giọng Mỹ) | 115 MB + 330 MB | Màn đầu tiên (hoặc **Giọng đọc & mô hình** trên trang chủ) → Tiếng Anh → **Tải về** |
+| Đọc **cả hai thứ tiếng** | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.zip) + giọng Việt + giọng Anh | 115 MB + 660–955 MB | Hai bước trên; tải bản nào cũng xoá được sau |
+| Dùng **giọng AI trả phí** (OpenAI / ElevenLabs), không tải mô hình | [App](https://github.com/wblekhoa/readease/releases/download/v0.1.22/ReadEase-0.1.22-arm64.zip) + khoá API của bạn | 115 MB | **Giọng đọc & mô hình → Giọng API → Thêm khoá**; đọc được cả hai thứ tiếng, tính phí theo ký tự |
 
 > [!NOTE]
 > Bản phát hành được ký bằng chứng chỉ Apple Developer ID và đã qua notarize của Apple, nên mở như mọi app khác. Hướng dẫn đầy đủ (kể cả cho bản cũ 0.1.0/0.1.1 bị macOS chặn) ở [INSTALL.md](INSTALL.md).
@@ -66,6 +66,7 @@ Tài liệu, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/
 - **Tiêu đề, chương và chú thích nghe ra hồn:** tiêu đề đọc chậm hơn một chút, to hơn một chút và có hơi thở trước sau; sang chương mới có một âm hiệu ngắn (marimba, harp hoặc piano — tắt được trong **Cài đặt giọng đọc**); chú thích thư mục kiểu "Sđd., tr. 45" không đọc, lời bàn đọc hai câu đầu, trích dẫn trong ngoặc "(Trần, 2019)" bỏ qua — đổi sang đọc đầy đủ hoặc bỏ hẳn cũng ở đó. Chữ trên trang không đổi.
 - **Markdown:** nội dung dán và quét đọc được đọc đúng ý - chữ nhấn, gạch ngang, link (đọc chữ, không đọc địa chỉ), tiêu đề, trích dẫn, gạch đầu dòng, ô việc và hàng bảng được bỏ dấu; dòng kẻ và định nghĩa link im lặng; đoạn mã bỏ dấu backtick, giữ nội dung. Văn bản hiển thị giữ nguyên; lũy thừa như `2**10`, `snake_case` và dấu không có cặp vẫn giữ nguyên. Sách chỉ bỏ cặp dấu in đậm.
 - **Hình trong EPUB:** đặt hình có ý nghĩa theo thứ tự đọc, đánh số **Hình 1, Hình 2…** và nhắc “Mời bạn xem Hình …” ở đúng vị trí.
+- **Xuất sách nói:** trong Trình đọc, **Xuất sách nói…** lưu một khoảng chương hoặc cả sách thành M4B có mốc chương và bìa nếu có, bằng giọng đã tải trên máy. Bạn vẫn xem sách hoặc thu nhỏ cửa sổ được; trạng thái xuất và nút Huỷ luôn có trong app, phát âm thanh chờ xuất xong. Giữ app mở và máy thức.
 - **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
 - **Quét đọc ở mọi ứng dụng:** bôi đen chữ ở bất kỳ đâu — trang web, PDF, thư, ghi chú, Apple Books — rồi nhấn phím tắt đọc (mặc định **Option-Command-R**, đổi được trong màn hình **Quét đọc**) để nghe mà không cần chuyển cửa sổ. Phần được trình quản lý mật khẩu đánh dấu bí mật thì app từ chối đọc.
 - **Dừng mà không phải rời chỗ đang đọc:** nhấn lại chính phím tắt đó là dừng. Trong lúc đang đọc, ReadEase cũng hiện một biểu tượng nhỏ trên thanh menu — bấm vào là dừng, và nó biến mất khi đọc xong.

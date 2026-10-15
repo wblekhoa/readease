@@ -4,8 +4,8 @@ type: release
 product: readease
 title: "ReadEase — Releases"
 status: active
-updated: 2026-10-10
-summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.21, newest first."
+updated: 2026-10-16
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.22, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
@@ -16,6 +16,13 @@ Source of truth for details: `CHANGELOG.md` (repo root) and `gh release list -R 
 here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped behaviour maps to a current rule are traced.
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
+
+## v0.1.22 · 2026-10-16
+- **What changed for users**: Export a chapter range or whole book as an M4B audiobook while browsing or minimising. Progress shows synthesis, normalisation and encoding; cancelling preserves an existing file. Reader and Library share the folded sidebar; hovering Contents, Notes or Search opens an interactive preview. Panel gaps and scrolling are consistent, and moving the pointer into a preview keeps it open.
+- **REQ-IDs shipped**: RE-PLAY-020/021/022 (audiobook export and background lifecycle); shared Reader sidebar and panel interaction contract in `ux/reading.md`.
+- **Release performance check**: The optimised native app with its frozen local voice engine measured 59.92 FPS at idle and 59.99 FPS while exporting, using a temporary requestAnimationFrame probe. 697/653 visible, focused samples within 600ms of preview changes; p95 19/18ms, p99 26/24ms, max 35/30ms, no frames over 50ms. Nine direct panel switches per mode, plus opening tests. This measures WebKit callback cadence, not whole-display composited FPS. The probe is absent from the distributable.
+- **Channel**: GitHub release with Developer ID signature, notarization and in-app updater.
+- **Shown in**: CHANGELOG.md; GitHub release notes.
 
 ## v0.1.21 · 2026-10-10
 - **What changed for users**: The folded side column names its icons on hover and opens from the top; dragging its edge eases between the rail and the column; the open column carries the ReadEase mark; the interface starts in the Mac's language.

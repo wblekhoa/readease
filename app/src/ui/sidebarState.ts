@@ -30,6 +30,8 @@ export interface SidebarState {
   /** Whether a book is open, which is what puts the lists in the column. */
   book: boolean;
   tab: SidebarTab;
+  /** Temporary content beside the folded rail; never persisted. */
+  preview: SidebarTab | null;
 }
 
 /** Below this window width the column closes on its own (a 240 px column
@@ -78,7 +80,9 @@ export type SidebarEvent =
   /** A book opened (true) or was left (false). */
   | { type: "book"; open: boolean }
   /** A list was asked for by name: ▤, the notes button, ⌘F, a note icon. */
-  | { type: "show"; tab: SidebarTab };
+  | { type: "show"; tab: SidebarTab }
+  | { type: "preview"; tab: SidebarTab }
+  | { type: "dismiss-preview" };
 
 export function sidebarOpen(state: SidebarState): boolean {
   return state.choice === "auto" ? !state.narrow : state.choice === "open";
@@ -87,23 +91,28 @@ export function sidebarOpen(state: SidebarState): boolean {
 export function sidebar(state: SidebarState, event: SidebarEvent): SidebarState {
   switch (event.type) {
     case "toggle":
-      return { ...state, choice: sidebarOpen(state) ? "closed" : "open" };
+      return { ...state, preview: null, choice: sidebarOpen(state) ? "closed" : "open" };
     case "width":
-      return { ...state, narrow: event.narrow };
+      return { ...state, narrow: event.narrow, preview: state.choice === "auto" && !event.narrow ? null : state.preview };
     case "book":
       // Leaving a book returns the contents tab for the next one: notes and
       // search were about the book that was just closed.
-      return { ...state, book: event.open, tab: event.open ? state.tab : "contents" };
+      return { ...state, preview: null, book: event.open, tab: event.open ? state.tab : "contents" };
     case "show":
       if (sidebarOpen(state) && state.book && state.tab === event.tab) {
-        return { ...state, choice: "closed" };
+        return { ...state, preview: null, choice: "closed" };
       }
-      return { ...state, choice: "open", tab: event.tab };
+      return { ...state, preview: null, choice: "open", tab: event.tab };
+    case "preview":
+      return state.book && !sidebarOpen(state) && state.preview !== event.tab
+        ? { ...state, preview: event.tab } : state;
+    case "dismiss-preview":
+      return state.preview === null ? state : { ...state, preview: null };
   }
 }
 
 /** The state to start from: the remembered choice, the window as it is. */
 export function initialSidebar(remembered: string | null, narrow: boolean): SidebarState {
   const choice: SidebarChoice = remembered === "open" || remembered === "closed" ? remembered : "auto";
-  return { choice, narrow, book: false, tab: "contents" };
+  return { choice, narrow, book: false, tab: "contents", preview: null };
 }

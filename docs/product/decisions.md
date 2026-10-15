@@ -12,6 +12,18 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-15 · Background audiobook export shares one voice lane
+- **Context**: the owner asked to continue audiobook development, protect app performance, and let a reader export in
+  the background with understandable status. This authorises the chapter/book export scope previously a non-goal.
+- **Decision**: one local voice job at a time; navigation continues, playback waits. Reuse the book utterances and the
+  existing on-disk sink. Finalise loudness/AAC on one worker while the request thread answers quick navigation calls;
+  cancellation reaches both batched audio processing and the encoder process. Keep a global receipt and use Dock
+  attention when unfocused. Closing the window minimises during an export; quitting requires keep/cancel-and-quit.
+  No new dependency, extra model process, automatic relaunch resume or paid book synthesis.
+- **Evidence**: RE-PLAY-020…022, `BookExportTests`, `CancelWriterTests`, Rust EOF test and the synthetic benchmark
+  `scripts/measure-audiobook-export.py`. Native window/Dock smoke remains unverified; synthetic timings exclude model cost.
+- **Reversal**: remove the book entry point; keep the shared sink and Paste-text export intact.
+
 ## 2026-10-15 · Audiobook export (.m4b): macOS encodes, the engine writes the chapter track itself
 - **Context**: roadmap P2 asks for chapter-marked audiobooks without a new dependency (no ffmpeg, no mutagen).
 - **Decision**: the WAV the export already makes is encoded by `/usr/bin/afconvert` (AAC 64 kbit/s, on every Mac);

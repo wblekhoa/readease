@@ -19,6 +19,7 @@ import os
 import struct
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 
 
@@ -273,7 +274,7 @@ def add_chapters(m4a: bytes, chapters: list[Chapter], tags: dict[str, str], cove
     return head + m4a[audio_start:audio_end] + samples + moov
 
 
-def _add_chapters_file(source: str, target: str, chapters: list[Chapter], tags: dict[str, str], cover: bytes | None) -> None:
+def _add_chapters_file(source: str, target: str, chapters: list[Chapter], tags: dict[str, str], cover: bytes | None, checkpoint=lambda: None) -> None:
     """`add_chapters` from file to file, the audio copied a megabyte at a
     time: a ten-hour book is about 300 MB of AAC, never held in memory."""
     with open(source, "rb") as src:
@@ -287,6 +288,7 @@ def _add_chapters_file(source: str, target: str, chapters: list[Chapter], tags: 
             out.write(head)
             at = audio_start
             while at < audio_end:
+                checkpoint()
                 piece = os.pread(src.fileno(), min(1 << 20, audio_end - at), at)
                 if not piece:
                     raise ValueError("audio ended early")
@@ -330,22 +332,38 @@ def read_chapters(m4b: bytes) -> list[Chapter]:
 
 
 def write_m4b(wav_path: str, path: str, chapters: list[Chapter], tags: dict[str, str],
-              cover: bytes | None = None, bitrate: int = 64000) -> None:
+              cover: bytes | None = None, bitrate: int = 64000, *, checkpoint=lambda: None) -> None:
     """Encode `wav_path` to AAC with macOS's own encoder and write the .m4b
     at `path`, atomically: a stopped or failed export leaves no file."""
     folder = os.path.dirname(path)
-    fd, encoded = tempfile.mkstemp(suffix=".m4a", dir=folder)
-    os.close(fd)
-    fd, staged = tempfile.mkstemp(suffix=".m4b", dir=folder)
-    os.close(fd)
+    encoded = staged = None
     try:
-        subprocess.run(
+        fd, encoded = tempfile.mkstemp(suffix=".m4a", dir=folder)
+        os.close(fd)
+        fd, staged = tempfile.mkstemp(suffix=".m4b", dir=folder)
+        os.close(fd)
+        checkpoint()
+        with subprocess.Popen(
             ["/usr/bin/afconvert", "-f", "m4af", "-d", "aac", "-b", str(bitrate), wav_path, encoded],
-            check=True, capture_output=True, timeout=3600,
-        )
-        _add_chapters_file(encoded, staged, chapters, tags, cover)
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        ) as process:
+            deadline = time.monotonic() + 3600
+            try:
+                while process.poll() is None:
+                    checkpoint()
+                    if time.monotonic() > deadline:
+                        raise TimeoutError("AAC encoding timed out")
+                    time.sleep(0.05)
+                if process.returncode:
+                    raise subprocess.CalledProcessError(process.returncode, "afconvert")
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                process.wait()
+        _add_chapters_file(encoded, staged, chapters, tags, cover, checkpoint)
+        checkpoint()
         os.replace(staged, path)
     finally:
         for leftover in (encoded, staged):
-            if os.path.exists(leftover):
+            if leftover is not None and os.path.exists(leftover):
                 os.remove(leftover)

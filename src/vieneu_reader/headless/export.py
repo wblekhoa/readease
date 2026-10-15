@@ -65,11 +65,11 @@ def _k_weight_power(size: int, sample_rate: int) -> np.ndarray:
 # Blocks measured per FFT batch, and samples per write: a few MB of working
 # memory whatever the length of the file. A paste may be 100 000 characters -
 # an hour and more of audio - and the reading engine shares an 8 GB Mac.
-_BATCH_BLOCKS = 128
-_WRITE_SAMPLES = 1 << 20
+_BATCH_BLOCKS = 32
+_WRITE_SAMPLES = 1 << 18
 
 
-def _block_energies(samples, sample_rate: int, transform=None) -> np.ndarray:
+def _block_energies(samples, sample_rate: int, transform=None, checkpoint=lambda: None) -> np.ndarray:
     """Mean-square K-weighted energy of each 400 ms block, 75 % overlap.
 
     Taken in the frequency domain (Parseval), a batch of blocks per FFT, so
@@ -88,6 +88,7 @@ def _block_energies(samples, sample_rate: int, transform=None) -> np.ndarray:
     count = (total - block) // hop + 1
     energies = np.empty(count)
     for first in range(0, count, _BATCH_BLOCKS):
+        checkpoint()
         last = min(count, first + _BATCH_BLOCKS)
         start, stop = first * hop, (last - 1) * hop + block
         segment = np.asarray(samples[start:stop], dtype=np.float64)
@@ -102,14 +103,14 @@ def _block_energies(samples, sample_rate: int, transform=None) -> np.ndarray:
     return energies
 
 
-def integrated_loudness(samples, sample_rate: int, transform=None) -> float:
+def integrated_loudness(samples, sample_rate: int, transform=None, checkpoint=lambda: None) -> float:
     """Gated integrated loudness of mono audio, in LUFS (-inf for silence).
 
     ITU-R BS.1770-4: K-weighted 400 ms blocks, an absolute gate at -70 LUFS
     and a relative gate 10 LU under the mean of what passed it.
     """
 
-    energies = _block_energies(samples, sample_rate, transform)
+    energies = _block_energies(samples, sample_rate, transform, checkpoint)
     loudness = -0.691 + 10 * np.log10(np.maximum(energies, 1e-20))
     passed = energies[loudness > -70.0]
     if passed.size == 0:
@@ -133,13 +134,14 @@ _LIMIT_BLOCK_S = 0.005
 _LIMIT_RELEASE_BLOCKS = 12
 
 
-def _block_peaks(samples, sample_rate: int) -> np.ndarray:
+def _block_peaks(samples, sample_rate: int, checkpoint=lambda: None) -> np.ndarray:
     block = max(1, int(_LIMIT_BLOCK_S * sample_rate))
     total = len(samples)
     count = -(-total // block)
     peaks = np.empty(count, dtype=np.float32)
     step = block * 4096
     for start in range(0, total, step):
+        checkpoint()
         segment = np.abs(np.asarray(samples[start:start + step], dtype=np.float32))
         blocks = -(-segment.size // block)
         segment = np.pad(segment, (0, blocks * block - segment.size))
@@ -170,21 +172,25 @@ class _Gain:
     ceiling: float
 
     def __call__(self, segment: np.ndarray, start: int) -> np.ndarray:
-        centres = (np.arange(self.held.size) + 0.5) * self.block
-        gain = np.interp(np.arange(start, start + segment.size), centres, self.held)
+        # Only the nearby limiter blocks: allocating every block centre
+        # again for every batch made long-book normalisation quadratic.
+        first = max(0, start // self.block - 1)
+        last = min(self.held.size, (start + segment.size) // self.block + 2)
+        centres = (np.arange(first, last) + 0.5) * self.block
+        gain = np.interp(np.arange(start, start + segment.size), centres, self.held[first:last])
         return np.clip(segment * (self.lift * gain), -self.ceiling, self.ceiling)
 
 
-def _plan(samples, sample_rate: int) -> tuple[_Gain | None, float]:
+def _plan(samples, sample_rate: int, checkpoint=lambda: None) -> tuple[_Gain | None, float]:
     """The gain that puts the file at TARGET_LUFS with its peaks under
     PEAK_CEILING_DBFS, never limiting more than MAX_LIMIT_DB; and the
     loudness the file will then measure."""
 
-    measured = integrated_loudness(samples, sample_rate)
+    measured = integrated_loudness(samples, sample_rate, checkpoint=checkpoint)
     if not math.isfinite(measured):
         return None, measured
     ceiling = 10 ** (PEAK_CEILING_DBFS / 20)
-    peaks = _block_peaks(samples, sample_rate)
+    peaks = _block_peaks(samples, sample_rate, checkpoint)
     peak_db = 20 * math.log10(float(peaks.max()))
     most = PEAK_CEILING_DBFS + MAX_LIMIT_DB - peak_db
     gain_db = min(TARGET_LUFS - measured, most)
@@ -192,7 +198,7 @@ def _plan(samples, sample_rate: int) -> tuple[_Gain | None, float]:
     for attempt in range(4):
         lift = 10 ** (gain_db / 20)
         plan = _Gain(lift, _held_gain(peaks * lift, ceiling), block, ceiling)
-        now = integrated_loudness(samples, sample_rate, plan)
+        now = integrated_loudness(samples, sample_rate, plan, checkpoint)
         # Limiting took a little loudness away; give it back, within bounds.
         short = TARGET_LUFS - now
         if abs(short) < 0.1 or gain_db >= most or attempt == 3:
@@ -225,19 +231,20 @@ def _info_chunk(tags: dict[str, str]) -> bytes:
     return b"LIST" + struct.pack("<I", len(body)) + body
 
 
-def write_wav(path: str, samples, sample_rate: int, tags: dict[str, str]) -> float:
+def write_wav(path: str, samples, sample_rate: int, tags: dict[str, str], *, checkpoint=lambda: None) -> float:
     """16-bit mono PCM at the export loudness, the INFO chunk after the audio.
 
     Returns the loudness written (-inf for silence). The samples may be a
     memory map: they are read, gained and written a batch at a time.
     """
 
-    plan, loudness = _plan(samples, sample_rate)
+    plan, loudness = _plan(samples, sample_rate, checkpoint)
     with wave.open(path, "wb") as handle:
         handle.setnchannels(1)
         handle.setsampwidth(2)
         handle.setframerate(sample_rate)
         for start in range(0, len(samples), _WRITE_SAMPLES):
+            checkpoint()
             segment = np.asarray(samples[start:start + _WRITE_SAMPLES], dtype=np.float64)
             if plan is not None:
                 segment = plan(segment, start)

@@ -38,6 +38,15 @@ provider, exactly as when it reads aloud). The WAV's own metadata says that the
 speech in it was made by a voice model, which voice, and with ReadEase. What
 you do with an exported file, and where you publish it, is up to you.
 
+An imported book, or a chapter range, can also be exported as a single M4B audiobook, with chapter titles and the
+book's JPEG/PNG cover when available. This path accepts on-device voices only and sends nothing over the network.
+It writes to the location you choose and does not change listening progress or add generated book audio to the cache.
+Audio is staged on disk rather than held as one large in-memory buffer. Normalisation and encoding use temporary
+WAV/AAC/M4B staging files in the chosen output folder; they are removed on completion, normal cancellation or failure.
+The existing destination is replaced only after the new file is ready. A force quit or power loss can leave staging
+files; it does not resume the export on relaunch. While ReadEase remains open, you can browse or minimise the window.
+Completion/error requests Dock attention when unfocused; no book title or passage is sent to a notification service.
+
 ## Network use
 
 Network access is used when the user explicitly prepares the local VieNeu

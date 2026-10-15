@@ -151,63 +151,65 @@ export function CostPanel({
       ref={panel}
       dialog={text("cost.title")}
       layer="popover"
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom -translate-x-1/2 p-6 shadow-lifted"
+      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom -translate-x-1/2 flex-col overflow-hidden shadow-lifted"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{text("cost.title")}</h3>
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>
       </div>
 
-      <ReadingLimits
-        scoped={scoped}
-        scope={scope}
-        budget={budget}
-        spent={spent}
-        onScope={onScope}
-        onBudget={onBudget}
-        className="mt-2"
-      />
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 pb-6">
+        <ReadingLimits
+          scoped={scoped}
+          scope={scope}
+          budget={budget}
+          spent={spent}
+          onScope={onScope}
+          onBudget={onBudget}
+          className="mt-2"
+        />
 
-      {/* The detail the button deliberately does not carry. */}
-      <Notice tone={failed ? "error" : "ok"} className="mt-3 block">
-        {failed
-          ? text("cost.failed")
-          : estimate === null
-          ? text("cost.measuring")
-          : !paid
-            ? text("cost.free")
-            : estimate.chapters === 0
-              // Pasted text has no chapters, and "0 chương" reads as a bug
-              // rather than as the absence of a thing.
-              ? text("cost.detail_text", {
-                  chars: formatCount(estimate.chars),
-                  date: formatDay(estimate.price_dated) ?? estimate.price_dated,
-                })
-              : text("cost.detail", {
-                  chars: formatCount(estimate.chars),
-                  chapters: estimate.chapters,
-                  date: formatDay(estimate.price_dated) ?? estimate.price_dated,
-                })}
-      </Notice>
-      {paid && estimate?.paid && (
-        <Notice className="mt-1 block">
-          {/* A token-billed voice has no unit count anybody could check
-              against their dashboard, so the line says what it is instead of
-              printing a character count under the wrong word. */}
-          {estimate.billing === "estimated"
-            ? text("cost.estimated")
-            : text("cost.units", {
-                units: formatCount(estimate.units),
-                unit: text(
-                  estimate.unit === "credits"
-                    ? "cost.unit_credits"
-                    : "cost.unit_characters",
-                ),
-              })}
+        {/* The detail the button deliberately does not carry. */}
+        <Notice tone={failed ? "error" : "ok"} className="mt-3 block">
+          {failed
+            ? text("cost.failed")
+            : estimate === null
+            ? text("cost.measuring")
+            : !paid
+              ? text("cost.free")
+              : estimate.chapters === 0
+                // Pasted text has no chapters, and "0 chương" reads as a bug
+                // rather than as the absence of a thing.
+                ? text("cost.detail_text", {
+                    chars: formatCount(estimate.chars),
+                    date: formatDay(estimate.price_dated) ?? estimate.price_dated,
+                  })
+                : text("cost.detail", {
+                    chars: formatCount(estimate.chars),
+                    chapters: estimate.chapters,
+                    date: formatDay(estimate.price_dated) ?? estimate.price_dated,
+                  })}
         </Notice>
-      )}
+        {paid && estimate?.paid && (
+          <Notice className="mt-1 block">
+            {/* A token-billed voice has no unit count anybody could check
+                against their dashboard, so the line says what it is instead of
+                printing a character count under the wrong word. */}
+            {estimate.billing === "estimated"
+              ? text("cost.estimated")
+              : text("cost.units", {
+                  units: formatCount(estimate.units),
+                  unit: text(
+                    estimate.unit === "credits"
+                      ? "cost.unit_credits"
+                      : "cost.unit_characters",
+                  ),
+                })}
+          </Notice>
+        )}
+      </div>
     </Surface>
   );
 }

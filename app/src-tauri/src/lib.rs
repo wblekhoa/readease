@@ -50,6 +50,11 @@ fn set_install_on_quit(state: tauri::State<InstallOnQuit>, armed: bool) {
 /// The page has installed the waiting update: leave now, no relaunch.
 #[tauri::command]
 fn exit_now(app: tauri::AppHandle) {
+    if engine_of(&app).is_some_and(|engine| engine.is_exporting()) {
+        use tauri::Emitter;
+        let _ = app.emit("export:quit-requested", ());
+        return;
+    }
     app.exit(0);
 }
 
@@ -195,6 +200,29 @@ fn export_text(
     }), "engine:export_done")
 }
 
+/// Long-lived export: the webview listens for progress and completion.
+#[tauri::command(async)]
+fn export_book(
+    app: tauri::AppHandle, engine: tauri::State<EngineSlot>,
+    book_id: String, voice_id: String, voice_label: String, rate: f64,
+    path: String, from_chapter: u64, chapters: u64,
+) -> Result<u64, String> {
+    client_of(&engine).notify_as("export.book", serde_json::json!({
+        "book_id": book_id, "voice_id": voice_id, "voice_label": voice_label,
+        "rate": rate, "path": path, "from_chapter": from_chapter, "chapters": chapters,
+        "software": format!("ReadEase {}", app.package_info().version),
+    }), "engine:export_done")
+}
+
+/// A quiet Dock notification only when the person is in another window.
+fn export_attention(app: tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if !window.is_focused().unwrap_or(true) {
+            let _ = window.request_user_attention(Some(tauri::UserAttentionType::Informational));
+        }
+    }
+}
+
 /// One sentence of the last export as it stands in the file, played like a
 /// reading (so Stop, the tray and the device all behave as they do for one).
 #[tauri::command(async)]
@@ -301,6 +329,7 @@ fn prepare_model(
     engine: tauri::State<EngineSlot>,
     model: Option<String>,
 ) -> Result<(), String> {
+    if client_of(&engine).is_exporting() { return Err("export_busy".into()); }
     let params = match model.as_deref() {
         Some(name) => serde_json::json!({ "engine": name }),
         None => serde_json::json!({}),
@@ -314,6 +343,7 @@ fn restart_engine(
     engine: tauri::State<EngineSlot>,
     tray: tauri::State<TraySlot>,
 ) -> Result<(), String> {
+    if client_of(&engine).is_exporting() { return Err("export_busy".into()); }
     // A model switch loads at engine construction, so the choice only
     // becomes real in a fresh process. The old one dies by the same EOF
     // contract the orphan test proved.
@@ -339,6 +369,10 @@ fn set_selection_shortcut(
 
 fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
     use tauri::Emitter;
+    if engine.is_exporting() {
+        export_attention(app.clone());
+        return;
+    }
     // Pressed again while a reading is under way, the shortcut stops it -
     // the same contract the Qt shell shipped.
     if engine.is_reading() {
@@ -448,7 +482,10 @@ pub fn run() {
             // Closing the one window is quitting; with an update waiting,
             // the page installs it first (HIG 3.20).
             tauri::WindowEvent::CloseRequested { api, .. } => {
-                if intercept_quit_for_install(window.app_handle()) {
+                if engine_of(window.app_handle()).is_some_and(|engine| engine.is_exporting()) {
+                    api.prevent_close();
+                    let _ = window.minimize();
+                } else if intercept_quit_for_install(window.app_handle()) {
                     api.prevent_close();
                 }
             }
@@ -469,6 +506,7 @@ pub fn run() {
             restart_engine,
             prepare_model,
             export_text,
+            export_book,
             play_take,
             save_export,
             stop_reading,
@@ -490,6 +528,16 @@ pub fn run() {
             // paths and nudge the page; it takes them when it can.
             // ⌘Q with an update waiting: the page installs, then `exit_now`.
             if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                if engine_of(app).is_some_and(|engine| engine.is_exporting()) {
+                    use tauri::Emitter;
+                    api.prevent_exit();
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.unminimize();
+                        let _ = window.set_focus();
+                    }
+                    let _ = app.emit("export:quit-requested", ());
+                    return;
+                }
                 if intercept_quit_for_install(app) {
                     api.prevent_exit();
                     return;

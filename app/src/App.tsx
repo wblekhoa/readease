@@ -4,19 +4,22 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
 import { GradientBlur, MenuButton, RailDocument, RailGroup, RailCover,
-  RailIcon,
+  RailIcon, RAIL_WIDTH,
   RailItem, SideColumn, Toolbar, pressedByPointer } from "./ui/patterns";
 import { useCover } from "./ui/useCover";
 import { useSideColumn } from "./ui/useSideColumn";
 import type { SidebarTab } from "./ui/sidebarState";
 import { useShelf } from "./ui/useShelf";
-import { IN_WINDOW, WINDOW_BUTTONS_IN_PAGE } from "./ui/host";
+import { IN_WINDOW } from "./ui/host";
 import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
 import { useUpdater } from "./ui/updates";
 import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { feedbackUrl, type FeedbackFacts } from "./ui/feedback";
+import { BookExportPanel } from "./ui/BookExportPanel";
+import { ExportQuitPanel } from "./ui/ExportQuitPanel";
+import { ExportStatus } from "./ui/ExportStatus";
 import { ExportAudio } from "./ui/ExportAudio";
 import { ExportReviewPanel } from "./ui/ExportReviewPanel";
 import { useExport } from "./ui/useExport";
@@ -81,6 +84,7 @@ import {
   StarIcon,
   ArrowSwapIcon,
   SidebarIcon,
+  CloseIcon,
 } from "./ui/icons";
 import { IDLE, playback } from "./ui/playback";
 import {
@@ -188,6 +192,7 @@ function ReadingNowRow({ book, onPress }: { book: LibraryBook; onPress: () => vo
 }
 
 export default function App() {
+  const exportBusy = useRef(false);
   useHiddenGuard();
   const [theme, toggleTheme, appearance, chooseAppearance] = useAppearance();
   // The library first (owner, 16/09): the first tab of the rail is the
@@ -293,51 +298,6 @@ export default function App() {
      the wrong edge (owner, 04/09). */
   const headerRow = useRef<HTMLDivElement>(null);
   const footerRow = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const root = shell.current;
-    if (!root) return;
-    const apply = () => {
-      root.style.setProperty("--shell-top-h", `${headerBar.current?.offsetHeight ?? 0}px`);
-      root.style.setProperty("--shell-bottom-h", `${footerBar.current?.offsetHeight ?? 0}px`);
-      // …and where the controls themselves stop, in the shell's own
-      // coordinates, which is what an absolutely positioned layer uses.
-      const box = root.getBoundingClientRect();
-      /* Where the CONTROLS stop, measured off the controls themselves.
-       *
-       * Not the bar's box (24px of frost room past them) and not the row's
-       * content box either (a 30px button centred in a 36px row leaves
-       * slack). The row's own children hug the buttons, so their edge is the
-       * one a person sees and the one a layer should sit 12px from. */
-      const edge = (row: HTMLElement | null, side: "top" | "bottom") => {
-        // The controls THEMSELVES, however deeply the bar nests them: a
-        // wrapper is a couple of pixels taller than what it wraps, and those
-        // pixels land in the gap a person is looking at.
-        const controls = row
-          ? [...row.querySelectorAll("button, select, input, a")]
-          : [];
-        if (!controls.length) return null;
-        const rects = controls.map((control) => control.getBoundingClientRect());
-        return side === "top"
-          ? Math.max(...rects.map((rect) => rect.bottom))
-          : Math.min(...rects.map((rect) => rect.top));
-      };
-      const top = edge(headerRow.current, "top");
-      const bottom = edge(footerRow.current, "bottom");
-      root.style.setProperty(
-        "--shell-top-inner",
-        `${top === null ? headerBar.current?.offsetHeight ?? 0 : Math.round(top - box.top)}px`,
-      );
-      root.style.setProperty(
-        "--shell-bottom-inner",
-        `${bottom === null ? footerBar.current?.offsetHeight ?? 0 : Math.round(box.bottom - bottom)}px`,
-      );
-    };
-    apply();
-    const observer = new ResizeObserver(apply);
-    if (headerBar.current) observer.observe(headerBar.current);
-    if (footerBar.current) observer.observe(footerBar.current);
-    return () => observer.disconnect();
-  });
   const reading = player.reading;
   const [content, setContent] = useState("");
   const [openBook, setOpenBook] = useState<LibraryBook | null>(null);
@@ -373,7 +333,17 @@ export default function App() {
      the first-run screen, the hub and the settings panel never disagree
      about what is installed or what is being fetched. */
   const models = useModels();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // One chrome popover at a time, including openers exempted by useDismiss.
+  // Closing an outgoing Presence must not dismiss the panel replacing it.
+  type ReaderPanel = "voice" | "reading" | "cost" | "export";
+  const [readerPanel, setReaderPanel] = useState<ReaderPanel | null>(null);
+  const settingsOpen = readerPanel === "voice";
+  const readingSettingsOpen = readerPanel === "reading";
+  const costOpen = readerPanel === "cost";
+  const bookExportOpen = readerPanel === "export";
+  const closeReaderPanel = useCallback((panel: ReaderPanel) => {
+    setReaderPanel(current => current === panel ? null : current);
+  }, []);
   /** The hub: what this Mac reads, by language, and how to add to it. */
   const [hubOpen, setHubOpen] = useState(false);
   /** The language the reader chose to read in (owner, 15/09: choose the
@@ -383,7 +353,7 @@ export default function App() {
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [selection, setSelection] = useState("");
   const readSelection = useCallback(() => {
-    if (!selection) return;
+    if (!selection || exportBusy.current) return;
     onPlayer({ type: "start" });
     if (openBook) setOrigin({ kind: "book", book: openBook });
     current.current = { kind: "text", text: selection };
@@ -409,11 +379,41 @@ export default function App() {
      lists it shows, its width and the note to land on - all in
      `useSideColumn`, under the rules in ui/sidebarState.ts. */
   const inBook = tab === "library" && openBook !== null;
-  const { side, dispatchSide, sideOpen, sideWidth, resizeSide, sideTab, notesFocus, setNotesFocus } = useSideColumn(inBook);
+  const { side, dispatchSide, sideOpen, sideWidth, resizeSide, sideTab, notesFocus, setNotesFocus,
+    previewSide, holdPreview, leavePreview, dismissPreview } = useSideColumn(inBook, openBook?.id);
   /* Where the column's body is, for the reader to render a book's lists
      into (a portal). A callback ref, so the reader re-renders when the
      column comes and goes. */
   const [sideSlot, setSideSlot] = useState<HTMLElement | null>(null);
+  const [previewSlot, setPreviewSlot] = useState<HTMLElement | null>(null);
+  const previewRoot = useRef<HTMLDivElement>(null);
+  const previewTab = inBook && !sideOpen ? side.preview : null;
+
+  useEffect(() => {
+    if (!previewTab) return;
+    const outside = (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (previewRoot.current?.contains(target) || target.closest("[data-reader-list]")) return;
+      dismissPreview();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      if (previewRoot.current?.contains(document.activeElement)) {
+        document.querySelector<HTMLButtonElement>(`[data-reader-list="${previewTab}"] button`)?.focus();
+      }
+      dismissPreview();
+    };
+    window.addEventListener("pointerdown", outside);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("pointerdown", outside);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [previewTab, dismissPreview]);
+  useEffect(() => {
+    if (readerPanel || hubOpen || voicesOpen || pronounceOpen) dismissPreview();
+  }, [readerPanel, hubOpen, voicesOpen, pronounceOpen, dismissPreview]);
   /* And where a home screen's actions stand: the toolbar's trailing
      cluster, the way a book's stand beside its title. */
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
@@ -444,6 +444,20 @@ export default function App() {
   // not by the Paste screen, so leaving the screen does not lose it.
   const exportJob = useExport();
   const exporting = exportJob.job.kind === "running";
+  exportBusy.current = exporting;
+  const [quitExportOpen, setQuitExportOpen] = useState(false);
+  const quitAfterExport = useRef(false);
+  useEffect(() => {
+    const off = listen("export:quit-requested", () => setQuitExportOpen(true));
+    return () => { void off.then(unlisten => unlisten()); };
+  }, []);
+  useEffect(() => {
+    if (!exporting) setQuitExportOpen(false);
+    if (!exporting && quitAfterExport.current) {
+      quitAfterExport.current = false;
+      void invoke("exit_now");
+    }
+  }, [exporting]);
   // The text the review's sentences came from: edit it and they no longer
   // exist, so the review ends and the engine lets the takes go.
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -453,7 +467,6 @@ export default function App() {
    *  answers `config.get` for these with the fact and nothing else. */
   const [keysSet, setKeysSet] = useState<Record<string, boolean>>({});
   const [spent, setSpent] = useState(0);
-  const [costOpen, setCostOpen] = useState(false);
   const [readingSize, setReadingSize] = useState(storedReadingSize);
   const [readingMode, setReadingMode] = useState<ReadingMode>(storedReadingMode);
   const chooseReadingMode = useCallback((next: ReadingMode) => {
@@ -468,7 +481,6 @@ export default function App() {
     rememberReadingPrefs(next);
     setPrefs(next);
   }, []);
-  const [readingSettingsOpen, setReadingSettingsOpen] = useState(false);
   /* The quick voice menu opens upward over the floating reading status. */
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
 
@@ -962,6 +974,7 @@ export default function App() {
     // The global shortcut hands the captured text to the webview, which owns
     // the voice and rate, and the webview asks the engine to speak it.
     const external = listen<{ text: string }>("reading:external", (event) => {
+      if (exportBusy.current) return;
       const captured = event.payload.text;
       const at = Date.now();
       setExternalHistory((history) =>
@@ -1127,6 +1140,7 @@ export default function App() {
    * a book that a preview interrupted.
    */
   const previewVoice = useCallback((id: string) => {
+    if (exportBusy.current) return;
     onPlayer({ type: "start" });
     setOrigin(null);
     current.current = { kind: "preview" };
@@ -1338,10 +1352,10 @@ export default function App() {
       case "stop": stopReading(); return;
       case "read-selection": readSelection(); return;
       case "voice-settings":
-        setHubOpen(false); setVoicesOpen(false); setSettingsOpen((open) => !open);
+        setHubOpen(false); setVoicesOpen(false); setReaderPanel(current => current === "voice" ? null : "voice");
         return;
       case "hub":
-        setSettingsOpen(false); setVoicesOpen(false); setHubOpen((open) => !open);
+        setReaderPanel(null); setVoicesOpen(false); setHubOpen((open) => !open);
         return;
       case "help-guide": case "help-releases":
         void openUrl(HELP_URLS[command]).catch(console.error);
@@ -1478,8 +1492,67 @@ export default function App() {
   const speechSettings = canStart || screen === "external";
   // A shortcut read can fail while any screen is open, and its error lands
   // here: never hide the bar out from under one.
-  const showFooter =
-    canStart || speechSettings || reading !== "idle" || player.error !== null;
+  const showTransport = canStart || speechSettings || reading !== "idle" || player.error !== null;
+  const showFooter = showTransport || exportJob.job.kind !== "idle";
+
+  useEffect(() => {
+    const root = shell.current;
+    if (!root) return;
+    const apply = () => {
+      const topHeight = headerBar.current?.offsetHeight ?? 0;
+      const bottomHeight = footerBar.current?.offsetHeight ?? 0;
+      // …and where the controls themselves stop, in the shell's own
+      // coordinates, which is what an absolutely positioned layer uses.
+      const box = root.getBoundingClientRect();
+      /* Where the CONTROLS stop, measured off the controls themselves.
+       *
+       * Not the bar's box (24px of frost room past them) and not the row's
+       * content box either (a 30px button centred in a 36px row leaves
+       * slack). The row's own children hug the buttons, so their edge is the
+       * one a person sees and the one a layer should sit 12px from. */
+      const edge = (row: HTMLElement | null, side: "top" | "bottom") => {
+        // The controls THEMSELVES, however deeply the bar nests them: a
+        // wrapper is a couple of pixels taller than what it wraps, and those
+        // pixels land in the gap a person is looking at.
+        const controls = row
+          ? [...row.querySelectorAll("button, select, input, a")]
+          : [];
+        if (!controls.length) return null;
+        const rects = controls.map((control) => control.getBoundingClientRect());
+        return side === "top"
+          ? Math.max(...rects.map((rect) => rect.bottom))
+          : Math.min(...rects.map((rect) => rect.top));
+      };
+      const top = edge(headerRow.current, "top");
+      const bottom = edge(footerRow.current, "bottom");
+      const inset = (name: string, value: string) => {
+        if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
+      };
+      inset("--shell-top-h", `${topHeight}px`);
+      inset("--shell-bottom-h", `${bottomHeight}px`);
+      inset(
+        "--shell-top-inner",
+        `${top === null ? headerBar.current?.offsetHeight ?? 0 : Math.round(top - box.top)}px`,
+      );
+      inset(
+        "--shell-bottom-inner",
+        `${bottom === null ? footerBar.current?.offsetHeight ?? 0 : Math.round(box.bottom - bottom)}px`,
+      );
+    };
+    apply();
+    // Sidebar dragging can deliver several resizes in a frame. Coalesce them;
+    // playback position and panel state never recreate this observer.
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; apply(); });
+    });
+    for (const element of [root, headerBar.current, footerBar.current, headerRow.current, footerRow.current]) {
+      if (element) observer.observe(element);
+    }
+    return () => { observer.disconnect(); if (frame) cancelAnimationFrame(frame); };
+  }, [gate, language, showFooter, screen, sideOpen]);
+  // Navigation changes the popover's context; returning must not revive it.
+  useEffect(() => { setReaderPanel(null); }, [screen, openBook?.id]);
 
   if (gate === "checking") return null;
   if (gate === "setup") {
@@ -1527,7 +1600,7 @@ export default function App() {
           // Lets go of the focus after a mouse press, like every opener (HIG
           // 4.2): kept, its tooltip hung over the sheet it opened (27/09).
           if (pressedByPointer()) event.currentTarget.blur();
-          setSettingsOpen(false); setVoicesOpen(false); setHubOpen(true);
+          setReaderPanel(null); setVoicesOpen(false); setHubOpen(true);
         }}
         aria-label={text("hub.title")}
         title={text("hub.title")}
@@ -1579,9 +1652,43 @@ export default function App() {
         toggleLabel={text(sideOpen ? "sidebar.close" : "sidebar.open")}
         resizeLabel={text(sideOpen ? "sidebar.resize" : "sidebar.pull")}
         foot={chrome}
-        /* Home screens fold to icons (owner, 09/10); a book's page folds
-           the column away, as it always has. */
-        rail={inBook ? undefined : (
+        showLogo={!inBook}
+        /* Every screen folds to the same rail. In a book its icons open
+           the document's lists through the same state machine. */
+        rail={inBook ? (
+          <nav aria-label={text("sidebar.lists")} className="flex flex-col items-center gap-1">
+            {([
+              { tab: "contents", icon: <BookClosedIcon />, label: text("reader.toc_title") },
+              { tab: "notes", icon: <NoteIcon />, label: text("notes.count", { count: pageInfo?.annotations ?? 0 }) },
+              { tab: "search", icon: <SearchIcon />, label: text("reader.search") },
+            ] as const).map((item) => (
+              <div
+                key={item.tab}
+                data-reader-list={item.tab}
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "mouse") return;
+                  setReaderPanel(null);
+                  if (item.tab === "notes") setNotesFocus(null);
+                  previewSide(item.tab);
+                }}
+                onPointerLeave={leavePreview}
+              >
+                <RailIcon
+                  preview
+                  expanded={previewTab === item.tab}
+                  icon={item.icon}
+                  label={item.label}
+                  active={previewTab === item.tab || (!previewTab && side.tab === item.tab)}
+                  onPress={() => {
+                    dismissPreview();
+                    if (item.tab === "notes") setNotesFocus(null);
+                    dispatchSide({ type: "show", tab: item.tab });
+                  }}
+                />
+              </div>
+            ))}
+          </nav>
+        ) : (
           <>
             <nav aria-label={text("aria.workspace")} className="flex flex-col items-center gap-1">
               {[...tabs, ...tools].map((item) => (
@@ -1675,6 +1782,37 @@ export default function App() {
           </div>
         )}
       </SideColumn>
+      {previewTab && (
+        <div
+          ref={previewRoot}
+          data-sidebar-preview={previewTab}
+          role="complementary"
+          aria-label={text(previewTab === "contents" ? "reader.toc_title" : previewTab === "notes" ? "sidebar.notes_tab" : "reader.search")}
+          onPointerEnter={holdPreview}
+          onPointerLeave={leavePreview}
+          onFocusCapture={holdPreview}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) leavePreview();
+          }}
+          style={{ left: RAIL_WIDTH + 12, width: Math.max(320, sideWidth), maxWidth: `calc(100vw - ${RAIL_WIDTH + 24}px)` }}
+          className="fixed top-3 bottom-3 z-30 before:absolute before:inset-y-0 before:-left-3 before:w-3"
+        >
+          <Surface edge="strong" material="glass" radius="sheet" className="fade-in flex h-full min-h-0 flex-col overflow-hidden shadow-lifted">
+            <div className="flex shrink-0 items-center gap-2 px-6 pt-5 pb-4">
+              <h3 className="m-0 min-w-0 flex-1 text-base font-semibold">
+                {text(previewTab === "contents" ? "reader.toc_title" : previewTab === "notes" ? "sidebar.notes_tab" : "reader.search")}
+              </h3>
+              <IconButton
+                onClick={() => dispatchSide({ type: "show", tab: previewTab })}
+                aria-label={text("sidebar.open")}
+                title={text("sidebar.open")}
+              ><SidebarIcon /></IconButton>
+              <IconButton onClick={dismissPreview} aria-label={text("aria.close")} title={text("aria.close")}><CloseIcon /></IconButton>
+            </div>
+            <div ref={setPreviewSlot} className="flex min-h-0 flex-1 flex-col px-2" />
+          </Surface>
+        </div>
+      )}
     {/* The DOL premium-blur shell (owner, 02/09): header and footer are
        overlays and the page scrolls UNDER them, which is the only way a
        backdrop blur has anything to blur. Screens learn the bars' heights
@@ -1695,17 +1833,8 @@ export default function App() {
       <Toolbar
         leading={
           <div className="flex min-w-0 items-center gap-1">
-          {/* Folded, the column's head is gone and the Mac's window buttons
-              sit over this corner instead: room for them (they end at x 72;
-              with the 24px gutter this spacer puts the first control at 88,
-              16px of air after the zoom button), then - on the home
-              screens - the switch that brings the column back, Codex's own
-              arrangement. A book's toolbar has no such switch (owner, 16/09:
-              "UI đọc sách thì sẽ không cần icon sidebar"): its ▤, notes and
-              search buttons each unfold the column on their own list. */}
-          {/* Only where the column folds away entirely - a book's page; at
-              home it folds to icons, and the lights sit over those. */}
-          {!sideOpen && inBook && WINDOW_BUTTONS_IN_PAGE && <span aria-hidden="true" className="w-[64px] shrink-0" />}
+          {/* Window buttons stay over the rail on every screen, including
+              the reader, so the toolbar needs no folded-state spacer. */}
           {/* A home screen's title, where a book's stands, with the mode
               switch before it (owner, 16/09: "trên title thì nút ở đây là
               nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of
@@ -1760,6 +1889,7 @@ export default function App() {
                   dispatchSide({ type: "show", tab: "contents" });
                 }}
                 aria-label={sideTab === "contents" ? text("reader.toc_hide") : text("reader.toc_show")}
+                aria-expanded={sideTab === "contents"}
                 title={sideTab === "contents" ? text("reader.toc_hide") : text("reader.toc_show")}
                 className={sideTab === "contents" ? "text-ink" : ""}
               >
@@ -1785,6 +1915,19 @@ export default function App() {
               <h2 className="m-0 min-w-0 flex-1 truncate px-1 text-base font-bold">
                 {openBook.title}
               </h2>
+              <Button
+                size="sm"
+                data-popover-trigger
+                aria-haspopup="dialog"
+                aria-expanded={bookExportOpen}
+                disabled={exporting || reading !== "idle" || updater.phase.kind === "installing" || updater.phase.kind === "installed"}
+                onClick={event => {
+                  if (pressedByPointer()) event.currentTarget.blur();
+                  setReaderPanel(current => current === "export" ? null : "export");
+                }}
+              >
+                {text("audiobook.title")}
+              </Button>
               {pageInfo && (
                 /* Where you are, on request: the page keeps nothing but the
                    book (owner, 02/09). A hover or a focus shows it.
@@ -1851,9 +1994,8 @@ export default function App() {
               <>
                 {/* Books' pair: "AA" for how the page is set, a lens for
                     finding words in it. Size, pages/scroll and the finer
-                    choices live behind AA; the appearance switch stands
-                    beside them while the column is folded (owner, 06/09;
-                    the column's foot carries it otherwise). */}
+                    choices live behind AA; appearance stays in the column's
+                    foot, including its folded rail. */}
                 <IconButton
                   data-popover-trigger
                   /* The tooltip follows focus, and a mouse click leaves the
@@ -1863,7 +2005,7 @@ export default function App() {
                      panel instead (HIG 4.2). */
                   onClick={(event) => {
                     if (pressedByPointer()) event.currentTarget.blur();
-                    setReadingSettingsOpen((value) => !value);
+                    setReaderPanel(current => current === "reading" ? null : "reading");
                   }}
                   aria-label={text("reader.settings")}
                   title={text("reader.settings")}
@@ -1876,7 +2018,7 @@ export default function App() {
                 <IconButton
                   onClick={(event) => {
                     if (pressedByPointer()) event.currentTarget.blur();
-                    setReadingSettingsOpen(false);
+                    closeReaderPanel("reading");
                     dispatchSide({ type: "show", tab: "search" });
                   }}
                   aria-label={text("reader.search")}
@@ -1894,15 +2036,9 @@ export default function App() {
           {tab === "library" && !openBook && (
             <span ref={setActionsSlot} className="contents" />
           )}
-          {/* What the column's foot carries - the hub, the appearance, the
-              language - is here only while the column is folded: one place
-              at a time (HIG 3.16). A book's toolbar takes the appearance
-              switch alone (owner, 06/09: beside AA; 16/09: "tối ưu UI tuỳ
-              layout") - the hub and the language are one unfold away. At
-              home the folded column keeps the hub and the appearance in its
-              icon rail (09/10), so only the language, which a rail has no
-              room for, comes up here. */}
-          {!sideOpen && (screen === "reader" && openBook ? themeSwitch : inBook ? chrome : languageSelect)}
+          {/* The rail keeps the hub and appearance on every screen. Only
+              the language selector moves to the toolbar while folded. */}
+          {!sideOpen && languageSelect}
           </>
         }
       />
@@ -1923,8 +2059,9 @@ export default function App() {
               reading={reading !== "idle"}
               mode={readingMode}
               prefs={prefs}
-              sidebarTab={sideOpen ? side.tab : null}
-              sidebarSlot={sideOpen ? sideSlot : null}
+              sidebarTab={sideOpen ? side.tab : previewTab}
+              sidebarSlot={sideOpen ? sideSlot : previewSlot}
+              sidebarPreview={previewTab !== null}
               reveal={reveal}
               notesFocus={notesFocus}
               onShowNotes={(focus) => {
@@ -1986,6 +2123,7 @@ export default function App() {
             /* The reader's own way in: the same "read from here" a book's
                paragraph offers, on a passage that was never a book. */
             onReadPart={(entry, segmentId) => {
+              if (exportBusy.current) return;
               onPlayer({ type: "start" });
               setOrigin({ kind: "external" });
               setReadingAt(entry.at);
@@ -2030,7 +2168,7 @@ export default function App() {
               <span className="ml-auto">
                 <ExportAudio
                   job={exportJob.job}
-                  disabled={!content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
+                  disabled={exporting || updater.phase.kind === "installing" || updater.phase.kind === "installed" || !content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
                   /* The read button's own words for a price it could not
                      fetch: a disabled export with no reason was a dead end. */
                   cost={pricing && estimateFailed
@@ -2058,6 +2196,10 @@ export default function App() {
       {showFooter && (
       <footer ref={footerBar} className="absolute inset-x-0 bottom-0 z-20">
         <GradientBlur edge="bottom" />
+        <div className="relative z-10">
+          <ExportStatus job={exportJob.job} onCancel={exportJob.cancel} onDismiss={exportJob.dismiss}
+            onReview={exportJob.review ? () => setReviewOpen(true) : null} />
+        </div>
         {/* What the voice is doing floats just above the transport (owner,
             06/10), centred, like Books' and Music's now-playing capsule: it
             adds nothing to the bar's measured height, so the panels and the
@@ -2123,6 +2265,7 @@ export default function App() {
             the frost's room sits on the inner edge of each bar - the
             header's bottom, the footer's top (owner, 02/09: "tương đồng với
             header"). */}
+        {showTransport && (
         <div ref={footerRow} className="relative z-10 grid min-h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-3 pt-6">
           {/* Left: the other way in. Middle: what a click does. Right: what
               the voice is up to. A grid keeps the middle in the middle
@@ -2308,9 +2451,8 @@ export default function App() {
                       // so opening this on top of that put a panel where the
                       // one underneath could not be read or reached - and
                       // even the tooltip landed across it (owner, 04/09).
-                      setSettingsOpen(false);
                       setVoicesOpen(false);
-                      setCostOpen((open) => !open);
+                      setReaderPanel(current => current === "cost" ? null : "cost");
                     }}
                     aria-label={text("cost.open")}
                     title={text("cost.open")}
@@ -2357,7 +2499,7 @@ export default function App() {
                         hint: voice.id === voiceId ? text("voices.in_use") : undefined,
                         onSelect: () => switchVoice(voice.id),
                       })),
-                      { label: text("voices.manage"), onSelect: () => setVoicesOpen(true) },
+                      { label: text("voices.manage"), onSelect: () => { setReaderPanel(null); setVoicesOpen(true); } },
                     ]}
                   />
                 )}
@@ -2415,8 +2557,7 @@ export default function App() {
                   // panel where nobody can reach it.
                   if (previewing !== null) stopPreview();
                   setVoicesOpen(false);
-                  setCostOpen(false);
-                  setSettingsOpen((value) => !value);
+                  setReaderPanel(current => current === "voice" ? null : "voice");
                 }}
                 aria-label={text("player.settings_open")}
                 title={
@@ -2464,6 +2605,7 @@ export default function App() {
             )}
           </div>
         </div>
+        )}
       </footer>
       )}
       <Presence open={readingSettingsOpen && screen === "reader" && openBook !== null}>
@@ -2477,7 +2619,7 @@ export default function App() {
           onAppearance={chooseAppearance}
           prefs={prefs}
           onPrefs={choosePrefs}
-          onClose={() => setReadingSettingsOpen(false)}
+          onClose={() => closeReaderPanel("reading")}
         />}
       </Presence>
       <Presence open={costOpen && pricing}>
@@ -2493,7 +2635,7 @@ export default function App() {
           spent={spent}
           onScope={changeScope}
           onBudget={changeBudget}
-          onClose={() => setCostOpen(false)}
+          onClose={() => closeReaderPanel("cost")}
         />}
       </Presence>
       <Presence open={settingsOpen && speechSettings}>
@@ -2509,7 +2651,7 @@ export default function App() {
           voiceId={voiceId}
           rate={rate}
           rates={RATES}
-          reading={reading !== "idle"}
+          reading={reading !== "idle" || exporting}
           shortlisted={shortlist.length}
           voicesError={voicesError}
           readingLanguage={readingLanguage}
@@ -2535,10 +2677,10 @@ export default function App() {
           noteReading={noteReading}
           onChime={rememberChime}
           onNoteReading={rememberNoteReading}
-          onManageVoices={() => { setSettingsOpen(false); setVoicesOpen(true); }}
+          onManageVoices={() => { setReaderPanel(null); setVoicesOpen(true); }}
           pronunciations={pronunciations}
-          onPronunciations={() => { setSettingsOpen(false); setPronounceOpen(true); }}
-          onOpenHub={() => { setSettingsOpen(false); setHubOpen(true); }}
+          onPronunciations={() => { setReaderPanel(null); setPronounceOpen(true); }}
+          onOpenHub={() => { setReaderPanel(null); setHubOpen(true); }}
           output={audioOutput}
           /* Just close. This used to re-list the catalogue on the way out,
              in case a key had been added while the panel was open - but
@@ -2551,7 +2693,7 @@ export default function App() {
             // A sample started from the Voice picker ends with the panel,
             // as one started from the voice list ends with that sheet.
             if (previewing !== null) stopPreview();
-            setSettingsOpen(false);
+            closeReaderPanel("voice");
           }}
         />}
       </Presence>
@@ -2561,7 +2703,7 @@ export default function App() {
           voices={voices}
           keysSet={keysSet}
           onSaveKey={saveKey}
-          reading={reading !== "idle"}
+          reading={reading !== "idle" || exporting}
           onClose={() => setHubOpen(false)}
         />
       </Presence>
@@ -2571,15 +2713,33 @@ export default function App() {
       <Presence open={updater.open}>
         <UpdatePanel
           phase={updater.phase}
+          exportBlocked={exporting}
           auto={updater.auto}
           onQuit={updater.onQuit}
-          onInstallNow={() => void updater.installNow()}
+          onInstallNow={() => { if (!exportBusy.current) void updater.installNow(); }}
           onInstallOnQuit={() => void updater.installOnQuit()}
           onSkip={updater.skip}
           onAuto={updater.setAuto}
-          onRestart={updater.restart}
+          onRestart={() => { if (!exportBusy.current) updater.restart(); }}
           onClose={updater.dismiss}
         />
+      </Presence>
+      <Presence open={bookExportOpen && openBook !== null}>
+        {openBook && <BookExportPanel key={openBook.id} title={openBook.title} chapters={openBook.chapters}
+          voice={voices.find(v => v.id === voiceId)?.label ?? voiceId} rate={rate}
+          available={Boolean(voiceId) && !isPaidVoice(voiceId)} busy={exporting || reading !== "idle" || updater.phase.kind === "installing" || updater.phase.kind === "installed"}
+          onClose={() => closeReaderPanel("export")} onStart={range => {
+            closeReaderPanel("export");
+            void exportJob.startBook({ bookId: openBook.id, title: openBook.title, ...range, voiceId,
+              voiceLabel: voices.find(v => v.id === voiceId)?.label ?? voiceId, rate });
+          }} />}
+      </Presence>
+      <Presence open={quitExportOpen}>
+        <ExportQuitPanel onKeep={() => setQuitExportOpen(false)} onQuit={() => {
+          setQuitExportOpen(false);
+          quitAfterExport.current = true;
+          if (exporting) exportJob.cancel(); else void invoke("exit_now");
+        }} />
       </Presence>
       <Presence open={reviewOpen && exportJob.review !== null}>
         {exportJob.review && (

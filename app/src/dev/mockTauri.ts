@@ -447,6 +447,7 @@ const VOICE_FAIL = new URLSearchParams(window.location.search).get("voicefail");
 const KEY_FAIL = new URLSearchParams(window.location.search).get("keyfail");
 const DOWNLOAD_HOLD = new URLSearchParams(window.location.search).get("download") === "hold";
 let mockExportId = 100;
+let activeMockExport: number | null = null;
 /** The pasted text split the way the engine splits sentences, near enough
  * for the harness: at a full stop, question or exclamation mark. */
 function mockSentences(text: string): { index: number; text: string }[] {
@@ -1308,6 +1309,25 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "plugin:dialog|save") {
     return Promise.resolve("/Volumes/Phim/ReadEase giọng đọc.wav");
   }
+  if (command === "export_attention") return Promise.resolve(null);
+  if (command === "export_book") {
+    const id = ++mockExportId;
+    activeMockExport = id;
+    const state = new URLSearchParams(window.location.search).get("export");
+    const later = (ms: number, action: () => void) => setTimeout(() => { if (activeMockExport === id) action(); }, ms);
+    later(100, () => emit("engine:export_progress", { id, done: 2, total: 12, phase: "synthesising" }));
+    if (state !== "hold") {
+      later(1500, () => emit("engine:export_progress", { id, done: 12, total: 12, phase: "normalising" }));
+      later(2500, () => emit("engine:export_progress", { id, done: 12, total: 12, phase: "encoding" }));
+      later(4000, () => {
+        activeMockExport = null;
+        emit("engine:export_done", state === "fail"
+          ? { id, ok: false, error: "Bộ máy đọc đã dừng đột ngột. Hãy khởi động lại ứng dụng." }
+          : { id, ok: true, result: { path: args.path, seconds: 1200 } });
+      });
+    }
+    return Promise.resolve(id);
+  }
   if (command === "export_text") {
     const id = ++mockExportId;
     const total = 4;
@@ -1441,6 +1461,11 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     return Promise.resolve(null);
   }
   if (command === "stop_reading") {
+    if (activeMockExport !== null) {
+      const id = activeMockExport;
+      activeMockExport = null;
+      setTimeout(() => emit("engine:export_done", { id, ok: true, result: { stopped: true } }), 250);
+    }
     stopMockReading();
     return Promise.resolve(null);
   }
