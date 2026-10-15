@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
 updated: 2026-10-14
+summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, and Paste-text audio export with sentence review."
+tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
   specifies: [readease:app/src/screens/Reader.tsx, readease:app/src/ui/playback.ts]
   dependsOn: [readease-logic-reading, readease-ux-voices]

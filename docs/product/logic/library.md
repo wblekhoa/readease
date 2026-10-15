@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Library (logic)"
 status: active
 updated: 2026-10-10
+summary: "Import and library rules (RE-LIB): only text-based PDF and EPUB up to 200 MiB, copied into the app library with the original untouched, duplicates focused, DRM and scans refused with a reason, per-book progress."
+tags: [area/data-import, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-LIB
 relations:
   specifiedBy: [readease-ux-library]

@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Help and feedback (logic)"
 status: active
 updated: 2026-10-15
+summary: "Rule RE-HELP-001: Report a Problem opens GitHub's bug form prefilled only with build id, macOS version and chip family, falls back to the plain form, and sends nothing from documents."
+tags: [stack/tauri, stack/rust, surface/macos]
 reqPrefix: RE-HELP
 relations:
   implements: [readease:app/src/ui/feedback.ts, readease:app/src-tauri/src/log.rs]

@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
 updated: 2026-10-15
+summary: "Reading and playback rules (RE-PLAY): resume from heard progress, transient text never stored, Stop always wins, chapter chimes, pronunciations, Vietnamese abbreviations, and Paste-text audio export with AI-speech mark, loudness, subtitles and re-takes."
+tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
 relations:
   specifiedBy: [readease-ux-reading]

@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Releases"
 status: active
 updated: 2026-10-10
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.21, newest first."
+tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
 ---

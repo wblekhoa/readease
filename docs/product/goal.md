@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Product goal"
 status: active
 updated: 2026-10-10
+summary: "Why ReadEase exists: listen to Vietnamese and English EPUB, PDF and pasted text in a natural voice on an Apple Silicon Mac without uploading documents, plus its audience, success measures and non-goals."
+tags: [area/reading, area/voice, area/audio, surface/macos]
 ---
 # ReadEase — Product goal
 

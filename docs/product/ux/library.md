@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Library (UX)"
 status: active
 updated: 2026-10-10
+summary: "How the ReadEase Library shelf works: importing PDF and EPUB by button, drag-and-drop or Apple Books, refusal feedback, removing a book while keeping the original, and per-book reading progress."
+tags: [area/data-import, area/book, stack/react, stack/tauri, surface/macos]
 relations:
   specifies: [readease:app/src/screens/Library.tsx, readease:app/src/screens/AppleBooksPanel.tsx]
   dependsOn: [readease-logic-library]

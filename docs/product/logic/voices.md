@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Voices and models (logic)"
 status: active
 updated: 2026-10-15
+summary: "Voice and model rules (RE-VOICE): reader-chosen downloads, idle model release, low-memory build hint, language hints instead of refusals, Đức Trí default, and paid voices on a local write-only key with named refusals and budget."
+tags: [area/voice, area/security, area/performance, stack/python, surface/macos]
 reqPrefix: RE-VOICE
 relations:
   specifiedBy: [readease-ux-voices]

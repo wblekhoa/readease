@@ -5,6 +5,8 @@ product: readease
 title: "ReadEase — Voices and models (UX)"
 status: active
 updated: 2026-10-10
+summary: "How a reader chooses what ReadEase reads with: first-run choices, Voices & models downloads and builds, a language-first voice list with previews and favourites, and paid API voices with key, cost and budget."
+tags: [area/voice, stack/react, stack/tauri, surface/macos]
 relations:
   specifies: [readease:app/src/screens/Setup.tsx, readease:app/src/ui/ModelPanel.tsx, readease:app/src/ui/VoicesPanel.tsx, readease:app/src/ui/ProviderKeys.tsx]
   dependsOn: [readease-logic-voices]
