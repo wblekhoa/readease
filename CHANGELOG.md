@@ -6,6 +6,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## 0.1.22
 
+- Patch urllib3 and source-map-js to their security-fixed versions.
+
 - The Reader shares the Library’s collapsible sidebar. Hover Contents, Notes or
   Search in the folded rail to use the matching floating panel without moving
   the page; it stays while the pointer or keyboard focus is inside. Expand
