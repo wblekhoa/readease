@@ -81,6 +81,7 @@ pub fn acquire_selection() -> Result<String, i32> {
 const ENGINE_GONE: &str = "Bộ máy đọc đã dừng đột ngột. Hãy khởi động lại ứng dụng.";
 
 pub struct EngineClient {
+    app: AppHandle,
     stdin: Arc<Mutex<ChildStdin>>,
     child: Mutex<Child>,
     next_id: AtomicU64,
@@ -149,6 +150,7 @@ impl Shell for TauriShell {
         if event == "engine:export_done" {
             crate::export_attention(self.app.clone());
         }
+        crate::reading_tray::event(&self.app, event, &payload);
         let _ = self.app.emit(event, payload);
     }
     fn tray(&self, visible: bool) {
@@ -283,7 +285,7 @@ impl Pump {
                         voiced,
                     });
                 }
-                Some("position") => {
+                Some("position") | Some("sentence") => {
                     let read_id = message.get("id").and_then(Value::as_u64);
                     let Some(read_id) = read_id
                         .filter(|id| Some(*id) == *self.current_read.lock().unwrap())
@@ -378,6 +380,7 @@ impl EngineClient {
         watch_default_output(shell.clone(), Arc::downgrade(&output), default_output_name, DEFAULT_OUTPUT_POLL);
 
         let client = Arc::new(Self {
+            app: app.clone(),
             stdin,
             child: Mutex::new(child),
             next_id: AtomicU64::new(1),
@@ -467,6 +470,7 @@ impl EngineClient {
         // unbounded stream it always did.
         if let Some(object) = params.as_object_mut() {
             object.insert("window".into(), json!(ENGINE_WINDOW));
+            object.insert("sentence_progress".into(), json!(true));
         }
         let was_reading = self.is_reading();
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
@@ -486,6 +490,7 @@ impl EngineClient {
         }
         // The menu bar indicator lives for the whole reading - including
         // paused, which the Qt shell got wrong and left no way out.
+        crate::reading_tray::preparing(&self.app);
         self.show_tray(true);
         self.voice_started
             .store(false, std::sync::atomic::Ordering::SeqCst);
@@ -549,6 +554,7 @@ impl EngineClient {
         // Stopping releases the pause too: the next reading starts audible.
         self.paused.store(false, Ordering::SeqCst);
         self.forget_pause();
+        crate::reading_tray::finished(&self.app);
         self.show_tray(false);
         let reply = self.request("stop", json!({}));
         eprintln!("[stop] audio+engine in {:?}", began.elapsed());
@@ -556,6 +562,7 @@ impl EngineClient {
     }
 
     pub fn pause(&self) {
+        crate::reading_tray::paused(&self.app, true);
         self.paused.store(true, Ordering::SeqCst);
         *self.paused_since.lock().unwrap() = Some(std::time::SystemTime::now());
         self.player.pause();
@@ -566,6 +573,7 @@ impl EngineClient {
     /// the device is NOT started here: the audio thread starts it once the
     /// sentence is back in it, or 20 ms of the old place would play first.
     pub fn resume(&self) {
+        crate::reading_tray::paused(&self.app, false);
         let since = self.paused_since.lock().unwrap().take();
         if should_rewind(since, std::time::SystemTime::now()) {
             self.rewind.store(true, Ordering::SeqCst);
@@ -811,6 +819,21 @@ mod tests {
         assert!(settle(&h.shell, "reading:position", 2), "s2 không bao giờ được báo");
         let reached = h.feedback.reached.lock().unwrap();
         assert_eq!(reached.iter().map(|(_, s)| s.as_str()).collect::<Vec<_>>(), ["s1", "s2"]);
+    }
+
+    // RE-PLAY-023: progress must wait for the ear, and stale readings cannot update it.
+    #[test]
+    fn sentence_progress_waits_for_audio_and_drops_stale_readings() {
+        let h = harness(0, false);
+        for _ in 0..3 { h.lines.send(chunk_line()).unwrap(); }
+        h.lines.send(json!({"event": "sentence", "id": 99, "current": 9, "total": 12}).to_string()).unwrap();
+        h.lines.send(json!({"event": "sentence", "id": 1, "current": 3, "total": 12}).to_string()).unwrap();
+        std::thread::sleep(Duration::from_millis(80));
+        assert_eq!(h.shell.count("reading:sentence"), 0);
+        h.sink.played(3);
+        assert!(settle(&h.shell, "reading:sentence", 1));
+        assert_eq!(h.shell.count("reading:position"), 0);
+        assert!(h.feedback.reached.lock().unwrap().is_empty());
     }
 
     /// A stop between the position and its audio: the highlight must not

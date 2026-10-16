@@ -857,6 +857,7 @@ class _Session:
         self._speak(
             request_id, utterances, voice_id, rate, settings,
             window=params.get("window"), language=language,
+            sentence_progress=params.get("sentence_progress") is True,
             # The shell's word that this is the APP's own fixed sentence -
             # the voice-preview sample - and not something the reader wrote
             # or captured. It is what makes the clip cacheable; see `_speak`.
@@ -1275,6 +1276,7 @@ class _Session:
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
             book_id=book_id, window=params.get("window"), language=language,
+            sentence_progress=params.get("sentence_progress") is True,
         )
 
     def _voice_catalogue(self) -> list[dict[str, Any]]:
@@ -3030,6 +3032,7 @@ class _Session:
         book_id: str | None = None,
         book_audio: bool = False,
         window: Any = None,
+        sentence_progress: bool = False,
         language: str | None = None,
         app_text: bool = False,
         sink: ExportSink | None = None,
@@ -3164,6 +3167,9 @@ class _Session:
             measured_upto = upto
             measured_samples = samples_out
 
+        # RE-PLAY-023: count actual spoken sentences, never include their text.
+        sentence_total = sum(len(split_sentences(u.text)) or bool(u.text.strip()) for u in utterances)
+        sentence_current = 0
         last_export_progress = -float("inf")
         try:
             for position, utterance in enumerate(utterances):
@@ -3234,6 +3240,13 @@ class _Session:
                     return np.clip(samples * gain, -1.0, 1.0)
 
                 for index, sentence in enumerate(sentences):
+                    sentence_current += 1
+                    if sink is None and sentence_progress:
+                        if not self._await_credit():
+                            stopped = True
+                            break
+                        self._send({"id": request_id, "event": "sentence",
+                                    "current": sentence_current, "total": sentence_total})
                     if index:
                         if sink is not None and paired:
                             sink.end()

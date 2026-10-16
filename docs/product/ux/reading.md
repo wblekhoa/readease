@@ -109,6 +109,19 @@ relations:
 - **Paste text**: up to 100,000 characters; paragraph breaks kept; long text is split into parts ("Reading part 2/7").
   Markdown is read as meant (marks dropped, link text read, not the address). Pasted text is not added to the Library,
   not logged and not written to the audio cache.
+- **Menu-bar reading controls — implementation awaiting native smoke** (RE-PLAY-023): clicking the reading icon opens a menu with a disabled
+  Preparing… / Reading · sentence n/N / Paused · sentence n/N row, Pause/Resume, Stop and Open ReadEase.
+  The icon appears when the selection shortcut is pressed, before acquisition/voice warm-up, and remains while
+  paused. Pause waits for the first sentence; Stop works during preparation and hides the icon immediately.
+  Open ReadEase restores and focuses the main window. Status, tooltip and actions follow the app language.
+  The menu never displays selected text. A selection acquisition error hides the icon.
+- **Floating controller B — approved, not built** (RE-PLAY-024): a bottom-centred pill on the cursor's screen,
+  two icon buttons (Pause/Resume in a progress ring, Stop), no text. It is only for external or hidden/minimised
+  playback; it can be dragged and remembers its position. Preparing uses an indeterminate ring; Reduce Motion
+  disables rotation. Completion hides it after three seconds; Stop hides it immediately. System light/dark theme,
+  VoiceOver labels including the sentence count, and a default-on settings switch are required. Open ReadEase stays
+  in the menu-bar menu. A real non-activating panel must first pass focus/selection, fullscreen, latency and memory
+  measurements; a focus failure means keep the menu-only implementation.
 - **Progress** is saved per book from what was actually heard, not from what was synthesized ahead.
 
 ## Screens and states

@@ -72,7 +72,7 @@ class ShellEngineContractTests(unittest.TestCase):
         self.assertIn("const ENGINE_WINDOW: usize = AUDIO_QUEUE_FRAMES - 1;", RUST)
 
     def test_the_events_the_shell_reads_are_the_events_the_engine_writes(self) -> None:
-        for event in ("chunk", "position"):
+        for event in ("chunk", "position", "sentence"):
             self.assertIn(f'Some("{event}")', RUST)
             self.assertIn(f'"event": "{event}"', PYTHON)
         # What the shell pulls off each event.

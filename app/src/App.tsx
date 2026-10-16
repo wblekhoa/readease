@@ -973,7 +973,7 @@ export default function App() {
     });
     // The global shortcut hands the captured text to the webview, which owns
     // the voice and rate, and the webview asks the engine to speak it.
-    const external = listen<{ text: string }>("reading:external", (event) => {
+    const external = listen<{ text: string; capture_id?: number }>("reading:external", (event) => {
       if (exportBusy.current) return;
       const captured = event.payload.text;
       const at = Date.now();
@@ -989,6 +989,7 @@ export default function App() {
       setPosition(null);
       invoke("read_selection_text", {
         text: captured,
+        captureId: event.payload.capture_id,
         voiceId: speech.current.voiceId,
         rate: speech.current.rate,
       }).catch((error) => {

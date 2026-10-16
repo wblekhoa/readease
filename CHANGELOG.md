@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The reading menu-bar icon opens controls instead of stopping on click: current
+  sentence, Pause/Resume, Stop and Open ReadEase, in the app's language. It appears
+  as soon as a selection capture starts, including voice preparation. No selected
+  text is shown. Stop cancels a capture still in progress.
+
 ## 0.1.22
 
 - Patch urllib3 and source-map-js to their security-fixed versions.

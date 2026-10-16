@@ -1,6 +1,7 @@
 mod audio;
 mod engine;
 mod identity;
+mod reading_tray;
 
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -30,6 +31,10 @@ type Engine = Arc<EngineClient>;
 
 /// The live engine, swappable when a model switch demands a fresh process.
 struct EngineSlot(std::sync::Mutex<Engine>);
+// RE-PLAY-023: Stop invalidates selections still being captured or handed to the page.
+#[derive(Default)]
+struct SelectionRequest(std::sync::Mutex<u64>, std::sync::Mutex<()>);
+
 struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
 
 /// An update downloaded and waiting to be installed when the app quits
@@ -270,8 +275,11 @@ fn read_selection_text(
     segment_id: Option<String>,
     voice_id: String,
     rate: f64,
+    capture_id: Option<u64>,
 ) -> Result<(), String> {
-    let _ = app;
+    let request = app.state::<SelectionRequest>();
+    let generation = request.0.lock().unwrap();
+    if capture_id.is_some_and(|id| id != *generation) { return Ok(()); }
     client_of(&engine).fire("read", serde_json::json!({
         "text": text, "segment_id": segment_id,
         "voice_id": voice_id, "rate": rate,
@@ -280,16 +288,28 @@ fn read_selection_text(
 
 #[tauri::command(async)]
 fn engine_request(
+    app: tauri::AppHandle,
     engine: tauri::State<EngineSlot>,
     method: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
-    client_of(&engine).request(&method, params)
+    let reply = client_of(&engine).request(&method, params.clone())?;
+    if method == "config.set" && params["key"] == "ui_language" {
+        reading_tray::language(&app, params["value"].as_str().unwrap_or("en"));
+    }
+    Ok(reply)
 }
 
 #[tauri::command(async)]
-fn stop_reading(engine: tauri::State<EngineSlot>) -> Result<(), String> {
-    client_of(&engine).stop()
+fn stop_reading(app: tauri::AppHandle, engine: tauri::State<EngineSlot>) -> Result<(), String> {
+    stop_from_controls(&app, &client_of(&engine))
+}
+
+fn stop_from_controls(app: &tauri::AppHandle, engine: &Engine) -> Result<(), String> {
+    let request = app.state::<SelectionRequest>();
+    let mut generation = request.0.lock().unwrap();
+    *generation += 1;
+    engine.stop()
 }
 
 #[tauri::command(async)]
@@ -379,21 +399,37 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
         let _ = engine.stop();
         return;
     }
-    match engine::acquire_selection() {
-        Ok(selection) => {
-            let _ = app.emit("reading:external", serde_json::json!({
-                "text": selection,
-            }));
-            let _ = app.emit("external:status", serde_json::json!({
-                "reason": "reading",
-            }));
+    let capture_id = {
+        let state = app.state::<SelectionRequest>();
+        let mut generation = state.0.lock().unwrap();
+        *generation += 1;
+        *generation
+    };
+    reading_tray::preparing(app);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let request = app.state::<SelectionRequest>();
+        // Clipboard save/copy/restore must never overlap between shortcuts.
+        let _capture = request.1.lock().unwrap();
+        if *request.0.lock().unwrap() != capture_id { return; }
+        let selection = engine::acquire_selection();
+        let generation = request.0.lock().unwrap();
+        if *generation != capture_id { return; }
+        match selection {
+            Ok(selection) => {
+                let _ = app.emit("reading:external", serde_json::json!({
+                    "text": selection, "capture_id": capture_id,
+                }));
+                let _ = app.emit("external:status", serde_json::json!({"reason": "reading"}));
+            }
+            Err(code) => {
+                reading_tray::finished(&app);
+                let _ = app.emit("external:status", serde_json::json!({
+                    "reason": engine::selection_status_name(code),
+                }));
+            }
         }
-        Err(code) => {
-            let _ = app.emit("external:status", serde_json::json!({
-                "reason": engine::selection_status_name(code),
-            }));
-        }
-    }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -432,6 +468,7 @@ pub fn run() {
                 .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
             app.manage(EngineSlot(std::sync::Mutex::new(client.clone())));
             app.manage(TraySlot(tray_slot.clone()));
+            app.manage(SelectionRequest::default());
             app.manage(OpenedFiles(std::sync::Mutex::new(Vec::new())));
             app.manage(InstallOnQuit {
                 armed: std::sync::atomic::AtomicBool::new(false),
@@ -442,20 +479,10 @@ pub fn run() {
             app.manage(media::register(app.handle()));
             app.manage(media::ArtworkCache::default());
 
-            // Menu bar indicator: exists for the whole app life, visible only
-            // while reading; one click stops without surfacing the window.
-            let tray = tauri::tray::TrayIconBuilder::with_id("reading")
-                .icon(app.default_window_icon().cloned().expect("app icon"))
-                .tooltip("ReadEase đang đọc - bấm để dừng")
-                .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
-                        if let Some(engine) = engine_of(tray.app_handle()) {
-                            let _ = engine.stop();
-                        }
-                    }
-                })
-                .build(app)?;
-            let _ = tray.set_visible(false);
+            // RE-PLAY-023: controls stay in a native menu, in the app language.
+            let language = client.request("config.get", serde_json::json!({"key": "ui_language"}))
+                .ok().and_then(|reply| reply["result"]["value"].as_str().map(str::to_owned));
+            let tray = reading_tray::install(app.handle(), language.as_deref() == Some("vi"))?;
             *tray_slot.lock().unwrap() = Some(tray);
 
             // The saved shortcut lives in the engine's settings.json, so it

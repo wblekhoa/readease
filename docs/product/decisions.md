@@ -12,6 +12,16 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-16 · External reading uses menu controls first, floating controller B after a native spike
+- **Context**: selection reading gives no immediate visible response and its menu-bar icon stops on click.
+- **Decision**: the owner chose B: the smallest immediately visible controller that still offers Pause/Resume
+  (sentence-progress ring) and Stop. Open ReadEase belongs in the menu-bar menu, keeping the pill to two buttons
+  and revealing no document text. First implement the localised native menu and preparation feedback (RE-PLAY-023).
+- **Evidence**: owner's approved handover, 2026-10-16. B remains unbuilt (RE-PLAY-024) pending a second-webview
+  non-activating NSPanel spike using existing dependencies: TextEdit remains frontmost with its test selection,
+  fullscreen/Spaces visibility, ≤150 ms appearance, <40 MB added RSS. Test on the secondary display only.
+- **Reversal**: if focus is stolen, stop at the menu implementation; do not ship the floating controller.
+
 ## 2026-10-16 · Short sentences stay at temperature 0.3 after the blind listening test
 - **Context**: RE-PLAY-017 shipped 0.3 for sentences of three words or fewer on a machine measure (heard exactly 61 % →
   71 %) while its blind listening test was still open; the reversal was "back to 0.8 if the owner hears it worse".

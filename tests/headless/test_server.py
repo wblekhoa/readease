@@ -3384,7 +3384,7 @@ def _until(replies, done) -> list[dict]:
 
 
 def _frames(messages) -> int:
-    return sum(1 for m in messages if m.get("event") in {"chunk", "position"})
+    return sum(1 for m in messages if m.get("event") in {"chunk", "position", "sentence"})
 
 
 class RemainingTimeReceipts(unittest.TestCase):
@@ -3417,6 +3417,20 @@ class RemainingTimeReceipts(unittest.TestCase):
         settings.write_text('{"chapter_chime": "off"}', encoding="utf-8")
         flat = [segment for chapter in book.chapters for segment in chapter.segments]
         return repository, settings, flat
+
+    # RE-PLAY-023: sentence counts contain no private text and ride the ear's queue.
+    def test_sentence_progress_counts_sentences_inside_a_paragraph(self) -> None:
+        replies = run_server(
+            [{"id": 3, "method": "read", "params": {
+                "text": "Hello world. Another sentence!\n\nLast sentence.",
+                "sentence_progress": True,
+                "voice_id": "adam", "rate": 1.0,
+            }}], FakeEngine(chunks_per_sentence=1),
+        )
+        progress = [r for r in replies if r.get("event") == "sentence"]
+        self.assertEqual([(r["current"], r["total"]) for r in progress],
+                         [(1, 3), (2, 3), (3, 3)])
+        self.assertTrue(all(set(r) == {"event", "id", "current", "total"} for r in progress))
 
     def test_every_position_says_how_long_the_rest_of_the_reading_takes(self) -> None:
         from tempfile import TemporaryDirectory
@@ -3548,6 +3562,7 @@ class FlowControlReceipts(unittest.TestCase):
     were processed, and the frame count at that moment is the claim.
     """
 
+    SENTENCE_PROGRESS = False
     WINDOW = 2
     TEXT = "Câu một. Câu hai. Câu ba. Câu bốn."
 
@@ -3557,7 +3572,8 @@ class FlowControlReceipts(unittest.TestCase):
         with _live_server(FakeEngine(chunks_per_sentence=3)) as (requests, replies):
             _say(requests, {"id": 3, "method": "read",
                             "params": {"text": self.TEXT, "voice_id": "adam",
-                                       "window": self.WINDOW}})
+                                       "window": self.WINDOW,
+                                       "sentence_progress": self.SENTENCE_PROGRESS}})
             seen: list[dict] = []
             while _frames(seen) < self.WINDOW:
                 seen.extend(_until(replies, lambda m: True))
@@ -3627,6 +3643,11 @@ class FlowControlReceipts(unittest.TestCase):
             self.assertFalse(more[-1]["result"]["stopped"])
             self.assertGreater(_frames(seen) + _frames(more), self.WINDOW)
 
+
+
+class SentenceFlowControlReceipts(FlowControlReceipts):
+    # RE-PLAY-023: the menu's extra frames preserve the same bounded protocol.
+    SENTENCE_PROGRESS = True
 
 class SpokenCueTests(unittest.TestCase):
     """The two sentences the voice says that are not in the book.

@@ -360,7 +360,9 @@ pub(crate) fn drain(
             if let Some(segment) = next.message.get("segment_id").and_then(Value::as_str) {
                 feedback.reached(next.read_id, segment);
             }
-            shell.emit("reading:position", next.message);
+            // RE-PLAY-023: sentence progress follows the same ear-anchored queue.
+            let event = if next.message["event"] == "sentence" { "reading:sentence" } else { "reading:position" };
+            shell.emit(event, next.message);
         }
     };
     loop {
