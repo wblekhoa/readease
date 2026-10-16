@@ -176,6 +176,12 @@ Cùng cách đo (Whisper large-v3-turbo, VieNeu 3.6.3 int8, câu ngắn ở nhi�
 
 Kết luận: không làm gói chung; sửa riêng "OK" ở tầng chuẩn hoá (RE-PLAY-019).
 
+## 9. Bài nghe mù câu ngắn 0,8 vs 0,3 (chủ chấm 16/10)
+
+10 câu ngắn × 2 lượt, giọng Adam, nhãn xáo (giọng Ngọc Linh trên trang chưa chấm). **0,3 thắng 8 · 0,8 thắng 7 · ngang 5.** Tai người coi hai mức gần như ngang nhau, không chê 0,3 "đều giọng"; trong khi máy nghe đúng chữ nhiều hơn ở 0,3 (61 % → 71 %, §6). Cổng P1 bước 1 (0,3 ≥ 0,8) đạt: **giữ 0,3** (RE-PLAY-017).
+
+Theo câu: 0,3 thắng rõ ở "Vâng." (2/2); 0,8 thắng "Mở đầu." (2/2); các câu khác chia đều.
+
 ## Nguồn `[fetched 2026-10-13]`
 
 - VieNeu: https://github.com/pnnbao97/VieNeu-TTS (README, `compare/v3.6.3...v3.8.3`, releases) ·

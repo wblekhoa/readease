@@ -61,6 +61,7 @@ helper vừa dựng cho D.
 
 1. **Bài nghe mù câu ngắn 0,8 vs 0,3** (trang nghe như bài A/B 13/10, 10 câu × 2 giọng × 2 mức, xáo nhãn).
    → verify: chủ chấm xong; 0,3 không bị chê "đều giọng" (điểm trung bình 0,3 ≥ 0,8).
+   **16/10: đạt.** Adam 20 cặp: 0,3 thắng 8 · 0,8 thắng 7 · ngang 5 → giữ 0,3. Khảo sát §9.
 2. **Temperature riêng cho câu ≤3 từ**: hằng `SHORT_UTTERANCE_TEMPERATURE` cạnh `SHORT_UTTERANCE_WORDS` trong
    `src/vieneu_reader/speech/vieneu.py`, chỉ áp vào nhánh `sdk.infer`.
    → verify: test đơn vị (nhánh ngắn gọi `infer` với temperature mới, nhánh dài giữ cài đặt người dùng); khoá cache

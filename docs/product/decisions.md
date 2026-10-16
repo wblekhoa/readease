@@ -4,13 +4,23 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-15
+updated: 2026-10-16
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-10-16 · Short sentences stay at temperature 0.3 after the blind listening test
+- **Context**: RE-PLAY-017 shipped 0.3 for sentences of three words or fewer on a machine measure (heard exactly 61 % →
+  71 %) while its blind listening test was still open; the reversal was "back to 0.8 if the owner hears it worse".
+- **Decision**: keep 0.3.
+- **Evidence**: owner's blind ratings, Adam, 10 phrases × 2 takes, labels shuffled: 0.3 preferred 8, 0.8 preferred 7,
+  equal 5 - to the ear a draw, so the machine-measured accuracy decides. Ngọc Linh's rows were not rated.
+  `docs/local-voice-model-survey-2026-10.md` §9.
+- **Reversal**: `SHORT_UTTERANCE_TEMPERATURE` back to 0.8 and `SYNTHESIS_REVISION` bumped, in
+  `src/vieneu_reader/speech/vieneu.py`.
 
 ## 2026-10-15 · Background audiobook export shares one voice lane
 - **Context**: the owner asked to continue audiobook development, protect app performance, and let a reader export in
