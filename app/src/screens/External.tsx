@@ -7,7 +7,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { text, type TextKey } from "../i18n";
-import { Button, IconButton, Kbd, Notice, SectionTitle, Surface } from "../ui/controls";
+import { Button, IconButton, Kbd, Notice, SectionTitle, Surface, Switch } from "../ui/controls";
 import { ArrowLeftIcon, ChevronDownIcon, CursorTextIcon, InfoIcon, PlayIcon, ScrollIcon } from "../ui/icons";
 import { EmptyState } from "../ui/patterns";
 import { scrollBehavior } from "../ui/motion";
@@ -220,6 +220,16 @@ export function External({
   const [alone, setAlone] = useState<number | null>(null);
   const [recording, setRecording] = useState(false);
   const [shortcutError, setShortcutError] = useState(false);
+  const [floating, setFloating] = useState(true);
+  const [savingFloating, setSavingFloating] = useState(false);
+  const [floatingError, setFloatingError] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void invoke<boolean>("floating_controller_enabled").then((enabled) => {
+      if (alive && typeof enabled === "boolean") setFloating(enabled);
+    }).catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (!recording) return;
@@ -363,6 +373,19 @@ export function External({
 
   const asides = (
     <>
+      <div className="flex max-w-[52ch] items-center gap-3 text-sm text-ink-mute">
+        <Switch checked={floating} disabled={savingFloating} label={text("external.floating_controller")}
+          onChange={(enabled) => {
+            setSavingFloating(true);
+            setFloatingError(false);
+            void invoke("set_floating_controller_enabled", { enabled })
+              .then(() => setFloating(enabled))
+              .catch(() => setFloatingError(true))
+              .finally(() => setSavingFloating(false));
+          }} />
+        <span>{text("external.floating_controller")}</span>
+      </div>
+      {floatingError && <Notice tone="error">{text("external.floating_error")}</Notice>}
       {recording && (
         <Notice tone="info" className="max-w-[52ch]">
           {text("external.shortcut_hint")}

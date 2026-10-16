@@ -6,6 +6,17 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Refine the native floating reading controls with equal hit targets and spacing,
+  clearer symbols, and hover/press feedback. The owner confirmed the preceding
+  candidate's buttons; the refined UI remains a local candidate for review.
+
+- Local candidate: a native floating reading controller with Pause/Resume,
+  sentence progress and Stop, plus a default-on switch on the external-reading
+  screen. It uses AppKit controls without an extra webview, remembers its dragged
+  position, follows system appearance and Reduce Motion, and hides after reading.
+  Repeating the shortcut toggles the same live selection; a new selection replaces
+  it. Native interaction and performance acceptance are pending owner testing.
+
 - The reading menu-bar icon opens controls instead of stopping on click: current
   sentence, Pause/Resume, Stop and Open ReadEase, in the app's language. It appears
   as soon as a selection capture starts, including voice preparation. No selected

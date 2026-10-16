@@ -571,6 +571,8 @@ export const TEXT = {
     "1. Open whatever app has the text you want to hear.\n2. Select exactly that text.\n3. Press the shortcut; ReadEase reads it without bringing this window forward.",
   ],
   "external.shortcut": ["Phím tắt", "Keyboard shortcut"],
+  "external.floating_controller": ["Hiện điều khiển nổi khi đọc bên ngoài", "Show floating controls when reading outside ReadEase"],
+  "external.floating_error": ["Chưa lưu được tuỳ chọn điều khiển nổi. Hãy thử lại.", "Could not save the floating controls preference. Try again."],
   "external.permission_note": [
     "Lần đầu, macOS cần cho phép ReadEase gửi lệnh sao chép trong ứng dụng bạn đang dùng.",
     "The first time, macOS must let ReadEase send the copy command in the app you are using.",

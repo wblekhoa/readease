@@ -12,6 +12,21 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-16 · Build the floating controller in regular ReadEase for owner testing
+- **Context**: the owner asked to stop separate test apps and continue in the regular app, with manual testing by the owner.
+- **Decision**: integrate B as an AppKit non-activating NSPanel with native buttons and progress, using the existing Cocoa
+  bridge and dependencies. This avoids an extra webview, JavaScript renderer and controller polling loop. Menu and panel
+  share playback state, and the external-reading screen has the default-on switch.
+- **Evidence**: owner's instruction, 2026-10-16: "làm trên app chuẩn rồi để tôi tự test". The owner subsequently confirmed
+  the controller is visible and "các nút hoạt động tốt nhé", then requested UI refinement. This confirms the visible
+  controls and button actions only; focus/selection, fullscreen, accessibility and performance acceptance remain pending.
+  The earlier diagnostic's timing/focus results belong to its second-webview experiment only.
+- **UI refinement**: owner confirmed the scope: "Viên điều khiển nổi: cân lại nút, vòng tiến độ, padding và hover".
+  Use equal 48pt targets, 8pt inset/gap, 16pt symbols and the HIG's native 10%/20% hover/press feedback.
+  The compact size and existing actions stay the same; appearance changes redraw on pointer events without timers.
+- **Reversal**: disable the floating controller and retain the menu if focus, selection, fullscreen, accessibility or
+  performance checks fail on the real build. This is a local candidate, not public-release acceptance.
+
 ## 2026-10-16 · External reading uses menu controls first, floating controller B after a native spike
 - **Context**: selection reading gives no immediate visible response and its menu-bar icon stops on click.
 - **Decision**: the owner chose B: the smallest immediately visible controller that still offers Pause/Resume

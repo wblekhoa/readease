@@ -1240,6 +1240,8 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
   if (command === "set_selection_shortcut") return Promise.resolve(null);
+  if (command === "floating_controller_enabled") return Promise.resolve(true);
+  if (command === "set_floating_controller_enabled") return Promise.resolve(null);
   // Nothing asked the mock to open a document (HIG 3.18): the window's
   // queue is empty, as it is for an app opened by its icon.
   if (command === "take_opened_files") return Promise.resolve([]);

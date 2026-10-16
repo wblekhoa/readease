@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-15
+updated: 2026-10-16
 summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, Paste-text sentence review and background M4B book export."
 tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
@@ -115,13 +115,23 @@ relations:
   paused. Pause waits for the first sentence; Stop works during preparation and hides the icon immediately.
   Open ReadEase restores and focuses the main window. Status, tooltip and actions follow the app language.
   The menu never displays selected text. A selection acquisition error hides the icon.
-- **Floating controller B — approved, not built** (RE-PLAY-024): a bottom-centred pill on the cursor's screen,
+- **Floating controller B — buttons confirmed by owner, remaining acceptance pending** (RE-PLAY-024): a bottom-centred pill on the cursor's screen,
   two icon buttons (Pause/Resume in a progress ring, Stop), no text. It is only for external or hidden/minimised
   playback; it can be dragged and remembers its position. Preparing uses an indeterminate ring; Reduce Motion
   disables rotation. Completion hides it after three seconds; Stop hides it immediately. System light/dark theme,
   VoiceOver labels including the sentence count, and a default-on settings switch are required. Open ReadEase stays
-  in the menu-bar menu. A real non-activating panel must first pass focus/selection, fullscreen, latency and memory
-  measurements; a focus failure means keep the menu-only implementation.
+  in the menu-bar menu. The controller is an AppKit NSPanel with native buttons and a progress view; it adds no
+  webview, background polling or audio buffer. Its position and default-on preference use the app's native preferences.
+  The switch is on the external-reading screen. The same live selection toggles Pause/Resume when the shortcut is
+  repeated; a different selection replaces it. Only counts enter the panel; selected text stays in the reading path.
+  The compact 120×64pt layout uses equal 48pt hit targets, 8pt insets and an 8pt gap; 16pt semibold symbols sit inside.
+  Native hover/pressed disks use the existing HIG's 10%/20% ink steps. Pointer entry/exit redraw only the button;
+  there is no hover timer, layout animation or polling. Disabled controls have no hover disk.
+  Owner requested testing in the regular app instead of further automated probes on 2026-10-16, and confirmed visibility
+  and working buttons before requesting UI refinement. Focus/selection,
+  fullscreen, dragging, Reduce Motion, VoiceOver, latency and whole-app memory remain acceptance checks on the real
+  build; results from the retired second-webview diagnostic do not validate this implementation. Do not publish it as
+  accepted until those checks pass; a focus failure means keep the menu-only implementation.
 - **Progress** is saved per book from what was actually heard, not from what was synthesized ahead.
 
 ## Screens and states

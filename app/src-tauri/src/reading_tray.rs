@@ -6,8 +6,12 @@ struct Model {
     paused: bool,
     current: u64,
     total: u64,
+    external: bool,
+    completed: bool,
+    generation: u64,
 }
 impl Model {
+    fn can_toggle(&self) -> bool { self.active && (self.total > 0 || self.paused) }
     fn labels(&self) -> (String, &'static str, &'static str, &'static str) {
         let state = match (self.vi, self.paused, self.total > 0) {
             (true, true, _) => "Tạm dừng",
@@ -47,6 +51,15 @@ impl Model {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_pause_before_the_first_audio_can_always_resume() {
+        let mut model = Model { active: true, ..Default::default() };
+        assert!(!model.can_toggle());
+        model.paused = true;
+        assert!(model.can_toggle());
+        model.active = false;
+        assert!(!model.can_toggle());
+    }
     #[test]
     fn preparing_progress_pause_and_languages() {
         let mut model = Model {
@@ -115,18 +128,12 @@ pub(crate) fn install(app: &tauri::AppHandle, vi: bool) -> tauri::Result<tauri::
         .on_menu_event(|app, event| {
             match event.id().as_ref() {
                 "reading-toggle" => {
-                    let _ = app.emit("media:command", "toggle");
+                    self::toggle(app);
                 }
                 "reading-stop" => {
                     // The page may still be idle during acquisition. Silence and
                     // invalidate that capture natively, then reconcile its UI.
-                    let app = app.clone();
-                    std::thread::spawn(move || {
-                        if let Some(engine) = crate::engine_of(&app) {
-                            let _ = crate::stop_from_controls(&app, &engine);
-                        }
-                        let _ = app.emit("media:command", "stop");
-                    });
+                    self::stop(app);
                 }
                 "reading-open" => {
                     if let Some(window) = app.get_webview_window("main") {
@@ -144,6 +151,24 @@ pub(crate) fn install(app: &tauri::AppHandle, vi: bool) -> tauri::Result<tauri::
     Ok(tray)
 }
 
+pub(crate) fn stop(app: &tauri::AppHandle) {
+    // Dismiss immediately, including during acquisition/engine warm-up.
+    finished(app);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if let Some(engine) = crate::engine_of(&app) {
+            let _ = crate::stop_from_controls(&app, &engine);
+        }
+        let _ = app.emit("media:command", "stop");
+    });
+}
+
+pub(crate) fn toggle(app: &tauri::AppHandle) {
+    let can_toggle = app.try_state::<ReadingTray>()
+        .is_some_and(|tray| tray.model.lock().unwrap().can_toggle());
+    if can_toggle { let _ = app.emit("media:command", "toggle"); }
+}
+
 fn update(app: &tauri::AppHandle, change: impl FnOnce(&mut Model) + Send + 'static) {
     // Menu APIs hop to the main thread. Never hold this mutex on a worker
     // while synchronously waiting for that thread (a menu click may need it).
@@ -159,21 +184,28 @@ fn apply(app: &tauri::AppHandle, change: impl FnOnce(&mut Model)) {
     let (status, toggle, stop, open) = model.labels();
     let _ = tray.status.set_text(&status);
     let _ = tray.toggle.set_text(toggle);
-    let _ = tray.toggle.set_enabled(model.active && model.total > 0);
+    let _ = tray.toggle.set_enabled(model.can_toggle());
     let _ = tray.stop.set_text(stop);
     let _ = tray.open.set_text(open);
+    crate::reading_panel::update(
+        if model.active { 1 } else if model.completed { 2 } else { 0 },
+        model.paused, model.current, model.total, model.external, model.vi, model.generation,
+    );
     if let Some(icon) = app.tray_by_id("reading") {
         let _ = icon.set_tooltip(Some(format!("ReadEase · {status}")));
         let _ = icon.set_visible(model.active);
     }
 }
 
-pub(crate) fn preparing(app: &tauri::AppHandle) {
-    update(app, |m| {
+pub(crate) fn preparing(app: &tauri::AppHandle, external: bool) {
+    update(app, move |m| {
         m.active = true;
         m.paused = false;
         m.current = 0;
         m.total = 0;
+        m.external = external;
+        m.completed = false;
+        m.generation += 1;
     });
 }
 pub(crate) fn language(app: &tauri::AppHandle, language: &str) {
@@ -184,7 +216,15 @@ pub(crate) fn paused(app: &tauri::AppHandle, paused: bool) {
     update(app, move |m| m.paused = paused);
 }
 pub(crate) fn finished(app: &tauri::AppHandle) {
-    update(app, |m| m.active = false);
+    update(app, |m| { m.active = false; m.completed = false; });
+}
+pub(crate) fn is_external_active(app: &tauri::AppHandle) -> bool {
+    app.try_state::<ReadingTray>().is_some_and(|tray| {
+        let model = tray.model.lock().unwrap(); model.active && model.external
+    })
+}
+pub(crate) fn is_active(app: &tauri::AppHandle) -> bool {
+    app.try_state::<ReadingTray>().is_some_and(|tray| tray.model.lock().unwrap().active)
 }
 pub(crate) fn event(app: &tauri::AppHandle, event: &str, payload: &serde_json::Value) {
     match event {
@@ -196,7 +236,10 @@ pub(crate) fn event(app: &tauri::AppHandle, event: &str, payload: &serde_json::V
                 m.total = total;
             });
         }
-        "reading:done" => finished(app),
+        "reading:done" => {
+            let completed = payload["ok"].as_bool().unwrap_or(false);
+            update(app, move |m| { m.active = false; m.completed = completed; });
+        },
         _ => {}
     }
 }

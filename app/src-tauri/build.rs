@@ -24,5 +24,14 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=ApplicationServices");
     println!("cargo:rustc-link-lib=framework=Carbon");
     println!("cargo:rerun-if-changed={}", source.display());
+    let panel = std::path::PathBuf::from(&manifest).join("../../native/macos/ReadingPanel.m");
+    let panel_object = out_dir.join("reading_panel.o");
+    let status = std::process::Command::new("xcrun")
+        .args(["--sdk", "macosx", "clang", "-c", "-fobjc-arc", "-fmodules", "-mmacosx-version-min=15.0", "-O2"])
+        .arg(&panel).arg("-o").arg(&panel_object).status().expect("compile reading panel");
+    assert!(status.success(), "reading panel failed to compile");
+    println!("cargo:rustc-link-arg={}", panel_object.display());
+    println!("cargo:rustc-link-lib=framework=QuartzCore");
+    println!("cargo:rerun-if-changed={}", panel.display());
     tauri_build::build()
 }

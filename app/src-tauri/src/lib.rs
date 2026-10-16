@@ -2,6 +2,7 @@ mod audio;
 mod engine;
 mod identity;
 mod reading_tray;
+mod reading_panel;
 
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -33,7 +34,23 @@ type Engine = Arc<EngineClient>;
 struct EngineSlot(std::sync::Mutex<Engine>);
 // RE-PLAY-023: Stop invalidates selections still being captured or handed to the page.
 #[derive(Default)]
-struct SelectionRequest(std::sync::Mutex<u64>, std::sync::Mutex<()>);
+struct SelectionRequest(std::sync::Mutex<u64>, std::sync::Mutex<()>, std::sync::Mutex<Option<String>>);
+
+fn repeats_external_selection(external_active: bool, previous: Option<&str>, selected: &str) -> bool {
+    external_active && previous == Some(selected)
+}
+
+#[cfg(test)]
+mod selection_shortcut_tests {
+    use super::repeats_external_selection;
+    #[test]
+    fn the_same_live_external_selection_toggles_but_a_new_selection_replaces_it() {
+        assert!(repeats_external_selection(true, Some("first"), "first"));
+        assert!(!repeats_external_selection(true, Some("first"), "second"));
+        assert!(!repeats_external_selection(false, Some("first"), "first"));
+        assert!(!repeats_external_selection(true, None, "first"));
+    }
+}
 
 struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
 
@@ -280,10 +297,14 @@ fn read_selection_text(
     let request = app.state::<SelectionRequest>();
     let generation = request.0.lock().unwrap();
     if capture_id.is_some_and(|id| id != *generation) { return Ok(()); }
-    client_of(&engine).fire("read", serde_json::json!({
+    let selected = text.clone();
+    let result = client_of(&engine).fire("read", serde_json::json!({
         "text": text, "segment_id": segment_id,
         "voice_id": voice_id, "rate": rate,
-    }))
+        "_external": true,
+    }));
+    if result.is_ok() { *request.2.lock().unwrap() = Some(selected); }
+    result
 }
 
 #[tauri::command(async)]
@@ -393,19 +414,17 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
         export_attention(app.clone());
         return;
     }
-    // Pressed again while a reading is under way, the shortcut stops it -
-    // the same contract the Qt shell shipped.
-    if engine.is_reading() {
-        let _ = engine.stop();
-        return;
-    }
+    // The synthesis request can already be finished while audio remains
+    // queued or paused. The ear's state, not current_read, owns the toggle.
+    let was_reading = reading_tray::is_active(app);
     let capture_id = {
         let state = app.state::<SelectionRequest>();
         let mut generation = state.0.lock().unwrap();
         *generation += 1;
+        if !was_reading { *state.2.lock().unwrap() = None; }
         *generation
     };
-    reading_tray::preparing(app);
+    if !was_reading { reading_tray::preparing(app, true); }
     let app = app.clone();
     std::thread::spawn(move || {
         let request = app.state::<SelectionRequest>();
@@ -417,13 +436,18 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
         if *generation != capture_id { return; }
         match selection {
             Ok(selection) => {
+                let previous = request.2.lock().unwrap();
+                if repeats_external_selection(was_reading && reading_tray::is_external_active(&app), previous.as_deref(), &selection) {
+                    reading_tray::toggle(&app);
+                    return;
+                }
                 let _ = app.emit("reading:external", serde_json::json!({
                     "text": selection, "capture_id": capture_id,
                 }));
                 let _ = app.emit("external:status", serde_json::json!({"reason": "reading"}));
             }
             Err(code) => {
-                reading_tray::finished(&app);
+                if !was_reading { reading_tray::finished(&app); }
                 let _ = app.emit("external:status", serde_json::json!({
                     "reason": engine::selection_status_name(code),
                 }));
@@ -478,6 +502,7 @@ pub fn run() {
             // thread that `setup` runs on - and the one cover it shows.
             app.manage(media::register(app.handle()));
             app.manage(media::ArtworkCache::default());
+            reading_panel::install(app.handle());
 
             // RE-PLAY-023: controls stay in a native menu, in the app language.
             let language = client.request("config.get", serde_json::json!({"key": "ui_language"}))
@@ -528,6 +553,8 @@ pub fn run() {
             read_text,
             read_book,
             engine_request,
+            reading_panel::floating_controller_enabled,
+            reading_panel::set_floating_controller_enabled,
             read_selection_text,
             set_selection_shortcut,
             restart_engine,

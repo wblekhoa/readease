@@ -468,6 +468,7 @@ impl EngineClient {
         // The engine's window onto our queue. Sent with every reading so a
         // shell without it (a batch caller, an old build) still gets the
         // unbounded stream it always did.
+        let external = params.as_object_mut().and_then(|p| p.remove("_external")).and_then(|v| v.as_bool()).unwrap_or(false);
         if let Some(object) = params.as_object_mut() {
             object.insert("window".into(), json!(ENGINE_WINDOW));
             object.insert("sentence_progress".into(), json!(true));
@@ -490,7 +491,7 @@ impl EngineClient {
         }
         // The menu bar indicator lives for the whole reading - including
         // paused, which the Qt shell got wrong and left no way out.
-        crate::reading_tray::preparing(&self.app);
+        crate::reading_tray::preparing(&self.app, external);
         self.show_tray(true);
         self.voice_started
             .store(false, std::sync::atomic::Ordering::SeqCst);
