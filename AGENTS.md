@@ -1,5 +1,3 @@
-If this checkout lives under `~/JAK` (the owner's workspace), read `~/JAK/AGENTS.md` first (map + floor rules), then `~/JAK/companies/app-studio/AGENTS.md`. Standalone clones can ignore this line.
-
 # ReadEase — agent instructions
 
 macOS app that reads EPUB, PDF and pasted text aloud with local voices (UI in `app/`, Python engine in `src/`).
