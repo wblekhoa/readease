@@ -23,7 +23,8 @@ concurrency:
 jobs:
   app:
     name: app
-    runs-on: macos-14
+    # Native Translation uses the macOS 26 SDK; deployment target stays macOS 15.
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4

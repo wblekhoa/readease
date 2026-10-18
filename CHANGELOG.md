@@ -6,6 +6,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## 0.1.23
 
+- Build the native translation bridge with the macOS 26 SDK in CI and protect
+  async replies with a lock across supported Swift compiler versions.
+
 - Translate a scanned selection before reading it, with Apple on-device translation
   (macOS 26+) or local Ollama/LM Studio. Choose Vietnamese or English and a matching
   local voice. Translation is opt-in; Stop/new playback cancels pending work.

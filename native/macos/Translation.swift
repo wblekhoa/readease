@@ -156,10 +156,25 @@ public func cancelBefore(_ generation: UInt64) {
     cancelled.forEach { $0.cancel() }
 }
 
+// The blocking caller and async task share only this locked reply container.
+// Swift compilers must not rely on a semaphore to prove captured-var safety.
+private final class TranslationReply: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: [String: Any] = [:]
+    func store(_ result: [String: Any]) {
+        lock.lock(); defer { lock.unlock() }
+        value = result
+    }
+    func snapshot() -> [String: Any] {
+        lock.lock(); defer { lock.unlock() }
+        return value
+    }
+}
+
 @_cdecl("re_translation_request")
 public func translationRequest(_ raw: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>? {
     let semaphore = DispatchSemaphore(value: 0)
-    var result: [String: Any] = [:]
+    let reply = TranslationReply()
     guard let input = try? JSONDecoder().decode(TranslationInput.self, from: Data(String(cString: raw).utf8)) else {
         return strdup("{\"error\":\"invalid_request\"}")
     }
@@ -171,6 +186,7 @@ public func translationRequest(_ raw: UnsafePointer<CChar>) -> UnsafeMutablePoin
     }
     let task = Task {
         defer { semaphore.signal() }
+        let result: [String: Any]
         do { result = try await performTranslation(input) }
         catch is CancellationError { result = ["error": "cancelled"] }
         catch let error as TranslationFailure { result = ["error": error.code] }
@@ -178,6 +194,7 @@ public func translationRequest(_ raw: UnsafePointer<CChar>) -> UnsafeMutablePoin
             result = ["error": error.code == .cancelled ? "cancelled" : (error.code == .timedOut ? "timeout" : "local_unavailable")]
         }
         catch { result = ["error": "failed"] }
+        reply.store(result)
     }
     jobs[id] = (generation, task)
     registryLock.unlock()
@@ -188,7 +205,7 @@ public func translationRequest(_ raw: UnsafePointer<CChar>) -> UnsafeMutablePoin
     registryLock.lock()
     jobs.removeValue(forKey: id)
     registryLock.unlock()
-    let data = (try? JSONSerialization.data(withJSONObject: result)) ?? Data("{\"error\":\"failed\"}".utf8)
+    let data = (try? JSONSerialization.data(withJSONObject: reply.snapshot())) ?? Data("{\"error\":\"failed\"}".utf8)
     return strdup(String(decoding: data, as: UTF8.self))
 }
 
