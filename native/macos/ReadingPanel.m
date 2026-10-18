@@ -3,12 +3,14 @@
 #import <QuartzCore/QuartzCore.h>
 #include <stdint.h>
 
-// HIG spacing: 8pt inset and gap; equal 48pt native hit targets.
-static const CGFloat controlSize = 48;
-static const CGFloat controlInset = 8;
+// RE-PLAY-024: SpeakEase-style flat capsule; no window shadow or backdrop blur.
+// Keep 40pt native hit targets even though the symbols and ring are smaller.
+static const CGFloat controlSize = 40;
+static const CGFloat controlInset = 4;
+static const CGFloat controlLeading = 4;
 static const CGFloat controlGap = 8;
-static const CGFloat panelWidth = 120;
-static const CGFloat panelHeight = 64;
+static const CGFloat panelWidth = 96;
+static const CGFloat panelHeight = 48;
 
 @interface RDXReadingPanel : NSPanel
 @end
@@ -34,10 +36,10 @@ static const CGFloat panelHeight = 64;
 - (void)mouseExited:(NSEvent *)event { self.pointerInside = NO; self.needsDisplay = YES; }
 - (void)drawRect:(NSRect)dirty {
     // Native equivalent of the existing HIG wash/press (10% / 20% ink).
-    // Leave room for the progress ring outside the hover disk.
+    // Fill the control generously; the progress ring is drawn above this wash.
     if (self.enabled && (self.pointerInside || self.highlighted)) {
         [[NSColor.labelColor colorWithAlphaComponent:self.highlighted ? 0.20 : 0.10] setFill];
-        [[NSBezierPath bezierPathWithOvalInRect:NSInsetRect(self.bounds,4,4)] fill];
+        [[NSBezierPath bezierPathWithOvalInRect:NSInsetRect(self.bounds,2,2)] fill];
     }
     [super drawRect:dirty];
 }
@@ -52,20 +54,36 @@ static const CGFloat panelHeight = 64;
 - (void)drawRect:(NSRect)dirty {
     NSRect circle = NSInsetRect(self.bounds, 2, 2);
     NSBezierPath *track = [NSBezierPath bezierPathWithOvalInRect:circle];
-    track.lineWidth = 2;
+    track.lineWidth = 1.5;
     [NSColor.tertiaryLabelColor setStroke]; [track stroke];
     NSBezierPath *arc = [NSBezierPath bezierPath];
-    arc.lineWidth = 2; arc.lineCapStyle = NSLineCapStyleRound;
+    arc.lineWidth = 1.5; arc.lineCapStyle = NSLineCapStyleRound;
     [arc appendBezierPathWithArcWithCenter:NSMakePoint(NSMidX(circle), NSMidY(circle))
         radius:circle.size.width / 2 startAngle:90 endAngle:90 - 360 * fmax(0, fmin(1, self.progress)) clockwise:YES];
     [NSColor.controlAccentColor setStroke]; [arc stroke];
 }
 @end
 
-@interface RDXReadingBackground : NSVisualEffectView
+@interface RDXReadingBackground : NSView
 @end
 @implementation RDXReadingBackground
 - (BOOL)mouseDownCanMoveWindow { return YES; }
+- (BOOL)isOpaque { return NO; }
+- (void)drawRect:(NSRect)dirty {
+    // Draw only the capsule's silhouette. AppKit window shadows can expose the
+    // rectangular window footprint; a masked visual-effect root also makes that
+    // footprint visible on some backdrops. Match SpeakEase's flat surface instead.
+    NSRect shape = NSInsetRect(self.bounds,0.5,0.5);
+    NSBezierPath *pill = [NSBezierPath bezierPathWithRoundedRect:shape
+        xRadius:shape.size.height/2 yRadius:shape.size.height/2];
+    // Keep the interior solid even when the panel straddles two contrasting
+    // windows. Only pixels outside the rounded silhouette are transparent.
+    [NSColor.windowBackgroundColor setFill];
+    [pill fill];
+    [NSColor.separatorColor setStroke];
+    pill.lineWidth = 1;
+    [pill stroke];
+}
 @end
 
 @interface RDXReadingController : NSObject <NSWindowDelegate>
@@ -124,25 +142,18 @@ static NSString * const enabledKey = @"readingController.enabled";
     self.panel.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary;
     self.panel.opaque = NO;
     self.panel.backgroundColor = NSColor.clearColor;
-    self.panel.hasShadow = YES;
+    self.panel.hasShadow = NO;
     self.panel.movableByWindowBackground = YES;
     self.panel.delegate = self;
     RDXReadingBackground *background = [[RDXReadingBackground alloc] initWithFrame:NSMakeRect(0,0,panelWidth,panelHeight)];
-    background.material = NSVisualEffectMaterialHUDWindow;
-    background.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-    background.state = NSVisualEffectStateActive;
-    background.wantsLayer = YES;
-    background.layer.cornerRadius = panelHeight / 2;
-    background.layer.masksToBounds = YES;
     self.panel.contentView = background;
-    NSRect toggleFrame = NSMakeRect(controlInset,controlInset,controlSize,controlSize);
-    self.ring = [[RDXReadingRing alloc] initWithFrame:toggleFrame];
-    [background addSubview:self.ring];
-    self.spinner = [[NSProgressIndicator alloc] initWithFrame:toggleFrame];
+    NSRect toggleFrame = NSMakeRect(controlLeading,controlInset,controlSize,controlSize);
+    NSRect progressFrame = NSInsetRect(toggleFrame,4,4);
+    self.ring = [[RDXReadingRing alloc] initWithFrame:progressFrame];
+    self.spinner = [[NSProgressIndicator alloc] initWithFrame:progressFrame];
     self.spinner.style = NSProgressIndicatorStyleSpinning;
     self.spinner.controlSize = NSControlSizeRegular;
     self.spinner.displayedWhenStopped = NO;
-    [background addSubview:self.spinner];
     self.toggle = [[RDXReadingButton alloc] initWithFrame:toggleFrame];
     self.stop = [[RDXReadingButton alloc] initWithFrame:NSOffsetRect(toggleFrame,controlSize + controlGap,0)];
     for (NSButton *button in @[self.toggle,self.stop]) {
@@ -151,12 +162,16 @@ static NSString * const enabledKey = @"readingController.enabled";
         button.target = self;
         button.focusRingType = NSFocusRingTypeNone;
         button.contentTintColor = NSColor.labelColor;
-        button.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:16 weight:NSFontWeightSemibold];
+        button.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:14 weight:NSFontWeightMedium];
         [background addSubview:button];
     }
     self.toggle.action = @selector(toggleReading:);
     self.stop.action = @selector(stopReading:);
+    self.stop.contentTintColor = NSColor.secondaryLabelColor;
     self.stop.image = [NSImage imageWithSystemSymbolName:@"stop.fill" accessibilityDescription:nil];
+    // Keep the ring crisp over the hover/press wash. It remains hit-test transparent.
+    [background addSubview:self.ring];
+    [background addSubview:self.spinner];
     [self placeOnScreen:[self cursorScreen]];
 }
 - (NSScreen *)cursorScreen {

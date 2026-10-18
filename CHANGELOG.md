@@ -4,23 +4,27 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.23
 
-- Refine the native floating reading controls with equal hit targets and spacing,
-  clearer symbols, and hover/press feedback. The owner confirmed the preceding
-  candidate's buttons; the refined UI remains a local candidate for review.
-
-- Local candidate: a native floating reading controller with Pause/Resume,
-  sentence progress and Stop, plus a default-on switch on the external-reading
-  screen. It uses AppKit controls without an extra webview, remembers its dragged
-  position, follows system appearance and Reduce Motion, and hides after reading.
-  Repeating the shortcut toggles the same live selection; a new selection replaces
-  it. Native interaction and performance acceptance are pending owner testing.
-
-- The reading menu-bar icon opens controls instead of stopping on click: current
-  sentence, Pause/Resume, Stop and Open ReadEase, in the app's language. It appears
-  as soon as a selection capture starts, including voice preparation. No selected
-  text is shown. Stop cancels a capture still in progress.
+- Translate a scanned selection before reading it, with Apple on-device translation
+  (macOS 26+) or local Ollama/LM Studio. Choose Vietnamese or English and a matching
+  local voice. Translation is opt-in; Stop/new playback cancels pending work.
+- Group selection history into separate capture blocks with timestamps, translated
+  speech first and an expandable original. Improve spacing, soft card shadows,
+  header hover targets and gradient masks at scrolling edges.
+- Use a solid reading underline and a small blue Pause/Resume button in the margin,
+  consistently in selection captures and document detail. Sentence height and text
+  width stay unchanged. Balance page margins and keep both page-turn buttons clickable.
+- Put Translate beside Voice in the selection footer. Matching local voices use
+  the shared picker, while source/provider/model settings stay in Translation options.
+  Voice settings and Voices & models show the current translation status.
+- Add a native floating Pause/Resume, sentence-progress and Stop controller for
+  selection or hidden-window reading. Repeating the shortcut toggles the same live
+  selection; a new selection replaces it. Refine capsule size, hover and transparent
+  corners without an extra webview.
+- The reading menu-bar icon now opens localized status and controls: current
+  sentence, Pause/Resume, Stop and Open ReadEase, including voice preparation.
+- Default new windows to 1280×820 within the display work area; retain saved frames.
 
 ## 0.1.22
 

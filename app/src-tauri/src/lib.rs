@@ -3,6 +3,7 @@ mod engine;
 mod identity;
 mod reading_tray;
 mod reading_panel;
+mod translation;
 
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -184,6 +185,7 @@ fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String>
 
 #[tauri::command(async)]
 fn read_text(
+    app: tauri::AppHandle,
     engine: tauri::State<EngineSlot>,
     text: String,
     segment_id: Option<String>,
@@ -194,6 +196,10 @@ fn read_text(
     // `_speak`'s `app_text`.
     app_text: Option<bool>,
 ) -> Result<(), String> {
+    let request = app.state::<SelectionRequest>();
+    let mut generation = request.0.lock().unwrap();
+    *generation += 1;
+    translation::cancel_before(*generation);
     client_of(&engine).fire("read", serde_json::json!({
         "text": text, "segment_id": segment_id,
         "voice_id": voice_id, "rate": rate,
@@ -216,6 +222,10 @@ fn export_text(
     path: String,
 ) -> Result<u64, String> {
     let software = format!("ReadEase {}", app.package_info().version);
+    let request = app.state::<SelectionRequest>();
+    let mut generation = request.0.lock().unwrap();
+    *generation += 1;
+    translation::cancel_before(*generation);
     client_of(&engine).notify_as("export.text", serde_json::json!({
         "text": text, "voice_id": voice_id, "voice_label": voice_label,
         "rate": rate, "path": path, "software": software,
@@ -229,6 +239,10 @@ fn export_book(
     book_id: String, voice_id: String, voice_label: String, rate: f64,
     path: String, from_chapter: u64, chapters: u64,
 ) -> Result<u64, String> {
+    let request = app.state::<SelectionRequest>();
+    let mut generation = request.0.lock().unwrap();
+    *generation += 1;
+    translation::cancel_before(*generation);
     client_of(&engine).notify_as("export.book", serde_json::json!({
         "book_id": book_id, "voice_id": voice_id, "voice_label": voice_label,
         "rate": rate, "path": path, "from_chapter": from_chapter, "chapters": chapters,
@@ -272,12 +286,17 @@ fn save_export(
 
 #[tauri::command(async)]
 fn read_book(
+    app: tauri::AppHandle,
     engine: tauri::State<EngineSlot>,
     book_id: String,
     segment_id: Option<String>,
     voice_id: String,
     rate: f64,
 ) -> Result<(), String> {
+    let request = app.state::<SelectionRequest>();
+    let mut generation = request.0.lock().unwrap();
+    *generation += 1;
+    translation::cancel_before(*generation);
     client_of(&engine).fire("read.book", serde_json::json!({
         "book_id": book_id, "segment_id": segment_id,
         "voice_id": voice_id, "rate": rate,
@@ -293,18 +312,58 @@ fn read_selection_text(
     voice_id: String,
     rate: f64,
     capture_id: Option<u64>,
-) -> Result<(), String> {
+    entry_id: Option<u64>,
+    selection_key: Option<String>,
+    translation: Option<translation::Options>,
+) -> Result<Option<serde_json::Value>, String> {
     let request = app.state::<SelectionRequest>();
+    let id = {
+        let mut generation = request.0.lock().unwrap();
+        if capture_id.is_some_and(|id| id != *generation) { return Ok(None); }
+        if capture_id.is_none() { *generation += 1; }
+        translation::cancel_before(*generation);
+        *generation
+    };
+    let client = client_of(&engine);
+    if client.is_exporting() { return Err("translation:export_busy".into()); }
+    let selected = selection_key.unwrap_or_else(|| text.clone());
+    let mut spoken = text;
+    let mut voice = voice_id;
+    let mut target = None;
+    if let Some(options) = translation {
+        options.validate()?;
+        {
+            let generation = request.0.lock().unwrap();
+            if *generation != id { return Ok(None); }
+            client.stop()?;
+            reading_tray::translating(&app);
+        }
+        let result = translation::translate(&spoken, &options, id);
+        let generation = request.0.lock().unwrap();
+        if *generation != id { return Ok(None); }
+        match result {
+            Ok(result) => {
+                spoken = result["text"].as_str().ok_or("translation:invalid_output")?.to_string();
+                target = Some(options.target);
+                voice = options.voice_id;
+            }
+            Err(error) => { reading_tray::finished(&app); return Err(error); }
+        }
+    }
     let generation = request.0.lock().unwrap();
-    if capture_id.is_some_and(|id| id != *generation) { return Ok(()); }
-    let selected = text.clone();
-    let result = client_of(&engine).fire("read", serde_json::json!({
-        "text": text, "segment_id": segment_id,
-        "voice_id": voice_id, "rate": rate,
-        "_external": true,
-    }));
-    if result.is_ok() { *request.2.lock().unwrap() = Some(selected); }
-    result
+    if *generation != id { return Ok(None); }
+    if target.is_some() {
+        use tauri::Emitter;
+        // The UI must accept an immediate speech failure even when it arrives
+        // before the command's result; only the translation phase ignores old audio.
+        let _ = app.emit("reading:translation_ready", serde_json::json!({"entry_id": entry_id}));
+    }
+    client.fire("read", serde_json::json!({
+        "text": spoken, "segment_id": if target.is_some() { None } else { segment_id },
+        "voice_id": voice, "rate": rate, "_external": true,
+    }))?;
+    *request.2.lock().unwrap() = Some(selected);
+    Ok(Some(serde_json::json!({ "text": spoken, "voice_id": voice, "target": target })))
 }
 
 #[tauri::command(async)]
@@ -318,6 +377,9 @@ fn engine_request(
     if method == "config.set" && params["key"] == "ui_language" {
         reading_tray::language(&app, params["value"].as_str().unwrap_or("en"));
     }
+    if method == "config.set" && params["key"] == "selection_translation" {
+        *app.state::<SelectionRequest>().2.lock().unwrap() = None;
+    }
     Ok(reply)
 }
 
@@ -330,6 +392,7 @@ fn stop_from_controls(app: &tauri::AppHandle, engine: &Engine) -> Result<(), Str
     let request = app.state::<SelectionRequest>();
     let mut generation = request.0.lock().unwrap();
     *generation += 1;
+    translation::cancel_before(*generation);
     engine.stop()
 }
 
@@ -417,10 +480,12 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
     // The synthesis request can already be finished while audio remains
     // queued or paused. The ear's state, not current_read, owns the toggle.
     let was_reading = reading_tray::is_active(app);
+    let was_translating = reading_tray::is_translating(app);
     let capture_id = {
         let state = app.state::<SelectionRequest>();
         let mut generation = state.0.lock().unwrap();
         *generation += 1;
+        translation::cancel_before(*generation);
         if !was_reading { *state.2.lock().unwrap() = None; }
         *generation
     };
@@ -436,18 +501,19 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
         if *generation != capture_id { return; }
         match selection {
             Ok(selection) => {
-                let previous = request.2.lock().unwrap();
+                let mut previous = request.2.lock().unwrap();
                 if repeats_external_selection(was_reading && reading_tray::is_external_active(&app), previous.as_deref(), &selection) {
                     reading_tray::toggle(&app);
                     return;
                 }
+                *previous = None;
                 let _ = app.emit("reading:external", serde_json::json!({
                     "text": selection, "capture_id": capture_id,
                 }));
                 let _ = app.emit("external:status", serde_json::json!({"reason": "reading"}));
             }
             Err(code) => {
-                if !was_reading { reading_tray::finished(&app); }
+                if !was_reading || was_translating { reading_tray::finished(&app); }
                 let _ = app.emit("external:status", serde_json::json!({
                     "reason": engine::selection_status_name(code),
                 }));
@@ -550,6 +616,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             engine_voices,
+            translation::translation_status,
+            translation::translation_models,
             read_text,
             read_book,
             engine_request,

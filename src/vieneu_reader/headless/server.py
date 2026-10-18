@@ -2386,6 +2386,7 @@ class _Session:
     })
     _CONFIG_KEYS = frozenset({
         "tauri_selection_shortcut",
+        "selection_translation",
         "ui_language",
         "voice",
         # Which voices the switcher offers. The shell writes this through

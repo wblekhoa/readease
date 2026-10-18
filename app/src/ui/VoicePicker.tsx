@@ -55,6 +55,7 @@ export function VoicePicker({
   favorites,
   value,
   locked,
+  disabled = false,
   previewing,
   className = "",
   onChoose,
@@ -71,6 +72,8 @@ export function VoicePicker({
   value: string;
   /** No sample can play: something is being read (HIG 3.13). */
   locked: boolean;
+  /** Freeze the preference during translation/playback or while saving. */
+  disabled?: boolean;
   previewing: string | null;
   className?: string;
   onChoose: (id: string) => void;
@@ -103,6 +106,10 @@ export function VoicePicker({
     setOpen(false);
     if (giveBack) trigger.current?.focus({ preventScroll: true });
   }, [onStopPreview]);
+
+  useEffect(() => {
+    if (disabled && open) close(false);
+  }, [disabled, open, close]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -228,6 +235,7 @@ export function VoicePicker({
     <>
       <SelectButton
         ref={trigger}
+        disabled={disabled}
         id={own}
         aria-haspopup="dialog"
         aria-expanded={open}

@@ -14,7 +14,7 @@
  */
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
-import { CloseIcon } from "./icons";
+import { ChevronDownIcon, CloseIcon } from "./icons";
 import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
 import { ModelProgress, ModelRows } from "./ModelPanel";
 import { ProviderKeys } from "./ProviderKeys";
@@ -111,7 +111,11 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading }: 
 }
 
 /** The sheet the gear on the home screen opens. */
-export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: () => void }) {
+export function SourcesHub({ onClose, translationSummary, onOpenTranslation, ...sources }: SourcesProps & {
+  onClose: () => void;
+  translationSummary: string;
+  onOpenTranslation: () => void;
+}) {
   const downloading = sources.models.job !== null;
   // Esc and a click outside close it - not over a running download, which
   // would go on behind a closed sheet with nothing on screen to say so.
@@ -145,6 +149,12 @@ export function SourcesHub({ onClose, ...sources }: SourcesProps & { onClose: ()
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+        <GroupedSection>
+          <GroupedRow title={text("translation.title")} subtitle={text("translation.scope")}
+            trailing={<Button size="sm" disabled={downloading} aria-label={`${text("translation.open_settings")}: ${translationSummary}`} onClick={onOpenTranslation}>
+              {translationSummary}<ChevronDownIcon />
+            </Button>} />
+        </GroupedSection>
         <ReadingSources {...sources} />
       </div>
       {/* Nothing to confirm: every row acts on its own. The one button is

@@ -27,10 +27,12 @@
  * start, so it stays disabled rather than promising what the engine will
  * not do.
  */
+import { TranslationSettings } from "./TranslationSettings";
+import type { TranslationPreference } from "./useTranslation";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
 import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
-import { CloseIcon, VoiceSwitchIcon } from "./icons";
+import { ChevronDownIcon, CloseIcon, VoiceSwitchIcon } from "./icons";
 import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
 import { ModelProgress, ModelRows } from "./ModelPanel";
@@ -65,6 +67,10 @@ export function languageName(language: ReadingLanguage): string {
 }
 
 export function SettingsPanel({
+  translation,
+  onOpenTranslation,
+  context,
+  panelKind = "voice",
   voices,
   shortlist,
   favorites,
@@ -103,6 +109,10 @@ export function SettingsPanel({
   onClose,
 }: {
   /** The whole catalogue; what each tab offers is decided here. */
+  translation: TranslationPreference;
+  onOpenTranslation: () => void;
+  context: "reader" | "paste" | "external";
+  panelKind?: "voice" | "translation";
   voices: Voice[];
   shortlist: readonly string[];
   /** The voices starred ★: first in the Voice picker, under their own group
@@ -156,6 +166,9 @@ export function SettingsPanel({
   output?: { name: string; default: boolean } | null;
   onClose: () => void;
 }) {
+  const translatingSelection = context === "external" && translation.settings.enabled;
+  const translationSummary = translation.settings.enabled ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
+  const panelTitle = text(panelKind === "translation" ? "translation.open_settings" : "player.settings");
   const downloading = models.job !== null;
   // Escape and a click on the book both put it away; neither does while a
   // download runs, which is the one moment closing hides work in progress.
@@ -178,7 +191,7 @@ export function SettingsPanel({
          own, which is what the guideline's 24 is for (owner, 03/09). */
       radius="sheet"
       ref={panel}
-      dialog={text("player.settings")}
+      dialog={panelTitle}
       /* Over its OWN button, not over the middle of the window. The button
          is the last thing in the footer's right-hand cluster, so the panel's
          right edge sits at the same 24px inset the row is padded by and the
@@ -188,7 +201,7 @@ export function SettingsPanel({
       className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
-        <h3 className="m-0 flex-1 text-sm font-bold">{text("player.settings")}</h3>
+        <h3 className="m-0 flex-1 text-sm font-bold">{panelTitle}</h3>
         <IconButton onClick={onClose} disabled={downloading} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>
@@ -196,6 +209,23 @@ export function SettingsPanel({
       {/* Sideways never: a floating panel scrolls down when the window is
           shorter than it, and nothing else (HIG 3.5, 16/09). */}
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 pb-5">
+        {/* RE-PLAY-025: expose capture translation without implying books are translated. */}
+        {panelKind === "voice" && <GroupedSection>
+          <GroupedRow title={text("translation.title")}
+            subtitle={text(context === "external" ? "translation.mode_hint" : "translation.scope")}
+            trailing={<Button size="sm" onClick={onOpenTranslation} aria-label={`${text("translation.open_settings")}: ${translationSummary}`}>
+              {translationSummary}
+              <ChevronDownIcon />
+            </Button>} />
+        </GroupedSection>}
+        {(panelKind === "translation" || translatingSelection) && <TranslationSettings
+          mode={panelKind}
+          favorites={favorites} previewing={previewing} onPreview={onPreview}
+          onStopPreview={onStopPreview} onFavorite={onFavorite}
+          preference={translation} voices={voices} locked={reading} rate={rate} rates={rates}
+          onRate={onRate} onOpenHub={onOpenHub} downloading={downloading}
+        />}
+        {!translatingSelection && panelKind === "voice" && <>
         <div className="mt-3">
           <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">{text("settings.language")}</p>
           <SegmentedControl
@@ -340,6 +370,7 @@ export function SettingsPanel({
                   row explains itself (HIG 5.1). Neither is locked while
                   reading: the engine reads both at the next press of
                   Read, which is when a change can take effect anyway. */}
+              {context === "reader" && <>
               <GroupedRow
                 title={text("settings.chime")}
                 subtitle={text("settings.chime_hint")}
@@ -362,6 +393,7 @@ export function SettingsPanel({
                   </Select>
                 )}
               />
+              </>}
               {/* The reader's own pronunciations (14/10): a row that says how
                   many, and the list behind it - the voices row's pattern. */}
               <GroupedRow
@@ -378,6 +410,7 @@ export function SettingsPanel({
                   beside the read button carries. */}
               {paidVoice && (
                 <ReadingLimits
+                  scoped={context === "reader"}
                   scope={scope}
                   budget={budget}
                   spent={spent}
@@ -409,6 +442,7 @@ export function SettingsPanel({
             </GroupedSection>
           </>
         )}
+        </>}
         {/* A download started anywhere - the hub, the first-run screen - is
             visible here while this panel is the one open. */}
         <ModelProgress models={models} className="mt-4" />

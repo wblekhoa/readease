@@ -1,3 +1,5 @@
+import { useTranslation } from "./ui/useTranslation";
+import { translationError, translationVoice, selectionVoice, type TranslationResult } from "./ui/translation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
@@ -61,6 +63,7 @@ import { SourcesHub } from "./ui/SourcesHub";
 import { useShortcut } from "./ui/useShortcut";
 import {
   ArrowLeftIcon,
+  ChevronDownIcon,
   NextIcon,
   PauseIcon,
   AiSpeakerIcon,
@@ -199,6 +202,13 @@ export default function App() {
   // first screen. An empty shelf offers the paste screen itself.
   const [tab, setTab] = useState("library");
   const [voices, setVoices] = useState<Voice[]>([]);
+  const translation = useTranslation();
+  const translationContext = useRef({ settings: translation.settings, ready: translation.ready, voices });
+  translationContext.current = { settings: translation.settings, ready: translation.ready, voices };
+  const translationPending = useRef<number | null>(null);
+  const translationWorking = useRef(false);
+  const [translating, setTranslating] = useState(false);
+  const [scanVoice, setScanVoice] = useState<string | null>(null);
   /** Why there are no voices to offer. An empty catalogue is a claim - "this
    * Mac has no voices" - and a failed request is not that claim. */
   const [voicesError, setVoicesError] = useState<string | null>(null);
@@ -281,8 +291,8 @@ export default function App() {
     // Read at the moment of the transition, in whatever language the
     // interface is in then; a later language change does not rewrite what
     // was already said, which is what a person would expect of speech.
-    if (key) setSpoken(text(key));
-  }, [player]);
+    if (key) setSpoken(text(translating ? "translation.translating" : key));
+  }, [player, translating]);
 
   /* The named insets are MEASURED, not declared twice: whatever the bars
      actually occupy (an error line wrapping in the footer, a taller row in
@@ -335,9 +345,10 @@ export default function App() {
   const models = useModels();
   // One chrome popover at a time, including openers exempted by useDismiss.
   // Closing an outgoing Presence must not dismiss the panel replacing it.
-  type ReaderPanel = "voice" | "reading" | "cost" | "export";
+  type ReaderPanel = "voice" | "translation" | "reading" | "cost" | "export";
   const [readerPanel, setReaderPanel] = useState<ReaderPanel | null>(null);
   const settingsOpen = readerPanel === "voice";
+  const translationOpen = readerPanel === "translation";
   const readingSettingsOpen = readerPanel === "reading";
   const costOpen = readerPanel === "cost";
   const bookExportOpen = readerPanel === "export";
@@ -354,6 +365,8 @@ export default function App() {
   const [selection, setSelection] = useState("");
   const readSelection = useCallback(() => {
     if (!selection || exportBusy.current) return;
+    translationPending.current = null; translationWorking.current = false;
+    setTranslating(false);
     onPlayer({ type: "start" });
     if (openBook) setOrigin({ kind: "book", book: openBook });
     current.current = { kind: "text", text: selection };
@@ -431,7 +444,7 @@ export default function App() {
      the pointer comes back - the press rule of every tooltip (HIG 3.13). */
   useEffect(() => {
     if (reading !== "idle") setResumeTip(null);
-  }, [reading]);
+  }, [reading, translating]);
   /* What a paid voice would cost this press of the button, and how far the
      press reaches. `null` estimate means "still counting", and the button
      stays disabled until it is not - the owner's rule (04/09): nobody spends
@@ -445,6 +458,9 @@ export default function App() {
   const exportJob = useExport();
   const exporting = exportJob.job.kind === "running";
   exportBusy.current = exporting;
+  useEffect(() => {
+    if (exporting) { translationPending.current = null; translationWorking.current = false; setTranslating(false); }
+  }, [exporting]);
   const [quitExportOpen, setQuitExportOpen] = useState(false);
   const quitAfterExport = useRef(false);
   useEffect(() => {
@@ -917,6 +933,7 @@ export default function App() {
     const done = listen<{ ok: boolean; error?: string }>(
       "reading:done",
       (event) => {
+        if (translationWorking.current) return;
         // A reading that failed must say so; a silent stop reads as a bug.
         onPlayer({
           type: "done",
@@ -977,25 +994,53 @@ export default function App() {
       if (exportBusy.current) return;
       const captured = event.payload.text;
       const at = Date.now();
-      setExternalHistory((history) =>
-        [{ at, text: captured }, ...history].slice(0, 50),
-      );
-      // Opens itself in the history, so the reader can follow the words
-      // being spoken instead of only hearing them.
+      const { settings, ready, voices } = translationContext.current;
+      const translatedVoice = settings.enabled ? translationVoice(settings, voices) : null;
+      if (!ready || (settings.enabled && !translatedVoice)) {
+        void invoke("stop_reading");
+        onPlayer({ type: "failed", error: text(!ready ? "translation.save_failed" : "translation.voice_missing") });
+        return;
+      }
+      translationPending.current = at;
+      translationWorking.current = settings.enabled;
+      setTranslating(settings.enabled);
+      setScanVoice(translatedVoice);
+      // Translation entries are added only once their spoken text is known,
+      // so paragraph ids always belong to what the user hears.
+      if (!settings.enabled) setExternalHistory(history => [{ at, text: captured }, ...history].slice(0, 50));
       setReadingAt(at);
       onPlayer({ type: "start" });
       setOrigin({ kind: "external" });
-      current.current = { kind: "text", text: captured };
+      current.current = settings.enabled ? null : { kind: "text", text: captured };
       setPosition(null);
-      invoke("read_selection_text", {
+      invoke<TranslationResult | null>("read_selection_text", {
         text: captured,
         captureId: event.payload.capture_id,
+        entryId: at,
         voiceId: speech.current.voiceId,
         rate: speech.current.rate,
-      }).catch((error) => {
-        console.error(error);
-        onPlayer({ type: "failed", error: String(error) });
+        translation: settings.enabled ? { ...settings, voice_id: translatedVoice } : null,
+      }).then(result => {
+        if (translationPending.current !== at) return;
+        translationPending.current = null; translationWorking.current = false;
+        setTranslating(false);
+        if (!result) { onPlayer({ type: "stop" }); current.current = null; return; }
+        if (result.target) {
+          setExternalHistory(history => [{ at, text: result.text, original: captured, target: result.target!, voiceId: result.voice_id }, ...history].slice(0, 50));
+          current.current = { kind: "text", text: result.text };
+          setScanVoice(result.voice_id);
+        }
+      }).catch(error => {
+        if (translationPending.current !== at) return;
+        translationPending.current = null; translationWorking.current = false;
+        setTranslating(false);
+        onPlayer({ type: "failed", error: settings.enabled ? text(translationError(error)) : String(error) });
       });
+    });
+    const translationReady = listen<{ entry_id: number }>("reading:translation_ready", event => {
+      if (translationPending.current !== event.payload.entry_id) return;
+      translationWorking.current = false;
+      setTranslating(false);
     });
     const externalState = listen<{ reason: string }>(
       "external:status",
@@ -1027,12 +1072,15 @@ export default function App() {
       started.then((unlisten) => unlisten());
       external.then((unlisten) => unlisten());
       externalState.then((unlisten) => unlisten());
+      translationReady.then(unlisten => unlisten());
       spent.then((unlisten) => unlisten());
     };
   }, []);
 
   const startReading = useCallback(async () => {
     if (!content.trim() || !voiceId || exporting) return;
+    translationPending.current = null; translationWorking.current = false;
+    setTranslating(false);
     onPlayer({ type: "start" });
     setOrigin({ kind: "paste" });
     current.current = { kind: "text", text: content };
@@ -1048,6 +1096,8 @@ export default function App() {
   const readBookFrom = useCallback(async (segmentId: string | null) => {
     // A paragraph clicked while an export runs would queue behind it.
     if (!openBook || !voiceId || exporting) return;
+    translationPending.current = null; translationWorking.current = false;
+    setTranslating(false);
     onPlayer({ type: "start" });
     setRemaining(null);
     setOrigin({ kind: "book", book: openBook });
@@ -1142,6 +1192,8 @@ export default function App() {
    */
   const previewVoice = useCallback((id: string) => {
     if (exportBusy.current) return;
+    translationPending.current = null; translationWorking.current = false;
+    setTranslating(false);
     onPlayer({ type: "start" });
     setOrigin(null);
     current.current = { kind: "preview" };
@@ -1215,6 +1267,8 @@ export default function App() {
   }, []);
 
   const stopReading = useCallback(() => {
+    translationPending.current = null; translationWorking.current = false;
+    setTranslating(false);
     // The transport answers the finger, not the engine: stopping takes a
     // moment on the other side (the engine replies between utterances) and a
     // button that waits for it reads as a button that did nothing.
@@ -1223,6 +1277,7 @@ export default function App() {
   }, []);
 
   const togglePause = useCallback(() => {
+    if (translating) return;
     if (reading === "reading") {
       onPlayer({ type: "toggle" });
       invoke("pause_audio").catch(console.error);
@@ -1491,6 +1546,12 @@ export default function App() {
   // Voice and speed also drive the global shortcut, so they belong on the
   // selection screen too - just not on the notes utility.
   const speechSettings = canStart || screen === "external";
+  const selectionTranslation = screen === "external" && translation.settings.enabled;
+  const translationSummary = translation.settings.enabled ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
+  const activeSelectionVoice = origin?.kind === "external" && reading !== "idle" ? scanVoice : null;
+  const settingsVoiceId = activeSelectionVoice ?? (screen === "external"
+    ? selectionVoice(translation.settings, voices, voiceId) : voiceId);
+  const settingsHint = selectionTranslation || activeSelectionVoice ? null : hint;
   // A shortcut read can fail while any screen is open, and its error lands
   // here: never hide the bar out from under one.
   const showTransport = canStart || speechSettings || reading !== "idle" || player.error !== null;
@@ -1554,6 +1615,10 @@ export default function App() {
   }, [gate, language, showFooter, screen, sideOpen]);
   // Navigation changes the popover's context; returning must not revive it.
   useEffect(() => { setReaderPanel(null); }, [screen, openBook?.id]);
+  // A preference load/save failure needs a visible retry path.
+  useEffect(() => {
+    if (translation.error && screen === "external") setReaderPanel("translation");
+  }, [translation.error, screen]);
 
   if (gate === "checking") return null;
   if (gate === "setup") {
@@ -1822,6 +1887,7 @@ export default function App() {
        beside the side column; the insets are measured inside it. */}
     <div
       ref={shell}
+      data-workspace={screen}
       className="relative min-w-0 flex-1 overflow-hidden bg-ground"
       style={{ "--shell-top-h": "72px", "--shell-bottom-h": showFooter ? "72px" : "0px" } as CSSProperties}
     >
@@ -2058,6 +2124,8 @@ export default function App() {
               currentSegment={position && position.startsWith("part-") ? null : position}
               currentFigure={figureCue}
               reading={reading !== "idle"}
+              playback={origin?.kind === "book" && (reading === "reading" || reading === "paused") ? reading : null}
+              onTogglePlayback={togglePause}
               mode={readingMode}
               prefs={prefs}
               sidebarTab={sideOpen ? side.tab : previewTab}
@@ -2088,7 +2156,10 @@ export default function App() {
         ) : tab === "external" ? (
           <External
             readingActionSlot={readingActionSlot}
+            translating={translating}
             history={externalHistory}
+            playback={origin?.kind === "external" && (reading === "reading" || reading === "paused") ? reading : null}
+            onTogglePlayback={togglePause}
             onClearHistory={() => setExternalHistory([])}
             /* "reading" is a fact of the playback state - the voice IS
                reading a scanned passage, however it was started - not the
@@ -2109,6 +2180,9 @@ export default function App() {
             readingAt={origin?.kind === "external" ? readingAt : null}
             position={position}
             onReplay={(entry) => {
+              translationPending.current = null; translationWorking.current = false;
+              setTranslating(false);
+              setScanVoice(entry.voiceId ?? null);
               onPlayer({ type: "start" });
               setOrigin({ kind: "external" });
               setReadingAt(entry.at);
@@ -2116,8 +2190,9 @@ export default function App() {
               setPosition(null);
               void invoke("read_selection_text", {
                 text: entry.text,
+                selectionKey: entry.original ?? entry.text,
                 segmentId: null,
-                voiceId,
+                voiceId: entry.voiceId ?? voiceId,
                 rate,
               }).catch((error) => onPlayer({ type: "failed", error: String(error) }));
             }}
@@ -2125,6 +2200,9 @@ export default function App() {
                paragraph offers, on a passage that was never a book. */
             onReadPart={(entry, segmentId) => {
               if (exportBusy.current) return;
+              translationPending.current = null; translationWorking.current = false;
+              setTranslating(false);
+              setScanVoice(entry.voiceId ?? null);
               onPlayer({ type: "start" });
               setOrigin({ kind: "external" });
               setReadingAt(entry.at);
@@ -2132,8 +2210,9 @@ export default function App() {
               setPosition(segmentId);
               void invoke("read_selection_text", {
                 text: entry.text,
+                selectionKey: entry.original ?? entry.text,
                 segmentId,
-                voiceId,
+                voiceId: entry.voiceId ?? voiceId,
                 rate,
               }).catch((error) => onPlayer({ type: "failed", error: String(error) }));
             }}
@@ -2206,7 +2285,7 @@ export default function App() {
             adds nothing to the bar's measured height, so the panels and the
             page inset stay where they are, and it steps aside while a panel
             hangs over the bar. */}
-        {reading !== "idle" && !(readingSettingsOpen || costOpen || settingsOpen || voicesOpen || voiceMenuOpen) && (
+        {reading !== "idle" && !(readingSettingsOpen || costOpen || settingsOpen || translationOpen || voicesOpen || voiceMenuOpen) && (
           <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100%-12px)] z-10 flex justify-center px-6">
             <Surface
               material="glass"
@@ -2218,7 +2297,7 @@ export default function App() {
                   {reading === "paused"
                     ? text("player.paused_state")
                     : player.warming
-                      ? text("player.warming")
+                      ? text(translating ? "translation.translating" : "player.warming")
                       : origin?.kind === "book"
                         ? text("player.reading_book", { title: origin.book.title })
                         : origin?.kind === "external"
@@ -2480,7 +2559,7 @@ export default function App() {
                     {text("reader.selection")}
                   </Button>
                 )}
-                {speechSettings && previewing === null && (
+                {speechSettings && previewing === null && !translating && !selectionTranslation && !(origin?.kind === "external" && scanVoice) && (
                   <MenuButton
                     icon={<VoiceSwitchIcon />}
                     label={text("voices.switch")}
@@ -2515,6 +2594,7 @@ export default function App() {
                 )}
                 <IconButton
                   onClick={togglePause}
+                  disabled={translating}
                   aria-label={reading === "paused" ? text("player.resume") : text("player.pause")}
                   title={reading === "paused" ? text("player.resume") : text("player.pause")}
                   className="text-ink"
@@ -2545,6 +2625,25 @@ export default function App() {
               about the reading with a way in - it belongs beside transport,
               not inside the actions. Its panel stays centred over the bar. */}
           <div className="flex min-w-0 items-center justify-end gap-2">
+            {screen === "external" && (
+              <Button
+                variant="ghost"
+                aria-label={`${text("translation.open_settings")}: ${translationSummary}`}
+                aria-haspopup="dialog"
+                aria-expanded={translationOpen}
+                data-popover-trigger
+                className="shrink-0"
+                onClick={(event) => {
+                  if (pressedByPointer()) event.currentTarget.blur();
+                  if (previewing !== null) stopPreview();
+                  setVoicesOpen(false);
+                  setReaderPanel(current => current === "translation" ? null : "translation");
+                }}
+              >
+                <span>{text("translation.short")} · {translation.settings.enabled ? translation.settings.target.toUpperCase() : text("translation.off")}</span>
+                <ChevronDownIcon />
+              </Button>
+            )}
             {speechSettings && (
               <Button
                 variant="ghost"
@@ -2562,8 +2661,8 @@ export default function App() {
                 }}
                 aria-label={text("player.settings_open")}
                 title={
-                  hint
-                    ? text(hint.kind === "switch" ? "hint.mismatch" : "hint.no_voice", { language: languageName(hint.content) })
+                  settingsHint
+                    ? text(settingsHint.kind === "switch" ? "hint.mismatch" : "hint.no_voice", { language: languageName(settingsHint.content) })
                     : text("player.settings_open")
                 }
                 aria-haspopup="dialog"
@@ -2581,7 +2680,7 @@ export default function App() {
                 {/* The nudge, at chip size: the text in front of the reader
                     is in a language this voice was not made for. The words
                     are in the title above and in the panel it opens. */}
-                {hint && (
+                {settingsHint && (
                   <SuggestionDot />
                 )}
                 {/* A reminder, not a description: the name that tells this
@@ -2590,18 +2689,15 @@ export default function App() {
                     read " · 1.25×", a separator with nothing on its left; a
                     paid voice's id is `openai:gpt-4o-mini-tts:alloy`, an address, so
                     the chip shows what the catalogue calls it. */}
-                {(voiceId || rate !== 1) && (
-                  <span className="min-w-0 truncate font-normal">
-                    {voiceId
-                      ? chipName(
-                          voices.find((voice) => voice.id === voiceId) ?? { id: voiceId, label: voiceId },
-                          offeredVoices(voices, shortlist, voiceId),
-                        )
-                      : ""}
-                    {voiceId && rate !== 1 ? " · " : ""}
-                    {rate !== 1 ? `${rate}×` : ""}
-                  </span>
-                )}
+                <span className="min-w-0 truncate font-normal">
+                  {settingsVoiceId
+                    ? chipName(
+                        voices.find((voice) => voice.id === settingsVoiceId) ?? { id: settingsVoiceId, label: settingsVoiceId },
+                        offeredVoices(voices, shortlist, settingsVoiceId),
+                      )
+                    : text("translation.choose_voice")}
+                  {rate !== 1 ? ` · ${rate}×` : ""}
+                </span>
               </Button>
             )}
           </div>
@@ -2639,8 +2735,16 @@ export default function App() {
           onClose={() => closeReaderPanel("cost")}
         />}
       </Presence>
-      <Presence open={settingsOpen && speechSettings}>
-        {speechSettings && <SettingsPanel
+      <Presence open={(settingsOpen && speechSettings) || translationOpen}>
+        {(speechSettings || translationOpen) && <SettingsPanel
+          key={translationOpen ? "translation" : "voice"}
+          panelKind={translationOpen ? "translation" : "voice"}
+          translation={translation}
+          onOpenTranslation={() => {
+            if (previewing !== null) stopPreview();
+            setReaderPanel("translation");
+          }}
+          context={screen === "external" ? "external" : screen === "reader" ? "reader" : "paste"}
           /* The whole catalogue and the shortlist: the panel narrows to the
              language's voices itself - the marked ones plus the one in use,
              the same list the mid-reading switcher shows (owner, 03/09: one
@@ -2694,12 +2798,18 @@ export default function App() {
             // A sample started from the Voice picker ends with the panel,
             // as one started from the voice list ends with that sheet.
             if (previewing !== null) stopPreview();
-            closeReaderPanel("voice");
+            closeReaderPanel(translationOpen ? "translation" : "voice");
           }}
         />}
       </Presence>
       <Presence open={hubOpen}>
         <SourcesHub
+          translationSummary={translationSummary}
+          onOpenTranslation={() => {
+            if (previewing !== null) stopPreview();
+            setHubOpen(false);
+            setReaderPanel("translation");
+          }}
           models={models}
           voices={voices}
           keysSet={keysSet}

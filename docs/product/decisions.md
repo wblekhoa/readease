@@ -4,13 +4,115 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-16
+updated: 2026-10-18
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-10-18 · Finalize shared reading controls and release 0.1.23
+
+- **Context**: The owner approved the revised selection blocks and requested commit, push and release.
+- **Decision**: Keep the white light-theme ground, quiet borders and diffuse card shadows. Use a solid 1px reading underline with an 18px blue Pause/Resume button and 9px white icon, 12px left of the text and 10px below the paragraph top. Share the component across selection history and document detail.
+- **Interaction**: The control toggles the existing transport without starting a sentence again. The expanded pagination clip is centered, and its empty padding passes clicks to Next/Previous. Text width and paragraph height remain unchanged.
+- **Evidence**: 236 UI tests; browser pause/resume and keyboard checks, geometry measurements, and direct page-arrow clicks at wide/narrow viewport sizes. Apple translation bridge passed VI→EN and EN→VI; local-model fixture passed protocol and cancellation checks. Native focus/fullscreen/accessibility and total-process performance acceptance remain separate from these checks.
+- **Reversal**: Revisit visuals with options approved by the owner before implementation; retain the shared playback semantics.
+
+## 2026-10-18 · Group selection history into readable blocks
+- **Owner direction**: optimize the other UI areas shown in the selection screenshots; try blocks like SpeakEase.
+- **Decision**: one paper Surface per capture, with summary/time and existing actions in its header. Put translated
+  speech first and the original in a separate collapsed disclosure below. Group setup controls in their own block.
+- **Scope**: selection history and focused-passage view. Reuse existing tokens and Surface; no new stats, search,
+  storage, polling or dependency. Engine sentence IDs and playback/follow behavior remain authoritative.
+- **Reversal**: presentation only; no history schema or persisted preference migration.
+
+## 2026-10-18 · Simplify translation controls and reuse the voice picker
+- **Owner direction**: use the same quality dropdowns as elsewhere, show translation status in general voice
+  settings, and simplify the three footer targets.
+- **Decision**: two footer openers: Translate (label plus chevron in one hit area) and Voice. Move the toggle
+  inside Translation settings. This supersedes the split-toggle decision below; toggling takes one extra click.
+- **Consistency**: reuse VoicePicker for installed target voices, including sample, favorites and keyboard
+  navigation; keep shared Select for simple choices. No new UI dependency or background polling.
+- **Visibility**: Voice settings and Voices & models show a compact On/Off + target status/link, explicitly scoped
+  to selection capture. Book and pasted-text voices remain independent.
+- **Reversal**: UI-only arrangement; saved translation and voice preferences require no migration.
+
+## 2026-10-18 · Give translation its own footer control
+- **Owner direction**: add a translation toggle and settings beside Voice settings.
+- **Decision**: the Translate label toggles on/off and shows the target when on; a separate arrow opens Translation
+  settings. Voice settings retains the effective voice and speed. Target and matching local voice remain together
+  in Translation settings; provider options stay disclosed. Opening either panel closes the other.
+- **Scope**: selection capture only; no change to saved book voice, engine translation or downloads. Toggle is locked
+  while reading/exporting/saving. Load/save failures expose the retry path in Translation settings.
+- **Reversal**: move the same persisted preference back into Voice settings without a data migration.
+
+## 2026-10-17 · Settings follow the reading task
+- **Owner direction**: when translation is on, pair the target language with its voice and avoid unrelated settings.
+- **Decision**: Selection settings shows target, matching local voice and speed together; source/provider/model
+  move into Translation options. Errors remain visible when folded. Original-reading controls return when translation
+  is off; book-only controls stay in book settings. The selection footer names the effective target voice.
+- **Implementation default**: keep the existing shared speech rate and separate translation voice preference;
+  no new model downloads, provider calls on disclosure, or changes to book voice persistence.
+- **Evidence**: target-voice regression test and interactive selection settings checks; native acceptance remains
+  separate from automated checks. RE-PLAY-025 remains candidate.
+- **Reversal**: rearrange the controls without migrating saved voice or translation preferences.
+
+## 2026-10-17 · Translate selected text before reading, on device
+- **Owner direction**: “Apple và các model local giống speakease”. The owner wants a translation setting so a
+  Vietnamese selection can be translated and spoken in English (and vice versa).
+- **Decision**: opt-in translation for external selection capture; Apple Translation or a local Ollama/LM Studio
+  server. SpeakEase's custom local-provider pattern is the reference, not its speech-recognition models. No paid
+  translation fallback, API key, automatic model download or persisted passage. Use an installed local voice for
+  the target language without replacing the user's saved book voice.
+- **Compatibility**: the installed-language headless Apple API requires macOS 26. The app retains its macOS 15
+  floor; local-server translation works there. Missing Apple language packs have an explicit setup message.
+- **Scope**: source auto-detection or explicit Vietnamese/English; target Vietnamese/English, matching the local
+  speech models. Books, audiobook exports and pasted text are unchanged. Selections are limited to 6,000 characters.
+- **Failure rule**: Stop and superseding playback invalidate translation; a failed translation never silently
+  speaks the original. History holds the original plus the spoken translation in memory for this session.
+
+## 2026-10-17 · Start with a roomier main window
+- **Context**: the owner requested a larger default after the Library toolbar and shelf appeared cramped.
+- **Decision**: change the initial window from 1060×720 to 1280×820 logical pixels, using Tauri's work-area overflow
+  prevention. Keep the 960×600 minimum and the existing saved size/position restoration.
+- **Evidence**: `app/src-tauri/tauri.conf.json` owns the initial geometry; `app/src-tauri/src/lib.rs` registers size and
+  position persistence. Existing saved frames take precedence over the initial size.
+- **Reversal**: adjust the initial dimensions after desktop feedback without resetting readers' saved layouts.
+
+## 2026-10-17 · Give floating controls a generous hover surface
+- **Context**: the owner found the small hover disks cramped around the Pause/Resume and Stop symbols.
+- **Decision**: expand both hover/press disks from 24pt to 36pt inside the existing 40pt targets, retaining the capsule
+  geometry. Paint the hit-test-transparent progress ring above the wash so feedback does not dull its stroke.
+- **Evidence**: the native pixel check fails on the small disk and passes on both expanded disks in light/dark
+  appearances; the existing action, transparent-corner and surface-opacity checks remain passing.
+- **Reversal**: tune the disk inset without enlarging the capsule or adding motion.
+
+## 2026-10-17 · Give the reading controller SpeakEase's flat silhouette
+- **Context**: the owner reported that the controller's shadow looks cropped inside a rectangle and supplied the
+  SpeakEase recording pill as the visual reference.
+- **Decision**: remove the AppKit window shadow and visual-effect backdrop; draw only an opaque, rounded system
+  surface with a thin separator border and transparent corners. Reduce height from 64pt to 48pt and width to 96pt, with equal 4pt outer insets,
+  preserve 40pt native hit targets, and reduce the progress ring and symbols. This supersedes the earlier controller geometry.
+- **Owner correction**: the initial 120pt-wide refinement left excessive padding at both ends. The owner rejected
+  that layout; the revised width follows the two 40pt targets, 8pt gap and two 4pt insets.
+- **Evidence**: the previous implementation enabled the window shadow with a masked visual-effect view filling its
+  bounds. SpeakEase's current overlay explicitly disables native shadows and uses a flat surface without blur.
+  Native view checks cover geometry, transparent corners and the disabled shadow; real desktop appearance still
+  needs owner review. This change does not establish focus, accessibility or performance acceptance.
+- **Delivery audit**: a subsequent screenshot still showed the original large, blurred controller. The installed
+  build was confirmed as the previous candidate; source previews had not updated the running application.
+  `bash scripts/test-native-reading-panel.sh` now exercises the production views at 1×/2× in both appearances,
+  checking corner alpha, surface opacity, balanced insets and button actions across six states without opening a window.
+  A signed build and explicit installed-build verification are required before asking for another desktop review.
+- **Contrast correction**: the native render over adjacent white/dark backdrops exposed a faint seam through the
+  initial 98% surface. Use a fully opaque interior while preserving transparent corners; the pixel regression check
+  fails on the translucent surface and passes on the solid one.
+- **Local delivery**: rebuilt the solid-surface candidate through the canonical release script with Developer ID
+  signing (local, unnotarized). After verifying ReadEase was no longer running, installed it with a rollback copy;
+  the installed executable hash matches the verified bundle. Desktop visual acceptance remains pending.
+- **Reversal**: adjust the native flat surface if desktop review fails; keep the shared controls and playback path.
 
 ## 2026-10-16 · Build the floating controller in regular ReadEase for owner testing
 - **Context**: the owner asked to stop separate test apps and continue in the regular app, with manual testing by the owner.

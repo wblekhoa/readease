@@ -698,6 +698,29 @@ html[data-host="window"] aside.bg-column { background: transparent; }
 .gradient-blur > div:nth-child(7) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 .gradient-blur > div:nth-child(8) { -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%); -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px); }
 
+/* White-on-white selection blocks: quiet edges and a broad, low-opacity shadow. */
+:root:not([data-theme="dark"]) [data-workspace="external"] .scan-block {
+  border-color: color-mix(in srgb, var(--border-color-neutral-soft) 45%, transparent);
+  box-shadow: 0 var(--shadow-offset-y-md) var(--shadow-blur-lg2) var(--shadow-spread-flat) color-mix(in srgb, var(--shadow-md) 60%, transparent);
+}
+
+:root:not([data-theme="dark"]) [data-workspace="external"] .scan-block:has(.scan-block-toggle:hover) {
+  border-color: var(--border-color-neutral-soft);
+  box-shadow: 0 var(--shadow-offset-y-md) var(--shadow-blur-lg2) var(--shadow-spread-flat) var(--shadow-md);
+}
+:root:not([data-theme="dark"]) [data-workspace="external"] .scan-block-toggle:hover,
+:root:not([data-theme="dark"]) [data-workspace="external"] .scan-block-toggle:active {
+  background-image: none;
+}
+
+/* The 16px content inset keeps the first card clear at scrollTop=0.
+   As content scrolls beneath setup, fade its clipped edge without overlays
+   or scroll-time state updates. The footer retains its existing frost. */
+.selection-scroll-mask {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 16px);
+  mask-image: linear-gradient(to bottom, transparent, #000 16px);
+}
+
 /* A screen with nothing that scrolls under the chrome starts below it. */
 .shell-inset { padding-top: var(--shell-top-h); padding-bottom: var(--shell-bottom-h); }
 /* Content inside a scroller that DOES run under the chrome pads itself. */
@@ -801,15 +824,12 @@ textarea:focus-visible {
 .voice-here,
 .read-from-here:hover {
   text-decoration-line: underline;
-  /* Dotted and paler than the solid 60% it started as (owner, 15/09): a
-     row of dots is quieter under a paragraph than a rule, and 40% keeps
-     it visible on both papers without pulling the eye off the words. */
-  text-decoration-style: dotted;
-  text-decoration-thickness: 2px;
+  text-decoration-style: solid;
+  text-decoration-thickness: 1px;
   text-underline-offset: 0.22em;
   text-decoration-skip-ink: none;
 }
-/* Under the pointer, "read from here" is the same dotted line in neutral
+/* Under the pointer, "read from here" is the same solid line in neutral
    ink - the boxed wash it replaced put a padded slab around the block
    (owner, 15/09). The voice's own colour wins where the two meet: the
    block being read stays brand-tinted while the pointer crosses it. */

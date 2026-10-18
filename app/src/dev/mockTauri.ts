@@ -517,6 +517,25 @@ const SCANNED = [
   "Trong ngôn ngữ học, hiện tượng mất dấu thanh khi sao chép văn bản là một vấn đề dai dẳng. Máy dò ngôn ngữ đọc chuỗi ký tự Latin không dấu và kết luận đó là tiếng Anh, rồi từ chối đọc bằng giọng Việt.",
 ];
 
+// Paired, deterministic UI fixtures, not a translation-quality benchmark.
+// ?scanned=3&translation=en-vi (or vi-en) stays isolated to this tab.
+const TRANSLATION_CASE = new URLSearchParams(location.search).get("translation");
+const TRANSLATION_TARGET = TRANSLATION_CASE === "en-vi" ? "vi" : TRANSLATION_CASE === "vi-en" ? "en" : null;
+const TRANSLATION_SAMPLES = [
+  {
+    en: "Small habits make a lasting difference. Reading for ten minutes each day gives us time to slow down and discover a new perspective.",
+    vi: "Những thói quen nhỏ tạo nên thay đổi lâu dài. Đọc sách mười phút mỗi ngày giúp chúng ta chậm lại và khám phá một góc nhìn mới.",
+  },
+  {
+    en: "A clear interface helps people focus on their work. Related controls belong together, while less common options can stay out of the way until they are needed.\n\nGood spacing is more than decoration: it shows which elements belong to the same group.",
+    vi: "Một giao diện rõ ràng giúp mọi người tập trung vào công việc. Các điều khiển liên quan nên được đặt cùng nhau; những tùy chọn ít dùng có thể thu gọn cho đến khi cần.\n\nKhoảng cách hợp lý không chỉ để trang trí: nó cho biết những thành phần nào thuộc cùng một nhóm.",
+  },
+  {
+    en: "On Saturday morning, we took the train to a quiet town near the coast. The station was small, but a handwritten map showed us the way to the market.\n\nWe bought warm bread and sat under a tree. Instead of planning every minute, we listened to the people around us and let the day unfold.\n\nBefore leaving, I wrote down three things I wanted to remember: the smell of the sea, the kindness of a stranger, and the pleasure of having nowhere to rush.",
+    vi: "Sáng thứ Bảy, chúng tôi đi tàu đến một thị trấn yên tĩnh gần biển. Nhà ga nhỏ, nhưng một tấm bản đồ vẽ tay đã chỉ cho chúng tôi đường đến chợ.\n\nChúng tôi mua bánh mì nóng và ngồi dưới một gốc cây. Thay vì lên kế hoạch cho từng phút, chúng tôi lắng nghe những người xung quanh và để một ngày trôi qua tự nhiên.\n\nTrước khi rời đi, tôi ghi lại ba điều muốn nhớ: mùi của biển, lòng tốt của một người xa lạ và niềm vui khi không phải vội vã đến đâu.",
+  },
+];
+
 const PAID_VOICES: Record<string, { id: string; label: string; languages?: string[]; gender?: "male" | "female" }[]> = {
   // ONE model per provider, as the engine now lists them: the catalogue used
   // to emit models x voices and the same nine names appeared twice at two
@@ -759,7 +778,8 @@ const SETTINGS: Record<string, string | number | null> = {
    the provider that bills COUNTED credits, so its figure is a ceiling
    ("tối đa") with a unit count under it (27/09: never on a screen). */
 const PAID_VOICE = new URLSearchParams(window.location.search).get("voice");
-const EPHEMERAL = PAID_VOICE === "paid" || PAID_VOICE === "elevenlabs";
+const EPHEMERAL = PAID_VOICE === "paid" || PAID_VOICE === "elevenlabs" || TRANSLATION_TARGET !== null;
+if (TRANSLATION_TARGET) Object.assign(SETTINGS, { selection_translation: { enabled: true, provider: "apple", source: TRANSLATION_TARGET === "vi" ? "en" : "vi", target: TRANSLATION_TARGET, model: "", voice: "" } });
 
 function rememberSettings() {
   if (EPHEMERAL) return;
@@ -1174,6 +1194,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
  */
 
 
+let translationEpoch = 0;
 async function invoke(command: string, args: Record<string, unknown> = {}): Promise<unknown> {
   /* One turn of the event loop before any answer, the way the real bridge
      answers: a call crosses to the native side and comes back later, and
@@ -1240,6 +1261,8 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
   if (command === "set_selection_shortcut") return Promise.resolve(null);
+  if (command === "translation_status") return Promise.resolve({ available: true, installed: true });
+  if (command === "translation_models") return Promise.resolve({ models: ["qwen3:4b", "gemma3:4b"] });
   if (command === "floating_controller_enabled") return Promise.resolve(true);
   if (command === "set_floating_controller_enabled") return Promise.resolve(null);
   // Nothing asked the mock to open a document (HIG 3.18): the window's
@@ -1434,6 +1457,22 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     );
     return Promise.resolve(null);
   }
+  if (["stop_reading", "read_book", "read_text", "export_book", "export_text", "read_selection_text"].includes(command)) translationEpoch++;
+  if (command === "read_selection_text" && args.translation) {
+    const generation = translationEpoch;
+    const options = args.translation as { target: string; voice_id: string };
+    const scenario = new URLSearchParams(location.search).get("translation");
+    await new Promise(resolve => setTimeout(resolve, scenario === "slow" ? 12000 : 700));
+    if (generation !== translationEpoch) return null;
+    if (scenario === "error") throw new Error("translation:local_unavailable");
+    const sample = TRANSLATION_SAMPLES.find(pair => pair.en === args.text || pair.vi === args.text);
+    const translated = sample ? sample[options.target === "vi" ? "vi" : "en"] : options.target === "en" ? "Reading every day helps us understand the world better." : "Đọc sách mỗi ngày giúp chúng ta hiểu thế giới tốt hơn.";
+    const parts = mockParts(translated).map(part => part.segment_id);
+    emit("reading:translation_ready", { entry_id: args.entryId });
+    if (scenario === "voice_error") emit("reading:done", { ok: false, error: "voice_unavailable: local model missing" });
+    else startMockReading(parts, null);
+    return { text: translated, voice_id: options.voice_id, target: options.target };
+  }
   if (command === "read_text" || command === "read_selection_text") {
     if (VOICE_FAIL) {
       const before = VOICE_FAIL === "no_key" || VOICE_FAIL === "budget";
@@ -1460,7 +1499,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
         : { chars: Math.round(chars / walk.length),
             usd: (chars / walk.length) * rate / 1000 },
     );
-    return Promise.resolve(null);
+    return Promise.resolve(command === "read_selection_text" ? { text: args.text, voice_id: args.voiceId, target: null } : null);
   }
   if (command === "stop_reading") {
     if (activeMockExport !== null) {
@@ -1633,8 +1672,10 @@ if (showcaseLocale === "en") {
 // as list keys - which is true of the real shortcut too, just harder to do.
 const scannedCount = Number(new URLSearchParams(window.location.search).get("scanned") ?? 0);
 if (scannedCount > 0) {
-  SCANNED.slice(0, scannedCount).forEach((passage, index) => {
-    setTimeout(() => emit("reading:external", { text: passage }), 600 + index * 160);
+  const samples = TRANSLATION_TARGET ? TRANSLATION_SAMPLES.map(pair => pair[TRANSLATION_TARGET === "vi" ? "en" : "vi"]) : SCANNED;
+  samples.slice(0, scannedCount).forEach((passage, index) => {
+    // Allow the preceding translation to complete before the next capture.
+    setTimeout(() => emit("reading:external", { text: passage }), 600 + index * (TRANSLATION_TARGET ? 1400 : 160));
   });
 }
 

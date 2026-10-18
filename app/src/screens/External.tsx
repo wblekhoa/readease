@@ -8,187 +8,32 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { text, type TextKey } from "../i18n";
 import { Button, IconButton, Kbd, Notice, SectionTitle, Surface, Switch } from "../ui/controls";
-import { ArrowLeftIcon, ChevronDownIcon, CursorTextIcon, InfoIcon, PlayIcon, ScrollIcon } from "../ui/icons";
+import { ArrowLeftIcon, CursorTextIcon, InfoIcon, PlayIcon } from "../ui/icons";
 import { EmptyState } from "../ui/patterns";
-import { scrollBehavior } from "../ui/motion";
+import { ScanEntry, type ExternalEntry } from "../ui/ScanEntry";
+export type { ExternalEntry } from "../ui/ScanEntry";
 import { currentPart, isOpen, summarise } from "../ui/scanHistory";
 import { comboFromEvent, displayShortcut } from "../ui/useShortcut";
-
-export type ExternalEntry = { at: number; text: string };
-
-type ScanPart = { segment_id: string; text: string };
-
-/** One captured passage, openable, with the voice's place marked in it.
- *
- * The list used to clamp each passage to two lines and hang the replay
- * tooltip on the text, so hovering the words offered to read them again
- * instead of showing them. Scanning is how this app is USED - the passage
- * is the content, not a label for it (owner, 09/09). */
-function ScanEntry({
-  entry,
-  open,
-  current,
-  solo = false,
-  following = true,
-  jump = 0,
-  onToggle,
-  onReplay,
-  onReadPart,
-  onFocus,
-}: {
-  entry: ExternalEntry;
-  open: boolean;
-  current: string | null;
-  /** Alone on the screen: the row of controls moved up to the screen's own
-   * bar, so the passage is all that is left here. */
-  solo?: boolean;
-  /** Whether the page still follows the voice: it stops the moment the
-   * reader scrolls by hand, and starts again from the button (owner,
-   * 19/09) - the reader's own rule (HIG 3.9). */
-  following?: boolean;
-  /** Bumped by the "back to the reading position" button: bring the part
-   * being read to the middle, whatever `following` says. */
-  jump?: number;
-  onToggle: () => void;
-  onReplay: () => void;
-  onReadPart: (segmentId: string) => void;
-  onFocus: () => void;
-}) {
-  /* Split by the ENGINE, never here. The ids painted below arrive in
-   * `reading:position`, and the engine's `text.parts` answers from the same
-   * builder the reading speaks from - a second splitting rule in the shell
-   * would drift and put the marker on the wrong paragraph. */
-  const [parts, setParts] = useState<ScanPart[] | null>(null);
-  const here = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open || parts !== null) return;
-    let alive = true;
-    void invoke<{ result: { parts: ScanPart[] } }>("engine_request", {
-      method: "text.parts",
-      params: { text: entry.text },
-    })
-      .then((reply) => {
-        if (alive) setParts(reply.result.parts);
-      })
-      // The engine can be busy or gone; the words were captured either way,
-      // and hiding them because a split failed would take away the one
-      // thing this screen is for.
-      .catch(() => {
-        if (alive) setParts([{ segment_id: "", text: entry.text }]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [open, parts, entry.text]);
-
-  useEffect(() => {
-    if (current && following) here.current?.scrollIntoView({ block: "nearest" });
-  }, [current, following]);
-  useEffect(() => {
-    // The person asked to be taken there: a scroll, not a cut (HIG 3.17).
-    // Following the voice, above, stays a cut - it moves by the sentence.
-    if (jump > 0) here.current?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
-    // Only the button bumps `jump`; the part it lands on is whichever is
-    // current at that moment, so `current` is read, not depended on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jump]);
-
-  return (
-    /* No fill of its own. `band` marks where the voice is, and measured
-       against a `wash/40` card (09/09) the two were six per cent apart -
-       the marker all but gone. The reader's line is painted on the plain
-       page for exactly this reason; one colour means current position, and
-       nothing sits under it. */
-    <div className={solo ? "" : "py-2.5"}>
-      {!solo && (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onToggle}
-            /* Open or shut, said as well as drawn: the chevron turns for the
-               eye only (HIG 4.2, point 1). */
-            aria-expanded={open}
-            title={open ? text("external.close_text") : text("external.open_text")}
-            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
-          >
-            <ChevronDownIcon
-              className={`shrink-0 text-ink-mute transition-transform ${
-                open ? "" : "-rotate-90"
-              }`}
-            />
-            <span className={`min-w-0 flex-1 text-sm leading-snug ${open ? "font-semibold" : "truncate"}`}>
-              {open ? summarise(entry.text, 40) : summarise(entry.text)}
-            </span>
-          </button>
-          {/* A long capture pushes everything else off the screen when it
-              opens in place. This hands it the whole panel instead, which is
-              what a passage worth re-reading needs (owner, 09/09). */}
-          <IconButton
-            aria-label={text("external.focus_one")}
-            title={text("external.focus_one")}
-            onClick={onFocus}
-          >
-            <ScrollIcon />
-          </IconButton>
-          <IconButton
-            aria-label={text("external.replay")}
-            title={text("external.replay")}
-            onClick={onReplay}
-          >
-            <PlayIcon />
-          </IconButton>
-        </div>
-      )}
-      {open && (
-        /* The words start at the column edge, level with the heading above.
-           Only the band and the hover reach past them, by the 8px they are
-           outdented - the same trick the reader's own lines use, so a
-           highlight has room without the text stepping in. */
-        <div className="-mx-2 flex flex-col gap-0.5 px-2 pb-1">
-          {parts === null ? (
-            <p className="m-0 px-2 py-1 text-sm text-ink-mute">
-              {text("external.parts_loading")}
-            </p>
-          ) : (
-            parts.map((part, index) => (
-              <button
-                key={part.segment_id || index}
-                ref={part.segment_id === current ? here : undefined}
-                onClick={() => part.segment_id && onReadPart(part.segment_id)}
-                /* The fallback block (the engine could not be asked) has no
-                   id, so it cannot be read from. It must not offer to be:
-                   a tooltip promising something the click will not do is
-                   the same lie the old replay tooltip told. */
-                title={part.segment_id ? text("external.read_from_here") : undefined}
-                className={`px-2 py-1.5 text-left text-sm leading-relaxed whitespace-pre-line ${
-                  part.segment_id === current ? "voice-here" : ""
-                } ${part.segment_id ? "read-from-here" : "cursor-default"}`}
-              >
-                {part.text}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const ACCESSIBILITY_PANE =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 
 export function External({
   readingActionSlot,
+  translating = false,
   history,
   status,
   shortcut,
   readingAt,
   position,
+  playback,
+  onTogglePlayback,
   onChangeShortcut,
   onReplay,
   onReadPart,
   onClearHistory,
 }: {
+  translating?: boolean;
   history: ExternalEntry[];
   readingActionSlot: HTMLElement | null;
   status: string | null;
@@ -198,6 +43,8 @@ export function External({
   /** The part id the voice has reached. One value for the whole app, so it
    * only means something once `readingAt` says which passage it is in. */
   position: string | null;
+  playback: "reading" | "paused" | null;
+  onTogglePlayback: () => void;
   onChangeShortcut: (accelerator: string) => Promise<void>;
   onReplay: (entry: ExternalEntry) => void;
   onReadPart: (entry: ExternalEntry, segmentId: string) => void;
@@ -311,7 +158,7 @@ export function External({
   const scrollKeys = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
   const byKey = (event: React.KeyboardEvent) => { if (scrollKeys.has(event.key)) byHand(); };
 
-  const statusMessage =
+  const statusMessage = translating ? text("translation.translating") :
     status && status !== "reading" ? text(`status.${status}` as TextKey) : null;
 
   /* Nothing captured yet: the screen has no content to be a header FOR, so
@@ -399,7 +246,7 @@ export function External({
       {/* Reading status and the way back belong below the shared transport.
           Capture failures stay beside the shortcut that caused them. */}
       {statusMessage && (
-        <Notice tone="error" className="max-w-[52ch]">
+        <Notice tone={translating ? "info" : "error"} className="max-w-[52ch]">
           {statusMessage}
         </Notice>
       )}
@@ -448,9 +295,9 @@ export function External({
 
   if (soloEntry) {
     return (
-      <section className="shell-inset flex min-h-0 flex-1 flex-col gap-2">
+      <section className="flex min-h-0 flex-1 flex-col gap-2 pt-[var(--shell-top-h)]">
         {readingAction}
-        <div className="flex items-center gap-3">
+        <div className="mx-auto flex w-full max-w-[80ch] items-center gap-3">
           <IconButton
             aria-label={text("external.focus_back")}
             title={text("external.focus_back")}
@@ -478,13 +325,15 @@ export function External({
             own buttons; the measure cap moves to the column inside. Same
             rule as the shelf (owner, 15/09). */}
         <div
-          className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable]"
+          className="selection-scroll-mask -mx-6 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable_both-edges]"
           onWheel={byHand}
           onTouchMove={byHand}
           onKeyDown={byKey}
         >
-          <div className="max-w-[80ch]">
+          <div className="mx-auto w-full max-w-[80ch] pt-4 pb-[calc(var(--shell-bottom-h)+1rem)]">
             <ScanEntry
+              playback={playback}
+              onTogglePlayback={onTogglePlayback}
               entry={soloEntry}
               solo
               open
@@ -527,25 +376,35 @@ export function External({
        09/09). Scanning is what this screen DOES; the setup is what it
        needed once. So the setup is one bar across the top and the passages
        have the width (owner, 09/09). */
-    <section className="shell-inset flex min-h-0 flex-1 flex-col gap-2">
+    <section className="flex min-h-0 flex-1 flex-col pt-[var(--shell-top-inner)]">
       {readingAction}
-      {setupBar}
-      {asides}
+      {/* Keep shadow clearance inside the clipping container, not in a flex gap. */}
+      <div className="-mx-6 shrink-0 overflow-y-auto px-6 py-4 [scrollbar-gutter:stable_both-edges]">
+        <div className="mx-auto w-full max-w-[80ch]">
+          <Surface className="scan-block flex flex-col gap-3 px-4 py-3">
+            {setupBar}
+            {asides}
+          </Surface>
+        </div>
+      </div>
       {/* Capped at a readable measure rather than stretched: the passages
           are prose, and prose that runs the whole window is harder to
           follow than the narrow column this replaced.
-          `dot-divided` is the DS rule this app already tells every other
-          list apart with (GroupedSection): the rows carry their own padding
-          and the rule sits between them, so the list keeps no gap. */}
+          The scroller runs beneath the existing footer frost; bottom padding
+          keeps the final capture above its controls at the end of the list.
+          Separate surfaces and a consistent gap distinguish captures from
+          the translation/source sections inside each capture. */}
       <div
-        className="-mx-6 mt-1 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable]"
+        className="selection-scroll-mask -mx-6 -mt-4 min-h-0 flex-1 overflow-y-auto px-6 [scrollbar-gutter:stable_both-edges]"
         onWheel={byHand}
         onTouchMove={byHand}
         onKeyDown={byKey}
       >
-       <div className="dot-divided flex max-w-[80ch] flex-col">
+       <div className="mx-auto flex w-full max-w-[80ch] flex-col gap-3 pt-4 pb-[calc(var(--shell-bottom-h)+1rem)]">
         {history.map((entry) => (
           <ScanEntry
+            playback={playback}
+            onTogglePlayback={onTogglePlayback}
             key={entry.at}
             entry={entry}
             open={isOpen(entry.at, readingAt, toggled)}

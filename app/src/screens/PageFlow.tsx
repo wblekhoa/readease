@@ -266,15 +266,14 @@ export function PageFlow({
           to the arrows, and a spread sized to the padded width ran under
           them (seen at 1300px, 02/09). */}
       <div className="min-h-0 flex-1 px-10" onWheel={onWheel}>
-        <div ref={box} className="h-full">
-        {/* 8px of air each side inside the clip: a paragraph's hover wash
-            outdents that far (-mx-2) and was being cut at the page edge
-            (owner, 02/09). The zones stop at this frame's edge. */}
+        <div ref={box} className="flex h-full justify-center">
+        {/* 32px of air each side inside the clip: the reading transport
+            sits in the margin without changing the measured text width. */}
         {layout && pageHeight > 0 && (
-          <div className="mx-auto h-full overflow-hidden px-2" style={{ width: viewWidth + 16 }}>
+          <div className="pointer-events-none relative z-10 h-full shrink-0 overflow-hidden px-8" style={{ width: viewWidth + 64 }}>
             <div
               ref={flow}
-              className="select-text"
+              className="pointer-events-auto select-text"
               style={{
                 height: pageHeight,
                 columnWidth: layout.pageWidth,

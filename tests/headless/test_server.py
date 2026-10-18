@@ -1381,6 +1381,19 @@ class ProtocolTests(unittest.TestCase):
         self.assertTrue(replies[3]["ok"])
         self.assertEqual(replies[4]["result"]["value"], '["Adam","Trúc Ly"]')
 
+    def test_translation_preferences_round_trip_without_passage_data(self) -> None:
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        value = {"enabled": True, "provider": "apple", "source": "auto", "target": "en", "model": "", "voice": "af_heart"}
+        with TemporaryDirectory() as directory:
+            settings = Path(directory) / "settings.json"
+            replies = run_server([
+                {"id": 1, "method": "config.set", "params": {"key": "selection_translation", "value": value}},
+                {"id": 2, "method": "config.get", "params": {"key": "selection_translation"}},
+            ], FakeEngine(), settings_path=settings)
+            self.assertTrue(replies[0]["ok"])
+            self.assertEqual(replies[1]["result"]["value"], value)
+
     def test_every_config_key_the_shell_asks_for_is_a_known_key(self) -> None:
         """The allow-list has to cover what the shell actually sends.
 

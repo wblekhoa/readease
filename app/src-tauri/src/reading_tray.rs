@@ -4,6 +4,7 @@ struct Model {
     vi: bool,
     active: bool,
     paused: bool,
+    translating: bool,
     current: u64,
     total: u64,
     external: bool,
@@ -11,7 +12,7 @@ struct Model {
     generation: u64,
 }
 impl Model {
-    fn can_toggle(&self) -> bool { self.active && (self.total > 0 || self.paused) }
+    fn can_toggle(&self) -> bool { self.active && !self.translating && (self.total > 0 || self.paused) }
     fn labels(&self) -> (String, &'static str, &'static str, &'static str) {
         let state = match (self.vi, self.paused, self.total > 0) {
             (true, true, _) => "Tạm dừng",
@@ -21,7 +22,9 @@ impl Model {
             (true, false, false) => "Đang chuẩn bị…",
             (false, false, false) => "Preparing…",
         };
-        let status = if self.total > 0 {
+        let status = if self.translating {
+            if self.vi { "Đang dịch…".into() } else { "Translating…".into() }
+        } else if self.total > 0 {
             format!(
                 "{state} · {} {}/{}",
                 if self.vi { "câu" } else { "sentence" },
@@ -59,6 +62,14 @@ mod tests {
         assert!(model.can_toggle());
         model.active = false;
         assert!(!model.can_toggle());
+    }
+    #[test]
+    fn translating_never_toggles_stale_paused_audio() {
+        let mut model = Model { active: true, translating: true, paused: true, total: 12, ..Default::default() };
+        assert!(!model.can_toggle());
+        assert_eq!(model.labels().0, "Translating…");
+        model.vi = true;
+        assert_eq!(model.labels().0, "Đang dịch…");
     }
     #[test]
     fn preparing_progress_pause_and_languages() {
@@ -200,6 +211,7 @@ fn apply(app: &tauri::AppHandle, change: impl FnOnce(&mut Model)) {
 pub(crate) fn preparing(app: &tauri::AppHandle, external: bool) {
     update(app, move |m| {
         m.active = true;
+        m.translating = false;
         m.paused = false;
         m.current = 0;
         m.total = 0;
@@ -207,6 +219,10 @@ pub(crate) fn preparing(app: &tauri::AppHandle, external: bool) {
         m.completed = false;
         m.generation += 1;
     });
+}
+pub(crate) fn translating(app: &tauri::AppHandle) {
+    preparing(app, true);
+    update(app, |m| m.translating = true);
 }
 pub(crate) fn language(app: &tauri::AppHandle, language: &str) {
     let vi = language == "vi";
@@ -221,6 +237,11 @@ pub(crate) fn finished(app: &tauri::AppHandle) {
 pub(crate) fn is_external_active(app: &tauri::AppHandle) -> bool {
     app.try_state::<ReadingTray>().is_some_and(|tray| {
         let model = tray.model.lock().unwrap(); model.active && model.external
+    })
+}
+pub(crate) fn is_translating(app: &tauri::AppHandle) -> bool {
+    app.try_state::<ReadingTray>().is_some_and(|tray| {
+        let model = tray.model.lock().unwrap(); model.active && model.translating
     })
 }
 pub(crate) fn is_active(app: &tauri::AppHandle) -> bool {

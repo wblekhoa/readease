@@ -4,8 +4,8 @@ type: release
 product: readease
 title: "ReadEase — Releases"
 status: active
-updated: 2026-10-16
-summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.22, newest first."
+updated: 2026-10-18
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.23, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
@@ -16,6 +16,13 @@ Source of truth for details: `CHANGELOG.md` (repo root) and `gh release list -R 
 here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped behaviour maps to a current rule are traced.
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
+
+## v0.1.23 · 2026-10-18
+- **What changed for users**: Optional Apple/local translation before reading a selection, target-language local voices and compact translation settings. Capture history uses separate blocks with original/translation sections. Selection and document detail share a solid reading underline and a small blue Pause/Resume button without changing text geometry. Page margins and Next/Previous hit areas are balanced. Refined native floating controls, localized menu-bar reading controls and a larger default window.
+- **REQ-IDs shipped**: RE-PLAY-024 (native floating controller), RE-PLAY-025 (selection translation), RE-PLAY-026 (shared reading position control).
+- **Verification**: 236 UI tests, 43 Rust tests, 976 Python tests (7 skipped), native selection bridge and floating-panel geometry/actions. Production Apple bridge passed both VI→EN and EN→VI with installed packs; local-provider fixture passed cancellation/protocol checks. Browser checks covered selection blocks, pause/resume, page turns, balanced margins and unchanged paragraph geometry. Focus/fullscreen/assistive-technology and whole-app native performance limits in RE-PLAY-024 remain unverified.
+- **Channel**: GitHub release with Developer ID signature, notarization and in-app updater.
+- **Shown in**: CHANGELOG.md; GitHub release notes.
 
 ## v0.1.22 · 2026-10-16
 - **What changed for users**: Export a chapter range or whole book as an M4B audiobook while browsing or minimising. Progress shows synthesis, normalisation and encoding; cancelling preserves an existing file. Reader and Library share the folded sidebar; hovering Contents, Notes or Search opens an interactive preview. Panel gaps and scrolling are consistent, and moving the pointer into a preview keeps it open.

@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-16
+updated: 2026-10-18
 summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, Paste-text sentence review and background M4B book export."
 tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
@@ -124,8 +124,13 @@ relations:
   webview, background polling or audio buffer. Its position and default-on preference use the app's native preferences.
   The switch is on the external-reading screen. The same live selection toggles Pause/Resume when the shortcut is
   repeated; a different selection replaces it. Only counts enter the panel; selected text stays in the reading path.
-  The compact 120×64pt layout uses equal 48pt hit targets, 8pt insets and an 8pt gap; 16pt semibold symbols sit inside.
-  Native hover/pressed disks use the existing HIG's 10%/20% ink steps. Pointer entry/exit redraw only the button;
+  The compact 96×48pt layout uses equal 40pt hit targets with an 8pt gap and equal 4pt insets on every side.
+  A smaller 32pt progress view uses a 1.5pt stroke; symbols are 14pt medium. Following the owner's SpeakEase reference,
+  the capsule has an opaque system surface and a thin separator border, with transparent corners. The solid interior
+  prevents backdrop colour seams when it overlaps light and dark windows. AppKit window
+  shadows and visual-effect blur are disabled, so no rectangular shadow footprint surrounds it.
+  Native hover/pressed disks are 36pt across (2pt inset within each target), using the existing HIG's 10%/20% ink
+  steps. The progress ring draws above the wash and stays hit-test transparent. Pointer entry/exit redraw only the button;
   there is no hover timer, layout animation or polling. Disabled controls have no hover disk.
   Owner requested testing in the regular app instead of further automated probes on 2026-10-16, and confirmed visibility
   and working buttons before requesting UI refinement. Focus/selection,
@@ -133,6 +138,69 @@ relations:
   build; results from the retired second-webview diagnostic do not validate this implementation. Do not publish it as
   accepted until those checks pass; a focus failure means keep the menu-only implementation.
 - **Progress** is saved per book from what was actually heard, not from what was synthesized ahead.
+
+## Selection history blocks
+
+In light theme, the selection workspace and its blocks remain white. Setup and capture blocks use a softened border (45% of the soft edge token) and a diffuse 16px-blur shadow (2px offset, 60% of the medium shadow colour) to separate them gently. Header/footer frost follows the white ground; dark theme retains its existing colours.
+Each captured passage uses the shared paper Surface, with 16px padding and a 12px gap between captures.
+The entire header is the expand/collapse hit area. In light theme, hovering the header strengthens the card border and diffuse shadow while keeping the fill white; dark theme retains its header wash. Summary and capture time share this area; Show only this passage and Replay remain separate sibling buttons with their own hover and keyboard focus. Expanded headers have rounded top corners; collapsed headers follow the whole card radius. The settings
+row (shortcut, floating controls, clear history) sits in its own compact block, aligned to the same 80ch column.
+The setup starts after the measured header controls (the inner edge, without adding the header frost inset again). The setup clipping container reserves 16px vertical padding for its shadow; the history viewport overlaps that empty bottom padding by 16px so the visible setup-to-list gap is 16px rather than 32px; the history content also reserves 16px at its ends instead of external margin/gap at the viewport boundary.
+Both sides reserve equal scrollbar space so the blocks remain aligned when the history scrolls.
+History and focused-passage scrollers extend beneath the shared footer gradient blur instead of clipping above it.
+Their content reserves the measured footer height plus 16px at the end, so the final paragraph can scroll fully clear of the controls. A 16px gradient mask at the top of history/focused scrollers softens the clipping edge under setup. Its depth matches the content padding, leaving the first card clear at the start. No extra blur layers or scroll listeners are added.
+
+Expanded captures show the spoken text first. A translated capture labels that text with its target language;
+its source appears below a divider in an **Original** disclosure, collapsed by default. The focused passage view
+uses the same content block and ordering. Paragraph replay, engine-provided sentence IDs, follow-reading and
+per-capture expansion keep their existing behavior. In selection captures and document detail (Reader), the current sentence has a solid 1px brand underline and a 18px round brand-blue pause/resume button with a 9px white icon in the left margin, separated from the text by 12px and positioned 10px below the paragraph’s top edge. The button shares the player transport state and toggles to Resume when paused, disappears when playback ends, and does not trigger read-from-here. Reader paged mode reserves 32px of clipping clearance at each edge for the margin control while retaining the measured text width. Its enlarged clipping frame is explicitly centered even when wider than the measured box. The frame passes pointer events through its empty padding, while text, figures and the margin control receive their own clicks, keeping both page-turn zones accessible; scroll mode uses the same control. It is positioned outside the text flow; font, line-height, padding, wrapping and sentence height stay unchanged. Hover uses a neutral solid underline; the active sentence keeps the brand colour. Text parts are loaded only when a capture opens; capture
+time is formatted once per entry/language, with no clock timer or extra backend request.
+
+Browser preview fixtures: `?scanned=3&translation=en-vi` and `?scanned=3&translation=vi-en` seed three paired short/long captures through the selection event flow. Each fixture enables its target language for that tab only, without persisting settings. These are deterministic UI samples, not live translation or voice-quality evidence.
+
+## Translate a selection before reading
+
+On **Read a selection**, two footer buttons sit together: **Translate · Off / Translate · EN (or VI) ▾**
+and the current voice. The entire Translate button opens **Translation settings**; its chevron is part of the
+same hit area. Opening it never toggles translation. The enable switch lives inside the panel and is locked
+during playback/export, while preferences load, and while saving. A load/save error exposes the retry action.
+Only one footer panel is open at a time.
+
+Translation settings pairs **Translate and read in** with a matching installed local **Translation voice**;
+changing the target picks a matching default. The voice uses the shared VoicePicker with descriptions,
+preview, favorites and keyboard navigation. Source/provider/model and speed use the shared styled Select.
+Voice settings has a compact **Translate before reading · On · EN / Off** row that opens translation settings.
+The same scoped row appears in **Voices & models**, including from the library. It explicitly describes
+selection capture; enabling translation never changes book or pasted-text speech.
+
+For translated selections, Voice settings contains the matching translation voice and **Speed**;
+otherwise it keeps the original controls. Provider setup stays in Translation settings. The footer voice chip
+only names the effective voice and rate. Missing voices never display the unrelated book voice; playback
+continues to name its actual passage voice.
+
+**Translation options** uses a content-height two-line disclosure row: title, translator summary, and a centered
+chevron share a full-row hover target with 12px horizontal and 8px vertical padding. Expanded fields align
+with its text and start 16px below the row. It is collapsed initially and contains source language (automatic by default), Apple/Ollama/
+LM Studio, and a local model when applicable. Missing packs, models and voices remain visible outside the
+collapsed section, with a route to setup. A missing target voice links to Voices & models. Settings save as changed.
+No provider requests run because the options fold opens or closes; checks run on configuration changes or Check again.
+
+The original-language picker, book chimes, footnotes, pronunciations and paid-provider controls are not shown in
+translation mode. With translation off, the original voice controls return. Book/Paste settings show only the scoped translation status/link; chapter and footnote controls appear only for books. Speed remains the shared speech rate.
+Switching targets does not replace the saved book-reading voice. Translation settings are locked during playback;
+stop first to choose another translation voice. The general voice switcher is hidden for translated selections.
+These preferences apply to the next capture; replay uses the history entry's saved translation and voice.
+
+During translation the menu bar says **Translating…**; the floating controller stays in its preparing state with
+Stop available. The selection page gives the same status and explains cancellation. Pause becomes available when
+speech begins. After success the passage shows the spoken translation, an expandable Original, and sentence
+highlights from the translated text. Replay reads that translation in its saved local voice without translating
+again. Clearing history or quitting drops both texts. A new capture or other playback supersedes the pending job.
+
+Apple's headless installed-language API requires macOS 26+. On macOS 15 use a local server. Missing Apple packs
+can be installed in System Settings → General → Language & Region → Translation Languages. Ollama uses port
+11434; LM Studio uses port 1234. ReadEase does not install/start these apps or download their models. Selection
+translation is capped at 6,000 characters; a timeout or incomplete model response is an error, not spoken text.
 
 ## Screens and states
 | Screen | States | Entry | Exit / next |

@@ -33,5 +33,25 @@ fn main() {
     println!("cargo:rustc-link-arg={}", panel_object.display());
     println!("cargo:rustc-link-lib=framework=QuartzCore");
     println!("cargo:rerun-if-changed={}", panel.display());
+    // System frameworks only; no bundled model or additional dependency.
+    let translation = std::path::PathBuf::from(&manifest).join("../../native/macos/Translation.swift");
+    let swift_object = out_dir.join("translation.o");
+    let sdk = std::process::Command::new("xcrun").args(["--sdk", "macosx", "--show-sdk-path"]).output().expect("SDK");
+    let sdk = String::from_utf8(sdk.stdout).unwrap();
+    let swift = std::process::Command::new("xcrun").args(["--find", "swiftc"]).output().expect("Swift compiler");
+    let swift = String::from_utf8(swift.stdout).unwrap();
+    let status = std::process::Command::new(swift.trim())
+        .args(["-parse-as-library", "-target", "arm64-apple-macosx15.0", "-O", "-c"])
+        .arg("-sdk").arg(sdk.trim()).env_remove("SDKROOT").arg(&translation).arg("-o").arg(&swift_object).status().expect("compile translation bridge");
+    assert!(status.success(), "translation bridge failed to compile");
+    println!("cargo:rustc-link-arg={}", swift_object.display());
+    let swift_lib = std::path::Path::new(swift.trim()).parent().unwrap().parent().unwrap().join("lib/swift/macosx");
+    println!("cargo:rustc-link-search=native={}", swift_lib.display());
+    println!("cargo:rustc-link-search=native={}/usr/lib/swift", sdk.trim());
+    println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
+    println!("cargo:rustc-link-lib=framework=Foundation");
+    println!("cargo:rustc-link-lib=framework=NaturalLanguage");
+    println!("cargo:rustc-link-lib=framework=Translation");
+    println!("cargo:rerun-if-changed={}", translation.display());
     tauri_build::build()
 }

@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Voices and models (UX)"
 status: active
-updated: 2026-10-10
+updated: 2026-10-18
 summary: "How a reader chooses what ReadEase reads with: first-run choices, Voices & models downloads and builds, a language-first voice list with previews and favourites, and paid API voices with key, cost and budget."
 tags: [area/voice, stack/react, stack/tauri, surface/macos]
 relations:
@@ -41,6 +41,7 @@ relations:
 - **Language first, then voice**: the voice panel asks which language you read in, then shows that language's voices.
   No voice is blocked for the text's language - when the open text is in the other language the app shows one sentence
   and one button suggesting a fitting voice.
+- **Translated selections**: The single footer Translate opener includes its chevron and opens an enable switch, target-language settings and matching local voices through the shared picker with preview/favorites; the adjacent Voice settings opens the effective voice and shared speed. A compact scoped translation status/link is also visible in Voice settings and Voices & models. The original voice picker and paid-provider controls are hidden for translated selections; book/Paste settings retain their own voice. Translation setup is in a collapsed Translation options section (see `ux/reading.md`).
 - **Voice list**: filter by language and gender, preview a sample, star favourites (favourites are listed first). A
   sample never starts while something is being read.
 - **API voices**: Add key → the provider is asked once; a key it refuses is not saved. The interface can ask whether a

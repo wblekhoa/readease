@@ -36,6 +36,7 @@ import { NotesPanel } from "../ui/NotesPanel";
 import { noteCount } from "../ui/annotationsList";
 import { markParagraph } from "../ui/highlight";
 import type { ReadingMode } from "../ui/readingMode";
+import { ReadingPositionControl } from "../ui/ReadingPositionControl";
 import { PageFlow, type PageReason, type PageTarget } from "./PageFlow";
 
 /** What the toolbar's ⓘ says about where you are. Pages carry a page count;
@@ -320,6 +321,8 @@ export function Reader({
   currentSegment,
   currentFigure,
   reading,
+  playback,
+  onTogglePlayback,
   mode,
   sidebarTab,
   sidebarSlot,
@@ -344,6 +347,8 @@ export function Reader({
   /** Figure whose spoken cue the ear just heard, or null. */
   currentFigure: string | null;
   reading: boolean;
+  playback: "reading" | "paused" | null;
+  onTogglePlayback: () => void;
   mode: ReadingMode;
   /** Which of this book's lists the side column shows, or null when the
    * column is folded or showing something else. The column is App's: the
@@ -1059,7 +1064,7 @@ export function Reader({
           data-chapter={segment.kind === "heading" ? chapter.id : undefined}
           data-toc={tocTargets.has(segment.id) ? "" : undefined}
           /* Where the voice is, said to the screen reader as well as drawn
-             (HIG 4.2, point 4): the dotted line is for the eye only. */
+             (HIG 4.2, point 4): the solid line is for the eye only. */
           aria-current={segment.id === marker ? "true" : undefined}
           /* The document's own language, so VoiceOver reads an English book
              in an English voice under a Vietnamese interface (HIG 4.2). */
@@ -1074,19 +1079,16 @@ export function Reader({
           }}
           onDoubleClick={cancelPendingRead}
           className={
-            // No fill, ever: the block being READ carries a light dotted
-            // line under its words (`.voice-here`), and the block under the
-            // pointer the same line in neutral ink (`.read-from-here`) to
-            // say "read from here". The padded, rounded wash both used to
-            // wear boxed the paragraph like a selection (owner, 15/09). The
-            // padding stays, invisible, because the split rule below counts
-            // on it: a cut paragraph's negative margin swallows exactly
-            // these two paddings to sit one line-height under its head.
-            "-mx-2 cursor-text px-2 py-1 read-from-here " +
+            // Keep the paragraph's measured geometry; the transport lives
+            // outside its text flow and shares the selection screen's style.
+            "relative -mx-2 cursor-text px-2 py-1 read-from-here " +
             blockClasses(segment, paged, index === 0) +
             (segment.id === marker ? "voice-here" : "")
           }
         >
+          {segment.id === marker && playback && (
+            <ReadingPositionControl playback={playback} onToggle={onTogglePlayback} />
+          )}
           {blockBody(segment)}
         </p>
         {chapter.figures
