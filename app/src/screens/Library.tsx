@@ -321,7 +321,7 @@ export function Library({
   const openPicker = async () => {
     const picked = await open({
       multiple: true,
-      filters: [{ name: "PDF, EPUB", extensions: [...BOOK_EXTENSIONS] }],
+      filters: [{ name: text("files.filter_name"), extensions: [...BOOK_EXTENSIONS] }],
     }).catch(() => null);
     if (picked) void importPaths(bookPaths(picked));
   };

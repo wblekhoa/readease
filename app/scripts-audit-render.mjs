@@ -73,7 +73,7 @@ const KEYS = new Set([...I18N.matchAll(/^  "([a-z_]+\.[a-z_0-9]+)"/gm)].map((m) 
 // to find nothing (in the `sidebar` state the column is already open and
 // the menu has no such row; the menu itself then closes on the next click).
 const UNFOLD = [["click?", /^Đổi chế độ$|^Switch mode$/], ["click?", /^Cột bên|^Side column/]];
-const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
+const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)(?!sách hoặc tài liệu$)(?!a book or document$)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
 const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
   ["click", /^Xem trước$|^Preview$/], ["wait", /^Sẽ chép \d+ mục\.$|^\d+ items? would be copied\.$/, "span"]];
@@ -242,9 +242,9 @@ const SCREENS = {
   // panel (the mock answers it with one path), the same file added again,
   // and a removal - asked, then done. Until 27/09 no cell had pressed
   // either button, so none of what they say had been on a screen.
-  shelf_import: [...SHELF, ["click", /^Mở PDF hoặc EPUB$|^Open PDF or EPUB$/], ["wait", /^Đã thêm tài liệu vào thư viện\.$|^Document added to the library\.$/, "p"]],
-  shelf_duplicate: [...SHELF, ["click", /^Mở PDF hoặc EPUB$|^Open PDF or EPUB$/], ["wait", /^Đã thêm tài liệu vào thư viện\.$|^Document added to the library\.$/, "p"],
-    ["click", /^Mở PDF hoặc EPUB$|^Open PDF or EPUB$/], ["wait", /^Tài liệu này đã có trong thư viện\.$|^This document is already in the library\.$/, "p"]],
+  shelf_import: [...SHELF, ["click", /^Mở sách hoặc tài liệu$|^Open a book or document$/], ["wait", /^Đã thêm tài liệu vào thư viện\.$|^Document added to the library\.$/, "p"]],
+  shelf_duplicate: [...SHELF, ["click", /^Mở sách hoặc tài liệu$|^Open a book or document$/], ["wait", /^Đã thêm tài liệu vào thư viện\.$|^Document added to the library\.$/, "p"],
+    ["click", /^Mở sách hoặc tài liệu$|^Open a book or document$/], ["wait", /^Tài liệu này đã có trong thư viện\.$|^This document is already in the library\.$/, "p"]],
   shelf_remove: [...SHELF, ["click", /^Xoá$|^Remove$/], ["wait", /^Giữ lại$|^Keep$/]],
   shelf_removed: [...SHELF, ["click", /^Xoá$|^Remove$/], ["wait", /^Giữ lại$|^Keep$/],
     ["click", /^Xoá$|^Remove$/], ["wait", /^Đã xoá khỏi thư viện\.$|^Removed from the library\.$/, "p"]],
@@ -1652,11 +1652,11 @@ async function main() {
       else {
         await evalJs(`document.activeElement && document.activeElement.blur()`);
         const before = await shelfCount();
-        if (!(await tabTo(/^Mở PDF hoặc EPUB$/))) expect("journey", false, 'Tab never reached "Mở PDF hoặc EPUB"');
+        if (!(await tabTo(/^Mở sách hoặc tài liệu$/))) expect("journey", false, 'Tab never reached "Mở sách hoặc tài liệu"');
         else {
           await key("Enter", { pause: 1200 });
           const after = await shelfCount();
-          expect("journey", after > before, `Enter on "Mở PDF hoặc EPUB" imported nothing (${before} -> ${after} documents)`);
+          expect("journey", after > before, `Enter on "Mở sách hoặc tài liệu" imported nothing (${before} -> ${after} documents)`);
         }
         await evalJs(`document.activeElement && document.activeElement.blur()`);
         if (!(await tabTo(/^Mở (?!PDF)/))) expect("journey", false, "Tab never reached a document on the shelf");

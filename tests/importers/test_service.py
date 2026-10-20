@@ -181,10 +181,10 @@ class LibraryServiceTests(unittest.TestCase):
 
     # RE-LIB-001
     def test_unsupported_extension_is_rejected_without_copying(self):
-        source = self.sources / "notes.txt"
+        source = self.sources / "notes.pages"
         source.write_text("Nội dung", encoding="utf-8")
 
-        with self.assertRaisesRegex(UnsupportedBookError, "PDF hoặc EPUB"):
+        with self.assertRaisesRegex(UnsupportedBookError, "EPUB, PDF, Word"):
             self.service.import_book(source)
 
         self.assertEqual(list(self.paths.books.iterdir()), [])

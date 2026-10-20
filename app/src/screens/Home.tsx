@@ -73,7 +73,7 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
   const pick = async () => {
     setFileError(null);
     try {
-      const paths = await open({ multiple: true, filters: [{ name: "PDF, EPUB", extensions: [...BOOK_EXTENSIONS] }] });
+      const paths = await open({ multiple: true, filters: [{ name: text("files.filter_name"), extensions: [...BOOK_EXTENSIONS] }] });
       if (paths) onImport(bookPaths(paths));
     } catch (cause) { setFileError(engineMessage(cause)); }
   };

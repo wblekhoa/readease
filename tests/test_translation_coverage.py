@@ -100,6 +100,10 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         # where the voice marks a division (HIG 5.1). Never shown.
         ("domain/divisions.py", r"^(chương|chapter|phần|part|quyển)\s+(.+)$"),
         ("domain/divisions.py", "mươi"),
+        # Same class (RE-LIB-011): the chapter-line matcher for plain text and
+        # the Word heading-style matcher - data for a matcher, never shown.
+        ("importers/text.py", r"^(?:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+[\w.:\-–—]+(?:[\s:.\-–—].{0,80})?$"),
+        ("importers/text.py", r"^(?:heading|tieude|titre|überschrift|ueberschrift)\s*([12])$|^title$"),
         ("domain/divisions.py", "chương"),
         # Abbreviations the sentence splitter matches against. They are data
         # for a matcher, never text anyone reads, so there is nothing to

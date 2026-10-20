@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Library (UX)"
 status: active
-updated: 2026-10-19
+updated: 2026-10-21
 summary: "How the ReadEase Library shelf works: importing PDF and EPUB by button, drag-and-drop or Apple Books, refusal feedback, removing a book while keeping the original, and per-book reading progress."
 tags: [area/data-import, area/book, stack/react, stack/tauri, surface/macos]
 relations:
@@ -75,4 +75,5 @@ flowchart LR
 | `README.en.md` § Main features, § Limits | public description |
 
 ## Change log
+- 2026-10-21: RE-LIB-011 - Open / drop / Finder accept EPUB, PDF, Word (.docx, .doc), RTF, ODT, Markdown, HTML and TXT; the picker is named "Books and documents"; the badge shows the format (DOCX, MD…). ReadEase registers as an alternate viewer for .docx/.doc/.rtf/.odt/.md only - not for .txt or .html, which every Mac has many apps for.
 - 2026-10-10: created from code and CHANGELOG as of v0.1.21.

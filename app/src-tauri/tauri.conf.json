@@ -79,6 +79,66 @@
         "mimeType": "application/pdf",
         "role": "Viewer",
         "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "docx"
+        ],
+        "name": "Word document",
+        "contentTypes": [
+          "org.openxmlformats.wordprocessingml.document"
+        ],
+        "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "doc"
+        ],
+        "name": "Word 97 document",
+        "contentTypes": [
+          "com.microsoft.word.doc"
+        ],
+        "mimeType": "application/msword",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "rtf"
+        ],
+        "name": "Rich Text document",
+        "contentTypes": [
+          "public.rtf"
+        ],
+        "mimeType": "application/rtf",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "odt"
+        ],
+        "name": "OpenDocument text",
+        "contentTypes": [
+          "org.oasis-open.opendocument.text"
+        ],
+        "mimeType": "application/vnd.oasis.opendocument.text",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "md"
+        ],
+        "name": "Markdown document",
+        "contentTypes": [
+          "net.daringfireball.markdown"
+        ],
+        "mimeType": "text/markdown",
+        "role": "Viewer",
+        "rank": "Alternate"
       }
     ],
     "category": "Education",
