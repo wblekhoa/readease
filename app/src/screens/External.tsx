@@ -33,6 +33,7 @@ export function External({
   onReplay,
   onReadPart,
   onClearHistory,
+  onHistory,
 }: {
   translating?: boolean;
   history: ExternalEntry[];
@@ -51,6 +52,8 @@ export function External({
   onReplay: (entry: ExternalEntry) => void;
   onReadPart: (entry: ExternalEntry, segmentId: string) => void;
   onClearHistory: () => void;
+  /** The stored history and its settings (RE-HIST-001…004). */
+  onHistory?: () => void;
 }) {
   const [granted, setGranted] = useState<boolean | null>(null);
   const [asked, setAsked] = useState(false);
@@ -210,6 +213,11 @@ export function External({
     >
       {setup}
       {!bare && <span className="flex-1" />}
+      {onHistory && (
+        <Button variant="ghost" size="sm" data-popover-trigger onClick={onHistory}>
+          {text("history.button")}
+        </Button>
+      )}
       {!bare && (
         /* The Qt shell could empty this list; the rewrite dropped the
            action until the parity audit found it (2026-09-02). */

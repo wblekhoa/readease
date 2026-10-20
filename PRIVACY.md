@@ -22,9 +22,15 @@ model files, and reusable document-audio cache live under
 `~/Library/Application Support/VieNeu Reader/`. The historical folder name is
 kept so existing readers do not lose their library when upgrading to ReadEase.
 
-Pasted text and text read from a selection are transient. They are not added
-to the library or persistent audio cache. The current Paste draft and captured
-passage history are held in memory and disappear when ReadEase exits. The Read
+Pasted text and text read from a selection are never added to the library or
+the persistent audio cache. By default ReadEase keeps a **history** of them on
+this Mac - the text you read, and for a translated selection its original and
+translation - in `history.sqlite3` in the same folder, readable only by your
+macOS user. No audio is kept, and none of it is sent anywhere. History keeps
+entries for 30 days by default (7, 30, 90 or 365 days, or until you delete
+them); older entries are deleted from the file. You can delete one entry,
+everything, or switch history off in the History panel of the Paste and Read a
+selection screens; switched off, nothing new is written. The Read
 home can also show recent imported books derived from the library's existing
 import/listening timestamps; those book records remain in the library.
 

@@ -18,13 +18,13 @@ function RecentBookCover({ id }: { id: string }) {
   const cover = useCover(id);
   return <MiniCover source={cover} fallback={<BookIcon />} />;
 }
-function RecentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
+function RecentRow({ item, kept, onOpen }: { item: Item; kept: boolean; onOpen: () => void }) {
   const title = item.kind === "book" ? item.source.title : summarise(item.source.text);
   const kind = text(item.kind === "book" ? "home.document" : item.kind === "paste" ? "nav.paste" : "nav.external");
   const detail = item.kind === "book" && item.source.progress_ratio !== null
     ? `${Math.round(item.source.progress_ratio * 100)}%${item.source.progress_chapter ? ` · ${item.source.progress_chapter}` : ""}`
     : item.kind === "external" && item.source.target ? text("home.translated", { language: item.source.target.toUpperCase() })
-      : item.kind !== "book" ? text("home.session") : item.source.source_format.toUpperCase();
+      : item.kind !== "book" ? text(item.id === "paste" ? "home.draft" : kept ? "home.saved" : "home.session") : item.source.source_format.toUpperCase();
   const date = item.at ? new Intl.DateTimeFormat(currentLanguage(), { day: "numeric", month: "short" }).format(item.at) : "";
   return <Button variant="ghost" onClick={onOpen} aria-label={text("home.open_recent", { title })}
     className="!h-auto w-full !justify-start gap-3 !px-3 !py-3 text-left">
@@ -36,16 +36,20 @@ function RecentRow({ item, onOpen }: { item: Item; onOpen: () => void }) {
     <span className="shrink-0 text-xs text-ink-mute">{date}</span>
   </Button>;
 }
-export function Home({ books, loading, error, importing, paste, captures, active, onImport, onPaste, onScan, onOpenBook, onOpenCapture, onRetry, onSettings, onTranslation, voice, translation, settingsBlocked }: {
+export function Home({ books, loading, error, importing, paste, pastes = [], onOpenPaste, historyKept = false, captures, active, onImport, onPaste, onScan, onOpenBook, onOpenCapture, onRetry, onSettings, onTranslation, voice, translation, settingsBlocked }: {
   books: readonly LibraryBook[]; loading: boolean; error: string | null; importing: boolean;
   paste: { text: string; at: number }; captures: readonly ExternalEntry[];
+  /** Pastes kept in the history (RE-HIST-001), and how to reopen one. */
+  pastes?: readonly { text: string; at: number }[]; onOpenPaste?: (text: string) => void;
+  /** Whether pastes and scans are kept on this Mac, which is what their row says. */
+  historyKept?: boolean;
   active?: { title: string; paused: boolean; onToggle: () => void; onOpen: () => void };
   onImport: (paths: string[]) => void; onPaste: () => void; onScan: () => void;
   onOpenBook: (book: LibraryBook) => void; onOpenCapture: (entry: ExternalEntry) => void;
   onRetry: () => void; onSettings: () => void; onTranslation: () => void;
   voice: string; translation: string; settingsBlocked: boolean;
 }) {
-  const recent = homeRecents(books, paste, captures);
+  const recent = homeRecents(books, paste, captures, pastes);
   const empty = !loading && !error && recent.length === 0 && !active;
   const [dragging, setDragging] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -94,9 +98,10 @@ export function Home({ books, loading, error, importing, paste, captures, active
           <Button variant="primary" onClick={active.onToggle}>{text(active.paused ? "home.resume" : "player.pause")}</Button>
         </Surface>}
         {recent.length > 0 && <section className="mt-7" aria-label={text("home.recent")}><h3 className="m-0 mb-2 text-sm font-semibold">{text("home.recent")}</h3>
-          <div className="divide-y divide-edge-alpha">{recent.map(item => <RecentRow key={item.id} item={item} onOpen={() => {
+          <div className="divide-y divide-edge-alpha">{recent.map(item => <RecentRow key={item.id} item={item} kept={historyKept} onOpen={() => {
             if (item.kind === "book") onOpenBook(item.source);
             else if (item.kind === "external") onOpenCapture(item.source);
+            else if (item.id !== "paste" && onOpenPaste) onOpenPaste(item.source.text);
             else onPaste();
           }} />)}</div></section>}
         <section className={`${empty ? "mt-10" : "mt-7"} border-t border-edge-alpha pt-5`} aria-label={text("home.settings")}>

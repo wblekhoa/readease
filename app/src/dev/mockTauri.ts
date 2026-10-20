@@ -906,7 +906,55 @@ function mockParts(text: string): { segment_id: string; text: string }[] {
   return chunks.map((part, index) => ({ segment_id: `part-${index}`, text: part }));
 }
 
+/* Paste and scan history (RE-HIST-001…004), as the engine keeps it: newest
+   first, the same words moved up instead of copied, past-retention entries
+   deleted on listing, nothing new written while switched off. Seeded with
+   examples so the panels open on something; `?history=empty` starts bare. */
+type MockHistoryEntry = { id: number; kind: "paste" | "scan"; text: string; original: string | null; target: string | null; at: number };
+const MOCK_DAY = 86_400_000;
+let mockHistoryId = 10;
+const MOCK_HISTORY: MockHistoryEntry[] = new URLSearchParams(location.search).get("history") === "empty" ? [] : [
+  { id: 1, kind: "paste", text: "Bản tin sáng: Thành phố khởi công tuyến đường sắt đô thị số 2, dự kiến hoàn thành vào năm 2030.", original: null, target: null, at: Date.now() - 2 * 3_600_000 },
+  { id: 2, kind: "paste", text: "Ghi chú họp nhóm: thống nhất lịch phát hành, rà lại phần hướng dẫn cài đặt và gửi bản thử cho năm người dùng.", original: null, target: null, at: Date.now() - 1 * MOCK_DAY },
+  { id: 3, kind: "scan", text: "Thiết kế tốt là thiết kế khiến người dùng không cần suy nghĩ.", original: "Good design is design that lets people stop thinking.", target: "vi", at: Date.now() - 3 * MOCK_DAY },
+  { id: 4, kind: "scan", text: "Mỗi buổi sáng, tôi dành mười phút để đọc lại những điều đã học hôm trước.", original: null, target: null, at: Date.now() - 6 * MOCK_DAY },
+];
+function mockHistorySettings(): { enabled: boolean; days: number } {
+  const days = Number(SETTINGS.history_days ?? 30);
+  return { enabled: (SETTINGS.history_enabled as unknown) !== false, days: [7, 30, 90, 365, 0].includes(days) ? days : 30 };
+}
+function mockHistory(method: string, params: Record<string, unknown>): unknown {
+  const { enabled, days } = mockHistorySettings();
+  if (method === "history.list") {
+    if (days) for (let i = MOCK_HISTORY.length - 1; i >= 0; i--) if (MOCK_HISTORY[i].at < Date.now() - days * MOCK_DAY) MOCK_HISTORY.splice(i, 1);
+    const kind = params.kind as string | undefined;
+    return { enabled, days, entries: MOCK_HISTORY.filter(entry => !kind || entry.kind === kind).sort((a, b) => b.at - a.at) };
+  }
+  if (method === "history.add") {
+    if (!enabled) return { saved: false };
+    const kind = params.kind as "paste" | "scan";
+    const text = String(params.text ?? "").trim();
+    if (!text || (kind !== "paste" && kind !== "scan")) throw new Error("history.add failed: bad entry");
+    const key = text.split(/\s+/).join(" ");
+    const original = (params.original as string | undefined) ?? null;
+    const same = MOCK_HISTORY.find(entry => entry.kind === kind && entry.text.split(/\s+/).join(" ") === key && entry.original === original);
+    const entry = same ?? { id: ++mockHistoryId, kind, text, original, target: (params.target as string | undefined) ?? null, at: 0 };
+    entry.at = Date.now(); entry.text = text;
+    if (!same) MOCK_HISTORY.push(entry);
+    return { saved: true, entry };
+  }
+  if (method === "history.delete") {
+    const at = MOCK_HISTORY.findIndex(entry => entry.id === Number(params.id));
+    if (at >= 0) MOCK_HISTORY.splice(at, 1);
+    return { deleted: at >= 0 };
+  }
+  const before = MOCK_HISTORY.length;
+  for (let i = MOCK_HISTORY.length - 1; i >= 0; i--) if (!params.kind || MOCK_HISTORY[i].kind === params.kind) MOCK_HISTORY.splice(i, 1);
+  return { deleted: before - MOCK_HISTORY.length };
+}
+
 function engineRequest(method: string, params: Record<string, unknown> = {}): unknown {
+  if (method.startsWith("history.")) return mockHistory(method, params);
   switch (method) {
     case "text.parts":
       return { parts: mockParts(String(params.text ?? "")) };

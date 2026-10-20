@@ -12,6 +12,17 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-20 · Paste and scan history kept on this Mac, on by default
+- **Context**: pasted and scanned text vanished on quit by design (PRIVACY: "transient"). The owner asked to keep the
+  history of both.
+- **Decision** (owner's choices): on by default with a switch; retention chosen by days (7/30/90/365, default 30, or
+  until deleted); text and translation only, no audio. Stored in its own `history.sqlite3` (0600, secure_delete) rather
+  than the library database, so no schema migration and one-press wipe.
+- **Evidence**: RE-HIST-001…004 tests (store, protocol, UI helpers); browser mock: reopen, save-on-read, off writes
+  nothing, dark/light panel.
+- **Reversal**: set the default of `history_enabled` to false, or remove `history.*` and the store; PRIVACY returns to
+  the transient wording.
+
 ## 2026-10-20 · Separate logic owners and shorten retrieval
 
 - **Context**: The owner approved the proposed documentation optimization: separate playback/translation/export, shorten rules and link shared policy instead of repeating it.
