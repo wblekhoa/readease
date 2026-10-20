@@ -470,6 +470,8 @@ const EMPTY = new Set(
     .filter(Boolean),
 );
 const isEmpty = (name: string) => EMPTY.has(name) || EMPTY.has("all");
+// Empty is the starting shelf, not a permanent ban on subsequent imports.
+if (isEmpty("library")) LIBRARY.splice(0);
 
 /* The side column's remembered choice - `?sidebar=open` or `closed`. At the
    audit's 960px floor the column folds itself, so without this no cell
@@ -925,13 +927,15 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       return { book_id: row.book_id, matched: Math.max(0, row.highlights - 1), unmatched: row.highlights ? 1 : 0, skipped: 2 };
     }
     case "library.list":
-      return { books: isEmpty("library") ? [] : LIBRARY };
+      return { books: LIBRARY };
     case "library.import": {
       const name = String(params.path ?? "").split("/").pop() || "Sách mới.epub";
       const title = name.replace(/\.(epub|pdf)$/i, "");
-      if (LIBRARY.some((book) => book.title === title)) return { was_existing: true };
+      const existing = LIBRARY.find(book => book.title === title);
+      if (existing) return { book_id: existing.id, was_existing: true };
+      const id = `imported-${Date.now()}`;
       LIBRARY.push({
-        id: `imported-${Date.now()}`,
+        id,
         title,
         source_format: /\.pdf$/i.test(name) ? "pdf" : "epub",
         segment_id: null, progress_ratio: null, progress_chapter: null,
@@ -939,7 +943,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         imported_at: new Date().toISOString(), from_apple_books: false,
         language: "vi", language_set: false, language_detected: "vi",
       });
-      return { was_existing: false };
+      return { book_id: id, was_existing: false };
     }
     case "book.set_language": {
       // The engine answers with what the book is in NOW, so withdrawing a
@@ -1288,7 +1292,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
      published: bilingual, a markdown link, a 64-character digest. */
   if (command === "plugin:app|version") return Promise.resolve(MOCK_VERSION);
   if (command === "plugin:updater|check") {
-    const variant = window.__mockUpdate ?? "available";
+    const variant = window.__mockUpdate ?? new URLSearchParams(location.search).get("update") ?? "available";
     if (variant === "none") return Promise.resolve(null);
     if (variant === "failed") return Promise.reject(UPDATE_CHECK_ERROR);
     return Promise.resolve({ rid: nextUpdateRid++, currentVersion: MOCK_VERSION, version: NEXT_VERSION, date: NEXT_DATE, body: NEXT_NOTES, rawJson: {} });
@@ -1297,11 +1301,12 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     // The plugin's Channel: ordered messages, then an end marker.
     // A Channel's callback takes raw `{index, message}` frames, not events.
     const channel = callbacks.get((args.onEvent as { id: number }).id) as ((raw: unknown) => void) | undefined;
-    const held = window.__mockUpdate === "slow";
+    const held = (window.__mockUpdate ?? new URLSearchParams(location.search).get("update")) === "slow";
     let index = 0;
     const send = (message: unknown) => channel?.({ index: index++, message });
     const total = 118_000_000;
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      if (new URLSearchParams(location.search).get("update") === "download_failed") { reject("Download interrupted"); return; }
       send({ event: "Started", data: { contentLength: total } });
       let sent = 0;
       const tick = () => {
@@ -1316,7 +1321,10 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
       window.setTimeout(tick, 180);
     });
   }
-  if (command === "plugin:updater|install") return new Promise((resolve) => window.setTimeout(() => resolve(null), 400));
+  if (command === "plugin:updater|install") {
+    if (new URLSearchParams(location.search).get("update") === "install_failed") return Promise.reject("Not enough disk space");
+    return new Promise((resolve) => window.setTimeout(() => resolve(null), 400));
+  }
   if (command === "plugin:resources|close") return Promise.resolve(null);
   if (command === "plugin:process|restart") return Promise.resolve(null);
   if (command === "exit_now") return Promise.resolve(null);

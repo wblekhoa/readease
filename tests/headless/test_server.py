@@ -1625,6 +1625,7 @@ class ProtocolTests(unittest.TestCase):
         }
         return deps, written
 
+    # RE-NOTE-003
     def test_notes_transfer_backs_up_then_copies_only_the_copyable(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -1642,6 +1643,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result["written"], 3)
         self.assertEqual(written["count"], 3)
 
+    # RE-NOTE-004
     def test_notes_transfer_refuses_while_books_is_open(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -1657,6 +1659,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(replies[0]["result"]["outcome"], "books_open")
         self.assertEqual(written["count"], 0)
 
+    # RE-NOTE-004
     def test_notes_transfer_writes_nothing_when_backup_fails(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -1672,6 +1675,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(replies[0]["result"]["outcome"], "backup_failed")
         self.assertEqual(written["count"], 0, "wrote despite no backup")
 
+    # RE-NOTE-003
     def test_notes_transfer_reports_all_already_there(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -2688,6 +2692,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertTrue(parts["ok"])
         self.assertEqual(parts["result"]["parts"], [])
 
+    # RE-NOTE-002
     def test_apple_books_note_sync_modes_keep_what_was_asked_for(self) -> None:
         from tempfile import TemporaryDirectory
         from pathlib import Path
@@ -2718,6 +2723,7 @@ class ProtocolTests(unittest.TestCase):
             )[0]
             self.assertFalse(bad["ok"])
 
+    # RE-NOTE-002
     def test_a_narrower_sync_mode_also_drops_what_it_no_longer_covers(self) -> None:
         # Pinning what HAPPENS, because until now nothing did, and what
         # happens is easy to be surprised by: `sync_notes` replaces every
@@ -2769,6 +2775,7 @@ class ProtocolTests(unittest.TestCase):
             _reply, held = synced("both")
             self.assertEqual(held, ["Nội dung chương hai", "Nội dung chương một"])
 
+    # RE-NOTE-001
     def test_a_deleted_highlight_does_not_come_back_on_the_next_sync(self) -> None:
         # The whole point of deleting: a sync is a mirror of Apple Books, so
         # without a tombstone the next one would put the highlight straight
@@ -2836,6 +2843,7 @@ class ProtocolTests(unittest.TestCase):
             bad = call(2, {"book_id": book_id})
             self.assertFalse(bad["ok"])
 
+    # RE-NOTE-001
     def test_a_note_written_here_is_not_overwritten_by_the_next_sync(self) -> None:
         # The mirror runs the other way too: the highlight comes from Apple
         # Books, so a note rewritten in this app is not over there, and a

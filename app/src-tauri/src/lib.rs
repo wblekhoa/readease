@@ -60,14 +60,46 @@ struct TraySlot(Arc<std::sync::Mutex<Option<tauri::tray::TrayIcon>>>);
 /// means the quit has been intercepted once and the page is installing -
 /// a second close must not intercept again, and the safety net below ends
 /// the wait if the page never answers.
+#[derive(Default)]
 struct InstallOnQuit {
+    generation: std::sync::atomic::AtomicU64,
     armed: std::sync::atomic::AtomicBool,
     busy: std::sync::atomic::AtomicBool,
 }
 
+impl InstallOnQuit {
+    fn disarm(&self) {
+        self.generation.fetch_add(1, Ordering::SeqCst);
+        self.armed.store(false, Ordering::SeqCst);
+        self.busy.store(false, Ordering::SeqCst);
+    }
+    fn timeout_is_current(&self, generation: u64) -> bool {
+        self.generation.load(Ordering::SeqCst) == generation
+            && self.armed.load(Ordering::SeqCst) && self.busy.load(Ordering::SeqCst)
+    }
+}
+
+#[cfg(test)]
+mod update_quit_tests {
+    use super::*;
+    #[test]
+    fn cancelled_or_superseded_quit_cannot_trigger_an_old_timeout() {
+        let state = InstallOnQuit::default();
+        state.armed.store(true, Ordering::SeqCst);
+        state.busy.store(true, Ordering::SeqCst);
+        let old = state.generation.load(Ordering::SeqCst);
+        assert!(state.timeout_is_current(old));
+        state.disarm();
+        assert!(!state.timeout_is_current(old));
+        state.armed.store(true, Ordering::SeqCst);
+        state.busy.store(true, Ordering::SeqCst);
+        assert!(!state.timeout_is_current(old));
+    }
+}
+
 #[tauri::command]
 fn set_install_on_quit(state: tauri::State<InstallOnQuit>, armed: bool) {
-    state.armed.store(armed, Ordering::SeqCst);
+    if armed { state.armed.store(true, Ordering::SeqCst); } else { state.disarm(); }
 }
 
 /// The page has installed the waiting update: leave now, no relaunch.
@@ -91,10 +123,13 @@ fn intercept_quit_for_install(app: &tauri::AppHandle) -> bool {
     }
     let _ = app.emit("update:install-now", ());
     // If the page dies or hangs mid-install, the app still quits.
+    let generation = state.generation.load(Ordering::SeqCst);
     let fallback = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(60));
-        fallback.exit(0);
+        if fallback.try_state::<InstallOnQuit>().is_some_and(|s| s.timeout_is_current(generation)) {
+            fallback.exit(0);
+        }
     });
     true
 }
@@ -292,6 +327,10 @@ fn read_book(
     segment_id: Option<String>,
     voice_id: String,
     rate: f64,
+    // RE-PLAY-027: the scope the button quoted; None reads to the end of the
+    // book. Tauri drops an undeclared argument silently, so before this the
+    // chapter count bounded only the price, never the reading.
+    chapters: Option<u32>,
 ) -> Result<(), String> {
     let request = app.state::<SelectionRequest>();
     let mut generation = request.0.lock().unwrap();
@@ -299,7 +338,7 @@ fn read_book(
     translation::cancel_before(*generation);
     client_of(&engine).fire("read.book", serde_json::json!({
         "book_id": book_id, "segment_id": segment_id,
-        "voice_id": voice_id, "rate": rate,
+        "voice_id": voice_id, "rate": rate, "chapters": chapters,
     }))
 }
 
@@ -560,10 +599,7 @@ pub fn run() {
             app.manage(TraySlot(tray_slot.clone()));
             app.manage(SelectionRequest::default());
             app.manage(OpenedFiles(std::sync::Mutex::new(Vec::new())));
-            app.manage(InstallOnQuit {
-                armed: std::sync::atomic::AtomicBool::new(false),
-                busy: std::sync::atomic::AtomicBool::new(false),
-            });
+            app.manage(InstallOnQuit::default());
             // Now Playing's remote commands (HIG 3.19), once, on the main
             // thread that `setup` runs on - and the one cover it shows.
             app.manage(media::register(app.handle()));

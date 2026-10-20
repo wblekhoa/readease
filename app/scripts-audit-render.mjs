@@ -87,6 +87,18 @@ const NOTE_EDITOR = [...OPEN_BOOK, ["click", /^Highlight và ghi chú$|^Highligh
 const BOOK_EXPORT = [...OPEN_BOOK, ["click", /^Xuất sách nói…$|^Export audiobook…$/], ["wait", /^Chọn nơi lưu và xuất$|^Choose location and export$/]];
 const BOOK_EXPORT_START = [...BOOK_EXPORT, ["click", /^Chọn nơi lưu và xuất$|^Choose location and export$/], ["wait", /Đang tạo giọng|Generating voice|Đang xuất|Exporting/, "[data-export-status]"]];
 const SCREENS = {
+  // RE-HOME-001: default entry and explicit routes to the existing readers.
+  home: [["wait", /^Gần đây$|^Recent$/]],
+  home_empty: [["wait", /^Bạn muốn đọc gì\?$|^What would you like to read\?$/]],
+  home_error: [["wait", /./, "[role=alert]"]],
+  home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
+  home_translation: [["click", /^Dịch khi quét đọc|^Selection translation/], ["wait", /^Cài đặt dịch$|^Translation settings$/, "[role=dialog]"]],
+  home_import: [["click", /^Mở tài liệu|^Open a document/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
+  home_paste: [...UNFOLD, ["click", /^Nhập hoặc dán nội dung|^Type or paste text/], ["click-at", "textarea"], ["type", "Nội dung thử của trang Đọc."],
+    ["click", /^Đọc$|^Read$/], ["click", /^Mở lại Nội dung thử|^Reopen Nội dung thử/], ["wait", /^Dán nội dung$|^Paste text$/, "h2"]],
+  home_capture: [...UNFOLD, ["wait", /^Gần đây$|^Recent$/], ["click-at", '[aria-label="Gần đây"] button:first-of-type, [aria-label="Recent"] button:first-of-type'], ["wait", /^Về danh sách$|^Back to the list$/]],
+  home_active: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["click", /^Quay lại thư viện$|^Back to library$/],
+    ["click", /^Đọc$|^Read$/], ["wait", /^Mở nội dung$|^Open content$/], ["rest"]],
   audiobook_form: BOOK_EXPORT,
   audiobook_range: [...BOOK_EXPORT, ["choose", /^Từ chương$|^From chapter$/, "5"], ["choose", /^Đến chương$|^To chapter$/, "2"], ["wait", /Chương kết thúc|The last chapter/, "[role=alert]"]],
   audiobook_running: BOOK_EXPORT_START,
@@ -171,9 +183,9 @@ const SCREENS = {
   // rendered it.
   update_available: [["perform", "check-updates"], ["wait", /^Có ReadEase 0\.1\.20\.$|^ReadEase 0\.1\.20 is available\.$/, "[role=dialog] p"]],
   update_none: [["perform", "check-updates", "none"], ["wait", /^Bạn đang dùng bản mới nhất \(0\.1\.19\)\.$|^You are on the latest version \(0\.1\.19\)\.$/, "[role=dialog] p"]],
-  update_failed: [["perform", "check-updates", "failed"], ["wait", /^Không kiểm tra được|^Could not check/, "[role=dialog] p"]],
+  update_failed: [["perform", "check-updates", "failed"], ["wait", /^Chưa cập nhật được|^Update could not complete/, "[role=dialog] p"]],
   update_downloading: [["perform", "check-updates", "slow"], ["wait", /^Có ReadEase|is available\.$/, "[role=dialog] p"],
-    ["click", /^Tải và cài$|^Download and Install$/], ["wait", /^Đang tải bản 0\.1\.20… \d+%$|^Downloading 0\.1\.20… \d+%$/, "[role=dialog] p"]],
+    ["click", /^Tải xuống$|^Download$/], ["perform", "check-updates"], ["wait", /^Đang tải bản 0\.1\.20… \d+%$|^Downloading 0\.1\.20… \d+%$/, "[role=dialog] p"]],
   // The Move-notes preview, its confirmation and what it says when done:
   // until 27/09 no cell had chosen two copies, so none of it had been
   // rendered. nb-1 and nb-4 share an edition, so all three verdicts show.
@@ -244,8 +256,8 @@ const SCREENS = {
   note_save_failed: [...NOTE_EDITOR, ["type", " Xem lại."], ["click", /^Lưu$|^Save$/], ["wait", /./, "[role=alert]"]],
   // Past the download: installed, waiting for a relaunch - reached by the
   // keys pass in Vietnamese only, never looked at in both languages.
-  update_installed: [["perform", "check-updates"], ["wait", /^Có ReadEase 0\.1\.20\.$|^ReadEase 0\.1\.20 is available\.$/, "[role=dialog] p"],
-    ["click", /^Tải và cài$|^Download and Install$/], ["wait", /^Khởi động lại$|^Relaunch$/]],
+  update_ready: [["perform", "check-updates"], ["wait", /^Có ReadEase 0\.1\.20\.$|^ReadEase 0\.1\.20 is available\.$/, "[role=dialog] p"],
+    ["click", /^Tải xuống$|^Download$/], ["perform", "check-updates"], ["wait", /^Cài và khởi động lại$|^Install and Relaunch$/]],
   lightbox: [...OPEN_BOOK, ["click?", /^Hiện mục lục$|^Show contents$/], ["click", /Bài tập 02/],
     ["open-figure"], ["wait", /^Đóng ảnh$|^Close image$/]],
 };
@@ -254,6 +266,15 @@ const SCREENS = {
 // states: opened in all sixteen they would add 120 cells (~6 min of a
 // ~31 min run) saying the same thing, for these 28.
 const ONLY_IN = {
+  home: ["default", "sidebar"],
+  home_empty: ["home_empty"],
+  home_error: ["home_error"],
+  home_voice: ["default"],
+  home_translation: ["default"],
+  home_import: ["default", "home_empty"],
+  home_paste: ["default"],
+  home_capture: ["scanned"],
+  home_active: ["default"],
   audiobook_form: ["default", "paid"],
   audiobook_range: ["default"],
   audiobook_running: ["export_hold"],
@@ -308,7 +329,7 @@ const ONLY_IN = {
   update_none: ["default"],
   update_failed: ["default"],
   update_downloading: ["default"],
-  update_installed: ["default"],
+  update_ready: ["default"],
 };
 // What a screen logs on purpose. A refused reading is caught and shown, and
 // the page also logs it (every caught failure is console.error'd) - on the
@@ -316,6 +337,8 @@ const ONLY_IN = {
 // fault. Exceptions are never excused.
 const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): /, note_save_failed: /annotations\.update/, price_failed: /estimate/ };
 const STATES = {
+  home_empty: "empty=library",
+  home_error: "fail=library.list",
   export_hold: "export=hold",
   export_fail: "export=fail",
   default: "",
@@ -364,6 +387,8 @@ const STATES = {
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
+  home_empty: ["home_empty", "home_import"],
+  home_error: ["home_error"],
   export_hold: ["audiobook_running", "audiobook_navigate", "audiobook_cancelled", "audiobook_quit", "audiobook_quit_cancel"],
   export_fail: ["audiobook_failed"],
   long: ["shelf", "reader", "contents", "book_notes", "search"],
@@ -467,10 +492,14 @@ async function main() {
     // A menu command, through the app's own dispatcher: the browser has no
     // menu bar, so the dev build hands the harness the dispatcher (HIG
     // 3.20). A third element picks the mock's answer to the update check.
-    const perform = (command, variant) => evalJs(`(() => {
+    const perform = async (command, variant) => {
+      const deadline = Date.now() + 4000;
+      while (!(await evalJs(`typeof window.__readeasePerform === "function"`)) && Date.now() < deadline) await sleep(100);
+      return evalJs(`(() => {
       if (typeof window.__readeasePerform !== "function") return false;
       ${variant ? `window.__mockUpdate = ${JSON.stringify(variant)};` : ""}
       window.__readeasePerform(${JSON.stringify(command)}); return true; })()`);
+    };
     // A native select, chosen the way a person's choice reaches React: the
     // value set through the element's own setter, then a change event. Found
     // by its label - the Move-notes pickers say "Lấy ghi chú từ" and
@@ -584,6 +613,14 @@ async function main() {
             }
             if (!reached) continue;
             await sleep(500);
+            if (screen === "home_paste") {
+              const draft = await evalJs(`document.querySelector('textarea')?.value`);
+              if (draft !== "Nội dung thử của trang Đọc.") findings.push({ cell, kind: "home-draft", detail: "recent item must reopen the same editable draft" });
+            }
+            if (screen === "home_active") {
+              const stillReading = await evalJs(`!!document.querySelector('[data-reading-status]') && !![...document.querySelectorAll('button')].find(e => /^(Dừng|Stop)$/.test((e.getAttribute('aria-label') || e.textContent || '').trim()))`);
+              if (!stillReading) findings.push({ cell, kind: "home-playback", detail: "returning to Read must preserve the running session" });
+            }
             if (["audiobook_normalising", "audiobook_encoding"].includes(screen)) {
               const indeterminate = await evalJs(`(() => {
                 const bar = document.querySelector('[data-export-status] [role="progressbar"]');
@@ -1524,58 +1561,28 @@ async function main() {
         crashed("first-run-progress");
       }
 
-      // The update sheet's moving parts (HIG 3.20) - what a still cell cannot
-      // show. Opened through the dispatcher, it is modal: the keyboard lands
-      // inside and Tab stays there. Escape closes it while nothing runs, and
-      // NOT while a download does (work in flight is not hidden). Download
-      // and Install walks downloading -> installing -> installed and offers
-      // Relaunch; Install When Quitting closes it and the next opening says
-      // it is armed; Skip This Version closes it.
-      const sheet = () => evalJs(`(() => { const d = [...document.querySelectorAll('[role="dialog"]')].find((e) => e.getAttribute("aria-label") === "Bản mới");
-        if (!d) return null; const a = document.activeElement;
-        return { headline: d.querySelector("p")?.textContent.trim() ?? null, inside: !!(a && d.contains(a)),
-          buttons: [...d.querySelectorAll("button")].map((b) => (b.getAttribute("aria-label") || b.textContent).trim()) }; })()`);
+      // RE-UPDATE-001: details can close during a download; the status remains.
+      const sheet = () => evalJs(`(() => { const d = [...document.querySelectorAll('[role="dialog"]')].find(e => e.getAttribute("aria-label") === "Bản mới");
+        return d ? { headline: d.querySelector("p")?.textContent.trim(), modal: d.getAttribute("aria-modal"), buttons: [...d.querySelectorAll("button")].map(b => b.textContent.trim()) } : null; })()`);
       const until = async (probe, test, ms = 6000) => { const end = Date.now() + ms; let v = await probe(); while (!test(v) && Date.now() < end) { await sleep(150); v = await probe(); } return v; };
-      const OFFER = "Có ReadEase 0.1.20.";
       if (!(await goto([]))) expect("update", false, "home did not load");
       else {
-        const reached = await perform("check-updates");
-        let u = await until(sheet, (v) => v?.headline === OFFER);
-        expect("update", reached && u?.headline === OFFER && u.inside, `the update sheet opened ${JSON.stringify(u)} - wanted "${OFFER}" with the focus inside`);
-        for (let i = 0; i < (u?.buttons.length ?? 0) + 2; i++) await key("Tab", { pause: 120 });
-        u = await sheet();
-        expect("update", !!u?.inside, "Tab left the update sheet - it is modal");
-        await key("Escape");
-        expect("update", (await sheet()) === null, "Escape did not close the update sheet while nothing was running");
         await perform("check-updates");
-        await until(sheet, (v) => v?.headline === OFFER);
-        await findAndClick(/^Tải và cài$/);
-        await key("Escape", { pause: 150 });
-        u = await sheet();
-        expect("update", u !== null && /^Đang tải bản 0\.1\.20/.test(u.headline ?? ""), `Escape during the download left ${JSON.stringify(u?.headline ?? "no sheet")} - a download stays in view`);
-        u = await until(sheet, (v) => !!v?.buttons.includes("Khởi động lại"), 8000);
-        expect("update", u?.headline === "Đã cài bản 0.1.20. Khởi động lại để dùng." && u.buttons.includes("Khởi động lại"), `after the install the sheet said ${JSON.stringify(u?.headline)} with ${JSON.stringify(u?.buttons)}`);
-        crashed("update");
-      }
-      if (!(await goto([]))) expect("update", false, "home did not load again");
-      else {
+        let u = await until(sheet, v => !!v);
+        expect("update", !!u && u.modal !== "true", "update details must be non-modal");
+        await findAndClick(/^Tải xuống$/);
+        expect("update", (await until(sheet, v => v === null)) === null, "download must leave the app usable");
+        const ready = await until(() => evalJs(`document.querySelector('[data-update-notice]')?.textContent`), v => /Sẵn sàng cập nhật/.test(v ?? ""));
+        expect("update", /Sẵn sàng cập nhật/.test(ready ?? ""), "download did not reach ready without installing");
         await perform("check-updates");
-        await until(sheet, (v) => v?.headline === OFFER);
+        await until(sheet, v => !!v);
         await findAndClick(/^Cài đặt khi thoát$/);
-        const closed = await until(sheet, (v) => v === null, 8000);
-        expect("update", closed === null, "Install When Quitting left the sheet open");
+        expect("update", (await until(sheet, v => v === null)) === null, "schedule should close details");
         await perform("check-updates");
-        const armed = await until(sheet, (v) => v !== null);
-        expect("update", armed?.headline === "Sẽ cài ReadEase 0.1.20 khi bạn thoát app.", `reopened after Install When Quitting, the sheet said ${JSON.stringify(armed?.headline)}`);
+        u = await until(sheet, v => /Sẽ cài/.test(v?.headline ?? ""));
+        expect("update", /Sẽ cài/.test(u?.headline ?? ""), "install-on-quit was not armed");
         await key("Escape");
-        crashed("update");
-      }
-      if (!(await goto([]))) expect("update", false, "home did not load a third time");
-      else {
-        await perform("check-updates");
-        await until(sheet, (v) => v?.headline === OFFER);
-        await findAndClick(/^Bỏ qua phiên bản này$/);
-        expect("update", (await until(sheet, (v) => v === null)) === null, "Skip This Version left the sheet open");
+        expect("update", (await until(sheet, v => v === null)) === null, "Escape must close details");
         crashed("update");
       }
 

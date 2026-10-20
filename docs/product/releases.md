@@ -4,7 +4,7 @@ type: release
 product: readease
 title: "ReadEase — Releases"
 status: active
-updated: 2026-10-18
+updated: 2026-10-20
 summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.23, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
@@ -16,6 +16,13 @@ Source of truth for details: `CHANGELOG.md` (repo root) and `gh release list -R 
 here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped behaviour maps to a current rule are traced.
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
+
+## Unreleased · 2026-10-20
+- **Documentation organization**: separate playback, translation and export owners; compact rule tables and linked shared policy. All 57 existing rule IDs/statuses and native holds remain; runtime behavior is unchanged.
+- **Logic documentation audit**: app state/data/concurrency map, note-sync/transfer rules (RE-NOTE-001…004), repaired RE-VOICE-009/014 identity, explicit native chapter-scope gap and corrected feedback/update privacy wording. Documentation/evidence annotations only; no runtime change from this audit.
+- **Read home**: First/default Đọc tab with an actionable empty state, shared file import, derived session recents and existing reading settings (RE-HOME-001).
+- **Prepared for review**: Non-blocking update notice in the expanded/folded sidebar, dismissible detail popover, background download and explicit safe apply boundary (RE-UPDATE-001).
+- **Status**: Local implementation; no new version, published artifact or signed upgrade acceptance yet.
 
 ## v0.1.23 · 2026-10-18
 - **What changed for users**: Optional Apple/local translation before reading a selection, target-language local voices and compact translation settings. Capture history uses separate blocks with original/translation sections. Selection and document detail share a solid reading underline and a small blue Pause/Resume button without changing text geometry. Page margins and Next/Previous hit areas are balanced. Refined native floating controls, localized menu-bar reading controls and a larger default window.

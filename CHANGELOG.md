@@ -10,6 +10,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   "vuông"), "8h-17h30" as "tám giờ đến mười bảy giờ ba mươi phút", "T2-T6"
   as "thứ hai đến thứ sáu" (it spelled "tê hai tê sáu"), and "$20" or
   "3,5 tỷ USD" in đô la instead of letters. The page keeps what is written.
+- Add Read as the default home, with file/text/selection entry points, recent content from this session and the library, and shortcuts to existing reading settings.
+
+- Prepare software updates in the background with a sidebar notice and non-modal details. Continue using ReadEase during download; install only when quitting or explicitly restarting, with export guards and visible retry paths.
 
 ## 0.1.23
 

@@ -1347,6 +1347,7 @@ mod tests {
         std::thread::sleep(Duration::from_millis(200));
         assert!(!h.shell.saw("reading:done"));
     }
+    // RE-PLAY-022: EOF must settle the app-wide export receipt.
     #[test]
     fn engine_exit_ends_an_export_instead_of_leaving_it_running() {
         let recorder = Arc::new(RecordingShell { events: Mutex::new(Vec::new()) });

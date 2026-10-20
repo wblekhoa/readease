@@ -19,6 +19,7 @@ const ACCESSIBILITY_PANE =
   "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 
 export function External({
+  focusAt = null,
   readingActionSlot,
   translating = false,
   history,
@@ -35,6 +36,7 @@ export function External({
 }: {
   translating?: boolean;
   history: ExternalEntry[];
+  focusAt?: number | null;
   readingActionSlot: HTMLElement | null;
   status: string | null;
   shortcut: string;
@@ -64,7 +66,7 @@ export function External({
   /* One passage, alone. Kept by `at` and looked up each render, so clearing
      the history takes the reader back to the list instead of leaving them
      staring at a passage that no longer exists. */
-  const [alone, setAlone] = useState<number | null>(null);
+  const [alone, setAlone] = useState<number | null>(focusAt);
   const [recording, setRecording] = useState(false);
   const [shortcutError, setShortcutError] = useState(false);
   const [floating, setFloating] = useState(true);

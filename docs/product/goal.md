@@ -4,7 +4,7 @@ type: goal
 product: readease
 title: "ReadEase — Product goal"
 status: active
-updated: 2026-10-15
+updated: 2026-10-20
 summary: "Why ReadEase exists: listen to Vietnamese and English EPUB, PDF and pasted text in a natural voice on an Apple Silicon Mac without uploading documents, plus its audience, success measures and non-goals."
 tags: [area/reading, area/voice, area/audio, surface/macos]
 ---
@@ -47,8 +47,9 @@ Download counts include the maintainer's own test downloads; read them as an upp
   is published is the user's responsibility, not the app's (`PRIVACY.md` "Exported audio").
 
 ## Links
-- UX: `ux/library.md` · `ux/reading.md` · `ux/voices.md`
-- Logic: `logic/library.md` · `logic/reading.md` · `logic/voices.md`
+- App logic entry point: [App map](systems/app/system.md) — owners, data lifetime and known gaps
+- UX: `ux/home.md` · `ux/library.md` · `ux/reading.md` · `ux/voices.md`
+- Logic: [Home](logic/home.md) · [Library](logic/library.md) · [Playback](logic/reading.md) · [Translation](logic/translation.md) · [Export](logic/export.md) · [Voices](logic/voices.md) · [Notes](logic/notes.md) · [Updates](logic/updates.md) · [Help](logic/help.md)
 - Decisions: `decisions.md` · Releases: `releases.md`
 - Public context: `README.en.md`, `PRIVACY.md`, `CHANGELOG.md` at the repo root
 

@@ -4,17 +4,17 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-18
+updated: 2026-10-20
 summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, Paste-text sentence review and background M4B book export."
 tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
   specifies: [readease:app/src/screens/Reader.tsx, readease:app/src/ui/playback.ts]
-  dependsOn: [readease-logic-reading, readease-ux-voices]
+  dependsOn: [readease-logic-reading, readease-logic-translation, readease-logic-export, readease-ux-voices]
 ---
 # ReadEase — Reading and playback (UX)
 
 > Feature master: read this file first to understand how ReadEase reads text aloud. Deeper rules live in
-> `logic/reading.md`.
+> [playback](../logic/reading.md), [translation](../logic/translation.md) and [export](../logic/export.md).
 
 ## Purpose
 - Problem: listening to a long text only works if the voice keeps its place, pauses where the text pauses, and never
@@ -103,9 +103,8 @@ relations:
   spoken words (a pronunciation then appears as said).
   While an export runs, every read in the app waits: the read buttons are disabled and a paragraph click does nothing.
   With a paid voice whose price could not be fetched, Export stays disabled and says "no price yet".
-  Known limits (2026-10-14): the global Read a selection shortcut and a voice sample still queue behind an export (shown
-  as "preparing" until it ends), and Cancel drops them too; a name typed without `.wav` gets it appended after the save
-  panel's overwrite check.
+  Playback requests, including selection speech and voice previews, do not queue behind an active export; app/native guards refuse competing speech.
+  Remaining save-panel limit: a name typed without `.wav` gets it appended after the save panel's overwrite check.
 - **Paste text**: up to 100,000 characters; paragraph breaks kept; long text is split into parts ("Reading part 2/7").
   Markdown is read as meant (marks dropped, link text read, not the address). Pasted text is not added to the Library,
   not logged and not written to the audio cache.
@@ -230,7 +229,7 @@ flowchart TD
 | File | Role |
 |---|---|
 | this file | current truth |
-| `logic/reading.md` | rules + REQ-IDs |
+| [playback](../logic/reading.md) · [translation](../logic/translation.md) · [export](../logic/export.md) | rule owners; existing IDs retained |
 | `docs/markdown-speech.md` | Markdown-to-speech detail |
 | `docs/readease-hig.md` | the app's interface guidelines |
 

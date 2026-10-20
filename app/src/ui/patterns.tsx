@@ -978,6 +978,8 @@ export function SideColumn({
   foot,
   rail,
   railFoot,
+  notice,
+  railNotice,
   showLogo = true,
 }: {
   open: boolean;
@@ -992,6 +994,8 @@ export function SideColumn({
   resizeLabel: string;
   children: ReactNode;
   foot?: ReactNode;
+  notice?: ReactNode;
+  railNotice?: ReactNode;
   /** Folded, the column narrows to these icons instead of leaving the page
    * (owner, 09/10: "collapse dạng icon gọn gàng thay vì ẩn đi hẳn"). None,
    * and folding hides the column outright. App and reader both supply a
@@ -1089,6 +1093,7 @@ export function SideColumn({
             </IconButton>
           </div>
           <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto pb-3">{rail}</div>
+          {railNotice && <div className="shrink-0 pb-3">{railNotice}</div>}
           {railFoot && (
             <div className="flex w-full shrink-0 flex-col items-center gap-1 border-t border-edge-alpha py-3">
               {railFoot}
@@ -1133,6 +1138,7 @@ export function SideColumn({
         </div>
         {rail !== undefined && showLogo && <AppLogo className="mx-4 mt-1 mb-4" />}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {notice}
         {foot && (
           <div className="flex shrink-0 items-center gap-2 border-t border-edge-alpha px-4 py-3">{foot}</div>
         )}

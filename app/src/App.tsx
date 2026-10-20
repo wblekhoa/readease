@@ -15,6 +15,9 @@ import { useShelf } from "./ui/useShelf";
 import { IN_WINDOW } from "./ui/host";
 import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
 import { useUpdater } from "./ui/updates";
+import { Home } from "./screens/Home";
+import { summarise } from "./ui/scanHistory";
+import { UpdateNotice } from "./ui/UpdateNotice";
 import { UpdatePanel } from "./ui/UpdatePanel";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -27,7 +30,7 @@ import { ExportReviewPanel } from "./ui/ExportReviewPanel";
 import { useExport } from "./ui/useExport";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
-import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
+import { LAYER_GAP, Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
 import { Presence, useHiddenGuard } from "./ui/motion";
 import {
   CHIMES, DEFAULT_CHIME, DEFAULT_NOTE_READING, NOTE_READINGS, languageName, SettingsPanel,
@@ -198,9 +201,8 @@ export default function App() {
   const exportBusy = useRef(false);
   useHiddenGuard();
   const [theme, toggleTheme, appearance, chooseAppearance] = useAppearance();
-  // The library first (owner, 16/09): the first tab of the rail is the
-  // first screen. An empty shelf offers the paste screen itself.
-  const [tab, setTab] = useState("library");
+  // RE-HOME-001: ordinary launch starts at Read; Finder still opens its document.
+  const [tab, setTab] = useState("home");
   const [voices, setVoices] = useState<Voice[]>([]);
   const translation = useTranslation();
   const translationContext = useRef({ settings: translation.settings, ready: translation.ready, voices });
@@ -261,7 +263,7 @@ export default function App() {
     if (!("__TAURI_INTERNALS__" in window)) return;
     getVersion().then(setAppVersion).catch(() => undefined);
   }, []);
-  const updater = useUpdater(appVersion);
+  const updater = useUpdater(appVersion, () => !exportBusy.current);
   /** Where the voice goes (HIG 3.21): asked once the page is up, then
    * followed by the host's `audio:device` whenever it changes. Any host
    * that answers is asked - the mock in a browser too, which `IN_WINDOW`
@@ -310,6 +312,8 @@ export default function App() {
   const footerRow = useRef<HTMLDivElement>(null);
   const reading = player.reading;
   const [content, setContent] = useState("");
+  const [pasteAt, setPasteAt] = useState(0);
+  const [homeCapture, setHomeCapture] = useState<number | null>(null);
   const [openBook, setOpenBook] = useState<LibraryBook | null>(null);
   const [segments, setSegments] = useState<string[]>([]);
   const [position, setPosition] = useState<string | null>(null);
@@ -427,6 +431,9 @@ export default function App() {
   useEffect(() => {
     if (readerPanel || hubOpen || voicesOpen || pronounceOpen) dismissPreview();
   }, [readerPanel, hubOpen, voicesOpen, pronounceOpen, dismissPreview]);
+  useEffect(() => {
+    if (readerPanel || hubOpen || voicesOpen || pronounceOpen) updater.dismiss();
+  }, [readerPanel, hubOpen, voicesOpen, pronounceOpen, updater.dismiss]);
   /* And where a home screen's actions stand: the toolbar's trailing
      cluster, the way a book's stand beside its title. */
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
@@ -1423,6 +1430,7 @@ export default function App() {
           .catch(console.error);
         return;
       case "check-updates":
+        setReaderPanel(null); setHubOpen(false); setVoicesOpen(false); setPronounceOpen(false);
         void updater.checkNow();
         return;
       case "help-logs":
@@ -1483,20 +1491,23 @@ export default function App() {
     setPosition(null);
     setOpenBook(book);
   }, []);
-  const { readingNow } = useShelf({ inBook, inWindow: IN_WINDOW, onOpen: openFromSystem });
+  const homeShelf = useShelf({ inBook, inWindow: IN_WINDOW, onOpen: openFromSystem, refreshKey: tab });
+  const { readingNow } = homeShelf;
+  const goTab = (next: string) => {
+    if (next === "home") { setOpenBook(null); setSelection(""); }
+    if (next === "external") setHomeCapture(null);
+    setTab(next);
+  };
 
-  /* Two tiers of feature (owner, 02/09: "phân chia rõ tính năng phụ và
-     tính năng chính"). PRIMARY = the ways to get something read: a book
-     from the library, or pasted text - they live in the rail with a glyph
-     each. SECONDARY = tools around reading: reading a selection from
-     another app, and moving notes between copies of a book - a quieter
-     cluster at the right, same glyph language. */
+  /* RE-HOME-001: Read is the common entry; reading workspaces follow it.
+     Moving notes remains a separate utility. */
   const tabs = useMemo(() => ([
+    { value: "home", label: text("nav.home"), icon: <VoiceIcon /> },
     { value: "library", label: text("nav.library"), icon: <BookIcon /> },
     { value: "paste", label: text("nav.paste"), icon: <ClipboardIcon /> },
+    { value: "external", label: text("nav.external"), icon: <CursorTextIcon /> },
   ]), [language]);
   const tools = useMemo(() => ([
-    { value: "external", label: text("nav.external"), icon: <CursorTextIcon /> },
     { value: "transfer", label: text("nav.transfer"), icon: <TransferIcon /> },
   ]), [language]);
 
@@ -1545,7 +1556,7 @@ export default function App() {
       : !openBook || !voiceId || exporting;
   // Voice and speed also drive the global shortcut, so they belong on the
   // selection screen too - just not on the notes utility.
-  const speechSettings = canStart || screen === "external";
+  const speechSettings = canStart || screen === "external" || screen === "home";
   const selectionTranslation = screen === "external" && translation.settings.enabled;
   const translationSummary = translation.settings.enabled ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
   const activeSelectionVoice = origin?.kind === "external" && reading !== "idle" ? scanVoice : null;
@@ -1554,7 +1565,7 @@ export default function App() {
   const settingsHint = selectionTranslation || activeSelectionVoice ? null : hint;
   // A shortcut read can fail while any screen is open, and its error lands
   // here: never hide the bar out from under one.
-  const showTransport = canStart || speechSettings || reading !== "idle" || player.error !== null;
+  const showTransport = canStart || screen === "external" || reading !== "idle" || player.error !== null;
   const showFooter = showTransport || exportJob.job.kind !== "idle";
 
   useEffect(() => {
@@ -1698,6 +1709,10 @@ export default function App() {
     </>
   );
 
+  const updateNotice = (compact = false) => <UpdateNotice phase={updater.phase} onQuit={updater.onQuit} compact={compact} open={updater.open}
+    onPress={() => { setReaderPanel(null); setHubOpen(false); setVoicesOpen(false); setPronounceOpen(false); dismissPreview(); updater.show(); }} />;
+  const updateAnchor = { left: Math.min((sideOpen ? sideWidth : 80) + LAYER_GAP, Math.max(16, window.innerWidth - 432)), bottom: 16 };
+
   return (
     <div key={language} className="flex h-screen overflow-hidden">
       {/* Heard, never seen: the one live region for the reading's state
@@ -1718,6 +1733,8 @@ export default function App() {
         toggleLabel={text(sideOpen ? "sidebar.close" : "sidebar.open")}
         resizeLabel={text(sideOpen ? "sidebar.resize" : "sidebar.pull")}
         foot={chrome}
+        notice={updateNotice()}
+        railNotice={updateNotice(true)}
         showLogo={!inBook}
         /* Every screen folds to the same rail. In a book its icons open
            the document's lists through the same state machine. */
@@ -1763,7 +1780,7 @@ export default function App() {
                   icon={item.icon}
                   label={item.label}
                   active={tab === item.value}
-                  onPress={() => setTab(item.value)}
+                  onPress={() => goTab(item.value)}
                 />
               ))}
             </nav>
@@ -1824,16 +1841,20 @@ export default function App() {
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
             <nav aria-label={text("aria.workspace")} className="flex flex-col gap-1">
-              {[...tabs, ...tools].map((item) => (
+              {tabs.map((item) => (
                 <RailItem
                   key={item.value}
                   icon={item.icon}
                   label={item.label}
                   active={tab === item.value}
-                  onPress={() => setTab(item.value)}
+                  onPress={() => goTab(item.value)}
                 />
               ))}
             </nav>
+            <div className="mt-5 border-t border-edge-alpha pt-3">
+              <p className="m-0 px-3 pb-2 text-xs font-semibold text-ink-mute">{text("nav.tools")}</p>
+              {tools.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => goTab(item.value)} />)}
+            </div>
             {readingNow.length > 0 && (
               <RailGroup title={text("sidebar.reading")}>
                 {readingNow.map((book) => (
@@ -1920,7 +1941,7 @@ export default function App() {
                     icon: item.icon,
                     label: item.label,
                     hint: item.value === tab ? text("sidebar.current") : undefined,
-                    onSelect: () => setTab(item.value),
+                    onSelect: () => goTab(item.value),
                   })),
                   ...(sideOpen ? [] : [{
                     icon: <SidebarIcon />,
@@ -2113,7 +2134,24 @@ export default function App() {
       </div>
 
       <main className="absolute inset-0 flex flex-col px-6">
-        {tab === "library" ? (
+        {tab === "home" ? (
+          <Home books={homeShelf.shelf} loading={homeShelf.loading} error={homeShelf.error} importing={homeShelf.importing}
+            paste={{ text: content, at: pasteAt }} captures={externalHistory}
+            active={reading !== "idle" && previewing === null && origin ? {
+              title: origin.kind === "book" ? origin.book.title : summarise(current.current?.kind === "text" ? current.current.text : content),
+              paused: reading === "paused", onToggle: togglePause,
+              onOpen: () => { if (origin.kind === "book") { setOpenBook(origin.book); setTab("library"); } else { setHomeCapture(null); setTab(origin.kind); } },
+            } : undefined}
+            onImport={homeShelf.openPaths} onPaste={() => setTab("paste")} onScan={() => goTab("external")}
+            onOpenBook={book => { setPosition(null); setOpenBook(book); setTab("library"); }}
+            onOpenCapture={entry => { setHomeCapture(entry.at); setTab("external"); }}
+            onRetry={() => void homeShelf.reload()}
+            onSettings={() => { setHubOpen(false); setReaderPanel("voice"); }}
+            onTranslation={() => { setHubOpen(false); setReaderPanel("translation"); }}
+            voice={`${voiceName(voices.find(voice => voice.id === voiceId)?.label) || text("translation.choose_voice")} · ${rate}×`}
+            translation={translationSummary} settingsBlocked={reading !== "idle" || exporting}
+          />
+        ) : tab === "library" ? (
           openBook ? (
             <Reader
               bookId={openBook.id}
@@ -2155,6 +2193,7 @@ export default function App() {
           )
         ) : tab === "external" ? (
           <External
+            focusAt={homeCapture}
             readingActionSlot={readingActionSlot}
             translating={translating}
             history={externalHistory}
@@ -2228,7 +2267,7 @@ export default function App() {
               className="mt-3 min-h-0 flex-1"
               placeholder={text("paste.placeholder")}
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => { setContent(event.target.value); setPasteAt(Date.now()); }}
             />
             {/* Two things on one line - the count, and past the limit what to
                 do - so a gap between them: as one run of text they read
@@ -2818,9 +2857,7 @@ export default function App() {
           onClose={() => setHubOpen(false)}
         />
       </Presence>
-      {/* A newer ReadEase, found quietly after launch, is said by the menu
-          item under About (HIG 3.20) - no floating notice; the sheet opens
-          on request. */}
+      {/* RE-UPDATE-001: one non-modal detail view shared by menu and sidebar. */}
       <Presence open={updater.open}>
         <UpdatePanel
           phase={updater.phase}
@@ -2828,10 +2865,13 @@ export default function App() {
           auto={updater.auto}
           onQuit={updater.onQuit}
           onInstallNow={() => { if (!exportBusy.current) void updater.installNow(); }}
-          onInstallOnQuit={() => void updater.installOnQuit()}
-          onSkip={updater.skip}
+          onInstallOnQuit={() => { void updater.installOnQuit(); updater.dismiss(); }}
           onAuto={updater.setAuto}
-          onRestart={() => { if (!exportBusy.current) updater.restart(); }}
+          onRestart={() => { if (!exportBusy.current) void updater.restart(); }}
+          onDownload={() => { void updater.download(); updater.dismiss(); }}
+          onRetry={() => void updater.retry()}
+          anchor={updateAnchor}
+          readingActive={reading !== "idle" || externalHistory.length > 0 || content.trim().length > 0}
           onClose={updater.dismiss}
         />
       </Presence>
