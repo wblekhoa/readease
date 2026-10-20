@@ -149,6 +149,16 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/prosody.py", "Thành phố"),
         ("domain/prosody.py", r"quý \1 năm \2"),
         ("domain/prosody.py", "ô kê"),
+        # Everyday forms the SDK misread, written as it reads them right
+        # (RE-PLAY-028). Spoken, never shown.
+        ("domain/prosody.py", r"\$\s?(\d+(?:[.,]\d+)*(?:\s*(?:nghìn|triệu|tỷ))?)"),
+        ("domain/prosody.py", r"(\d+(?:[.,]\d+)*(?:\s*(?:nghìn|triệu|tỷ))?)\s*USD\b"),
+        ("domain/prosody.py", " đến "),
+        ("domain/prosody.py", r"thứ \1"),
+        ("domain/prosody.py", "chủ nhật"),
+        ("domain/prosody.py", r"\1 đến "),
+        ("domain/prosody.py", r"\1 đô la"),
+        ("domain/prosody.py", r"\1 đô la Mỹ"),
         ("domain/prosody.py", "Nhà xuất bản"),
         ("domain/prosody.py", "Sách đã dẫn"),
         ("domain/prosody.py", "Tài liệu đã dẫn"),

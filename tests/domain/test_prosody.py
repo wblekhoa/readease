@@ -932,6 +932,34 @@ class VietnameseAbbreviationTests(unittest.TestCase):
         for text in ("Nxbx", "Hà H. Lan", "H.Lan", "NXB Trẻ"):
             self.assertEqual(speak_vietnamese_abbreviations(text), text, text)
 
+    # RE-PLAY-028
+    def test_square_and_cubic_units_keep_their_power(self):
+        self.assertEqual(speak_vietnamese_abbreviations("Căn hộ 100m² và bể 2,5m³."), "Căn hộ 100m2 và bể 2,5m3.")
+        self.assertEqual(speak_vietnamese_abbreviations("Rộng 5 km²."), "Rộng 5 km2.")
+        self.assertEqual(speak_vietnamese_abbreviations("Công thức x² + y³"), "Công thức x² + y³")
+        # Through the whole shaping, where note marks are dropped first.
+        self.assertIn("100m2", speakable_text("Căn hộ 100m².", language="vi"))
+        self.assertNotIn("m2", speakable_text("Area 100m².", language="en"))
+
+    # RE-PLAY-028
+    def test_an_hour_range_says_den(self):
+        self.assertEqual(speak_vietnamese_abbreviations("Mở cửa 8h-17h30, nghỉ 11h – 13h."),
+                         "Mở cửa 8h đến 17h30, nghỉ 11h đến 13h.")
+        self.assertEqual(speak_vietnamese_abbreviations("Phòng 8-10"), "Phòng 8-10")
+
+    # RE-PLAY-028
+    def test_a_weekday_range_or_list_says_the_days(self):
+        self.assertEqual(speak_vietnamese_abbreviations("Làm việc T2-T6, nghỉ T7, CN."),
+                         "Làm việc thứ 2 đến thứ 6, nghỉ thứ 7, chủ nhật.")
+        for text in ("Tầng T2", "Mẫu T6 mới", "CN lớp 10A"):
+            self.assertEqual(speak_vietnamese_abbreviations(text), text, text)
+
+    # RE-PLAY-028
+    def test_dollars_are_said_as_do_la(self):
+        self.assertEqual(speak_vietnamese_abbreviations("Giá $20, vốn 3,5 tỷ USD."),
+                         "Giá 20 đô la, vốn 3,5 tỷ đô la Mỹ.")
+        self.assertEqual(speak_vietnamese_abbreviations("Tỷ giá USD hôm nay"), "Tỷ giá USD hôm nay")
+
     # RE-PLAY-019
     def test_ok_is_said_as_the_word_not_as_letters(self):
         self.assertEqual(speak_vietnamese_abbreviations("OK, mình đi. Ok nhé."), "ô kê, mình đi. ô kê nhé.")
