@@ -15,10 +15,10 @@ import { GroupedRow, GroupedSection } from "./patterns";
 import { translatorReady, type TranslationSettings, type TranslatorFound as Found } from "./translation";
 
 type Provider = TranslationSettings["provider"];
-const PROVIDERS: readonly { id: Provider; name: string; port?: number }[] = [
+const PROVIDERS: readonly { id: Provider; name: string }[] = [
   { id: "apple", name: "Apple Translation" },
-  { id: "ollama", name: "Ollama", port: 11434 },
-  { id: "lmstudio", name: "LM Studio", port: 1234 },
+  { id: "ollama", name: "Ollama" },
+  { id: "lmstudio", name: "LM Studio" },
 ];
 
 function askApple(): Promise<Found> {
@@ -74,13 +74,16 @@ export function TranslationSources({ settings, summary, onOpenSettings, disabled
       />
       {PROVIDERS.map(provider => {
         const state = found[provider.id];
+        // A local server is an expert's tool: listed when it is the chosen
+        // translator or is actually open, never as a row of "not open"s.
+        if (provider.id !== "apple" && provider.id !== settings.provider && !(state.state === "ready" || (state.state === "missing" && state.reason === "hub.translate_local_empty"))) return null;
         return (
           <GroupedRow
             key={provider.id}
             title={provider.name}
             subtitle={state.state === "checking" ? text("translation.checking")
               : state.state === "ready" ? (provider.id === "apple" ? text("hub.translate_apple_ready") : text("hub.translate_local_models", { count: state.models.length }))
-                : text(state.reason, { port: String(provider.port ?? "") })}
+                : text(state.reason)}
             trailing={provider.id === settings.provider
               ? <span className="text-xs text-ink-mute">{text("model.in_use")}</span>
               : undefined}
