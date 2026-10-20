@@ -12,7 +12,7 @@
  * model's; the providers are a third group. Nothing here is required:
  * every row is an offer.
  */
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
 import { CloseIcon } from "./icons";
@@ -77,8 +77,8 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading, tr
       {LANGUAGES.map((language) => {
         const found = readable(language, status, voices, keysSet);
         return (
+          <Fragment key={language}>
           <GroupedSection
-            key={language}
             title={text(language === "vi" ? "voices.language_vi" : "voices.language_en")}
           >
             {/* The statistic first: the question the owner asked this place
@@ -96,12 +96,14 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading, tr
               subtitle={sourcesLine(language, status, voices, keysSet)}
             />
             <ModelRows language={language} models={models} reading={reading} />
-            {/* The Vietnamese model's builds load at construction: using the
-                other one restarts the engine, and the rows say so once. */}
-            {language === "vi" && (
-              <Notice fine className="mt-2 block">{text("model.switch_restart")}</Notice>
-            )}
           </GroupedSection>
+          {/* The Vietnamese model's builds load at construction: using the
+              other one restarts the engine, and the rows say so once - as a
+              small callout below the list, off its row dividers (owner, 20/10). */}
+          {language === "vi" && (
+            <Notice tone="info" compact className="mt-3 block">{text("model.switch_restart")}</Notice>
+          )}
+          </Fragment>
         );
       })}
       {translation}
