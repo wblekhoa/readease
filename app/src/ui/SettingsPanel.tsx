@@ -31,7 +31,7 @@ import { TranslationSettings } from "./TranslationSettings";
 import type { TranslationPreference } from "./useTranslation";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
-import { GroupedRow, GroupedSection, useDismiss } from "./patterns";
+import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
 import { ChevronDownIcon, CloseIcon, VoiceSwitchIcon } from "./icons";
 import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
@@ -67,6 +67,7 @@ export function languageName(language: ReadingLanguage): string {
 }
 
 export function SettingsPanel({
+  centered = false,
   translation,
   onOpenTranslation,
   context,
@@ -108,6 +109,9 @@ export function SettingsPanel({
   output = null,
   onClose,
 }: {
+  /** Opened from the side column's settings list: a centred dialog over a
+   * scrim, not a popover pinned over the footer button (owner, 20/10). */
+  centered?: boolean;
   /** The whole catalogue; what each tab offers is decided here. */
   translation: TranslationPreference;
   onOpenTranslation: () => void;
@@ -179,7 +183,8 @@ export function SettingsPanel({
   const chosen = offered.some((voice) => voice.id === voiceId) ? voiceId : "";
   const paidVoice = isPaidVoice(voiceId);
 
-  return (
+  return (<>
+    {centered && <Scrim />}
     /* Capped at the room between the bars, and only the BODY scrolls: with
        the quality section open this panel outgrew a short window and ran up
        under the header (owner, 03/09). Same shape as the notes panel - title
@@ -198,7 +203,10 @@ export function SettingsPanel({
          two line up without measuring anything (owner, 05/09: it used to
          open across the screen from the button that opened it). */
       layer="popover"
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"
+      modal={centered}
+      className={centered
+        ? "fixed left-1/2 top-1/2 z-40 flex max-h-[84%] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted w-[26rem] max-w-[calc(100vw-3rem)]"
+        : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
         <h3 className="m-0 flex-1 text-sm font-bold">{panelTitle}</h3>
@@ -448,5 +456,5 @@ export function SettingsPanel({
         <ModelProgress models={models} className="mt-4" />
       </div>
     </Surface>
-  );
+  </>);
 }

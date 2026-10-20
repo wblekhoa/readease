@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
 import { Button, IconButton, Input, Surface } from "./controls";
 import { CloseIcon, TrashIcon } from "./icons";
+import { Scrim, useDismiss } from "./patterns";
 import {
   MAX_SPOKEN,
   MAX_WRITTEN,
@@ -25,11 +26,16 @@ const KEY = "pronunciations";
 export function PronunciationsPanel({
   onChanged,
   onClose,
+  centered = false,
 }: {
+  /** Opened from the side column: centred over a scrim (owner, 20/10). */
+  centered?: boolean;
   /** The list changed: a price that counted the old words is stale. */
   onChanged: () => void;
   onClose: () => void;
 }) {
+  // Centred, it is a dialog: Esc or a click outside closes it.
+  const layer = useDismiss(onClose, centered);
   const [list, setList] = useState<Pronunciation[] | null>(null);
   const [written, setWritten] = useState("");
   const [spoken, setSpoken] = useState("");
@@ -59,13 +65,18 @@ export function PronunciationsPanel({
     setSpoken("");
   };
 
-  return (
+  return (<>
+    {centered && <Scrim />}
     <Surface
+      ref={layer}
       edge="strong"
       radius="sheet"
       dialog={text("pronounce.title")}
       layer="popover"
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"
+      modal={centered}
+      className={centered
+        ? "fixed left-1/2 top-1/2 z-40 flex max-h-[84%] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted w-[32rem] max-w-[calc(100vw-3rem)]"
+        : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
     >
       <div className="flex items-start gap-3 px-6 pb-3 pt-5">
         <div className="min-w-0 flex-1">
@@ -129,5 +140,5 @@ export function PronunciationsPanel({
         </ul>
       </div>
     </Surface>
-  );
+  </>);
 }

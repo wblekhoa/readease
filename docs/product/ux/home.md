@@ -33,3 +33,4 @@ Loading has its own message. Library failures show retry, never a false empty-st
 Use the shared button/surface/notice/cover primitives and palette. Entry actions form three columns when the content area fits and stack otherwise. The body scrolls beneath the existing shell chrome; keep every action keyboard reachable. Labels and empty states support Vietnamese/English and both themes.
 
 - 2026-10-20 (owner): minimal layout - the three entry points show an icon and a name (hint as tooltip); reading settings (voice, scan translation) sit in a fixed footer at the bottom of Read home, outside the scroll.
+- 2026-10-20 (owner): the side column holds navigation and settings, like SpeakEase - Read, Library, Paste, Read a selection; Tools; Settings (Voice, Translate before reading, Pronunciations, Voices & models). The "Reading now" list is gone (Read home lists recent content). Opened from the column, each settings sheet is centred over a scrim.

@@ -55,6 +55,8 @@ export const TEXT = {
   "aria.close": ["Đóng", "Close"],
   "nav.home": ["Đọc", "Read"],
   "nav.tools": ["Công cụ", "Tools"],
+  "nav.settings": ["Cài đặt", "Settings"],
+  "settings.voice_title": ["Giọng đọc", "Voice"],
   "home.empty_title": ["Bạn muốn đọc gì?", "What would you like to read?"],
   "home.empty_hint": ["Mở tài liệu, nhập hoặc dán nội dung, hay quét một đoạn chữ để bắt đầu.", "Open a document, type or paste text, or read a selection to begin."],
   "home.open_file": ["Mở tài liệu", "Open a document"],
