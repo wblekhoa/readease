@@ -1519,10 +1519,10 @@ export default function App() {
   const [centredPanels, setCentredPanels] = useState(false);
   useEffect(() => { if (readerPanel === null && !pronounceOpen) setCentredPanels(false); }, [readerPanel, pronounceOpen]);
   const settingsItems = [
-    { key: "voice", label: text("settings.voice_title"), icon: <VoiceIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("voice"); } },
-    { key: "translation", label: text("translation.title"), icon: <ArrowSwapIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("translation"); } },
-    { key: "pronounce", label: text("pronounce.title"), icon: <TextLargerIcon />, open: () => { setHubOpen(false); setReaderPanel(null); setCentredPanels(true); setPronounceOpen(true); } },
-    { key: "hub", label: text("hub.title"), icon: <ReadingSettingsIcon />, open: () => { setReaderPanel(null); setPronounceOpen(false); setVoicesOpen(false); setHubOpen(true); } },
+    { id: "voice", label: text("settings.voice_title"), icon: <VoiceIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("voice"); } },
+    { id: "translation", label: text("translation.title"), icon: <ArrowSwapIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("translation"); } },
+    { id: "pronounce", label: text("pronounce.title"), icon: <TextLargerIcon />, open: () => { setHubOpen(false); setReaderPanel(null); setCentredPanels(true); setPronounceOpen(true); } },
+    { id: "hub", label: text("hub.title"), icon: <ReadingSettingsIcon />, open: () => { setReaderPanel(null); setPronounceOpen(false); setVoicesOpen(false); setHubOpen(true); } },
   ];
 
   const overLimit = content.length > PASTE_LIMIT;
@@ -1783,7 +1783,7 @@ export default function App() {
               ))}
             </nav>
             <div role="group" aria-label={text("nav.settings")} className="mt-2 flex flex-col items-center gap-1 border-t border-edge-alpha pt-2">
-              {settingsItems.map(item => <RailIcon key={item.key} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
+              {settingsItems.map(item => <RailIcon key={item.id} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
             </div>
           </>
         )}
@@ -1846,7 +1846,7 @@ export default function App() {
               {tools.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => goTab(item.value)} />)}
             </div>
             <RailGroup title={text("nav.settings")}>
-              {settingsItems.map(item => <RailItem key={item.key} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
+              {settingsItems.map(item => <RailItem key={item.id} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
             </RailGroup>
           </div>
         )}
