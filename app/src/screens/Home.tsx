@@ -86,10 +86,12 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
       if (paths) onImport(bookPaths(paths));
     } catch (cause) { setFileError(engineMessage(cause)); }
   };
-  const action = (label: string, detail: string, icon: ReactNode, onClick: () => void, disabled = false) => <Button onClick={onClick} disabled={disabled}
-    className="!h-auto !items-start !justify-start gap-3 !px-4 !py-4 text-left">
+  /* Minimal (owner, 20/10): an icon and a name; the longer hint is the
+     button's tooltip, not a second line on every visit. */
+  const action = (label: string, detail: string, icon: ReactNode, onClick: () => void, disabled = false) => <Button variant="ghost" onClick={onClick} disabled={disabled} title={detail}
+    className="!h-auto !justify-start gap-3 !px-3 !py-3 text-left">
     <IconTile>{icon}</IconTile>
-    <span className="min-w-0 whitespace-normal"><span className="block font-semibold">{label}</span><span className="mt-1 block text-xs font-normal leading-relaxed text-ink-mute">{detail}</span></span>
+    <span className="min-w-0 truncate font-semibold">{label}</span>
   </Button>;
   return <section className="shell-inset flex min-h-0 flex-1 flex-col">
     <div className="selection-scroll-mask min-h-0 flex-1 overflow-y-auto">
@@ -137,15 +139,14 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
             else if (item.id !== "paste" && onOpenPaste) onOpenPaste(item.source.text);
             else onPaste();
           }} />)}</div></section>}
-        <section className={`${empty ? "mt-10" : "mt-7"} border-t border-edge-alpha pt-5`} aria-label={text("home.settings")}>
-          <h3 className="m-0 text-sm font-semibold">{text("home.settings")}</h3><p className="m-0 mt-1 text-xs leading-relaxed text-ink-mute">{text("home.settings_hint")}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button data-popover-trigger disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
-            <Button data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("home.scan_translation")} · {translation}</Button>
-          </div>
-        </section>
       </div>
     </div>
+    {/* Reading settings stay at the foot of the screen (owner, 20/10):
+        always in reach, never scrolled away, and out of the content. */}
+    <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-edge-alpha py-3" aria-label={text("home.settings")}>
+      <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
+      <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("home.scan_translation")} · {translation}</Button>
+    </footer>
     {dragging !== null && <DropZone icon={<ImportIcon />} headline={text(dragging ? "home.drop" : "home.file_types")} tone={dragging ? "ok" : "error"} />}
   </section>;
 }

@@ -31,3 +31,5 @@ Loading has its own message. Library failures show retry, never a false empty-st
 
 ## Layout and interaction
 Use the shared button/surface/notice/cover primitives and palette. Entry actions form three columns when the content area fits and stack otherwise. The body scrolls beneath the existing shell chrome; keep every action keyboard reachable. Labels and empty states support Vietnamese/English and both themes.
+
+- 2026-10-20 (owner): minimal layout - the three entry points show an icon and a name (hint as tooltip); reading settings (voice, scan translation) sit in a fixed footer at the bottom of Read home, outside the scroll.
