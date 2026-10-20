@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The Vietnamese voice says "100m²" as "một trăm mét vuông" (it dropped
+  "vuông"), "8h-17h30" as "tám giờ đến mười bảy giờ ba mươi phút", "T2-T6"
+  as "thứ hai đến thứ sáu" (it spelled "tê hai tê sáu"), and "$20" or
+  "3,5 tỷ USD" in đô la instead of letters. The page keeps what is written.
+
 ## 0.1.23
 
 - Build the native translation bridge with the macOS 26 SDK in CI and protect

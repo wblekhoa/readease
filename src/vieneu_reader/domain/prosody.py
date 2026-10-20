@@ -453,16 +453,44 @@ _VI_HANOI_IMPRINT = re.compile(r"(?<![\w])H\.\s*:")
 _VI_OK = re.compile(r"(?<![\w-])(?:OK|Ok)(?![\w-])")
 
 
+# Forms the SDK normaliser misreads, found by probing 44 everyday forms on
+# 20/10 (RE-PLAY-028). Each rewrite produces a spelling the SDK was checked to
+# read right: "100m2" → "một trăm mét vuông" where "100m²" lost "vuông";
+# "8h đến 17h" where "8h-17h" lost "đến"; "thứ 2 đến thứ 6" where "T2-T6"
+# was spelled "tê hai tê sáu"; "đô la" where "$"/"USD" became "u s d".
+_VI_UNIT_POWER = re.compile(r"(?<=\d)(\s*(?:[kcdm]?m))([²³])")
+_VI_HOUR_RANGE = re.compile(r"\b(\d{1,2}h(?:\d{2})?)\s*[-–]\s*(?=\d{1,2}h\b|\d{1,2}h\d{2}\b)")
+_VI_WEEKDAY_RUN = re.compile(r"(?<![\w-])(?:T[2-7]|CN)(?:\s*[-–,/]\s*(?:T[2-7]|CN))+(?![\w-])")
+_VI_DOLLAR_SIGN = re.compile(r"\$\s?(\d+(?:[.,]\d+)*(?:\s*(?:nghìn|triệu|tỷ))?)")
+_VI_USD_AFTER_AMOUNT = re.compile(r"(\d+(?:[.,]\d+)*(?:\s*(?:nghìn|triệu|tỷ))?)\s*USD\b")
+
+
+def _vi_unit_powers(text: str) -> str:
+    return _VI_UNIT_POWER.sub(lambda m: m.group(1) + ("2" if m.group(2) == "²" else "3"), text)
+
+
+def _weekday_run(match: re.Match) -> str:
+    run = re.sub(r"\s*[-–]\s*", " đến ", match.group(0))
+    run = re.sub(r"\bT([2-7])\b", r"thứ \1", run)
+    return re.sub(r"\bCN\b", "chủ nhật", run)
+
+
 def speak_vietnamese_abbreviations(text: str) -> str:
     """'ThS. A' → 'Thạc sĩ A', 'TP. Huế' → 'Thành phố Huế', 'tr. 45' → 'trang 45',
     'Q1/2025' → 'quý 1 năm 2025', 'OK' → 'ô kê',
-    'Nxb.'/'Sđd'/'Tlđd' and an imprint's 'H.:' in words - for the Vietnamese voice only."""
+    'Nxb.'/'Sđd'/'Tlđd' and an imprint's 'H.:' in words, 'm²' as 'm2', '8h-17h' and
+    'T2-T6' as ranges, '$'/'USD' as đô la - for the Vietnamese voice only."""
 
     text = _VI_TITLE_WITH_DOT.sub(lambda m: _VI_TITLES[m.group(1)], text)
     text = _VI_PAGE.sub("trang ", text)
     text = _VI_OK.sub("ô kê", text)
     text = _VI_CITATION.sub(lambda m: _VI_CITATION_WORDS[m.group(1).lower()], text)
     text = _VI_HANOI_IMPRINT.sub("Hà Nội:", text)
+    text = _vi_unit_powers(text)
+    text = _VI_HOUR_RANGE.sub(r"\1 đến ", text)
+    text = _VI_WEEKDAY_RUN.sub(_weekday_run, text)
+    text = _VI_DOLLAR_SIGN.sub(r"\1 đô la", text)
+    text = _VI_USD_AFTER_AMOUNT.sub(r"\1 đô la Mỹ", text)
     return _VI_QUARTER.sub(r"quý \1 năm \2", text)
 
 
@@ -1022,9 +1050,12 @@ def speakable_text(
     # de-shouted "ii" is no longer a numeral anything can recognise.
     # Transient callers resolve emphasis across all source parts first, so
     # code spans crossing a chunk boundary must not be interpreted again.
-    spoken = drop_note_marks(
-        strip_strong(text) if markdown and kind != "preformatted" else text
-    )
+    spoken = strip_strong(text) if markdown and kind != "preformatted" else text
+    if speech_language(language) != "en":
+        # Before the note marks go: "100m²" is a unit, not a footnote, and
+        # the mark stripper would leave "100m" (RE-PLAY-028).
+        spoken = _vi_unit_powers(spoken)
+    spoken = drop_note_marks(spoken)
     if citations:
         # `citations` says the in-text ones may go too - the reader's
         # `note_reading` is anything but "full" (16/09).

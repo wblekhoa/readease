@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-10-18
+updated: 2026-10-20
 summary: "Reading and playback rules (RE-PLAY): resume from heard progress, transient text never stored, Stop always wins, chapter chimes, pronunciations, Vietnamese abbreviations, Paste-text audio export and sentence review, and background M4B audiobook export with bounded batches and cancellation."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
@@ -49,6 +49,7 @@ relations:
 | RE-PLAY-024 | Floating controller B uses a native non-activating NSPanel with a flat 96×48pt capsule, opaque interior and transparent corners, no window shadow or backdrop blur, and 40pt hit targets: Pause/Resume with sentence-progress ring and Stop; preparation, completion (3 seconds) and immediate stop; external or hidden/minimised readings only; no selected text; draggable position per screen, system appearance, Reduce Motion, VoiceOver labels and default-on switch. Repeating the shortcut toggles the same live external selection; a different selection replaces it. | blocked | `native/macos/ReadingPanel.m`, `app/src-tauri/src/reading_panel.rs`, shared `reading_tray.rs`; `bash scripts/test-native-reading-panel.sh` checks native state/action/alpha/geometry; Rust `the_same_live_external_selection_toggles_but_a_new_selection_replaces_it`. Owner confirmed visibility and working buttons in regular ReadEase on 2026-10-16 and requested UI refinement; real focus/selection, fullscreen, accessibility, ≤150 ms appearance and <40 MB added total RSS remain unverified. |
 | RE-PLAY-025 | External selections optionally translate before speech using installed Apple packs (macOS 26+) or a loopback local model. Source auto/VI/EN, target VI/EN; local target voice only. 6,000-character cap, no automatic downloads, no original/paid fallback. Stop/new playback invalidates the generation before speech; original and translation live only in session history. Captures render as separate blocks with capture time; spoken translation precedes a collapsed Original disclosure. Book/Paste/export language is unchanged. A single footer Translate opener (label and chevron share one hit area) sits beside Voice settings; the enable switch lives inside the panel. Voice settings and Voices & models expose a compact scoped status/link. Translation voices use the shared picker with previews and favorites. Translation settings pairs target with a local voice; Voice settings shows that voice and speed. Source/provider/model are disclosed on demand, with setup errors always visible. The idle selection footer describes the effective translation voice without overwriting the original voice. | candidate | `translation.rs`, `native/macos/Translation.swift`, `TranslationTests.swift`, `translation.test.ts`; `test_translation_preferences_round_trip_without_passage_data`. Native end-to-end owner acceptance pending. |
 | RE-PLAY-026 | Selection captures and document detail share a solid 1px reading underline and an 18px blue Pause/Resume control in the left margin. The control uses the existing transport, does not trigger read-from-here, and does not change paragraph geometry. Paginated content is centered with equal margins; empty clipping padding passes pointer events to both page-turn zones. | live | `ReadingPositionControl.tsx`, `ScanEntry.tsx`, `Reader.tsx`, `PageFlow.tsx`; shared player state tests in `app/tests/playback.test.ts`; browser pause/resume, page-turn and geometry checks on 2026-10-18. |
+| RE-PLAY-028 | For the Vietnamese voice, everyday forms the SDK misreads are rewritten before it, in spellings it reads right: "100m²"/"2,5m³" keep "vuông"/"khối" (converted before footnote marks are dropped), "8h-17h30" says "đến", a weekday run "T2-T6, T7, CN" says "thứ hai đến thứ sáu, thứ bảy, chủ nhật", and "$20"/"3,5 tỷ USD" say "đô la"/"đô la Mỹ"; a lone "T2", "USD" or "x²" is left alone. | live | `tests/domain/test_prosody.py` (`test_square_and_cubic_units_keep_their_power`, `test_an_hour_range_says_den`, `test_a_weekday_range_or_list_says_the_days`, `test_dollars_are_said_as_do_la`) |
 
 ## States and transitions
 | State | Trigger | Next state | Edge case |
@@ -88,6 +89,7 @@ relations:
 - None recorded.
 
 ## Change log
+- 2026-10-20: RE-PLAY-028 - probed 44 everyday forms through the SDK normaliser; four misread families rewritten (unit powers, hour ranges, weekday runs, dollars).
 - 2026-10-15: RE-PLAY-020 connected to the app; RE-PLAY-021/022 cover background export, cancellation, resource bounds and lifecycle.
 - 2026-10-15: RE-PLAY-018 extended to citation words (Nxb., Sđd, Tlđd, "H.:"), found by probing the SDK normaliser on 34 common forms.
 - 2026-10-15: RE-PLAY-020 engine method `export.book` (range by chapter, marks timed from the audio, audio streamed to disk).
