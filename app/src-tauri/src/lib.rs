@@ -228,7 +228,7 @@ fn with_translator(app: &tauri::AppHandle, client: &Engine, mut options: transla
     let path = status["translator"]["path"].as_str();
     // Automatic: ReadEase's own translator once it is downloaded, else Apple.
     if options.provider == "auto" {
-        if path.is_none() { options.provider = "apple".into(); return Ok(options); }
+        if path.is_none() { options.provider = "apple".into(); options.fallback = true; return Ok(options); }
         options.provider = "readease".into();
     }
     let path = path.ok_or("translation:translator_missing")?;

@@ -4,7 +4,9 @@
 //! model is removed. It speaks the same OpenAI-style API as LM Studio, so
 //! the native bridge translates through it the way it already translates
 //! through a local server - only the port is ours.
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -62,8 +64,19 @@ fn stop_locked(slot: &mut Option<Server>) {
 /// Stop the server now: the model is being removed, or the app is quitting.
 pub(crate) fn stop() { stop_locked(&mut SERVER.lock().unwrap()); }
 
+/// A translation is under way: a long paste is many pieces, and the idle
+/// clock must not run out between them.
+pub(crate) fn touch() {
+    if let Some(server) = SERVER.lock().unwrap().as_mut() { server.last_used = Instant::now(); }
+}
+
 /// The port of a server running `model`, starting one if needed.
 pub(crate) fn port(app: &tauri::AppHandle, model: &Path) -> Result<u16, String> {
+    let binary = binary(app).ok_or("translation:translator_missing")?;
+    port_with(&binary, model)
+}
+
+pub(crate) fn port_with(binary: &Path, model: &Path) -> Result<u16, String> {
     REAPER.call_once(|| {
         std::thread::spawn(|| loop {
             std::thread::sleep(Duration::from_secs(30));
@@ -80,27 +93,48 @@ pub(crate) fn port(app: &tauri::AppHandle, model: &Path) -> Result<u16, String> 
         }
     }
     stop_locked(&mut slot);
-    let binary = binary(app).ok_or("translation:translator_missing")?;
     if !model.is_file() { return Err("translation:translator_missing".into()); }
     let port = free_port()?;
-    let child = Command::new(binary)
+    let mut child = Command::new(binary)
         .arg("-m").arg(model)
         .args(["--host", "127.0.0.1", "--port", &port.to_string()])
         // Every layer on the GPU; a context that fits the longest piece the
         // paste splitter sends (5,000 characters) and its translation.
         .args(["-ngl", "99", "-c", "8192", "--no-webui", "--parallel", "1"])
-        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped())
         .spawn().map_err(|_| "translation:local_unavailable")?;
+    // The server's own words while it starts, for the log if it fails; after
+    // that its output is drained unread - it carries request details, and
+    // nothing a reader translates may reach a log.
+    let starting = Arc::new(AtomicBool::new(true));
+    let said = Arc::new(Mutex::new(Vec::<String>::new()));
+    if let Some(stderr) = child.stderr.take() {
+        let (starting, said) = (starting.clone(), said.clone());
+        std::thread::spawn(move || {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                if starting.load(Ordering::Relaxed) {
+                    let mut said = said.lock().unwrap();
+                    if said.len() == 40 { said.remove(0); }
+                    said.push(line);
+                }
+            }
+        });
+    }
     let mut server = Server { child, port, model: model.to_path_buf(), last_used: Instant::now() };
     let started = Instant::now();
     while !healthy(port) {
         if started.elapsed() > START_DEADLINE || !matches!(server.child.try_wait(), Ok(None)) {
             let _ = server.child.kill();
             let _ = server.child.wait();
+            starting.store(false, Ordering::Relaxed);
+            eprintln!("translator: the server did not start");
+            for line in said.lock().unwrap().iter() { eprintln!("translator: {line}"); }
             return Err("translation:local_unavailable".into());
         }
         std::thread::sleep(Duration::from_millis(200));
     }
+    starting.store(false, Ordering::Relaxed);
+    said.lock().unwrap().clear();
     server.last_used = Instant::now();
     *slot = Some(server);
     Ok(port)
@@ -109,6 +143,19 @@ pub(crate) fn port(app: &tauri::AppHandle, model: &Path) -> Result<u16, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// The real thing, end to end: `READEASE_TRANSLATOR_MODEL=<gguf> cargo
+    /// test --lib -- --ignored` with `translator/llama-server` built.
+    #[test]
+    #[ignore]
+    fn starts_the_bundled_server_on_the_model_and_stops_it() {
+        let model = PathBuf::from(std::env::var("READEASE_TRANSLATOR_MODEL").expect("READEASE_TRANSLATOR_MODEL"));
+        let binary = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("translator/llama-server");
+        let port = port_with(&binary, &model).expect("server starts");
+        assert!(healthy(port));
+        assert_eq!(port_with(&binary, &model).unwrap(), port, "a running server is reused");
+        stop();
+        assert!(!healthy(port));
+    }
     #[test]
     fn a_closed_port_is_not_healthy() {
         let port = free_port().unwrap();

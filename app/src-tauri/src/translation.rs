@@ -21,6 +21,10 @@ pub(crate) struct Options {
     /// host just before translating - never taken from the webview.
     #[serde(default, skip_deserializing)]
     pub port: u16,
+    /// Automatic fell back to Apple because the ReadEase translator is not
+    /// downloaded: Apple's own refusal then points at the wrong fix.
+    #[serde(default, skip_deserializing)]
+    pub fallback: bool,
 }
 impl Options {
     pub fn validate(&self) -> Result<(), String> {
@@ -52,9 +56,19 @@ fn request(value: Value) -> Result<Value, String> {
 
 pub(crate) fn translate(text: &str, options: &Options, generation: u64) -> Result<Value, String> {
     options.validate()?;
+    if options.provider == "readease" { crate::local_translator::touch(); }
     request(json!({"action":"translate", "provider":options.provider, "source":options.source,
         "target":options.target, "model":options.model, "text":text, "generation":generation,
         "port":options.port}))
+        .map_err(|error| fallback_error(options, error))
+}
+
+/// RE-PLAY-031: when Automatic used Apple only because nothing else was
+/// downloaded, "install Apple's packs" is the wrong advice - the ReadEase
+/// translator is the one-click fix.
+fn fallback_error(options: &Options, error: String) -> String {
+    let apple_cannot = error == "translation:packages_missing" || error == "translation:apple_requires_26";
+    if options.fallback && apple_cannot { "translation:translator_missing".into() } else { error }
 }
 
 /// RE-PLAY-029: a pasted text longer than one native request (6,000 Swift
@@ -131,7 +145,7 @@ mod tests {
     use super::*;
     #[test]
     fn rejects_paid_voices_remote_providers_and_invalid_languages() {
-        let mut options = Options { provider:"apple".into(), source:"auto".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0 };
+        let mut options = Options { provider:"apple".into(), source:"auto".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0, fallback: false };
         assert!(options.validate().is_ok());
         options.voice_id = "openai:alloy".into();
         assert!(options.validate().is_err());
@@ -156,10 +170,19 @@ mod tests {
         let huge = "chữ ".repeat(4_000);
         assert!(pieces(&huge, 5_000).iter().all(|p| p.chars().count() <= 5_000 && !p.starts_with(' ')));
     }
+    // RE-PLAY-031
+    #[test]
+    fn automatic_falling_back_to_apple_points_at_the_readease_translator() {
+        let mut options = Options { provider:"apple".into(), source:"vi".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0, fallback: true };
+        assert_eq!(fallback_error(&options, "translation:packages_missing".into()), "translation:translator_missing");
+        assert_eq!(fallback_error(&options, "translation:timeout".into()), "translation:timeout");
+        options.fallback = false;
+        assert_eq!(fallback_error(&options, "translation:packages_missing".into()), "translation:packages_missing");
+    }
     #[test]
     fn cancelled_generation_never_translates() {
         cancel_before(10);
-        let options = Options { provider:"apple".into(), source:"vi".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0 };
+        let options = Options { provider:"apple".into(), source:"vi".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0, fallback: false };
         assert_eq!(translate("Xin chào", &options, 9).unwrap_err(), "translation:cancelled");
     }
 }

@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from vieneu_reader.speech.kokoro import EnglishModelError
 from vieneu_reader.translation import model as translator
 
 
@@ -27,10 +28,14 @@ class TranslatorModelTests(unittest.TestCase):
             self.addCleanup(patch.stop)
 
     def fetcher(self, payload: bytes):
+        """Behaves as the shared `_fetch` does: checks the hash before the
+        file lands, and raises its own error when it does not match."""
         calls = []
 
         def fetch(url, target, expected, progress):
             calls.append(url)
+            if expected is not None and hashlib.sha256(payload).hexdigest() != expected:
+                raise EnglishModelError("mismatch")
             target.write_bytes(payload)
             progress(len(payload))
         return fetch, calls
@@ -55,8 +60,10 @@ class TranslatorModelTests(unittest.TestCase):
     def test_a_file_that_does_not_match_is_never_ready(self):
         fetch, _ = self.fetcher(b"something else")
         model = translator.TranslatorModel(self.models, file_fetcher=fetch)
-        with self.assertRaises(translator.TranslatorModelError):
+        with self.assertRaises(translator.TranslatorModelError) as raised:
             model.prepare_model(lambda *_: None)
+        # Said as a mismatch, not as a network problem.
+        self.assertIn("không khớp", str(raised.exception))
         self.assertFalse(model.is_model_ready)
 
     # RE-PLAY-031
