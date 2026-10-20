@@ -8,7 +8,11 @@ export type TranslationSettings = {
   target: 'vi' | 'en';
   model: string;
   voice: string;
+  /** RE-PLAY-029: where translation applies. A setting saved before sources
+   * existed was Scan-only, and reads back that way. */
+  sources: { scan: boolean; paste: boolean };
 };
+export type TranslationSource = keyof TranslationSettings['sources'];
 export type TranslationResult = { text: string; voice_id: string; target: string | null };
 export function translationSettings(value: unknown): TranslationSettings {
   const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
@@ -19,7 +23,17 @@ export function translationSettings(value: unknown): TranslationSettings {
     target: v.target === 'vi' ? 'vi' : 'en',
     model: typeof v.model === 'string' ? v.model.slice(0, 200) : '',
     voice: typeof v.voice === 'string' ? v.voice : '',
+    sources: translationSources(v.sources),
   };
+}
+function translationSources(value: unknown): TranslationSettings['sources'] {
+  const v = (value && typeof value === 'object' ? value : null) as Record<string, unknown> | null;
+  if (!v) return { scan: true, paste: false };
+  return { scan: v.scan === true, paste: v.paste === true };
+}
+/** RE-PLAY-029: does this source read through translation? */
+export function translates(settings: TranslationSettings, source: TranslationSource): boolean {
+  return settings.enabled && settings.sources[source];
 }
 export function translationVoices(settings: TranslationSettings, voices: readonly Voice[]): Voice[] {
   return voices.filter(v => !isPaidVoice(v.id) && v.languages?.some(tag => tag.split('-')[0] === settings.target));
@@ -30,7 +44,7 @@ export function translationVoice(settings: TranslationSettings, voices: readonly
 }
 /** RE-PLAY-025: describe the next capture, without changing the book voice. */
 export function selectionVoice(settings: TranslationSettings, voices: readonly Voice[], originalVoice: string): string | null {
-  return settings.enabled ? translationVoice(settings, voices) : originalVoice;
+  return translates(settings, 'scan') ? translationVoice(settings, voices) : originalVoice;
 }
 const ERRORS = ['packages_missing', 'apple_requires_26', 'model_missing', 'voice_missing', 'local_unavailable', 'language_unknown', 'language', 'invalid_output', 'text_limit', 'timeout', 'export_busy'] as const;
 export function translationError(error: unknown) {

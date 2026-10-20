@@ -4,10 +4,15 @@ import { text, type TextKey } from '../i18n';
 import { Button, Notice, SegmentedControl, Select, Switch } from './controls';
 import { GroupedRow, GroupedSection } from './patterns';
 import { ChevronDownIcon } from './icons';
-import { translationError, translationVoice, translationVoices, type TranslationSettings as Settings } from './translation';
+import { translationError, translationVoice, translationVoices, type TranslationSettings as Settings, type TranslationSource } from './translation';
 import type { TranslationPreference } from './useTranslation';
 import type { Voice } from './voiceShortlist';
 import { VoicePicker } from './VoicePicker';
+
+const SOURCES = [
+  { id: 'scan', title: 'translation.source_scan', hint: 'translation.source_scan_hint' },
+  { id: 'paste', title: 'translation.source_paste', hint: 'translation.source_paste_hint' },
+] as const satisfies readonly { id: TranslationSource; title: TextKey; hint: TextKey }[];
 
 export function TranslationSettings({ preference, voices, locked, rate, rates, onRate, onOpenHub, downloading, mode, favorites, previewing, onPreview, onStopPreview, onFavorite }: {
   preference: TranslationPreference;
@@ -58,6 +63,12 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
         trailing={() => <Switch checked={settings.enabled} onChange={enabled => change({ enabled })} disabled={disabled} label={text('translation.enable')} />} />
     </GroupedSection>}
     {settings.enabled && <div className="flex min-w-0 flex-col gap-4 pt-3">
+      {/* RE-PLAY-029: one translator, chosen per source. Books come later. */}
+      {mode === "translation" && <GroupedSection>
+        {SOURCES.map(source => <GroupedRow key={source.id} title={text(source.title)} subtitle={text(source.hint)}
+          trailing={() => <Switch checked={settings.sources[source.id]} disabled={disabled} label={text(source.title)}
+            onChange={on => change({ sources: { ...settings.sources, [source.id]: on } })} />} />)}
+      </GroupedSection>}
       {mode === "translation" && <div>
         <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">{text('translation.to')}</p>
         <SegmentedControl label={text('translation.to')} value={settings.target}

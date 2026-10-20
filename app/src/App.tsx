@@ -1,5 +1,5 @@
 import { useTranslation } from "./ui/useTranslation";
-import { translationError, translationVoice, selectionVoice, type TranslationResult } from "./ui/translation";
+import { translationError, translationVoice, selectionVoice, translates, type TranslationResult } from "./ui/translation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
@@ -192,6 +192,9 @@ export default function App() {
   const translationWorking = useRef(false);
   const [translating, setTranslating] = useState(false);
   const [scanVoice, setScanVoice] = useState<string | null>(null);
+  /** RE-PLAY-029: the translation of the paste being read, shown beside the
+   * box - the box itself keeps what the reader pasted. */
+  const [pasteTranslation, setPasteTranslation] = useState<{ text: string; target: string } | null>(null);
   /** Why there are no voices to offer. An empty catalogue is a claim - "this
    * Mac has no voices" - and a failed request is not that claim. */
   const [voicesError, setVoicesError] = useState<string | null>(null);
@@ -510,7 +513,9 @@ export default function App() {
   /* Whether there is anything to put a price ON. An empty paste box is not
      a reading that is still being counted - it is no reading at all, and a
      button claiming "Đang tính…" over an empty box counts for ever. */
-  const pricing = paidVoice && (openBook !== null || content.trim().length > 0);
+  // RE-PLAY-029: a translated paste is read by a local voice - nothing to price.
+  const pasteTranslated = translates(translation.settings, "paste");
+  const pricing = paidVoice && !(tab === "paste" && pasteTranslated) && (openBook !== null || content.trim().length > 0);
 
   /* Re-price whenever anything the price depends on moves: the book, where
      the voice would resume, which voice, how far. Every one of those changes
@@ -1001,26 +1006,27 @@ export default function App() {
       const captured = event.payload.text;
       const at = Date.now();
       const { settings, ready, voices } = translationContext.current;
-      const translatedVoice = settings.enabled ? translationVoice(settings, voices) : null;
-      if (!ready || (settings.enabled && !translatedVoice)) {
+      const translated = translates(settings, "scan");
+      const translatedVoice = translated ? translationVoice(settings, voices) : null;
+      if (!ready || (translated && !translatedVoice)) {
         void invoke("stop_reading");
         onPlayer({ type: "failed", error: text(!ready ? "translation.save_failed" : "translation.voice_missing") });
         return;
       }
       translationPending.current = at;
-      translationWorking.current = settings.enabled;
-      setTranslating(settings.enabled);
+      translationWorking.current = translated;
+      setTranslating(translated);
       setScanVoice(translatedVoice);
       // Translation entries are added only once their spoken text is known,
       // so paragraph ids always belong to what the user hears.
-      if (!settings.enabled) {
+      if (!translated) {
         setExternalHistory(history => [{ at, text: captured }, ...history].slice(0, 50));
         keepInHistory("scan", captured);
       }
       setReadingAt(at);
       onPlayer({ type: "start" });
       setOrigin({ kind: "external" });
-      current.current = settings.enabled ? null : { kind: "text", text: captured };
+      current.current = translated ? null : { kind: "text", text: captured };
       setPosition(null);
       invoke<TranslationResult | null>("read_selection_text", {
         text: captured,
@@ -1028,7 +1034,7 @@ export default function App() {
         entryId: at,
         voiceId: speech.current.voiceId,
         rate: speech.current.rate,
-        translation: settings.enabled ? { ...settings, voice_id: translatedVoice } : null,
+        translation: translated ? { ...settings, voice_id: translatedVoice } : null,
       }).then(result => {
         if (translationPending.current !== at) return;
         translationPending.current = null; translationWorking.current = false;
@@ -1044,7 +1050,7 @@ export default function App() {
         if (translationPending.current !== at) return;
         translationPending.current = null; translationWorking.current = false;
         setTranslating(false);
-        onPlayer({ type: "failed", error: settings.enabled ? text(translationError(error)) : String(error) });
+        onPlayer({ type: "failed", error: translated ? text(translationError(error)) : String(error) });
       });
     });
     const translationReady = listen<{ entry_id: number }>("reading:translation_ready", event => {
@@ -1089,18 +1095,57 @@ export default function App() {
 
   const startReading = useCallback(async () => {
     if (!content.trim() || !voiceId || exporting) return;
-    translationPending.current = null; translationWorking.current = false;
-    setTranslating(false);
+    const { settings, ready, voices } = translationContext.current;
+    // RE-PLAY-029: Paste reads through translation when its own switch is on.
+    const translated = translates(settings, "paste");
+    const translatedVoice = translated ? translationVoice(settings, voices) : null;
+    if (translated && (!ready || !translatedVoice)) {
+      onPlayer({ type: "failed", error: text(!ready ? "translation.save_failed" : "translation.voice_missing") });
+      return;
+    }
+    const at = Date.now();
+    translationPending.current = translated ? at : null;
+    translationWorking.current = translated;
+    setTranslating(translated);
+    setScanVoice(translatedVoice);
+    setPasteTranslation(null);
     onPlayer({ type: "start" });
     setOrigin({ kind: "paste" });
-    current.current = { kind: "text", text: content };
     setPosition(null);
-    keepInHistory("paste", content);
+    if (!translated) {
+      current.current = { kind: "text", text: content };
+      keepInHistory("paste", content);
+      try {
+        await invoke("read_text", { text: content, segmentId: null, voiceId, rate });
+      } catch (error) {
+        console.error(error);
+        onPlayer({ type: "failed", error: String(error) });
+      }
+      return;
+    }
+    // Nothing to switch voices on, or to keep in History, until the spoken
+    // text is known - the same order as a translated selection.
+    current.current = null;
+    const original = content;
     try {
-      await invoke("read_text", { text: content, segmentId: null, voiceId, rate });
+      const result = await invoke<TranslationResult | null>("read_text_translated", {
+        text: original, rate, translation: { ...settings, voice_id: translatedVoice },
+      });
+      if (translationPending.current !== at) return;
+      translationPending.current = null; translationWorking.current = false;
+      setTranslating(false);
+      if (!result) { onPlayer({ type: "stop" }); return; }
+      current.current = { kind: "text", text: result.text };
+      setScanVoice(result.voice_id);
+      if (result.target) {
+        setPasteTranslation({ text: result.text, target: result.target });
+        keepInHistory("paste", result.text, { original, target: result.target });
+      }
     } catch (error) {
-      console.error(error);
-      onPlayer({ type: "failed", error: String(error) });
+      if (translationPending.current !== at) return;
+      translationPending.current = null; translationWorking.current = false;
+      setTranslating(false);
+      onPlayer({ type: "failed", error: text(translationError(error)) });
     }
   }, [content, voiceId, rate, exporting, keepInHistory]);
 
@@ -1571,11 +1616,18 @@ export default function App() {
   // Voice and speed also drive the global shortcut, so they belong on the
   // selection screen too - just not on the notes utility.
   const speechSettings = canStart || screen === "external" || screen === "home";
-  const selectionTranslation = screen === "external" && translation.settings.enabled;
-  const translationSummary = translation.settings.enabled ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
-  const activeSelectionVoice = origin?.kind === "external" && reading !== "idle" ? scanVoice : null;
+  const selectionTranslation = (screen === "external" && translates(translation.settings, "scan"))
+    || (screen === "paste" && pasteTranslated);
+  // RE-PLAY-029: the chip reports the source in front of the reader; Home,
+  // which reads neither, says whether any source translates.
+  const translationOn = screen === "external" ? translates(translation.settings, "scan")
+    : screen === "paste" ? pasteTranslated
+    : translates(translation.settings, "scan") || pasteTranslated;
+  const translationSummary = translationOn ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
+  const activeSelectionVoice = (origin?.kind === "external" || origin?.kind === "paste") && reading !== "idle" ? scanVoice : null;
   const settingsVoiceId = activeSelectionVoice ?? (screen === "external"
-    ? selectionVoice(translation.settings, voices, voiceId) : voiceId);
+    ? selectionVoice(translation.settings, voices, voiceId)
+    : screen === "paste" && pasteTranslated ? translationVoice(translation.settings, voices) : voiceId);
   const settingsHint = selectionTranslation || activeSelectionVoice ? null : hint;
   // A shortcut read can fail while any screen is open, and its error lands
   // here: never hide the bar out from under one.
@@ -2119,8 +2171,8 @@ export default function App() {
         {tab === "home" ? (
           <Home books={homeShelf.shelf} loading={homeShelf.loading} error={homeShelf.error} importing={homeShelf.importing}
             paste={{ text: content, at: pasteAt }} captures={externalHistory}
-            pastes={history.entries.filter(entry => entry.kind === "paste")} historyKept={history.enabled}
-            onOpenPaste={saved => { setContent(saved); setPasteAt(Date.now()); setTab("paste"); }}
+            pastes={history.entries.filter(entry => entry.kind === "paste").map(entry => ({ ...entry, text: entry.original ?? entry.text }))} historyKept={history.enabled}
+            onOpenPaste={saved => { setContent(saved); setPasteAt(Date.now()); setPasteTranslation(null); setTab("paste"); }}
             active={reading !== "idle" && previewing === null && origin ? {
               title: origin.kind === "book" ? origin.book.title : summarise(current.current?.kind === "text" ? current.current.text : content),
               paused: reading === "paused", onToggle: togglePause,
@@ -2255,8 +2307,17 @@ export default function App() {
               className="mt-3 min-h-0 flex-1"
               placeholder={text("paste.placeholder")}
               value={content}
-              onChange={(event) => { setContent(event.target.value); setPasteAt(Date.now()); }}
+              onChange={(event) => { setContent(event.target.value); setPasteAt(Date.now()); setPasteTranslation(null); }}
             />
+            {/* RE-PLAY-029: what is being heard, under what was pasted. */}
+            {pasteTranslation && (
+              <Surface className="mt-3 flex max-h-[40%] min-h-0 flex-col p-4">
+                <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">
+                  {text("translation.translated", { language: text(pasteTranslation.target === "vi" ? "language.vi" : "language.en") })}
+                </p>
+                <p className="m-0 min-h-0 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{pasteTranslation.text}</p>
+              </Surface>
+            )}
             {/* Two things on one line - the count, and past the limit what to
                 do - so a gap between them: as one run of text they read
                 "100.004 / 100.000 ký tựNội dung dài hơn…" (27/09). */}
@@ -2589,7 +2650,7 @@ export default function App() {
                     {text("reader.selection")}
                   </Button>
                 )}
-                {speechSettings && previewing === null && !translating && !selectionTranslation && !(origin?.kind === "external" && scanVoice) && (
+                {speechSettings && previewing === null && !translating && !selectionTranslation && !((origin?.kind === "external" || origin?.kind === "paste") && scanVoice) && (
                   <MenuButton
                     icon={<VoiceSwitchIcon />}
                     label={text("voices.switch")}
@@ -2655,7 +2716,7 @@ export default function App() {
               about the reading with a way in - it belongs beside transport,
               not inside the actions. Its panel stays centred over the bar. */}
           <div className="flex min-w-0 items-center justify-end gap-2">
-            {screen === "external" && (
+            {(screen === "external" || screen === "paste") && (
               <Button
                 variant="ghost"
                 aria-label={`${text("translation.open_settings")}: ${translationSummary}`}
@@ -2670,7 +2731,7 @@ export default function App() {
                   setReaderPanel(current => current === "translation" ? null : "translation");
                 }}
               >
-                <span>{text("translation.short")} · {translation.settings.enabled ? translation.settings.target.toUpperCase() : text("translation.off")}</span>
+                <span>{text("translation.short")} · {translationOn ? translation.settings.target.toUpperCase() : text("translation.off")}</span>
                 <ChevronDownIcon />
               </Button>
             )}
@@ -2909,7 +2970,7 @@ export default function App() {
             days={history.days}
             onOpen={entry => {
               setHistoryPanel(null);
-              if (entry.kind === "paste") { setContent(entry.text); setPasteAt(Date.now()); }
+              if (entry.kind === "paste") { setContent(entry.original ?? entry.text); setPasteAt(Date.now()); setPasteTranslation(entry.original && entry.target ? { text: entry.text, target: entry.target } : null); }
               else { setExternalHistory(session => mergeCaptures(session, [entry])); setHomeCapture(entry.at); }
             }}
             onDelete={entry => void deleteHistory(entry.id).then(() => {

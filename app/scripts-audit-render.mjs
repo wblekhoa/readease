@@ -92,7 +92,7 @@ const SCREENS = {
   home_empty: [["wait", /^Bạn muốn đọc gì\?$|^What would you like to read\?$/]],
   home_error: [["wait", /./, "[role=alert]"]],
   home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
-  home_translation: [["click", /^Dịch khi quét đọc|^Selection translation/], ["wait", /^Cài đặt dịch$|^Translation settings$/, "[role=dialog]"]],
+  home_translation: [["click", /^Dịch · |^Translate · /], ["wait", /^Cài đặt dịch$|^Translation settings$/, "[role=dialog]"]],
   home_import: [["click", /^Mở tài liệu|^Open a document/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   home_paste: [...UNFOLD, ["click", /^Nhập hoặc dán nội dung|^Type or paste text/], ["click-at", "textarea"], ["type", "Nội dung thử của trang Đọc."],
     ["click", /^Đọc$|^Read$/], ["click", /^Mở lại Nội dung thử|^Reopen Nội dung thử/], ["wait", /^Dán nội dung$|^Paste text$/, "h2"]],

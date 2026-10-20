@@ -165,6 +165,16 @@ same hit area. Opening it never toggles translation. The enable switch lives ins
 during playback/export, while preferences load, and while saving. A load/save error exposes the retry action.
 Only one footer panel is open at a time.
 
+**Where it applies (RE-PLAY-029)**: under the master switch, one switch per source - **Read a selection** and
+**Pasted text**. A setting saved before sources existed reads back Selection-only. On **Paste text** the footer shows
+the same **Translate · EN/VI/Off ▾** chip and the voice chip names the translation voice. Read text translates the
+whole paste first ("Translating… Press Stop to cancel."), then reads the translation; the box keeps what was pasted
+and a read-only **Translation · English** block under it shows what is heard. Editing the box clears the block.
+While a translated paste plays the voice-switch menu is hidden, as for a translated selection. A paid book voice
+shows no price, because a local translation voice reads. **Export audio still exports the original text in the
+book voice** - translation does not reach export yet (owner's phase order: Paste first, Library later). History
+lists the translation with its target badge; reopening it puts the original back in the box with its translation.
+
 Translation settings pairs **Translate and read in** with a matching installed local **Translation voice**;
 changing the target picks a matching default. The voice uses the shared VoicePicker with descriptions,
 preview, favorites and keyboard navigation. Source/provider/model and speed use the shared styled Select.
@@ -234,6 +244,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-20: RE-PLAY-029 - translation chosen per source; Paste reads its translation and shows it under the box.
 - 2026-10-15: Reader audit: exclusive chrome popovers, shared measured anchors and capped bodies; resize-driven chrome measurement.
 - 2026-10-15: Reader and app navigation share the folded icon rail and collapse/expand interactions.
 - 2026-10-15: background M4B export sheet, global receipt and close/quit behaviour.
