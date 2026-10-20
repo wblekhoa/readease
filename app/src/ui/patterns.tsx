@@ -1203,7 +1203,7 @@ export function RailItem({
  * language. Home screens only: a book's column leads with the book. */
 /** A glyph on a soft brand-tinted tile: the entry points of Read home. */
 export function IconTile({ children }: { children: ReactNode }) {
-  return <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--color-brand-600)_14%,transparent)] text-brand-600">{children}</span>;
+  return <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-brand-600)_14%,transparent)] text-brand-600">{children}</span>;
 }
 
 export function AppLogo({ className = "" }: { className?: string }) {
