@@ -878,6 +878,16 @@ export const TEXT = {
     "API voices read both languages, billed to your own key.",
   ],
   "hub.manage": ["Quản lý…", "Manage…"],
+  "hub.section_translation": ["Dịch", "Translation"],
+  "hub.translate_ready": ["Dịch được", "Can translate"],
+  "hub.translate_unready": ["Chưa dịch được", "Cannot translate yet"],
+  "hub.translate_using": ["Bộ dịch đang chọn: {provider}", "Chosen translator: {provider}"],
+  "hub.translate_apple_ready": ["Có gói Anh ↔ Việt trên máy", "English ↔ Vietnamese packs on this Mac"],
+  "hub.translate_apple_packs": ["Thiếu gói Anh ↔ Việt. Tải trong Cài đặt hệ thống → Cài đặt chung → Ngôn ngữ & Vùng → Ngôn ngữ dịch.", "English ↔ Vietnamese packs missing. Download them in System Settings → General → Language & Region → Translation Languages."],
+  "hub.translate_local_models": ["{count} model trên máy", "{count} {count|model|models} on this Mac"],
+  "hub.translate_local_empty": ["Đang chạy, chưa có model nào", "Running, with no models yet"],
+  "hub.translate_local_off": ["Chưa chạy · cổng {port}", "Not running · port {port}"],
+  "hub.translate_note": ["ReadEase không tự tải bộ dịch: gói Apple nằm trong macOS, model Ollama/LM Studio do bạn cài. Dịch luôn chạy trên máy này.", "ReadEase downloads no translator: Apple's packs come with macOS, Ollama/LM Studio models are yours to install. Translation always runs on this Mac."],
   /* The settings panel asks the language first, then shows that language's
      voices and models (owner, 15/09). */
   "settings.language": ["Ngôn ngữ đọc", "Reading language"],

@@ -2897,6 +2897,7 @@ export default function App() {
       <Presence open={hubOpen}>
         <SourcesHub
           translationSummary={translationSummary}
+          translationSettings={translation.settings}
           onOpenTranslation={() => {
             if (previewing !== null) stopPreview();
             setHubOpen(false);

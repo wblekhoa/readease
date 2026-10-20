@@ -51,3 +51,15 @@ test('each source has its own switch under the master one', async () => {
   assert.equal(translates({ ...pasteOnly, enabled: false }, 'paste'), false);
   assert.deepEqual(translationSettings({ enabled: true, provider: 'apple', sources: { scan: 'yes' } }).sources, { scan: false, paste: false });
 });
+
+// RE-PLAY-030
+test('the hub calls the chosen translator ready only when it can translate now', async () => {
+  const { translationSettings, translatorReady } = await import('../src/ui/translation.ts');
+  const apple = translationSettings({ enabled: true, provider: 'apple' });
+  assert.equal(translatorReady(apple, { state: 'ready', models: [] }), true);
+  assert.equal(translatorReady(apple, { state: 'missing', reason: 'hub.translate_apple_packs' }), false);
+  assert.equal(translatorReady(apple, { state: 'checking' }), false);
+  const ollama = translationSettings({ enabled: true, provider: 'ollama', model: 'qwen3:4b' });
+  assert.equal(translatorReady(ollama, { state: 'ready', models: ['qwen3:4b'] }), true);
+  assert.equal(translatorReady(ollama, { state: 'ready', models: ['gemma3:4b'] }), false);
+});
