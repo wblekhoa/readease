@@ -33,7 +33,7 @@ Double-click `ReadEase.app` and use it like any other app. From 0.1.2 the build 
 
 ### Step 4 — Prepare the voice
 
-Open the app and click **Set up voice**. It downloads the Vietnamese voice model — *Standard* is about 330 MB, or *Highest* about 625 MB if you pick it under **Voice quality** just above (a little better, roughly 11% slower). Only the build you pick is downloaded. From here on everything runs on your Mac, no network needed.
+The first screen, **"Choose how to read, to begin"**, lists the voices, one group per language. Press **Download and use** on the Vietnamese *Standard · 330 MB* row, or *Highest · 625 MB* (a little better, roughly 11% slower); the English voice is there too. Only the build you pick is downloaded, and downloading is optional: press **Start reading** to go in first and add voices later under **Voices & models**. Once downloaded, everything runs on your Mac, no network needed.
 
 ### Step 5 (optional) — Read a selection from any app
 

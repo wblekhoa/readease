@@ -23,10 +23,13 @@ struct Server {
     port: u16,
     model: PathBuf,
     last_used: Instant,
+    /// Answering /health; until then a second caller must not reuse it.
+    ready: bool,
 }
 
 static SERVER: Mutex<Option<Server>> = Mutex::new(None);
 static REAPER: std::sync::Once = std::sync::Once::new();
+static STARTING: Mutex<()> = Mutex::new(());
 
 fn binary(app: &tauri::AppHandle) -> Option<PathBuf> {
     use tauri::Manager;
@@ -77,22 +80,28 @@ pub(crate) fn port(app: &tauri::AppHandle, model: &Path) -> Result<u16, String> 
 }
 
 pub(crate) fn port_with(binary: &Path, model: &Path) -> Result<u16, String> {
+    // One start at a time - but `stop()` and `touch()` only ever take SERVER,
+    // and SERVER is never held while the server warms up: quitting or removing
+    // the model during a cold start (up to 90 s) must not freeze the app.
     REAPER.call_once(|| {
         std::thread::spawn(|| loop {
             std::thread::sleep(Duration::from_secs(30));
             let mut slot = SERVER.lock().unwrap();
-            if slot.as_ref().is_some_and(|server| server.last_used.elapsed() > IDLE) { stop_locked(&mut slot); }
+            if slot.as_ref().is_some_and(|server| server.ready && server.last_used.elapsed() > IDLE) { stop_locked(&mut slot); }
         });
     });
-    let mut slot = SERVER.lock().unwrap();
-    if let Some(server) = slot.as_mut() {
-        let alive = matches!(server.child.try_wait(), Ok(None));
-        if alive && server.model == model {
-            server.last_used = Instant::now();
-            return Ok(server.port);
+    let _starting = STARTING.lock().unwrap();
+    {
+        let mut slot = SERVER.lock().unwrap();
+        if let Some(server) = slot.as_mut() {
+            let alive = matches!(server.child.try_wait(), Ok(None));
+            if alive && server.model == model && server.ready {
+                server.last_used = Instant::now();
+                return Ok(server.port);
+            }
         }
+        stop_locked(&mut slot);
     }
-    stop_locked(&mut slot);
     if !model.is_file() { return Err("translation:translator_missing".into()); }
     let port = free_port()?;
     let mut child = Command::new(binary)
@@ -120,24 +129,39 @@ pub(crate) fn port_with(binary: &Path, model: &Path) -> Result<u16, String> {
             }
         });
     }
-    let mut server = Server { child, port, model: model.to_path_buf(), last_used: Instant::now() };
+    let pid = child.id();
+    // In the slot from the start, so a stop() during the warm-up kills it.
+    *SERVER.lock().unwrap() = Some(Server { child, port, model: model.to_path_buf(), last_used: Instant::now(), ready: false });
     let started = Instant::now();
-    while !healthy(port) {
-        if started.elapsed() > START_DEADLINE || !matches!(server.child.try_wait(), Ok(None)) {
-            let _ = server.child.kill();
-            let _ = server.child.wait();
-            starting.store(false, Ordering::Relaxed);
-            eprintln!("translator: the server did not start");
-            for line in said.lock().unwrap().iter() { eprintln!("translator: {line}"); }
-            return Err("translation:local_unavailable".into());
+    let failed = |reason: &str| {
+        starting.store(false, Ordering::Relaxed);
+        eprintln!("translator: the server did not start ({reason})");
+        for line in said.lock().unwrap().iter() { eprintln!("translator: {line}"); }
+        Err::<u16, String>("translation:local_unavailable".into())
+    };
+    loop {
+        if healthy(port) { break; }
+        {
+            let mut slot = SERVER.lock().unwrap();
+            let ours = slot.as_mut().filter(|server| server.child.id() == pid);
+            match ours {
+                // Stopped from elsewhere (quit, model removed) mid-start.
+                None => { starting.store(false, Ordering::Relaxed); return Err("translation:local_unavailable".into()); }
+                Some(server) => {
+                    if !matches!(server.child.try_wait(), Ok(None)) { stop_locked(&mut slot); drop(slot); return failed("exited"); }
+                    if started.elapsed() > START_DEADLINE { stop_locked(&mut slot); drop(slot); return failed("timed out"); }
+                }
+            }
         }
         std::thread::sleep(Duration::from_millis(200));
     }
     starting.store(false, Ordering::Relaxed);
     said.lock().unwrap().clear();
-    server.last_used = Instant::now();
-    *slot = Some(server);
-    Ok(port)
+    let mut slot = SERVER.lock().unwrap();
+    match slot.as_mut().filter(|server| server.child.id() == pid) {
+        Some(server) => { server.ready = true; server.last_used = Instant::now(); Ok(port) }
+        None => Err("translation:local_unavailable".into()),
+    }
 }
 
 #[cfg(test)]
@@ -155,6 +179,20 @@ mod tests {
         assert_eq!(port_with(&binary, &model).unwrap(), port, "a running server is reused");
         stop();
         assert!(!healthy(port));
+    }
+    /// Quitting (or removing the model) while the server is still warming up
+    /// returns at once and the start gives up - nothing waits out the 90 s.
+    #[test]
+    #[ignore]
+    fn a_stop_during_the_warm_up_does_not_wait_for_it() {
+        let model = PathBuf::from(std::env::var("READEASE_TRANSLATOR_MODEL").expect("READEASE_TRANSLATOR_MODEL"));
+        let binary = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("translator/llama-server");
+        let starting = std::thread::spawn(move || port_with(&binary, &model));
+        std::thread::sleep(Duration::from_millis(150));
+        let asked = Instant::now();
+        stop();
+        assert!(asked.elapsed() < Duration::from_secs(1), "stop waited {:?}", asked.elapsed());
+        assert!(starting.join().unwrap().is_err());
     }
     #[test]
     fn a_closed_port_is_not_healthy() {

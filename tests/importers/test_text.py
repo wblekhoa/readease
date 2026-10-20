@@ -60,6 +60,21 @@ class TextImportTests(unittest.TestCase):
         ])
 
     # RE-LIB-011
+    def test_sentences_that_open_like_a_chapter_word_are_read_not_dropped(self):
+        book = import_txt(self.file("a.txt", "Hồi đó tôi mới mười tuổi.\n\nChương trình học rất nặng.\n\nPhần còn lại để sau."))
+        self.assertEqual(outline(book), [("a", ["Hồi đó tôi mới mười tuổi.", "Chương trình học rất nặng.", "Phần còn lại để sau."])])
+
+    def test_a_contents_list_of_chapter_lines_is_kept_as_text(self):
+        book = import_txt(self.file("b.txt", "Chương 1\n\nChương 2\n\nChương 1\n\nMở đầu.\n\nChương hai: Kết\n\nHết."))
+        self.assertEqual(outline(book), [
+            ("b", ["Chương 1", "Chương 2"]), ("Chương 1", ["Mở đầu."]), ("Chương hai: Kết", ["Hết."]),
+        ])
+
+    def test_html_marked_hidden_is_not_read(self):
+        book = import_html(self.file("h.html", '<p>Đọc <span aria-hidden="true">ICON</span>cái này.</p><div hidden>BÍ MẬT</div><p>Tiếp <img hidden src="x"> theo.</p>'))
+        self.assertEqual(outline(book), [("h", ["Đọc cái này.", "Tiếp theo."])])
+
+    # RE-LIB-011
     def test_utf16_and_a_bom_are_read_and_legacy_encodings_refused(self):
         self.assertEqual(outline(import_txt(self.file("a.txt", "Xin chào".encode("utf-16"))))[0][1], ["Xin chào"])
         self.assertEqual(outline(import_txt(self.file("b.txt", b"\xef\xbb\xbfXin ch\xc3\xa0o")))[0][1], ["Xin chào"])
@@ -167,6 +182,17 @@ class TextBooksInTheLibraryTests(unittest.TestCase):
             self.assertEqual(stored.book.source_format, "md")
             self.assertEqual(stored.book.chapters[0].segments[0].text, "Một đoạn để đọc.")
             self.assertTrue(service.import_book(source).was_existing)
+
+    def test_a_document_without_headings_names_its_chapter_after_the_file(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            paths = AppPaths.create(root / "app-data")
+            repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
+            source = root / "Nhật ký.txt"
+            source.write_text("Chỉ một đoạn.", encoding="utf-8")
+            book = LibraryService(paths, repository).import_book(source).book
+            self.assertEqual((book.title, book.chapters[0].title), ("Nhật ký", "Nhật ký"))
 
 
 if __name__ == "__main__":

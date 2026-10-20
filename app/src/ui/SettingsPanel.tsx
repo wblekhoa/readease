@@ -192,10 +192,10 @@ export function SettingsPanel({
 
   return (<>
     {centered && <Scrim />}
-    /* Capped at the room between the bars, and only the BODY scrolls: with
+    {/* Capped at the room between the bars, and only the BODY scrolls: with
        the quality section open this panel outgrew a short window and ran up
        under the header (owner, 03/09). Same shape as the notes panel - title
-       pinned, list moving, scrollbar owned by the list. */
+       pinned, list moving, scrollbar owned by the list. */}
     <Surface
       edge="strong"
       material="glass"
@@ -227,7 +227,7 @@ export function SettingsPanel({
         {/* RE-PLAY-025: expose capture translation without implying books are translated. */}
         {panelKind === "voice" && <GroupedSection>
           <GroupedRow title={text("translation.title")}
-            subtitle={text(context === "reader" ? "translation.scope" : "translation.mode_hint")}
+            subtitle={text("translation.scope")}
             trailing={<Button size="sm" onClick={onOpenTranslation} aria-label={`${text("translation.open_settings")}: ${translationSummary}`}>
               {translationSummary}
               <ChevronDownIcon />

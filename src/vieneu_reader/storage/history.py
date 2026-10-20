@@ -57,6 +57,8 @@ class HistoryStore:
         # A deleted entry is overwritten, not left in a free page for a disk
         # tool to read back.
         self._db.execute("PRAGMA secure_delete = ON")
+        # The stored original keeps its line breaks; the match must not.
+        self._db.create_function("tidy", 1, _tidy, deterministic=True)
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS history ("
             " id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -89,7 +91,7 @@ class HistoryStore:
         target = (str(target).strip() or None) if target else None
         with self._lock:
             row = self._db.execute(
-                "SELECT id FROM history WHERE kind = ? AND key = ? AND COALESCE(original, '') = ?",
+                "SELECT id FROM history WHERE kind = ? AND key = ? AND tidy(COALESCE(original, '')) = ?",
                 (kind, key, _tidy(original or "")),
             ).fetchone()
             if row:

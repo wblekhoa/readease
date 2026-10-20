@@ -691,6 +691,9 @@ async function main() {
             const probe = await evalJs(`(() => {
               const text = document.body.innerText;
               const leaked = [...new Set((text.match(/\\b[a-z_]+\\.[a-z_0-9]+\\b/g) || []))];
+              // A source comment rendered as text: a bare /* */ inside a JSX
+              // fragment prints on screen (the voice panel did, 20/10).
+              const comment = (text.match(/[^\\n]{0,24}(?:\\/\\*|\\*\\/)[^\\n]{0,24}/) || [null])[0];
               const over = [...document.querySelectorAll("*")].filter((e) => { const s = getComputedStyle(e); return e.scrollWidth > e.clientWidth + 1 && s.overflowX !== "auto" && s.overflowX !== "scroll" && s.overflowX !== "hidden" && e.clientWidth > 0; })
                 .map((e) => e.tagName.toLowerCase() + (e.className && typeof e.className === "string" ? "." + e.className.split(" ").slice(0, 2).join(".") : "")).slice(0, 4);
               let voice; try { voice = JSON.parse(localStorage.getItem("readease.mock-settings") || "{}").voice; } catch {}
@@ -703,8 +706,9 @@ async function main() {
               const escaped = [...document.querySelectorAll('[role="dialog"] *')].filter((e) => { if (e.closest("[inert]") || !(e instanceof HTMLElement)) return false;
                 const s = getComputedStyle(e); return e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1 && s.overflowX === "visible"; })
                 .map((e) => (e.textContent || "").trim().slice(0, 48)).slice(0, 3);
-              return { leaked, over, escaped, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
+              return { leaked, comment, over, escaped, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
             for (const k of probe.leaked) if (KEYS.has(k)) findings.push({ cell, kind: "i18n-leak", detail: k });
+            if (probe.comment) findings.push({ cell, kind: "code-comment", detail: probe.comment });
             // No cell picks a voice, so the saved one (the mock's "Thu Hà")
             // must still be the saved one after the walk. Start-up once
             // overwrote it with the first voice before reading it (15/09),

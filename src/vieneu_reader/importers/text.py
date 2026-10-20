@@ -24,6 +24,7 @@ import re
 import shutil
 import subprocess
 import unicodedata
+import zlib
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
@@ -57,7 +58,10 @@ def _read_bounded(path: Path, limit: int = MAX_TEXT_SOURCE_BYTES) -> bytes:
     except OSError as error:
         raise CorruptBookError("Không thể đọc tệp đã chọn.") from error
     if len(payload) > limit:
-        raise CorruptBookError("Tài liệu văn bản vượt giới hạn 20 MB.")
+        raise CorruptBookError(
+            "Tài liệu văn bản vượt giới hạn 20 MB." if limit == MAX_TEXT_SOURCE_BYTES
+            else "Tài liệu vượt giới hạn an toàn."
+        )
     return payload
 
 
@@ -88,8 +92,13 @@ def _title(value: str | None, fallback: str) -> str:
     return (title or normalize_paragraph(fallback) or "Tài liệu")[:MAX_TITLE_CHARS]
 
 
+#: "Chương 3", "Phần II", "Chapter Twelve", "Hồi thứ nhất": the keyword AND a
+#: number - a word or numeral - so "Hồi đó tôi…" or "Chương trình học…" stay
+#: sentences. A short title may follow after a colon or dash.
+_NUMBER = (r"(?:\d+|[ivxlcdm]+|thứ\s+\w+|một|hai|ba|bốn|tư|năm|sáu|bảy|tám|chín|mười(?:\s+\w+)?"
+           r"|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[a-z]+teen|twenty(?:-\w+)?)")
 _TXT_HEADING = re.compile(
-    r"^(?:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+[\w.:\-–—]+(?:[\s:.\-–—].{0,80})?$",
+    r"^(?:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+" + _NUMBER + r"[.:]?(?:\s*[:.\-–—]\s*.{1,80})?$",
     re.IGNORECASE,
 )
 
@@ -105,9 +114,17 @@ def _chapter_lines(sections: list[Section]) -> list[Section]:
     for paragraph in sections[0][1]:
         line = normalize_paragraph(paragraph)
         if len(line) <= 100 and _TXT_HEADING.match(line):
+            if split[-1][0] is not None and not split[-1][1]:
+                # Two chapter lines in a row (a contents list): the first had
+                # no body, so it is text, never dropped.
+                heading, _ = split.pop()
+                split[-1][1].append(heading)
             split.append((line, []))
         else:
             split[-1][1].append(paragraph)
+    if len(split) > 1 and not split[-1][1]:
+        heading, _ = split.pop()
+        split[-1][1].append(heading)
     return split
 
 
@@ -261,6 +278,7 @@ def import_md(path: Path) -> BookDocument:
 _BLOCKS = {"p", "div", "li", "dt", "dd", "blockquote", "pre", "tr", "section", "article",
            "header", "footer", "figcaption", "table", "ul", "ol", "dl", "br", "hr",
            "h3", "h4", "h5", "h6", "td", "th", "caption"}
+_VOID = {"br", "hr", "img", "input", "meta", "link", "wbr", "source", "area", "col", "embed"}
 _SKIPPED = {"script", "style", "noscript", "template", "svg", "math", "head", "nav", "button", "select", "textarea"}
 
 
@@ -271,6 +289,7 @@ class _HtmlText(HTMLParser):
         self.first_h1: str | None = None
         self.sections: list[Section] = [(None, [])]
         self._skip = 0
+        self._hidden: list[str] = []
         self._in_title = False
         self._heading: list[str] | None = None
         self._buffer: list[str] = []
@@ -288,7 +307,10 @@ class _HtmlText(HTMLParser):
         if tag in _SKIPPED:
             self._skip += 1
             return
-        if any(name == "hidden" or (name == "aria-hidden" and value == "true") for name, value in attrs):
+        if tag not in _VOID and any(name == "hidden" or (name == "aria-hidden" and value == "true") for name, value in attrs):
+            # Hidden from the page, so not read: skipped until its own end tag.
+            self._hidden.append(tag)
+            self._skip += 1
             return
         if tag in {"h1", "h2"}:
             self._flush()
@@ -301,6 +323,10 @@ class _HtmlText(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "title":
             self._in_title = False
+        if self._hidden and tag == self._hidden[-1]:
+            self._hidden.pop()
+            self._skip = max(0, self._skip - 1)
+            return
         if tag in _SKIPPED:
             self._skip = max(0, self._skip - 1)
             return
@@ -359,7 +385,10 @@ def _docx_title(archive: ZipFile) -> str | None:
         return None
     if info.file_size > 1024 * 1024:
         return None
-    payload = archive.read(info)
+    try:
+        payload = archive.read(info)
+    except (BadZipFile, zlib.error, EOFError, OSError):
+        return None
     _refuse_internal_subset(payload, "DOCX")
     try:
         root = ElementTree.fromstring(payload)
@@ -379,7 +408,10 @@ def import_docx(path: Path) -> BookDocument:
         raise CorruptBookError("Tệp Word (.docx) bị hỏng hoặc không đúng định dạng.") from error
     if info.file_size > MAX_DOCX_DOCUMENT_BYTES:
         raise CorruptBookError("Tệp Word vượt giới hạn an toàn.")
-    document = archive.read(info)
+    try:
+        document = archive.read(info)
+    except (BadZipFile, zlib.error, EOFError, OSError) as error:
+        raise CorruptBookError("Tệp Word (.docx) bị hỏng.") from error
     _refuse_internal_subset(document, "DOCX")
     sections: list[Section] = [(None, [])]
     title: str | None = _docx_title(archive)

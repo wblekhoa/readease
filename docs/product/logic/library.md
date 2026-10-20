@@ -43,7 +43,7 @@ Import/remove documents safely, preserving originals and durable book state. [Ho
 | RE-LIB-008 | Persist position, rate and voice independently per book. | live | [008](#evidence) |
 | RE-LIB-009 | Refuse Apple Books DRM content; font obfuscation alone is permitted. | live | [009](#evidence) |
 | RE-LIB-010 | Support OCR-based import of scanned PDFs. | not built | [010](#evidence) |
-| RE-LIB-011 | Import text documents as books: `.txt`, `.md`, `.html` and `.docx` with the standard library, `.doc`, `.rtf` and `.odt` through macOS `textutil` (to HTML, so text and paragraphs survive). Headings become chapters (Markdown `#`/`##`, HTML `h1`/`h2`, Word `Heading 1/2` and `Title`); a document without marked headings splits at short lines of their own like "Chương 3" / "Part II". UTF-8 (BOM or not) and UTF-16 with a BOM are read; any other encoding is refused in words, never guessed. Text sources are capped at 20 MB; Word's main part at 100 MB with an element bound and no XML entity declarations. Each format is its own `source_format`, equal to the suffix (`.markdown`/`.htm` are not accepted yet). | live | [011](#evidence) |
+| RE-LIB-011 | Import text documents as books: `.txt`, `.md`, `.html` and `.docx` with the standard library, `.doc`, `.rtf` and `.odt` through macOS `textutil` (to HTML, so text and paragraphs survive). Headings become chapters (Markdown `#`/`##`, HTML `h1`/`h2`, Word `Heading 1/2` and `Title`); a document without marked headings splits at short lines of their own like "Chương 3" / "Part II" - the keyword must be followed by a number (digits, roman, or a number word), so a sentence like "Hồi đó…" or "Chương trình…" stays text, and a chapter line with no body (a contents list) is kept as text rather than dropped. HTML marked `hidden`/`aria-hidden` is not read. UTF-8 (BOM or not) and UTF-16 with a BOM are read; any other encoding is refused in words, never guessed. Text sources are capped at 20 MB; Word's main part at 100 MB with an element bound and no XML entity declarations. Each format is its own `source_format`, equal to the suffix (`.markdown`/`.htm` are not accepted yet). | live | [011](#evidence) |
 
 ## States and recovery
 
@@ -77,6 +77,7 @@ Schema/progress/language: `tests/storage/test_repository.py` (`UpgradingOverAnOl
 
 ## Change log
 
+- 2026-10-21: RE-LIB-011 audit fixes - chapter lines need a number; bodiless chapter lines kept as text; hidden HTML skipped; a document with no title of its own names its chapter after the file, not the temp copy.
 - 2026-10-21: RE-LIB-011 - text documents (TXT, Markdown, HTML, Word, RTF, ODT) import as books; RE-LIB-001 widened to match.
 
 - 2026-10-20: no rule change; `tests/headless/test_server.py` gained a `selection_translation` settings round-trip and sentence-progress frames (RE-PLAY-023 in reading.md); RE-LIB-007 evidence (`test_import_and_remove_walk_through_the_real_service`) is unchanged.

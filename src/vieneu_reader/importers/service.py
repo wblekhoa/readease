@@ -408,7 +408,13 @@ class LibraryService:
                     os.fsync(target.fileno())
                 book = parser(temporary_path)
                 if book.title == temporary_path.stem:
-                    book = replace(book, title=source_path.stem)
+                    # A document without a title of its own is named after
+                    # the file - the reader's file, not the temp copy - and so
+                    # is any chapter that took the same fallback.
+                    book = replace(book, title=source_path.stem, chapters=tuple(
+                        replace(chapter, title=source_path.stem) if chapter.title == temporary_path.stem else chapter
+                        for chapter in book.chapters
+                    ))
                 result = self._finalize_book(book, temporary_path, suffix)
             except (RepositoryError, sqlite3.Error) as error:
                 raise LibraryStorageError(

@@ -6,6 +6,16 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Fixes from a full audit: a plain-text or converted document no longer
+  drops sentences that open with "Hồi", "Chương" or "Phần" (a chapter line
+  now needs its number, as in "Chương 3"); translating a long paste ending
+  sentences in "…" no longer stops; quitting while the translator is still
+  starting no longer waits for it; HTML marked hidden is not read; the same
+  scanned passage is kept once in History; deleting all history asks first;
+  a stray code note no longer shows in the voice panel; several messages that
+  still described the old session-only history or named places that no longer
+  exist are corrected.
+
 - More files can be read: besides EPUB and PDF, the library now takes Word
   (.docx, .doc), RTF, OpenDocument (.odt), Markdown, HTML and plain text.
   Headings become chapters; a typed-up file with lines like "Chương 3"
@@ -20,7 +30,7 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 - Voices & models now has a Translation section: it says whether
   translation can work right now, and for Apple Translation, Ollama and
   LM Studio what is on this Mac (language packs, models, server running)
-  and how to fix what is missing. ReadEase still downloads no translator.
+  and how to fix what is missing.
 
 - Translate before reading now works for pasted text too. In Translation
   settings, switch it on for Read a selection, Pasted text, or both. A
@@ -45,9 +55,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   "vuông"), "8h-17h30" as "tám giờ đến mười bảy giờ ba mươi phút", "T2-T6"
   as "thứ hai đến thứ sáu" (it spelled "tê hai tê sáu"), and "$20" or
   "3,5 tỷ USD" in đô la instead of letters. The page keeps what is written.
-- Add Read as the default home, with file/text/selection entry points, recent content from this session and the library, and shortcuts to existing reading settings.
+- Add Read as the default home, with file/text/selection entry points, recent content from History and the library, and shortcuts to existing reading settings.
 
 - Prepare software updates in the background with a sidebar notice and non-modal details. Continue using ReadEase during download; install only when quitting or explicitly restarting, with export guards and visible retry paths.
+
+- A side column (⌥⌘S) holds navigation and settings: Voice, Translate before reading, Pronunciations, Voices & models.
 
 ## 0.1.23
 

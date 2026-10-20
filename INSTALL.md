@@ -33,7 +33,7 @@ Bấm đúp `ReadEase.app` và dùng như mọi app khác. Từ bản 0.1.2, app
 
 ### Bước 4 — Chuẩn bị giọng đọc
 
-Mở app, bấm **Chuẩn bị giọng đọc**. App tải mô hình giọng tiếng Việt về máy — *Tiêu chuẩn* khoảng 330 MB, hoặc *Cao nhất* khoảng 625 MB nếu bạn chọn ở ô **Chất lượng giọng đọc** ngay phía trên (đọc hay hơn một chút, chậm hơn chừng 11%). App chỉ tải đúng bản bạn chọn. Sau bước này mọi thứ chạy trên máy, không cần mạng.
+Màn đầu tiên **"Chọn cách đọc để bắt đầu"** liệt kê các giọng, mỗi thứ tiếng một nhóm. Bấm **Tải và dùng** ở dòng giọng tiếng Việt *Tiêu chuẩn · 330 MB*, hoặc *Cao nhất · 625 MB* (đọc hay hơn một chút, chậm hơn chừng 11%); giọng tiếng Anh cũng có ở đó. App chỉ tải đúng bản bạn chọn, và việc tải là tuỳ chọn: bấm **Bắt đầu đọc** để vào app trước, tải giọng sau trong **Giọng đọc & mô hình**. Sau khi tải, mọi thứ chạy trên máy, không cần mạng.
 
 ### Bước 5 (tuỳ chọn) — Quét đọc ở app khác
 

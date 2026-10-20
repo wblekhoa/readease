@@ -1,7 +1,9 @@
 # Privacy
 
-ReadEase is a local-first macOS reader. It does not run an HTTP server, send
-telemetry, or upload document content to the ReadEase publisher. Out of the box it
+ReadEase is a local-first macOS reader. It runs no server that other machines can
+reach (the optional translator runs a loopback-only server on 127.0.0.1 while it
+translates), sends no telemetry, and uploads no document content to the ReadEase
+publisher. Out of the box it
 needs no API key. Once a voice model is prepared, reading with it needs no
 network; software-update checks and optional browser/provider connections are
 described below.
@@ -95,8 +97,14 @@ revisions and hashes listed in `legal/MODEL_PROVENANCE.md`. Nothing about
 your documents or your Mac is sent with either request. Reading English with
 that voice afterwards is entirely local.
 
+The optional ReadEase translator (Hy-MT2 1.8B) is downloaded only when you press
+**Download** under Voices & models › Translation: one model file from its public
+repository on huggingface.co, at the pinned revision listed in
+`legal/MODEL_PROVENANCE.md` and checked against its pinned SHA-256 before it is
+used. Nothing about your text or your Mac is sent with the request.
+
 Optional outside AI voices send the passage to their selected provider, as
-described below. Optional selection translation contacts only the installed
+described below. Optional translation of selections or pasted text contacts only the installed
 Apple framework or the loopback model servers described above.
 
 The app also checks its published GitHub updater feed after startup and can
@@ -246,8 +254,9 @@ nothing about your keyboard is recorded anywhere else.
 
 ReadEase never watches the clipboard on its own. It reads only at the moment
 you press the shortcut, and only what you had selected then; text read that way
-is transient like the rest, is not added to the library or the persistent audio
-cache, and never leaves this Mac.
+is not added to the library or the persistent audio cache. While History is on it
+is kept in History on this Mac (see above). It leaves this Mac only if you read it
+with an outside AI voice.
 
 Deleting ReadEase does not automatically delete its Application Support data.
 Users can remove that folder separately after closing the app if they no longer

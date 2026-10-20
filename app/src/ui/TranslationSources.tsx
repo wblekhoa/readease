@@ -93,7 +93,7 @@ export function TranslationSources({ settings, summary, onOpenSettings, disabled
           trailing={<>
             {chosen === "readease" && own.ready && <span className="text-xs text-ink-mute">{text("model.in_use")}</span>}
             {!own.ready && <Button variant="primary" size="sm" disabled={busy} onClick={() => void models.downloadTranslator()}>{text("model.download")}</Button>}
-            {(own.ready || own.installed > 0) && <Button size="sm" disabled={busy} onClick={() => void models.removeTranslator()}>{text("model.english_remove")}</Button>}
+            {(own.ready || own.installed > 0) && <Button size="sm" disabled={busy} aria-label={`${text("model.english_remove")} ${text("hub.translator_build")}`} onClick={() => void models.removeTranslator()}>{text("model.english_remove")}</Button>}
           </>}
         />
       )}
