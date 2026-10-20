@@ -1,11 +1,16 @@
 /** Paste or scan history, and the two settings that govern it (RE-HIST-001…004).
  *
+ * A centred dialog over a scrim (owner, 20/10): the History button sits at
+ * the top of the Scan screen and at the bottom of the Paste one, so a panel
+ * pinned to either edge opened far from the button on the other screen.
+ *
  * Opened from the screen whose history it is. The list is that screen's
  * kind; the switch, the days and "delete all" cover both, because they are
  * one setting in the engine and the reader should not have to set it twice.
  */
 import { currentLanguage, text } from "../i18n";
 import { Button, IconButton, Select, Surface, Switch } from "./controls";
+import { Scrim, useDismiss } from "./patterns";
 import { CloseIcon, TrashIcon } from "./icons";
 import { HISTORY_DAYS, type HistoryEntry, type HistoryKind } from "./readingHistory";
 import { summarise } from "./scanHistory";
@@ -22,15 +27,19 @@ export function HistoryPanel({ kind, entries, enabled, days, onOpen, onDelete, o
   onDays: (days: number) => void;
   onClose: () => void;
 }) {
+  const layer = useDismiss(onClose);
   const mine = entries.filter(entry => entry.kind === kind);
   const date = new Intl.DateTimeFormat(currentLanguage(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  return (
+  return (<>
+    <Scrim />
     <Surface
+      ref={layer}
+      modal
       edge="strong"
       radius="sheet"
       dialog={text("history.title")}
       layer="popover"
-      className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-6 z-30 flex layer-capped w-[30rem] max-w-[calc(100vw-3rem)] origin-bottom-left flex-col overflow-hidden shadow-lifted"
+      className="absolute left-1/2 top-1/2 z-50 flex max-h-[min(36rem,calc(100vh-4rem))] w-[32rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex items-start gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0 flex-1">
@@ -84,5 +93,5 @@ export function HistoryPanel({ kind, entries, enabled, days, onOpen, onDelete, o
         <Button variant="ghost" size="sm" disabled={entries.length === 0} onClick={onClearAll}>{text("history.clear_all")}</Button>
       </div>
     </Surface>
-  );
+  </>);
 }
