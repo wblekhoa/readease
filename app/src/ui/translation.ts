@@ -3,7 +3,8 @@ import type { Voice } from './voiceShortlist.ts';
 
 export type TranslationSettings = {
   enabled: boolean;
-  provider: 'apple' | 'ollama' | 'lmstudio';
+  /** RE-PLAY-031: 'auto' = ReadEase's own translator once downloaded, else Apple. */
+  provider: 'auto' | 'readease' | 'apple' | 'ollama' | 'lmstudio';
   source: 'auto' | 'vi' | 'en';
   target: 'vi' | 'en';
   model: string;
@@ -14,11 +15,17 @@ export type TranslationSettings = {
 };
 export type TranslationSource = keyof TranslationSettings['sources'];
 export type TranslationResult = { text: string; voice_id: string; target: string | null };
+const PROVIDERS = ['auto', 'readease', 'apple', 'ollama', 'lmstudio'];
 export function translationSettings(value: unknown): TranslationSettings {
   const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
   return {
-    enabled: v.enabled === true && ['apple', 'ollama', 'lmstudio'].includes(String(v.provider)),
-    provider: v.provider === 'ollama' || v.provider === 'lmstudio' ? v.provider : 'apple',
+    enabled: v.enabled === true && PROVIDERS.includes(String(v.provider ?? 'auto')),
+    // RE-PLAY-031: Apple was the only on-device choice before ReadEase had
+    // its own translator, so an 'apple' saved then (no `sources` yet) was a
+    // default, not a choice - it becomes Automatic, which still uses Apple
+    // until the ReadEase translator is downloaded. Nothing saved: Automatic.
+    provider: v.provider === 'apple' && v.sources === undefined ? 'auto'
+      : PROVIDERS.includes(String(v.provider)) ? v.provider as TranslationSettings['provider'] : 'auto',
     source: v.source === 'vi' || v.source === 'en' ? v.source : 'auto',
     target: v.target === 'vi' ? 'vi' : 'en',
     model: typeof v.model === 'string' ? v.model.slice(0, 200) : '',
@@ -46,7 +53,7 @@ export function translationVoice(settings: TranslationSettings, voices: readonly
 export function selectionVoice(settings: TranslationSettings, voices: readonly Voice[], originalVoice: string): string | null {
   return translates(settings, 'scan') ? translationVoice(settings, voices) : originalVoice;
 }
-const ERRORS = ['packages_missing', 'apple_requires_26', 'model_missing', 'voice_missing', 'local_unavailable', 'language_unknown', 'language', 'invalid_output', 'text_limit', 'timeout', 'export_busy'] as const;
+const ERRORS = ['translator_missing', 'packages_missing', 'apple_requires_26', 'model_missing', 'voice_missing', 'local_unavailable', 'language_unknown', 'language', 'invalid_output', 'text_limit', 'timeout', 'export_busy'] as const;
 export function translationError(error: unknown) {
   const code = (error instanceof Error ? error.message : String(error)).replace(/^translation:/, '');
   return ERRORS.includes(code as typeof ERRORS[number]) ? `translation.${code}` as `translation.${typeof ERRORS[number]}` : 'translation.failed' as const;
@@ -57,10 +64,15 @@ export function translationError(error: unknown) {
 export type TranslatorFound =
   | { state: 'checking' }
   | { state: 'ready'; models: string[] }
-  | { state: 'missing'; reason: 'translation.apple_requires_26' | 'translation.failed' | 'hub.translate_apple_packs' | 'hub.translate_local_empty' | 'hub.translate_local_off' };
+  | { state: 'missing'; reason: 'translation.translator_missing' | 'translation.apple_requires_26' | 'translation.failed' | 'hub.translate_apple_packs' | 'hub.translate_local_empty' | 'hub.translate_local_off' };
 /** Whether the translator chosen in settings can translate right now: Apple
  * with both packs, or a local server that has the chosen model. */
 export function translatorReady(settings: TranslationSettings, found: TranslatorFound): boolean {
   if (found.state !== 'ready') return false;
-  return settings.provider === 'apple' || found.models.includes(settings.model);
+  return settings.provider === 'apple' || settings.provider === 'readease' || found.models.includes(settings.model);
+}
+/** RE-PLAY-031: which translator 'auto' means right now - the host resolves
+ * it the same way just before translating. */
+export function resolvedProvider(settings: TranslationSettings, translatorDownloaded: boolean): Exclude<TranslationSettings['provider'], 'auto'> {
+  return settings.provider !== 'auto' ? settings.provider : translatorDownloaded ? 'readease' : 'apple';
 }

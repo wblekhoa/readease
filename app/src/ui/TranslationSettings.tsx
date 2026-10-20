@@ -43,9 +43,20 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
     if (!settings.enabled || mode !== "translation") return;
     let alive = true;
     setChecking(true); setStatus(null); setModels([]);
-    const check = settings.provider === 'apple'
-      ? invoke<{ available: boolean; installed: boolean }>('translation_status', { source: settings.source === 'auto' ? (settings.target === 'en' ? 'vi' : 'en') : settings.source, target: settings.target })
-          .then(result => { if (alive) setStatus(result.available ? (result.installed ? null : 'translation.packages_missing') : 'translation.apple_requires_26'); })
+    const apple = () => invoke<{ available: boolean; installed: boolean }>('translation_status', { source: settings.source === 'auto' ? (settings.target === 'en' ? 'vi' : 'en') : settings.source, target: settings.target })
+      .then((result): TextKey | null => result.available ? (result.installed ? null : 'translation.packages_missing') : 'translation.apple_requires_26');
+    // RE-PLAY-031: ReadEase's own translator is ready once its model is on
+    // this Mac; Automatic uses Apple until then, and when Apple cannot
+    // either, points at the download rather than at System Settings.
+    const own = () => invoke<{ result: { translator?: { ready: boolean } } }>('engine_request', { method: 'model.status', params: {} })
+      .then(reply => reply.result.translator?.ready === true);
+    const check = settings.provider === 'readease'
+      ? own().then(ready => { if (alive) setStatus(ready ? null : 'translation.translator_missing'); })
+      : settings.provider === 'auto'
+        ? own().then(ready => ready ? null : apple().then(found => found && 'translation.translator_missing'))
+            .then(found => { if (alive) setStatus(found); })
+      : settings.provider === 'apple'
+        ? apple().then(found => { if (alive) setStatus(found); })
       : invoke<{ models: string[] }>('translation_models', { provider: settings.provider })
           .then(result => { if (alive) { setModels(result.models); if (!result.models.length) setStatus('translation.model_missing'); } });
     check.catch(error => { if (alive) setStatus(translationError(error)); })
@@ -53,8 +64,8 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
     return () => { alive = false; };
   }, [settings.enabled, settings.provider, settings.source, settings.target, revision, mode]);
   const local = translationVoices(settings, voices);
-  const providerName = settings.provider === 'apple' ? 'Apple Translation' : settings.provider === 'ollama' ? 'Ollama' : 'LM Studio';
-  const needsModel = !checking && settings.provider !== 'apple' && !models.includes(settings.model);
+  const providerName = { auto: text('translation.provider_auto'), readease: text('translation.provider_readease'), apple: 'Apple Translation', ollama: 'Ollama', lmstudio: 'LM Studio' }[settings.provider];
+  const needsModel = !checking && (settings.provider === 'ollama' || settings.provider === 'lmstudio') && !models.includes(settings.model);
 
   // RE-PLAY-025: one task, one voice. Provider setup is secondary to the target and voice.
   return <>
@@ -91,7 +102,9 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
         </Select>} />
       </GroupedSection>}
       {mode === "translation" && <>
-      {(status || needsModel) && <Notice tone="info" action={!optionsOpen ? <Button size="sm" onClick={() => setOptionsOpen(true)}>{text('translation.options')}</Button> : undefined}>
+      {(status || needsModel) && <Notice tone="info" action={status === 'translation.translator_missing'
+        ? <Button size="sm" disabled={downloading} onClick={onOpenHub}>{text('hub.title')}…</Button>
+        : !optionsOpen ? <Button size="sm" onClick={() => setOptionsOpen(true)}>{text('translation.options')}</Button> : undefined}>
         {text(status ?? (settings.model ? 'translation.model_missing' : 'translation.choose_model'))}
       </Notice>}
       <div>
@@ -114,10 +127,11 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
             </label>
             <label className="flex min-w-0 flex-col gap-2 text-sm">{text('translation.provider')}
               <Select className="w-full" label={text('translation.provider')} value={settings.provider} disabled={disabled} onChange={e => change({ provider: e.target.value as Settings['provider'], model: '' })}>
+                <option value="auto">{text('translation.provider_auto')}</option><option value="readease">{text('translation.provider_readease')}</option>
                 <option value="apple">Apple Translation</option><option value="ollama">Ollama</option><option value="lmstudio">LM Studio</option>
               </Select>
             </label>
-            {settings.provider !== 'apple' && <>
+            {(settings.provider === 'ollama' || settings.provider === 'lmstudio') && <>
               <label className="flex min-w-0 flex-col gap-2 text-sm">{text('translation.model')}
                 <Select className="w-full" label={text('translation.model')} value={settings.model} disabled={disabled || checking} onChange={e => change({ model: e.target.value })}>
                   <option value="">{text('translation.choose_model')}</option>

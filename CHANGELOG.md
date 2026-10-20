@@ -6,6 +6,12 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- ReadEase has its own translator. In Voices & models → Translation,
+  download the ReadEase translator (about 1.1 GB, once) and English ↔
+  Vietnamese translation runs on this Mac with no Apple language packs or
+  other apps. The new Automatic setting uses it once downloaded and Apple
+  Translation until then.
+
 - Voices & models now has a Translation section: it says whether
   translation can work right now, and for Apple Translation, Ollama and
   LM Studio what is on this Mac (language packs, models, server running)

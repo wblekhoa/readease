@@ -12,6 +12,17 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-20 · ReadEase's own translator: Hy-MT2 1.8B on a bundled llama.cpp server
+- **Context**: translation needed Apple's packs (macOS 26) or the reader's own Ollama/LM Studio; the owner asked for a
+  model ReadEase installs itself.
+- **Decision** (owner's choices 20/10): Hy-MT2 1.8B Q4_K_M (Apache-2.0) run by a bundled `llama-server` (llama.cpp, MIT,
+  ~21 MB, static, Metal embedded), downloaded on request; default provider **Automatic** = ReadEase once downloaded,
+  else Apple. Rejected: MLX in the engine (+~290 MB to the sidecar: a 206 MB metallib plus transformers), OPUS-MT
+  (no new dependency but EN→VI mistranslations, e.g. "Reading every day" → "Mỗi ngày trôi qua"), NLLB (CC-BY-NC,
+  "not for production").
+- **Evidence**: probes 20/10 on the owner's Mac - Hy-MT2 via MLX and via llama.cpp both 0.2-0.4 s a paragraph,
+  ~1.4-1.5 GB resident; the bridge end-to-end test against the real server; hardened-runtime signed binary runs Metal.
+- **Reversal**: drop the `translator` resource and provider; Automatic resolves to Apple when no model path exists.
 ## 2026-10-20 · Translate before reading: one setting, a switch per source; Paste first
 - **Context**: translation applied only to Read a selection. The owner asked for it app-wide, Paste and Library.
 - **Decision** (owner's choices): one translation setting with a switch per source rather than separate settings;

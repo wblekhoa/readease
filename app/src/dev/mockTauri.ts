@@ -809,6 +809,7 @@ const MODEL: {
   installed: Record<string, number>;
   memory_bytes: number;
   english: { ready: boolean; installed: number; download_bytes: number };
+  translator: { ready: boolean; installed: number; download_bytes: number; path: string | null };
 } = {
   ready: true,
   precision: "fp32",
@@ -818,7 +819,13 @@ const MODEL: {
   // The English model, downloaded: its voices are in the list below. `?english=missing`
   // starts without it, which is what a fresh install looks like.
   english: { ready: true, installed: 335_000_000, download_bytes: 335_000_000 },
+  // RE-PLAY-031: ReadEase's own translator, not downloaded - a fresh install.
+  // `?translator=ready` starts with it on this Mac.
+  translator: { ready: false, installed: 0, download_bytes: 1_133_080_448, path: null },
 };
+if (new URLSearchParams(window.location.search).get("translator") === "ready") {
+  MODEL.translator = { ready: true, installed: 1_133_080_448, download_bytes: 1_133_080_448, path: "/mock/Models/hy-mt2-1.8b-gguf/Hy-MT2-1.8B-Q4_K_M.gguf" };
+}
 
 const ENGLISH_STATE = new URLSearchParams(window.location.search).get("english");
 if (ENGLISH_STATE === "missing") {
@@ -1052,7 +1059,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         data: FIGURE_DATA[String(params.figure_id)] ?? FIGURE_DATA["fig-wide"],
       };
     case "model.status":
-      return { ...MODEL, installed: { ...MODEL.installed }, english: { ...MODEL.english } };
+      return { ...MODEL, installed: { ...MODEL.installed }, english: { ...MODEL.english }, translator: { ...MODEL.translator } };
     case "model.set_precision": {
       MODEL.precision = String(params.precision ?? "");
       return {};
@@ -1060,6 +1067,11 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
     case "model.cancel":
       return { cancelled: cancelMockDownload() };
     case "model.remove_build": {
+      if (params.engine === "translator") {
+        const was = MODEL.translator.ready;
+        MODEL.translator = { ...MODEL.translator, ready: false, installed: 0, path: null };
+        return { removed: was };
+      }
       if (params.engine === "english") {
         const was = MODEL.english.ready;
         MODEL.english = { ...MODEL.english, ready: false, installed: 0 };
@@ -1456,13 +1468,17 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
      * sees - spinning forever in the preview, so nobody ever looked at it. */
     stopMockReading();
     const english = (args as { model?: string } | undefined)?.model === "english";
+    const translator = (args as { model?: string } | undefined)?.model === "translator";
     // `?download=hold` stops at 38 % and never finishes, so a cell can look
     // at a download in flight - the real one takes minutes, this one 4 s.
     const steps = DOWNLOAD_HOLD ? [0.12, 0.38] : [0.12, 0.38, 0.61, 0.87, 1];
     // The engine's own sentences (kokoro.py / vieneu.py `prepare_model`),
     // word for word: the shell translates them through RUNTIME_EN, and a
     // mock that made up its own ("… 38%") could never show whether it does.
-    const said = english
+    const said = translator
+      ? ["Đang tải bộ dịch (khoảng 1,1 GB)…", "Đang tải bộ dịch (khoảng 1,1 GB)…", "Đang tải bộ dịch (khoảng 1,1 GB)…",
+         "Đang tải bộ dịch (khoảng 1,1 GB)…", "Bộ dịch đã sẵn sàng."]
+      : english
       ? ["Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…", "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…",
          "Đang tải giọng đọc tiếng Anh (khoảng 330 MB)…", "Đang kiểm tra giọng đọc tiếng Anh…", "Giọng đọc tiếng Anh đã sẵn sàng."]
       : ["Đang tải mô hình đọc tiếng Việt lần đầu…", "Đang tải mô hình đọc tiếng Việt lần đầu…",
@@ -1475,7 +1491,9 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     });
     if (!DOWNLOAD_HOLD) downloadTimers.push(setTimeout(() => {
       downloadTimers = [];
-      if (english) {
+      if (translator) {
+        MODEL.translator = { ...MODEL.translator, ready: true, installed: 1_133_080_448, path: "/mock/Models/hy-mt2-1.8b-gguf/Hy-MT2-1.8B-Q4_K_M.gguf" };
+      } else if (english) {
         MODEL.english = { ...MODEL.english, ready: true, installed: 335_000_000 };
       } else {
         MODEL.ready = true;

@@ -15,6 +15,8 @@ struct TranslationInput: Decodable {
     var target: String?
     var model: String?
     var generation: UInt64?
+    /// RE-PLAY-031: the loopback port of ReadEase's own server, set by the host.
+    var port: Int?
 }
 
 final class NoRedirect: NSObject, URLSessionTaskDelegate {
@@ -26,16 +28,19 @@ final class NoRedirect: NSObject, URLSessionTaskDelegate {
     }
 }
 
-func localBase(_ provider: String) throws -> String {
+func localBase(_ provider: String, port: Int? = nil) throws -> String {
     switch provider {
     case "ollama": return "http://127.0.0.1:11434/v1"
     case "lmstudio": return "http://127.0.0.1:1234/v1"
+    case "readease":
+        guard let port = port, (1024...65535).contains(port) else { throw failure("translator_missing") }
+        return "http://127.0.0.1:\(port)/v1"
     default: throw failure("provider")
     }
 }
 
-func localRequest(_ provider: String, path: String, body: [String: Any]? = nil) async throws -> [String: Any] {
-    let base = try localBase(provider)
+func localRequest(_ provider: String, path: String, body: [String: Any]? = nil, port: Int? = nil) async throws -> [String: Any] {
+    let base = try localBase(provider, port: port)
     let config = URLSessionConfiguration.ephemeral
     config.connectionProxyDictionary = ["HTTPEnable": 0, "HTTPSEnable": 0, "SOCKSEnable": 0]
     config.urlCache = nil
@@ -113,6 +118,19 @@ func performTranslation(_ input: TranslationInput) async throws -> [String: Any]
         output = try await withTaskCancellationHandler {
             try await session.translate(text).targetText
         } onCancel: { session.cancel() }
+    } else if input.provider == "readease" {
+        // Hy-MT2's own instruction, as its model card gives it: one user turn,
+        // greedy, so the same text reads back the same way.
+        let language = target == "vi" ? "Vietnamese" : "English"
+        let result = try await localRequest("readease", path: "/chat/completions", body: [
+            "stream": false, "temperature": 0, "max_tokens": 6144,
+            "messages": [["role": "user", "content": "Translate the following segment into \(language), without additional explanation.\n\n\(text)"]]
+        ], port: input.port)
+        guard let choice = (result["choices"] as? [[String: Any]])?.first,
+              choice["finish_reason"] as? String == "stop",
+              let message = choice["message"] as? [String: Any],
+              let translated = message["content"] as? String else { throw failure("invalid_output") }
+        output = try cleanTranslation(translated)
     } else {
         guard let model = input.model, !model.isEmpty, model.count <= 200,
               !model.lowercased().contains("cloud") else { throw failure("model_missing") }

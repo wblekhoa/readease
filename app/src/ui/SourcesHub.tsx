@@ -158,7 +158,8 @@ export function SourcesHub({ onClose, translationSummary, translationSettings, o
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
         <ReadingSources {...sources} translation={
           <TranslationSources settings={translationSettings} summary={translationSummary}
-            onOpenSettings={onOpenTranslation} disabled={downloading} />
+            onOpenSettings={onOpenTranslation} disabled={downloading}
+            models={sources.models} reading={sources.reading} />
         } />
       </div>
       {/* Nothing to confirm: every row acts on its own. The one button is

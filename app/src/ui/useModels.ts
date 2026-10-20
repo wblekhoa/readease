@@ -18,7 +18,7 @@ import type { Language, ModelStatus } from "./readingSources";
 export type ModelJob = {
   /** Which language's model, when this app started the download; null for
    * one already running when the app looked (the message says which). */
-  target: Language | null;
+  target: Language | "translator" | null;
   progress: number | null;
   message: string | null;
 };
@@ -33,6 +33,8 @@ export type Models = {
   note: string | null;
   downloadVietnamese: (precision: string) => Promise<void>;
   downloadEnglish: () => Promise<void>;
+  downloadTranslator: () => Promise<void>;
+  removeTranslator: () => Promise<void>;
   cancel: () => void;
   removeVietnamese: (precision: string) => Promise<void>;
   removeEnglish: () => Promise<void>;
@@ -114,6 +116,28 @@ export function useModels(): Models {
     }
   }, []);
 
+  // RE-PLAY-031: the translator downloads through the same job as a voice.
+  const downloadTranslator = useCallback(async () => {
+    setNote(null);
+    setJob({ target: "translator", progress: null, message: text("hub.translator_downloading") });
+    try {
+      await invoke("prepare_model", { model: "translator" });
+    } catch (error) {
+      setNote(engineMessage(error));
+      setJob(null);
+    }
+  }, []);
+
+  const removeTranslator = useCallback(async () => {
+    setNote(null);
+    try {
+      await invoke("engine_request", { method: "model.remove_build", params: { engine: "translator" } });
+    } catch (error) {
+      setNote(engineMessage(error));
+    }
+    refresh();
+  }, [refresh]);
+
   // The download's own word (16/09). It used to be the reading's stop,
   // which also served a Dừng pressed while a download ran - and cancelled
   // the download nobody meant to cancel. The engine answers from inside
@@ -144,6 +168,6 @@ export function useModels(): Models {
 
   return useMemo(() => ({
     status, setStatus, refresh, job, note,
-    downloadVietnamese, downloadEnglish, cancel, removeVietnamese, removeEnglish,
-  }), [status, refresh, job, note, downloadVietnamese, downloadEnglish, cancel, removeVietnamese, removeEnglish]);
+    downloadVietnamese, downloadEnglish, downloadTranslator, cancel, removeVietnamese, removeEnglish, removeTranslator,
+  }), [status, refresh, job, note, downloadVietnamese, downloadEnglish, downloadTranslator, cancel, removeVietnamese, removeEnglish, removeTranslator]);
 }

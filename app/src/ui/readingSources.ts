@@ -29,6 +29,8 @@ export type ModelStatus = {
   memory_bytes?: number | null;
   /** Absent on an engine without the English model at all. */
   english?: { ready: boolean; installed: number; download_bytes: number };
+  /** RE-PLAY-031: ReadEase's own translator; absent on an older engine. */
+  translator?: { ready: boolean; installed: number; download_bytes: number; path: string | null };
 };
 
 /** The voices that fit a language: its own model's, and every paid voice

@@ -77,6 +77,14 @@ Qt and no PySide. It is ad-hoc signed, not notarized.
   binary**; the MPL-2.0 crates are unmodified and their source locations are
   in the inventory, which is what MPL §3.2 asks for.
 
+### Translator server
+
+- **llama.cpp** `llama-server`, built from commit
+  `a01ce9ffc64cf370439d6f861a534a65100133ae` — MIT. Ships as
+  `Contents/Resources/translator/llama-server` with its licence beside it
+  (`LICENSE-llama.cpp`); built without OpenSSL or libcurl, it serves loopback
+  only and never downloads anything. <https://github.com/ggml-org/llama.cpp>
+
 ### Models (downloaded on first run, never inside the bundle)
 
 - **VieNeu-TTS v3 Turbo**, pinned at `2da0efab622a1722125991736524f080b751ef5b`
@@ -89,6 +97,9 @@ Qt and no PySide. It is ad-hoc signed, not notarized.
 - **Kokoro-82M v1.0 ONNX** (the optional English voice), pinned at
   `1939ad2a8e416c0acfeecc08a694d14ef25f2231` — Apache-2.0 (publisher
   declaration). <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX>
+- **Hy-MT2 1.8B** Q4_K_M GGUF (the optional ReadEase translator), pinned at
+  `a0c709d9fac510f2c807aa3af52872340dc37a4a` — Apache-2.0 (publisher
+  declaration). <https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF>
 - **misaki English lexicon** (`us_gold.json`, `us_silver.json`), pinned at
   `fba1236595f2d2bf21d414ba6e57d25256afada3` — Apache-2.0.
   <https://github.com/hexgrad/misaki>

@@ -89,6 +89,7 @@ flowchart TD
 | `docs/local-voice-model-survey-2026-09.md`, `docs/english-voice-research-2026-09-15.md` | model choice research |
 
 ## Change log
+- 2026-10-20: RE-PLAY-031 - Translation group leads with "ReadEase translator · 1.1 GB" (Download / In use / Remove, progress in the shared download bar); the summary says "Automatic · using ReadEase/Apple Translation".
 - 2026-10-20: Translation group: no port numbers; Ollama/LM Studio listed only when chosen or open.
 - 2026-10-20: RE-PLAY-030 - Voices & models gains a Translation group that asks each translator and says what it found; ReadEase still downloads none.
 - 2026-10-10: created from code and CHANGELOG as of v0.1.21.

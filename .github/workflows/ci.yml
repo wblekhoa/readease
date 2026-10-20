@@ -47,7 +47,7 @@ jobs:
         with:
           workspaces: app/src-tauri
       - name: Stand in for the sidecar
-        run: mkdir -p app/src-tauri/engine && touch app/src-tauri/engine/readease-engine
+        run: mkdir -p app/src-tauri/engine app/src-tauri/translator && touch app/src-tauri/engine/readease-engine app/src-tauri/translator/llama-server
       - name: Rust receipts
         working-directory: app/src-tauri
         run: cargo test --lib

@@ -59,6 +59,12 @@ if [[ ! -x "$engine" || -n "$newer" ]]; then
   ./scripts/build-sidecar.sh
 fi
 
+# RE-PLAY-031: the translator's server, pinned and built from source.
+if [[ ! -x app/src-tauri/translator/llama-server ]]; then
+  echo "==> building the translator server"
+  ./scripts/build-translator-server.sh
+fi
+
 echo "==> building the app"
 (cd app && pnpm tauri build)
 
@@ -121,6 +127,7 @@ if [[ -n "$developer_id" ]]; then
   done < <(find "$engine_dir/_internal" -type f ! -name '*.py' ! -name '*.pyc' -print0)
   "${sign[@]}" --entitlements app/src-tauri/entitlements/engine.plist "$engine_dir/readease-engine"
   echo "    $((signed + 1)) Mach-O files in the sidecar"
+  "${sign[@]}" "$app/Contents/Resources/translator/llama-server"
   "${sign[@]}" "$app"
 else
   echo "==> re-signing ad hoc (no Developer ID identity in the keychain)"
