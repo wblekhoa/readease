@@ -130,7 +130,7 @@ See [PRIVACY.md](PRIVACY.md) for the full privacy boundary.
 - Image-only scanned PDFs require OCR before import; ReadEase does not include OCR yet.
 - Password-protected PDFs, DRM-protected EPUBs and damaged files are not supported.
 - The EPUB reader does not reproduce every stylesheet/layout, interactive SVG, complex table or fixed-layout publication.
-- VieNeu provides Vietnamese speech. English UI support does not add an English voice model.
+- On-device voices cover Vietnamese (VieNeu) and English (the optional Kokoro model); other languages are read only by outside AI voices.
 - A build you make from source is ad-hoc signed on your Mac. The builds on the Releases page are signed with a Developer ID and notarized.
 
 ## Local development
