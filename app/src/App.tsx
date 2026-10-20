@@ -1125,6 +1125,10 @@ export default function App() {
     }
   }, [content, voiceId, rate, exporting, keepInHistory]);
 
+  /* "Đọc tiếp" on Read home (RE-HOME-002): the book opens, and once it is
+     the open book the reading starts from where it was last heard - the
+     engine resumes from saved progress when no segment is given. */
+  const resumeAfterOpen = useRef<string | null>(null);
   const readBookFrom = useCallback(async (segmentId: string | null) => {
     // A paragraph clicked while an export runs would queue behind it.
     if (!openBook || !voiceId || exporting) return;
@@ -1146,6 +1150,11 @@ export default function App() {
       onPlayer({ type: "failed", error: String(error) });
     }
   }, [openBook, voiceId, rate, scope, exporting]);
+  useEffect(() => {
+    if (!openBook || resumeAfterOpen.current !== openBook.id || !voiceId) return;
+    resumeAfterOpen.current = null;
+    void readBookFrom(null);
+  }, [openBook, voiceId, readBookFrom]);
 
   /** Change the voice, and carry on with it.
    *
@@ -2171,6 +2180,7 @@ export default function App() {
             } : undefined}
             onImport={homeShelf.openPaths} onPaste={() => setTab("paste")} onScan={() => goTab("external")}
             onOpenBook={book => { setPosition(null); setOpenBook(book); setTab("library"); }}
+            onResumeBook={book => { resumeAfterOpen.current = book.id; setPosition(null); setOpenBook(book); setTab("library"); }}
             onOpenCapture={entry => { setHomeCapture(entry.at); setTab("external"); }}
             onRetry={() => void homeShelf.reload()}
             onSettings={() => { setHubOpen(false); setReaderPanel("voice"); }}

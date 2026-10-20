@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { homeRecents } from "../src/ui/homeReading.ts";
+import { continueBook, homeRecents, relativeDay } from "../src/ui/homeReading.ts";
 const book = (id: string, at: string | null, extra = {}) => ({ id, title: id, imported_at: at, listened_at: null, damaged: false, ...extra });
 // RE-HOME-001: recent content is derived, never persisted or synthesized as history.
 test("empty sources produce a true empty state", () => {
@@ -31,4 +31,24 @@ test("capture references preserve translation, voice and original for the existi
 test("blank captures and invalid dates do not pollute or break recent content", () => {
   const result = homeRecents([book("undated", "bad")], null, [{ at: 2, text: "   " }, { at: 3, text: "Hello" }]);
   assert.deepEqual(result.map(item => item.id), ["external:3", "book:undated"]);
+});
+
+test("continue reading offers the latest heard, started, unfinished book", () => {
+  const books = [
+    book("new", "2026-10-19", { progress_ratio: null }),
+    book("done", "2026-10-01", { listened_at: "2026-10-20", progress_ratio: 1 }),
+    book("older", "2026-10-01", { listened_at: "2026-10-10", progress_ratio: 0.3 }),
+    book("latest", "2026-10-01", { listened_at: "2026-10-18", progress_ratio: 0.42 }),
+  ];
+  assert.equal(continueBook(books)?.id, "latest");
+  assert.equal(continueBook([book("only-imported", "2026-10-19", { progress_ratio: 0 })]), null);
+});
+
+test("recent dates read as today, yesterday, days ago, then the date", () => {
+  const labels = { today: "Hôm nay", yesterday: "Hôm qua", daysAgo: (n: number) => `${n} ngày trước` };
+  const now = new Date(2026, 9, 20, 15, 0).getTime();
+  assert.match(relativeDay(new Date(2026, 9, 20, 9, 57).getTime(), now, "vi-VN", labels), /^Hôm nay 09:57$/);
+  assert.equal(relativeDay(new Date(2026, 9, 19, 23, 0).getTime(), now, "vi-VN", labels), "Hôm qua");
+  assert.equal(relativeDay(new Date(2026, 9, 17, 8, 0).getTime(), now, "vi-VN", labels), "3 ngày trước");
+  assert.match(relativeDay(new Date(2026, 8, 23).getTime(), now, "vi-VN", labels), /23/);
 });

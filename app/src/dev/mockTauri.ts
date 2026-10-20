@@ -913,7 +913,7 @@ function mockParts(text: string): { segment_id: string; text: string }[] {
 type MockHistoryEntry = { id: number; kind: "paste" | "scan"; text: string; original: string | null; target: string | null; at: number };
 const MOCK_DAY = 86_400_000;
 let mockHistoryId = 10;
-const MOCK_HISTORY: MockHistoryEntry[] = new URLSearchParams(location.search).get("history") === "empty" ? [] : [
+const MOCK_HISTORY: MockHistoryEntry[] = (new URLSearchParams(location.search).get("history") === "empty" || isEmpty("library")) ? [] : [
   { id: 1, kind: "paste", text: "Bản tin sáng: Thành phố khởi công tuyến đường sắt đô thị số 2, dự kiến hoàn thành vào năm 2030.", original: null, target: null, at: Date.now() - 2 * 3_600_000 },
   { id: 2, kind: "paste", text: "Ghi chú họp nhóm: thống nhất lịch phát hành, rà lại phần hướng dẫn cài đặt và gửi bản thử cho năm người dùng.", original: null, target: null, at: Date.now() - 1 * MOCK_DAY },
   { id: 3, kind: "scan", text: "Thiết kế tốt là thiết kế khiến người dùng không cần suy nghĩ.", original: "Good design is design that lets people stop thinking.", target: "vi", at: Date.now() - 3 * MOCK_DAY },

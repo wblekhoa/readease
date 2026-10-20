@@ -6,6 +6,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Read home opens with "Continue reading" for the book you were last
+  listening to - one press resumes it where you stopped - and recent
+  items can be filtered by documents, pastes or scans.
+
 - New app icon: two flat wave strands on the ReadEase blue, simpler and
   clearer at small sizes, matching the family style of SpeakEase.
 - Pasted text and scanned selections (with their translation) are now kept

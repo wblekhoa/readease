@@ -96,7 +96,7 @@ const SCREENS = {
   home_import: [["click", /^Mở tài liệu|^Open a document/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   home_paste: [...UNFOLD, ["click", /^Nhập hoặc dán nội dung|^Type or paste text/], ["click-at", "textarea"], ["type", "Nội dung thử của trang Đọc."],
     ["click", /^Đọc$|^Read$/], ["click", /^Mở lại Nội dung thử|^Reopen Nội dung thử/], ["wait", /^Dán nội dung$|^Paste text$/, "h2"]],
-  home_capture: [...UNFOLD, ["wait", /^Gần đây$|^Recent$/], ["click-at", '[aria-label="Gần đây"] button:first-of-type, [aria-label="Recent"] button:first-of-type'], ["wait", /^Về danh sách$|^Back to the list$/]],
+  home_capture: [...UNFOLD, ["wait", /^Gần đây$|^Recent$/], ["click-at", '[aria-label="Gần đây"] [aria-label^="Mở lại"], [aria-label="Recent"] [aria-label^="Reopen"]'], ["wait", /^Về danh sách$|^Back to the list$/]],
   home_active: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["click", /^Quay lại thư viện$|^Back to library$/],
     ["click", /^Đọc$|^Read$/], ["wait", /^Mở nội dung$|^Open content$/], ["rest"]],
   audiobook_form: BOOK_EXPORT,
