@@ -12,9 +12,10 @@
  * model's; the providers are a third group. Nothing here is required:
  * every row is an offer.
  */
+import type { ReactNode } from "react";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
-import { ChevronDownIcon, CloseIcon } from "./icons";
+import { CloseIcon } from "./icons";
 import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
 import { ModelProgress, ModelRows } from "./ModelPanel";
 import { ProviderKeys } from "./ProviderKeys";
@@ -28,6 +29,8 @@ import {
   type ModelStatus,
 } from "./readingSources";
 import type { Models } from "./useModels";
+import type { TranslationSettings } from "./translation";
+import { TranslationSources } from "./TranslationSources";
 import type { Voice } from "./voiceShortlist";
 
 export type SourcesProps = {
@@ -38,6 +41,8 @@ export type SourcesProps = {
   onSaveKey: (provider: string, key: string) => Promise<{ ok: boolean; code: string | null }>;
   /** Something is being read: nothing is fetched or removed under it. */
   reading: boolean;
+  /** RE-PLAY-030: the translators, between the languages and the API keys. */
+  translation?: ReactNode;
 };
 
 /** What reads a language, in one line: the model on this Mac and how many
@@ -58,7 +63,7 @@ export function sourcesLine(
   return parts.length ? parts.join(" · ") : text("hub.how_to_read");
 }
 
-export function ReadingSources({ models, voices, keysSet, onSaveKey, reading }: SourcesProps) {
+export function ReadingSources({ models, voices, keysSet, onSaveKey, reading, translation }: SourcesProps) {
   const { status } = models;
   const voicesOf = Object.fromEntries(
     voices.filter((voice) => isPaidVoice(voice.id)).reduce((counts, voice) => {
@@ -99,6 +104,7 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading }: 
           </GroupedSection>
         );
       })}
+      {translation}
       <ProviderKeys
         title={text("hub.section_api")}
         keysSet={keysSet}
@@ -111,9 +117,10 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading }: 
 }
 
 /** The sheet the gear on the home screen opens. */
-export function SourcesHub({ onClose, translationSummary, onOpenTranslation, ...sources }: SourcesProps & {
+export function SourcesHub({ onClose, translationSummary, translationSettings, onOpenTranslation, ...sources }: SourcesProps & {
   onClose: () => void;
   translationSummary: string;
+  translationSettings: TranslationSettings;
   onOpenTranslation: () => void;
 }) {
   const downloading = sources.models.job !== null;
@@ -149,13 +156,10 @@ export function SourcesHub({ onClose, translationSummary, onOpenTranslation, ...
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-        <GroupedSection>
-          <GroupedRow title={text("translation.title")} subtitle={text("translation.scope")}
-            trailing={<Button size="sm" disabled={downloading} aria-label={`${text("translation.open_settings")}: ${translationSummary}`} onClick={onOpenTranslation}>
-              {translationSummary}<ChevronDownIcon />
-            </Button>} />
-        </GroupedSection>
-        <ReadingSources {...sources} />
+        <ReadingSources {...sources} translation={
+          <TranslationSources settings={translationSettings} summary={translationSummary}
+            onOpenSettings={onOpenTranslation} disabled={downloading} />
+        } />
       </div>
       {/* Nothing to confirm: every row acts on its own. The one button is
           the way out, for a person who came from the settings panel. A

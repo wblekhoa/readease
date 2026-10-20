@@ -51,3 +51,16 @@ export function translationError(error: unknown) {
   const code = (error instanceof Error ? error.message : String(error)).replace(/^translation:/, '');
   return ERRORS.includes(code as typeof ERRORS[number]) ? `translation.${code}` as `translation.${typeof ERRORS[number]}` : 'translation.failed' as const;
 }
+
+/** RE-PLAY-030: one translator's answer in the hub - still asking, ready
+ * (with the local models it has), or the reason it cannot translate. */
+export type TranslatorFound =
+  | { state: 'checking' }
+  | { state: 'ready'; models: string[] }
+  | { state: 'missing'; reason: 'translation.apple_requires_26' | 'translation.failed' | 'hub.translate_apple_packs' | 'hub.translate_local_empty' | 'hub.translate_local_off' };
+/** Whether the translator chosen in settings can translate right now: Apple
+ * with both packs, or a local server that has the chosen model. */
+export function translatorReady(settings: TranslationSettings, found: TranslatorFound): boolean {
+  if (found.state !== 'ready') return false;
+  return settings.provider === 'apple' || found.models.includes(settings.model);
+}

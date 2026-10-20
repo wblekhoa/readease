@@ -29,6 +29,7 @@ Native capture/clipboard restoration → snapshot preferences and generation →
 | REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
 | RE-PLAY-025 | Optionally translate captured text with an installed Apple/local provider and matching local voice; cancel stale generations and retain passages only in session memory. | blocked | [025](#evidence) |
+| RE-PLAY-030 | Voices & models shows a Translation group: whether the chosen translator can translate now (Apple with both English↔Vietnamese packs, or a local server that has the chosen model) and, for each of Apple Translation, Ollama and LM Studio, what it found and how to fix it. It only asks; it downloads, installs and changes nothing. | live | `app/tests/translation.test.ts` (`the hub calls the chosen translator ready only when it can translate now`), render audit `hub`, harness `?translators=missing` |
 | RE-PLAY-029 | One translation setting chooses its sources (Read a selection, Paste text), each switched separately under the master switch; a setting saved without sources reads back Selection-only. Paste with its switch on is translated whole - split into pieces of at most 5,000 characters at paragraph, then sentence, then word boundaries, rejoined by blank lines - then read with the target voice; Stop or a newer reading cancels it and nothing stale is spoken or kept. History keeps the translation with its original only once it is known. | blocked | [029](#evidence) |
 
 ## Eligibility and bounds
@@ -66,6 +67,7 @@ History holds at most 50 captures. Failed/cancelled translation creates no compl
 Configuration round-trip: `tests/headless/test_server.py::test_translation_preferences_round_trip_without_passage_data`. Fixtures establish protocol/cancellation/configuration, not real-model translation quality. Complete native end-to-end owner acceptance remains pending despite inclusion in v0.1.23; status is unchanged. See the [status convention](../systems/app/system.md#status-and-verification).
 
 ## Change log
+- 2026-10-20: RE-PLAY-030 - translator status in Voices & models.
 - 2026-10-20: RE-PLAY-029 - sources per switch; Paste translated whole before reading.
 
 - 2026-10-19: moved the existing translation rule/details from `reading.md`; no new requirement or behavior.

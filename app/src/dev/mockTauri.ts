@@ -784,6 +784,7 @@ const EPHEMERAL = PAID_VOICE === "paid" || PAID_VOICE === "elevenlabs" || TRANSL
 // `?translation_sources=paste` (or `scan,paste`) picks where it applies; left
 // out, the setting reads back Scan-only, like one saved before RE-PLAY-029.
 const TRANSLATION_SOURCES = new URLSearchParams(location.search).get("translation_sources");
+const TRANSLATORS = new URLSearchParams(location.search).get("translators");
 if (TRANSLATION_TARGET) Object.assign(SETTINGS, { selection_translation: { enabled: true, provider: "apple", source: TRANSLATION_TARGET === "vi" ? "en" : "vi", target: TRANSLATION_TARGET, model: "", voice: "",
   ...(TRANSLATION_SOURCES === null ? {} : { sources: { scan: TRANSLATION_SOURCES.split(",").includes("scan"), paste: TRANSLATION_SOURCES.split(",").includes("paste") } }) } });
 
@@ -1317,8 +1318,10 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "pause_audio") { pauseMockReading(true); return Promise.resolve(null); }
   if (command === "resume_audio") { pauseMockReading(false); return Promise.resolve(null); }
   if (command === "set_selection_shortcut") return Promise.resolve(null);
-  if (command === "translation_status") return Promise.resolve({ available: true, installed: true });
-  if (command === "translation_models") return Promise.resolve({ models: ["qwen3:4b", "gemma3:4b"] });
+  // RE-PLAY-030: `?translators=missing` - no Apple packs and no local server,
+  // the state a first-time reader meets in the hub's Translation group.
+  if (command === "translation_status") return Promise.resolve({ available: true, installed: TRANSLATORS !== "missing" });
+  if (command === "translation_models") return TRANSLATORS === "missing" ? Promise.reject("translation:local_unavailable") : Promise.resolve({ models: ["qwen3:4b", "gemma3:4b"] });
   if (command === "floating_controller_enabled") return Promise.resolve(true);
   if (command === "set_floating_controller_enabled") return Promise.resolve(null);
   // Nothing asked the mock to open a document (HIG 3.18): the window's

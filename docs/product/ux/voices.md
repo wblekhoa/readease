@@ -54,6 +54,7 @@ relations:
 |---|---|---|---|
 | First run: Choose how to read | nothing installed · downloading (progress + Cancel) · ready | launch while nothing can read | Start reading → Read home (always enabled) |
 | Voices & models | per language: not downloaded · downloading · ready · removable build · low-memory hint | home screen button; gear in control bar | close back |
+| Voices & models → Translation | checking · can translate / cannot translate yet; per translator (Apple Translation, Ollama, LM Studio): packs present · packs missing (where to get them) · needs macOS 26 · running with N models · running with none · not running (port) | below the languages, above API voices | the summary button opens Translation settings |
 | Voice list | filtered · previewing · preview blocked while reading · starred | Voice settings → voice row; Change voice | pick a voice (list closes) |
 | API voices / keys | no key · verifying · saved · refused (reason + what to do) · offline | Voices & models → API voices → Add key | close back |
 | Cost and scope | price shown · scope (chapters) · budget reached · unpriceable model (Read locked) | paid voice selected | Read |
@@ -88,4 +89,5 @@ flowchart TD
 | `docs/local-voice-model-survey-2026-09.md`, `docs/english-voice-research-2026-09-15.md` | model choice research |
 
 ## Change log
+- 2026-10-20: RE-PLAY-030 - Voices & models gains a Translation group that asks each translator and says what it found; ReadEase still downloads none.
 - 2026-10-10: created from code and CHANGELOG as of v0.1.21.

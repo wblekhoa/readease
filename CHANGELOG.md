@@ -6,6 +6,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Voices & models now has a Translation section: it says whether
+  translation can work right now, and for Apple Translation, Ollama and
+  LM Studio what is on this Mac (language packs, models, server running)
+  and how to fix what is missing. ReadEase still downloads no translator.
+
 - Translate before reading now works for pasted text too. In Translation
   settings, switch it on for Read a selection, Pasted text, or both. A
   translated paste is translated whole, then read with the translation voice;
