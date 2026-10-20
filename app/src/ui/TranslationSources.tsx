@@ -70,6 +70,7 @@ export function TranslationSources({ settings, summary, onOpenSettings, disabled
   const checking = chosenFound.state === "checking";
   const busy = models.job !== null || reading;
   return (
+    <>
     <GroupedSection title={text("hub.section_translation")}>
       <GroupedRow
         title={
@@ -114,7 +115,11 @@ export function TranslationSources({ settings, summary, onOpenSettings, disabled
           />
         );
       })}
-      <Notice fine className="mt-2 block">{text("hub.translate_note")}</Notice>
     </GroupedSection>
+    {/* An aside about the whole group, not one more row: a small callout
+        below the list, so it neither sits on a row divider nor reads as a
+        translator (owner, 20/10). */}
+    <Notice tone="info" compact className="mt-3 block">{text("hub.translate_note")}</Notice>
+    </>
   );
 }

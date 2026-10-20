@@ -547,6 +547,7 @@ export function SuggestionDot() {
 export function Notice({
   tone = "ok",
   fine = false,
+  compact = false,
   children,
   className = "",
   action,
@@ -566,6 +567,9 @@ export function Notice({
    * a className, because `text-xs` handed in from outside would fight the
    * `text-sm` in here and the winner would depend on stylesheet order. */
   fine?: boolean;
+  /** A small callout: an `info` wash at 12px, upright - for an aside under a
+   * list that should not outweigh the rows above it (owner, 20/10). */
+  compact?: boolean;
   children: ReactNode;
   className?: string;
 }) {
@@ -578,7 +582,7 @@ export function Notice({
         // taken and should read as part of it, not as news.
         ? "notice-in rounded-2xl border border-info-edge bg-info-wash px-3.5 py-2.5 text-ink"
         : "text-ink-mute";
-  const size = fine ? "text-xs italic" : "text-sm";
+  const size = fine ? "text-xs italic" : compact ? "text-xs" : "text-sm";
   if (action && tone === "info") {
     return (
       <div className={`${voice} ${className}`}>
