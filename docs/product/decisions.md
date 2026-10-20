@@ -12,6 +12,16 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-20 · App icon: flat two-strand wave ring (B4·4), one template for the app family
+- **Context**: the glowing wave ring of 22/09 was the odd one out beside SpeakEase and Spotkey (flat colour, one white
+  glyph) and blurred at small sizes. The owner asked for a simpler logo that fits several apps.
+- **Decision**: B4·4 - two 5-lobe wave strands (white over `blue-b40`) on a flat `blue-b100` squircle; family template:
+  flat brand colour, one white glyph, no gradient or glow, legible at 16 px.
+- **Evidence**: owner chose among 3 directions, then 8 ring variants, then 8 B4 refinements (20/10), viewed at 88/32/16 px
+  and on a dark Dock beside SpeakEase and Spotkey. `tests/packaging/test_package_files.py` builds the new master into a
+  valid `.icns`.
+- **Reversal**: restore the previous `assets/branding/readease-icon-master.png` from git and regenerate (`build-icon.sh`,
+  `tauri icon`).
 ## 2026-10-20 · Paste and scan history kept on this Mac, on by default
 - **Context**: pasted and scanned text vanished on quit by design (PRIVACY: "transient"). The owner asked to keep the
   history of both.
