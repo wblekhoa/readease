@@ -4,11 +4,13 @@
  * saved place heard most recently for the column's "Đang đọc" group, and
  * the files the system asked the app to open (HIG 3.18).
  */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { engineMessage } from "../i18n";
 import { bookPaths } from "./bookPaths";
+import { drainBookImports } from "./bookImport";
 import { orderShelf } from "./libraryOrder";
 import type { LibraryBook } from "../screens/Library";
 
@@ -16,21 +18,30 @@ export function useShelf({
   inBook,
   inWindow,
   onOpen,
+  refreshKey,
 }: {
   inBook: boolean;
   /** Whether a host is there to ask (the preview harness has none). */
   inWindow: boolean;
   /** Open a document the system handed the app. */
   onOpen: (book: LibraryBook) => void;
+  refreshKey?: string;
 }) {
   const [shelf, setShelf] = useState<LibraryBook[]>([]);
 
-  const loadShelf = useCallback(() => {
-    invoke<{ result: { books: LibraryBook[] } }>("engine_request", { method: "library.list", params: {} })
-      .then((reply) => setShelf(reply.result.books))
-      .catch(() => undefined);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const queue = useRef<string[]>([]);
+  const draining = useRef(false);
+  const loadShelf = useCallback(async () => {
+    try {
+      const reply = await invoke<{ result: { books: LibraryBook[] } }>("engine_request", { method: "library.list", params: {} });
+      setShelf(reply.result.books); setError(null); return reply.result.books;
+    } catch (cause) { setError(engineMessage(cause)); return null; }
+    finally { setLoading(false); }
   }, []);
-  useEffect(() => { if (!inBook) loadShelf(); }, [inBook, loadShelf]);
+  useEffect(() => { if (!inBook) void loadShelf(); }, [inBook, refreshKey, loadShelf]);
 
   const readingNow = useMemo(
     () => orderShelf(shelf.filter((book) => book.segment_id)).slice(0, 5),
@@ -42,36 +53,30 @@ export function useShelf({
      reload the shelf, and open the last one, the way Preview opens the
      file you double-clicked. Drained on mount and on every nudge, so a
      file that launched the app is not lost and none is opened twice. */
+  // Home picker, Home drop and Finder all take the same path-based import.
+  const openPaths = useCallback(async (paths: string[]) => {
+    queue.current.push(...bookPaths(paths));
+    if (draining.current || !queue.current.length) return;
+    draining.current = true; setImporting(true); setError(null);
+    try {
+      const { book, error: failed } = await drainBookImports(queue.current, async path => {
+        const reply = await invoke<{ result: { book_id: string } }>("engine_request", { method: "library.import", params: { path } });
+        return reply.result.book_id;
+      }, loadShelf);
+      if (failed) setError(engineMessage(failed));
+      if (book) onOpen(book);
+    } finally { draining.current = false; setImporting(false); }
+  }, [loadShelf, onOpen]);
   const openFiles = useCallback(async () => {
-    const paths = bookPaths(await invoke<string[]>("take_opened_files").catch(() => [] as string[]));
-    if (!paths.length) return;
-    let last: string | null = null;
-    for (const path of paths) {
-      try {
-        const reply = await invoke<{ result: { book_id: string } }>(
-          "engine_request",
-          { method: "library.import", params: { path } },
-        );
-        last = reply.result.book_id;
-      } catch (error) {
-        console.error("[open] import failed:", path, error);
-      }
-    }
-    const listed = await invoke<{ result: { books: LibraryBook[] } }>(
-      "engine_request",
-      { method: "library.list", params: {} },
-    ).catch(() => null);
-    if (!listed) return;
-    setShelf(listed.result.books);
-    const book = listed.result.books.find((entry) => entry.id === last);
-    if (book) onOpen(book);
-  }, [onOpen]);
+    const paths = await invoke<string[]>("take_opened_files").catch(() => [] as string[]);
+    await openPaths(paths);
+  }, [openPaths]);
   useEffect(() => {
-    if (!inWindow) return;
+    if (!inWindow && !("__TAURI_INTERNALS__" in window)) return;
     void openFiles();
     const nudged = listen("files:opened", () => { void openFiles(); });
     return () => { nudged.then((unlisten) => unlisten()).catch(() => undefined); };
   }, [inWindow, openFiles]);
 
-  return { readingNow };
+  return { readingNow, shelf, loading, error, importing, openPaths, reload: loadShelf };
 }

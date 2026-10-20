@@ -756,7 +756,7 @@ class VerifyKeyTests(unittest.TestCase):
         self.assertEqual(reply["result"], {"saved": True, "ok": True})
         self.assertEqual(stored["openai_api_key"], KEY)
 
-    # RE-VOICE-009
+    # RE-VOICE-014
     def test_a_key_the_service_refuses_is_NOT_saved(self) -> None:
         reply, stored = self._ask(
             {}, {"provider": "openai", "value": "wrong"},

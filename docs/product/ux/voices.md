@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Voices and models (UX)"
 status: active
-updated: 2026-10-18
+updated: 2026-10-19
 summary: "How a reader chooses what ReadEase reads with: first-run choices, Voices & models downloads and builds, a language-first voice list with previews and favourites, and paid API voices with key, cost and budget."
 tags: [area/voice, stack/react, stack/tauri, surface/macos]
 relations:
@@ -33,8 +33,8 @@ relations:
 - **Three ways to read**: Vietnamese on-device (VieNeu-TTS; *Standard* ~330 MB or *Highest* ~625 MB), English on-device
   (Kokoro-82M, ~330 MB, six American voices), or paid API voices (OpenAI, ElevenLabs) on the reader's own key. None is
   required.
-- **First run** lists what this Mac can read with, one row per model with its size and **Download and use**. **Go to the
-  library** is always available. The screen shows on launch only while nothing at all can read.
+- **First run** lists what this Mac can read with, one row per model with its size and **Download and use**. **Start
+  reading** is always available and opens the Read home. The screen shows on launch only while nothing at all can read.
 - **Voices & models** (home screen button and the gear in the control bar) shows each language's model: download with
   progress and Cancel, switch build (asks first and says how much would be downloaded), remove a build not in use. On a
   Mac with 8 GB of memory or less it suggests the Standard build.
@@ -52,7 +52,7 @@ relations:
 ## Screens and states
 | Screen | States | Entry | Exit / next |
 |---|---|---|---|
-| First run: Choose how to read | nothing installed · downloading (progress + Cancel) · ready | launch while nothing can read | Go to the library (always enabled) |
+| First run: Choose how to read | nothing installed · downloading (progress + Cancel) · ready | launch while nothing can read | Start reading → Read home (always enabled) |
 | Voices & models | per language: not downloaded · downloading · ready · removable build · low-memory hint | home screen button; gear in control bar | close back |
 | Voice list | filtered · previewing · preview blocked while reading · starred | Voice settings → voice row; Change voice | pick a voice (list closes) |
 | API voices / keys | no key · verifying · saved · refused (reason + what to do) · offline | Voices & models → API voices → Add key | close back |
@@ -66,7 +66,7 @@ flowchart TD
   B -->|no| C[First run: choose how to read]
   C -->|Download and use| D[Download with progress / Cancel]
   C -->|Add API key| K[Provider verifies key]
-  C -->|Go to the library| L[Library]
+  C -->|Start reading| L[Read home]
   D --> L
   K -->|accepted| L
   K -->|refused| C

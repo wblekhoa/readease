@@ -5,96 +5,117 @@ product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
 updated: 2026-10-20
-summary: "Reading and playback rules (RE-PLAY): resume from heard progress, transient text never stored, Stop always wins, chapter chimes, pronunciations, Vietnamese abbreviations, Paste-text audio export and sentence review, and background M4B audiobook export with bounded batches and cancellation."
+summary: "Playback, heard progress, speech preparation and native controls; translation and export have separate rule owners with unchanged requirement IDs."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
 relations:
+  partOf: [readease-system-app]
   specifiedBy: [readease-ux-reading]
-  implements: [readease:src/vieneu_reader/headless/server.py, readease:src/vieneu_reader/playback/coordinator.py, readease:src/vieneu_reader/domain/prosody.py, readease:src/vieneu_reader/domain/segmenter.py, readease:src/vieneu_reader/domain/markdown.py, readease:src/vieneu_reader/headless/export.py, readease:src/vieneu_reader/domain/pronunciation.py]
+  implements: [readease:src/vieneu_reader/headless/server.py, readease:src/vieneu_reader/playback/coordinator.py, readease:src/vieneu_reader/domain/prosody.py, readease:src/vieneu_reader/domain/segmenter.py, readease:src/vieneu_reader/domain/markdown.py, readease:src/vieneu_reader/domain/pronunciation.py]
 ---
-# ReadEase — Reading and playback (logic)
+# ReadEase — Reading and playback
 
 ## Purpose
-- Read text aloud in an order and rhythm that follows the text's structure, keep the reader's place truthfully, and keep
-  transient text (paste, selection) out of persistent storage.
-- Success signal: resume lands where the ear stopped; Stop is immediate; nothing pasted is kept.
+
+Read each source through one transport, preserve the heard position, and keep speech transformations separate from written content. [Translation](translation.md) and [audio export](export.md) own their separate pipelines; [app map](../systems/app/system.md) owns shared data lifetime and status conventions.
+
+## Inputs and outputs
+
+| Input | Native → engine request | Position / result |
+|---|---|---|
+| imported book | `read_book` → `read.book` | book segment; heard progress may persist |
+| Paste, capture or selection inside a book | `read_text` / `read_selection_text` → `read` | transient `part-*`; no book progress |
+| app-authored voice sample | `read_text`, `appText: true` | preview; sample cache allowed |
+
+`origin` is return-navigation context; `current` identifies the actual speech request; `readingAt` identifies the capture owning a `part-*` position. A book origin does not make selected-text speech a book reading. Navigation, search and displayed-page changes do not acknowledge listening.
 
 ## Rules
-| REQ-ID | Rule (behaviour-changing) | Status (live / not built) | Evidence (code path or test) |
-|---|---|---|---|
-| RE-PLAY-001 | Reading a book without a start position resumes from its saved progress. | live | `tests/headless/test_server.py` (`test_read_book_resumes_from_saved_progress`) |
-| RE-PLAY-002 | Progress is written from what the shell reports as heard, not from what the engine has synthesized ahead. | live | `tests/headless/test_server.py` (`test_the_shell_reporting_the_ear_writes_progress_for_that_reading`, `test_read_book_does_not_persist_listening_progress_during_production`) |
-| RE-PLAY-003 | Reading a selection or pasted text never changes any book's progress. | live | `tests/playback/test_coordinator.py` (`test_selection_playback_never_changes_book_progress`) |
-| RE-PLAY-004 | Pasted text is never written to the audio cache. | live | `tests/speech/test_headless_audio_cache.py` (`test_pasted_text_is_never_written_to_the_audio_cache`) |
-| RE-PLAY-005 | Pasted text is accepted up to 100,000 characters and refused above it. | live | `src/vieneu_reader/domain/segmenter.py` (`MAX_PASTED_TEXT_CHARS`); `tests/domain/test_segmenter.py` (`test_pasted_text_accepts_the_limit_and_rejects_larger_input`) |
-| RE-PLAY-006 | Each later chapter of a reading opens with the chosen chime; the first chapter gets none; "off" restores the plain rest. | live | `tests/headless/test_server.py` (`test_a_chime_opens_each_later_chapter_unless_turned_off`) |
-| RE-PLAY-007 | Stop interrupts a reading mid-stream. | live | `tests/headless/test_server.py` (`test_stop_interrupts_a_reading_mid_stream`) |
-| RE-PLAY-008 | Markdown bold markers are removed from speech and its cost estimate only; the displayed text is unchanged. | live | `tests/headless/test_server.py` (`test_markdown_bold_is_removed_only_from_speech_and_its_estimate`) |
-| RE-PLAY-009 | A faster speed shortens the pauses between sentences in proportion. | live | `tests/headless/test_server.py` (`test_a_faster_rate_shortens_the_rest_exactly`) |
-| RE-PLAY-010 | Paste text exports to a 48 kHz 16-bit mono WAV at the chosen path, with an `.srt` beside it, spoken with the same utterances, rests and speed as reading aloud; nothing goes to the speakers. | live | `tests/headless/test_export.py` (`test_export_writes_a_marked_wav_and_timed_subtitles`) |
-| RE-PLAY-011 | An exported WAV states in its own metadata (RIFF INFO `ICMT`, `IKEY`, `ISFT`) that the speech is AI-generated, which voice made it, and the app version. | live | `tests/headless/test_export.py` (`test_export_writes_a_marked_wav_and_timed_subtitles`) |
-| RE-PLAY-012 | An export is set to -14 LUFS integrated (BS.1770) with peaks at or under -1 dBFS; a limiter may take at most 6 dB off peaks, past that the file stays quieter. | live | `tests/headless/test_export.py` (`test_full_scale_997_hz_sine_reads_minus_3_01`, `test_peaky_speech_reaches_the_target_under_the_ceiling`, `test_the_limiter_never_takes_more_than_its_share`) |
-| RE-PLAY-013 | Subtitles show the written words (Markdown read as meant), one cue per spoken sentence; a sentence over 84 characters becomes even whole-word cues timed by their share. | live | `tests/headless/test_export.py` (`CueTests`, `test_export_writes_a_marked_wav_and_timed_subtitles`) |
-| RE-PLAY-015 | The reader's pronunciations (settings key `pronunciations`, up to 300 rows) replace a written word or phrase by how it should be said in every reading - books, pasted text, selection, export - before the text is made speakable: whole words only, any case, the longest written form first; the estimate counts and the audio cache keys on the replaced words; the page, `text.parts` and subtitles keep the written ones; malformed rows are skipped, a word written twice keeps its last spelling. | live | `tests/domain/test_pronunciation.py`; `tests/headless/test_export.py` (`PronunciationReadingTests`) |
-| RE-PLAY-016 | A finished export is kept for review, by sentence, in a nameless temporary file: `export.play` streams one sentence as it is in the file (no synthesis), `export.retake` says one sentence again with the same speed and heading gain and replaces only that sentence, `export.save` rewrites WAV and SRT from the takes as they stand (later cues move by the change, the others keep their times); a retake is offered only for the local VieNeu voice; the review ends on `export.close`, a new export, or the engine's exit, and a request naming another session is refused. | live | `tests/headless/test_export.py` (`RetakeTests`) |
-| RE-PLAY-014 | Export keeps nothing but the two files: no audio cache, no library row; the audio waits in a nameless temporary file (gone on close or crash) and is written a batch at a time, so memory does not grow with length; a stop cancels it and a cancelled export writes no file; a path that is not an absolute `.wav` in an existing folder, or a speed outside 0.5-2.0, is refused. | live | `tests/headless/test_export.py` (`test_a_stop_before_the_export_starts_writes_nothing`, `test_rejects_a_path_that_is_not_an_absolute_wav`, `test_rejects_a_rate_outside_the_reading_range`); a stop mid-export takes the reading's stop path (RE-PLAY-007) and `finish` returns before writing (`server.py` `_export_text`) |
-| RE-PLAY-017 | A sentence of one to three words is generated whole (so the voice SDK can catch and redo a "said more" take) and sampled at temperature 0.3 or lower, while longer sentences keep the reading temperature; the change is part of the VieNeu engine identity so cached short sentences made the old way are not replayed. | live | `tests/speech/test_vieneu_contract.py` (`test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble`, `test_a_sentence_keeps_the_readers_temperature`, `test_the_audio_cache_sees_the_new_way_short_sentences_are_made`) |
-| RE-PLAY-018 | For the Vietnamese voice, abbreviations the voice SDK leaves half-read are written out before it: "ThS." → "Thạc sĩ", "TP."/"Tp." before a name → "Thành phố", "tr."/"Tr." before a number → "trang", "Q1/2025" → "quý 1 năm 2025", and in citations "Nxb."/"nxb" → "Nhà xuất bản", "Sđd" → "Sách đã dẫn", "Tlđd" → "Tài liệu đã dẫn", an imprint's "H.:" → "Hà Nội:"; the page and subtitles keep the written form. | live | `tests/domain/test_prosody.py` (`VietnameseAbbreviationTests`) |
-| RE-PLAY-019 | For the Vietnamese voice, a standalone "OK"/"Ok" is said "ô kê" (the SDK spells it "ô ca"); words that only contain it ("OKR", "BOOK") and lowercase "ok" are left alone. | live | `tests/domain/test_prosody.py` (`test_ok_is_said_as_the_word_not_as_letters`) |
-| RE-PLAY-020 | A chosen chapter range (including the whole book) exports as M4B with chapter marks, available JPEG/PNG cover, AI-speech metadata, the reading's voice, speed, pronunciation and chimes. On-device voices only; paid voices are refused before synthesis. Stopped/failed exports leave the destination unchanged; staging files are cleared on normal cancellation/failure. | live | `tests/headless/test_export.py` (`BookExportTests`), `tests/headless/test_m4b.py`; `BookExportPanel.tsx` and `useExport.ts` |
-| RE-PLAY-021 | One export owns the voice until its receipt arrives: the native boundary rejects another reading/export and model restart. Navigation remains available during synthesis and finalisation; audio is staged on disk, loudness is processed in batches, AAC is copied 1 MB at a time, and synthesis progress emits at most four times per second. Normalisation and encoding are cancellable, including termination of the encoder child. | live | `BookExportTests.test_library_responds_during_finalisation_and_cancel_preserves_existing_file`; `CancelWriterTests`; `engine.rs` `is_exporting`; `scripts/measure-audiobook-export.py` |
-| RE-PLAY-022 | Closing the window during export minimises it and keeps the job alive. Quit asks whether to keep exporting or cancel then quit; cancellation waits for the job's final receipt. Engine EOF ends the export with an error. Completion/error requests Dock attention when the window is unfocused. No notification permission or new dependency is needed. | live | `app/src-tauri/src/lib.rs` close/exit handlers; `engine.rs` `engine_exit_ends_an_export_instead_of_leaving_it_running`; `ExportQuitPanel.tsx`; native Dock/window behaviour still needs manual macOS smoke verification |
 
-| RE-PLAY-023 | During preparation and playback, including pause, the menu-bar icon opens a native menu: disabled status (preparing or current spoken sentence/total), Pause/Resume, Stop and Open ReadEase. Labels and tooltip follow `ui_language` (English fallback); counts contain no text and update when the ear reaches the sentence. Stop also cancels a selection still being captured; captures never overlap clipboard restore. Native menu smoke on the secondary screen is still pending. | blocked | `app/src-tauri/src/reading_tray.rs` (`preparing_progress_pause_and_languages`); `app/src-tauri/src/engine.rs` (`sentence_progress_waits_for_audio_and_drops_stale_readings`); `tests/headless/test_server.py` (`test_sentence_progress_counts_sentences_inside_a_paragraph`) |
-| RE-PLAY-024 | Floating controller B uses a native non-activating NSPanel with a flat 96×48pt capsule, opaque interior and transparent corners, no window shadow or backdrop blur, and 40pt hit targets: Pause/Resume with sentence-progress ring and Stop; preparation, completion (3 seconds) and immediate stop; external or hidden/minimised readings only; no selected text; draggable position per screen, system appearance, Reduce Motion, VoiceOver labels and default-on switch. Repeating the shortcut toggles the same live external selection; a different selection replaces it. | blocked | `native/macos/ReadingPanel.m`, `app/src-tauri/src/reading_panel.rs`, shared `reading_tray.rs`; `bash scripts/test-native-reading-panel.sh` checks native state/action/alpha/geometry; Rust `the_same_live_external_selection_toggles_but_a_new_selection_replaces_it`. Owner confirmed visibility and working buttons in regular ReadEase on 2026-10-16 and requested UI refinement; real focus/selection, fullscreen, accessibility, ≤150 ms appearance and <40 MB added total RSS remain unverified. |
-| RE-PLAY-025 | External selections optionally translate before speech using installed Apple packs (macOS 26+) or a loopback local model. Source auto/VI/EN, target VI/EN; local target voice only. 6,000-character cap, no automatic downloads, no original/paid fallback. Stop/new playback invalidates the generation before speech; original and translation live only in session history. Captures render as separate blocks with capture time; spoken translation precedes a collapsed Original disclosure. Book/Paste/export language is unchanged. A single footer Translate opener (label and chevron share one hit area) sits beside Voice settings; the enable switch lives inside the panel. Voice settings and Voices & models expose a compact scoped status/link. Translation voices use the shared picker with previews and favorites. Translation settings pairs target with a local voice; Voice settings shows that voice and speed. Source/provider/model are disclosed on demand, with setup errors always visible. The idle selection footer describes the effective translation voice without overwriting the original voice. | candidate | `translation.rs`, `native/macos/Translation.swift`, `TranslationTests.swift`, `translation.test.ts`; `test_translation_preferences_round_trip_without_passage_data`. Native end-to-end owner acceptance pending. |
-| RE-PLAY-026 | Selection captures and document detail share a solid 1px reading underline and an 18px blue Pause/Resume control in the left margin. The control uses the existing transport, does not trigger read-from-here, and does not change paragraph geometry. Paginated content is centered with equal margins; empty clipping padding passes pointer events to both page-turn zones. | live | `ReadingPositionControl.tsx`, `ScanEntry.tsx`, `Reader.tsx`, `PageFlow.tsx`; shared player state tests in `app/tests/playback.test.ts`; browser pause/resume, page-turn and geometry checks on 2026-10-18. |
+| REQ-ID | Rule | Status | Evidence |
+|---|---|---|---|
+| RE-PLAY-001 | Read a book from its saved position unless an explicit segment is requested. | live | [001](#evidence) |
+| RE-PLAY-002 | Save progress from heard acknowledgements, never synthesized-ahead audio. | live | [002](#evidence) |
+| RE-PLAY-003 | Transient text playback never changes book progress. | live | [003](#evidence) |
+| RE-PLAY-004 | Never persist pasted-text audio in the document cache. | live | [004](#evidence) |
+| RE-PLAY-005 | Accept pasted text through 100,000 characters; refuse larger input. | live | [005](#evidence) |
+| RE-PLAY-006 | Chime before later chapters; omit the first; Off uses the plain rest. | live | [006](#evidence) |
+| RE-PLAY-007 | Stop interrupts playback; stale audio cannot revive it. | live | [007](#evidence) |
+| RE-PLAY-008 | Remove bold markers from speech/cost, retaining the displayed text. | live | [008](#evidence) |
+| RE-PLAY-009 | Scale sentence pauses proportionally with reading speed. | live | [009](#evidence) |
+| RE-PLAY-015 | Apply validated pronunciation replacements consistently; keep written text in the page, parts and subtitles. | live | [015](#evidence) |
+| RE-PLAY-017 | Generate short utterances whole at lower temperature; invalidate incompatible cached audio. | live | [017](#evidence) |
+| RE-PLAY-018 | Expand supported Vietnamese abbreviations for speech only. | live | [018](#evidence) |
+| RE-PLAY-019 | Say standalone OK/Ok as “ô kê”; leave lowercase and longer words unchanged. | live | [019](#evidence) |
+| RE-PLAY-023 | Provide localized, text-free native reading status/actions; Stop also cancels capture. | blocked | [023](#evidence) |
+| RE-PLAY-024 | Provide a non-activating external-reading controller with shared transport and safe selection replacement. | blocked | [024](#evidence) |
+| RE-PLAY-026 | Share the current-reading Pause/Resume control without restarting speech or changing text geometry. | live | [026](#evidence) |
+| RE-PLAY-027 | A book reading stops at the end of the chapter scope the page quoted ("this chapter", N chapters, or the whole book); the page, the native command and the engine carry the same `chapters` value. | live | [027](#evidence) |
 | RE-PLAY-028 | For the Vietnamese voice, everyday forms the SDK misreads are rewritten before it, in spellings it reads right: "100m²"/"2,5m³" keep "vuông"/"khối" (converted before footnote marks are dropped), "8h-17h30" says "đến", a weekday run "T2-T6, T7, CN" says "thứ hai đến thứ sáu, thứ bảy, chủ nhật", and "$20"/"3,5 tỷ USD" say "đô la"/"đô la Mỹ"; a lone "T2", "USD" or "x²" is left alone. | live | `tests/domain/test_prosody.py` (`test_square_and_cubic_units_keep_their_power`, `test_an_hour_range_says_den`, `test_a_weekday_range_or_list_says_the_days`, `test_dollars_are_said_as_do_la`) |
 
-## States and transitions
-| State | Trigger | Next state | Edge case |
-|---|---|---|---|
-| idle | Read / Continue / click paragraph | preparing | voice blocked (no model, no key, budget) → error with reason, then idle |
-| preparing | first audio arrives | reading | warming notice clears; reading content does not change |
-| reading | Pause | paused | pause does nothing while idle |
-| paused | Resume | reading | |
-| reading | Stop | idle | pressing Stop several times stays idle; late audio from a stopped reading cannot restart it |
-| reading | end of text | idle | progress saved up to the last heard position |
-| reading | generation failure | idle (error) | progress is not saved past the failure |
+## States and recovery
 
-## Fixed vs flexible
-- Fixed (logic the UI must not change): progress follows the ear; transient text never persists; Stop always wins;
-  the displayed text is never altered by speech rules.
-- Flexible (UI may explore): the control bar layout, the status capsule, how chapters and figures are presented, chime
-  choice and pause lengths within the prosody rules.
+Preparation is `reading + warming: true`, not a fourth reducer enum. Error is a separate value. Native reading epochs filter stale events before they reach the UI reducer.
 
-## Export performance verification
-- Reproduce without a model, network or user library: `PYTHONPATH=src:. uv run --frozen python scripts/measure-audiobook-export.py`.
-  The script uses a 300-chapter / 6,000-paragraph fixture and real loudness processing plus macOS AAC encoding; temporary
-  files are removed when it exits. This measures export overhead, **not voice-model speed or its memory**.
-- Implementation bounds: a single voice job; selecting the next voice does not warm another model during export; progress at most 4 Hz; timer ticks only inside the status component;
-  32 loudness blocks per FFT batch, 262,144 samples per WAV write; limiter interpolation uses only nearby blocks.
-- Measured on macOS 27.0 arm64, 2026-10-15: 300 chapters / 6,000 paragraphs → 95.0 minutes of synthetic audio,
-  23.30 s wall time, -14.0 LUFS, 342.6 MiB peak RSS / +276.7 MiB over the fixture baseline. Library-response p95:
-  77.8 ms during synthesis, 41.3 ms during normalisation, 41.9 ms during encoding; maximum during finalisation 55.3 ms.
-  The earlier 128-block / 1,048,576-sample batches measured +299.6 MiB. These figures exclude voice-model costs and
-  do not establish the roadmap's memory target against a real reading on an 8 GB Mac.
-- Verification: Python full suite 968 tests OK (8 skipped; existing SQLite ResourceWarnings remain), app `pnpm build`
-  with 229 tests plus UI/mock audits, Rust `cargo test --offline --lib` 36 passed, native selection bridge PASS.
-  Browser audit: 48 cases passed, axe-watch=0, VI/EN × light/dark at 960×600; native window/Dock behaviour remains source/test-only.
-- Pending: model-inclusive CPU/RAM on an 8 GB Mac; native close/quit/Dock smoke; opening the final file by hand in
-  Apple Books; pre-export time/size forecasts and paid-voice whole-book pricing. No accuracy target for forecasts is claimed.
+| Current / event | Next state | Boundary |
+|---|---|---|
+| any playback state → Start | reading + warming; clear error | supersede old audio/translation |
+| reading/paused → first voice | same state; clear warming | late voice cannot revive idle |
+| reading → Pause / paused → Resume | paused / reading | preserve request and queued audio |
+| idle → Pause/Resume | idle | no-op |
+| active → Stop | idle immediately; clear warming | native cancellation follows; repeat is safe |
+| current request → Done/Failed | idle; optional error | synthesis completion alone is insufficient |
 
-## Open questions
-- None recorded.
+Python may synthesize ahead. Native `audio.credit` bounds queued frames; `progress.reached` records when a book segment reaches the ear. Both carry reading identity, receive no reply, and work during streaming/idle. Ignore another reading's acknowledgement; accept a valid final acknowledgement after synthesis replies. `reading:done` waits for audio to drain.
+
+Document search stays local: at least two folded query characters, at most 200 hits, case/diacritic-insensitive matches and original-text snippets. A hit only navigates; it creates no note or heard progress (`app/src/ui/textSearch.ts`, `app/tests/textSearch.test.ts`).
+
+## Speech preparation
+
+| Rule detail | Contract |
+|---|---|
+| pronunciations | At most 300 `pronunciations` rows. Whole words, case-insensitive, longest match first; skip malformed rows; duplicate written forms keep the last spelling. Reading/export, estimates and cache keys use replacements; page, `text.parts` and subtitles retain written words. |
+| short utterances | Generate 1–3 words whole so the SDK can detect/retry babble; temperature ≤0.3. Longer sentences retain the chosen temperature. Engine identity changes prevent old short-sentence cache reuse. |
+| Vietnamese expansions | `ThS.` → Thạc sĩ; `TP.`/`Tp.` before a name → Thành phố; `tr.`/`Tr.` before a number → trang; `Q1/2025` → quý 1 năm 2025; citation `Nxb.`/`nxb`, `Sđd`, `Tlđd`, imprint `H.:` expand to Nhà xuất bản, Sách đã dẫn, Tài liệu đã dẫn, Hà Nội:. |
+| standalone OK | Only `OK`/`Ok` → ô kê; preserve `ok`, `OKR`, `BOOK`. |
+
+## Native controls and acceptance
+
+- Menu status is disabled Preparing / current sentence n/N / Paused; actions are Pause/Resume, Stop, Open ReadEase. Use `ui_language`, English fallback, counts updated on heard sentences without selected text. Stop cancels acquisition; capture cannot overlap clipboard restoration.
+- The floating NSPanel is non-activating, text-free, draggable with remembered per-screen position, default-on, and only for external or hidden/minimized playback. Preparing is indeterminate; completion hides after 3 seconds, Stop immediately. Repeating the same live selection toggles pause; a different selection replaces it.
+- Geometry, appearance, Reduce Motion, VoiceOver and the shared inline marker are owned by the [reading UX contract](../ux/reading.md#current-truth) and [selection-history presentation](../ux/reading.md#selection-history-blocks). Inline Pause/Resume uses the existing transport; it never invokes read-from-here. Centered pagination keeps both page-turn hit zones usable and text height unchanged.
+- Menu smoke on the secondary screen is pending. Controller focus/selection, fullscreen, accessibility, ≤150 ms appearance and <40 MB additional total RSS remain unverified. Owner-confirmed buttons do not clear these holds.
+
+## Known limits
+
+None open for chapter scope: the bridge gap noted on 2026-10-19 is closed by RE-PLAY-027 (2026-10-20).
+
+## Evidence
+
+- **001**: `tests/headless/test_server.py` (`test_read_book_resumes_from_saved_progress`)
+- **002**: `tests/headless/test_server.py` (`test_the_shell_reporting_the_ear_writes_progress_for_that_reading`, `test_read_book_does_not_persist_listening_progress_during_production`)
+- **003**: `tests/playback/test_coordinator.py` (`test_selection_playback_never_changes_book_progress`)
+- **004**: `tests/speech/test_headless_audio_cache.py` (`test_pasted_text_is_never_written_to_the_audio_cache`)
+- **005**: `src/vieneu_reader/domain/segmenter.py` (`MAX_PASTED_TEXT_CHARS`); `tests/domain/test_segmenter.py` (`test_pasted_text_accepts_the_limit_and_rejects_larger_input`)
+- **006**: `tests/headless/test_server.py` (`test_a_chime_opens_each_later_chapter_unless_turned_off`)
+- **007**: `tests/headless/test_server.py` (`test_stop_interrupts_a_reading_mid_stream`)
+- **008**: `tests/headless/test_server.py` (`test_markdown_bold_is_removed_only_from_speech_and_its_estimate`)
+- **009**: `tests/headless/test_server.py` (`test_a_faster_rate_shortens_the_rest_exactly`)
+- **015**: `tests/domain/test_pronunciation.py`; `tests/headless/test_export.py` (`PronunciationReadingTests`)
+- **017**: `tests/speech/test_vieneu_contract.py` (`test_a_short_utterance_arrives_whole_so_the_sdk_can_catch_babble`, `test_a_sentence_keeps_the_readers_temperature`, `test_the_audio_cache_sees_the_new_way_short_sentences_are_made`)
+- **018**: `tests/domain/test_prosody.py` (`VietnameseAbbreviationTests`)
+- **019**: `tests/domain/test_prosody.py` (`test_ok_is_said_as_the_word_not_as_letters`)
+- **023**: `app/src-tauri/src/reading_tray.rs` (`preparing_progress_pause_and_languages`); `app/src-tauri/src/engine.rs` (`sentence_progress_waits_for_audio_and_drops_stale_readings`); `tests/headless/test_server.py` (`test_sentence_progress_counts_sentences_inside_a_paragraph`)
+- **024**: `native/macos/ReadingPanel.m`, `app/src-tauri/src/reading_panel.rs`, shared `reading_tray.rs`; `bash scripts/test-native-reading-panel.sh` checks native state/action/alpha/geometry; Rust `the_same_live_external_selection_toggles_but_a_new_selection_replaces_it`. Owner confirmed visibility and working buttons in regular ReadEase on 2026-10-16 and requested UI refinement; real focus/selection, fullscreen, accessibility, ≤150 ms appearance and <40 MB added total RSS remain unverified.
+- **027**: `tests/headless/test_shell_contract.py` (`PageShellEngineBookContractTests`: every argument the page passes to `read_book` is declared by the Rust command, `chapters` is forwarded to `read.book`, and `_read_book` reads it); engine bound in `tests/speech/test_external_reading.py` (`"chapters": 1` cases).
+- **026**: `app/src/ui/ReadingPositionControl.tsx`, `app/src/ui/ScanEntry.tsx`, `app/src/screens/Reader.tsx`, `app/src/screens/PageFlow.tsx`; shared player state tests in `app/tests/playback.test.ts`; browser pause/resume, page-turn and geometry checks on 2026-10-18.
+
+Protocol checks: `app/tests/playback.test.ts`, `tests/headless/test_shell_contract.py`, native `engine.rs`/`audio.rs` tests. Reducer checks alone do not establish speaker cancellation.
 
 ## Change log
+
 - 2026-10-20: RE-PLAY-028 - probed 44 everyday forms through the SDK normaliser; four misread families rewritten (unit powers, hour ranges, weekday runs, dollars).
-- 2026-10-15: RE-PLAY-020 connected to the app; RE-PLAY-021/022 cover background export, cancellation, resource bounds and lifecycle.
-- 2026-10-15: RE-PLAY-018 extended to citation words (Nxb., Sđd, Tlđd, "H.:"), found by probing the SDK normaliser on 34 common forms.
-- 2026-10-15: RE-PLAY-020 engine method `export.book` (range by chapter, marks timed from the audio, audio streamed to disk).
-- 2026-10-15: RE-PLAY-020 added (not built): the .m4b writer and its tests; spike result in decisions.md.
-- 2026-10-15: RE-PLAY-019 ("OK" said "ô kê"; a general tech-term pack measured worse and was not shipped - survey §8).
-- 2026-10-15: RE-PLAY-018 (abbreviations written out for the Vietnamese voice).
-- 2026-10-15: RE-PLAY-017 (short sentences sampled at 0.3; measured in `docs/local-voice-model-survey-2026-10.md` §6).
-- 2026-10-10: created; REQ-IDs added as comments next to the evidence tests in the same commit.
+- 2026-10-20: RE-PLAY-027 - `read_book` now declares and forwards `chapters`; cross-layer contract test added; the chapter-scope known limit is closed.
+- 2026-10-19: separated translation/export ownership without renumbering rules; retained native holds and the chapter-scope gap.
+- 2026-10-19: documented request identity, actual reducer states and heard acknowledgements.
+- 2026-10-15: citation abbreviations, standalone OK and short-utterance handling; pronunciation replacements were introduced earlier.
+- 2026-10-10: introduced requirement IDs beside code/test evidence.

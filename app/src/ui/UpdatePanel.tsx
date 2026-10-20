@@ -1,12 +1,8 @@
-/** The "Bản mới" sheet (HIG 3.20): what the updater found, how far it has
- * come, and the choices a Mac expects - skip this version, later, install
- * when quitting, install and relaunch, automatic download. In the middle
- * of the window on the scrim like the other sheets; work in flight cannot
- * be dismissed. */
+/** RE-UPDATE-001: dismissible detail popover, with no scrim or focus trap. */
 import { currentLanguage, text } from "../i18n";
 import { Button, IconButton, Surface, Switch } from "./controls";
 import { CloseIcon } from "./icons";
-import { Scrim, useDismiss } from "./patterns";
+import { useDismiss } from "./patterns";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { UpdatePhase } from "./updates";
 import { excerpt, releaseDate } from "./releaseNotes";
@@ -20,9 +16,12 @@ export function UpdatePanel({
   exportBlocked = false,
   onInstallNow,
   onInstallOnQuit,
-  onSkip,
   onAuto,
   onRestart,
+  onDownload,
+  onRetry,
+  anchor,
+  readingActive = false,
   onClose,
 }: {
   phase: UpdatePhase;
@@ -31,42 +30,43 @@ export function UpdatePanel({
   exportBlocked?: boolean;
   onInstallNow: () => void;
   onInstallOnQuit: () => void;
-  onSkip: () => void;
   onAuto: (value: boolean) => void;
   onRestart: () => void;
+  onDownload: () => void;
+  onRetry: () => void;
+  anchor: { left: number; bottom: number };
+  readingActive?: boolean;
   onClose: () => void;
 }) {
-  const busy = phase.kind === "downloading" || phase.kind === "installing";
-  const sheet = useDismiss(onClose, !busy);
+  const sheet = useDismiss(onClose);
   const offer = phase.kind === "available" || phase.kind === "ready";
   return (
-    <>
-      <Scrim />
+    <div id="update-details">
       <Surface
         edge="strong"
         radius="sheet"
-        layer="sheet"
+        layer="popover"
         ref={sheet}
         dialog={text("update.title")}
-        modal
-        className="fixed left-1/2 top-1/2 z-30 flex w-[28rem] max-w-[calc(100vw-3rem)] -translate-x-1/2 -translate-y-1/2 flex-col shadow-lifted"
+        style={{ left: anchor.left, bottom: anchor.bottom }}
+        className="fixed z-30 flex max-h-[calc(100dvh-2rem)] w-[26rem] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto shadow-lifted"
       >
         <div className="flex items-start gap-3 px-6 pb-2 pt-5">
           <div className="min-w-0 flex-1">
             <h3 className="m-0 text-base font-bold">{text("update.title")}</h3>
             {/* Wraps anywhere: a failed check says the URL it could not reach,
                 one unbroken word wider than the sheet (27/09). */}
-            <p className="m-0 mt-1 break-words text-sm text-ink-mute">{headline(phase, onQuit)}</p>
+            <p aria-live="polite" className="m-0 mt-1 break-words text-sm text-ink-mute">{headline(phase, onQuit)}</p>
             {offer && phase.date && (
               <p className="m-0 mt-0.5 text-xs text-ink-mute">{text("update.released", { date: releaseDate(phase.date, currentLanguage()) })}</p>
             )}
           </div>
-          {!busy && (
-            <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
+          <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
               <CloseIcon />
-            </IconButton>
-          )}
+          </IconButton>
         </div>
+        {readingActive && (phase.kind === "ready" || phase.kind === "installed") && <p className="m-0 px-6 py-2 text-sm text-ink-mute">{text("update.reading_warning")}</p>}
+        {phase.kind === "installed" && phase.error && <p role="alert" className="m-0 break-words px-6 py-2 text-sm text-danger">{phase.error}</p>}
         {exportBlocked && <p role="status" className="m-0 px-6 py-2 text-sm text-ink-mute">{text("audiobook.update_wait")}</p>}
         {offer && phase.notes && (
           // The release's notes as paragraphs: a note is a note, not a page;
@@ -98,37 +98,37 @@ export function UpdatePanel({
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 px-6 pb-5 pt-3">
-          {offer && !onQuit && (
-            <Button variant="ghost" onClick={onSkip}>{text("update.skip")}</Button>
-          )}
-          <span className="flex-1" />
+          {phase.kind !== "ready" && <span className="flex-1" />}
           {phase.kind === "available" && (
             <>
               <Button variant="ghost" onClick={onClose}>{text("update.later")}</Button>
-              <Button onClick={onInstallOnQuit}>{text("update.on_quit")}</Button>
-              <Button variant="primary" disabled={exportBlocked} onClick={onInstallNow}>{text("update.install")}</Button>
+              <Button variant="primary" onClick={onDownload}>{text("update.download")}</Button>
             </>
           )}
           {phase.kind === "ready" && (
-            <>
+            <div className="flex w-full items-center gap-2">
               {onQuit
-                ? <Button variant="ghost" onClick={onClose}>{text("aria.close")}</Button>
-                : <Button onClick={onInstallOnQuit}>{text("update.on_quit")}</Button>}
-              <Button variant="primary" disabled={exportBlocked} onClick={onInstallNow}>{text("update.install_now")}</Button>
-            </>
+                ? <Button className="min-w-0 flex-1" variant="ghost" onClick={onClose}>{text("aria.close")}</Button>
+                : <Button className="min-w-0 flex-1" onClick={onInstallOnQuit}>{text("update.on_quit")}</Button>}
+              <Button className="min-w-0 flex-1" variant="primary" disabled={exportBlocked} onClick={onInstallNow}>{text("update.install_now")}</Button>
+            </div>
           )}
           {phase.kind === "installed" && (
             <Button variant="primary" disabled={exportBlocked} onClick={onRestart}>{text("update.relaunch")}</Button>
           )}
           {phase.kind === "failed" && (
-            <Button onClick={() => void openUrl(RELEASES).catch(() => undefined)}>{text("update.open_releases")}</Button>
+            <>
+              <Button variant="ghost" onClick={() => void openUrl(RELEASES).catch(() => undefined)}>{text("update.open_releases")}</Button>
+              <Button variant="primary" disabled={phase.recovery === "install" && exportBlocked} onClick={onRetry}>{text(phase.recovery === "install" ? "update.install_now" : "update.retry")}</Button>
+            </>
           )}
+          {phase.kind === "downloading" && <Button onClick={onClose}>{text("update.continue")}</Button>}
           {(phase.kind === "none" || phase.kind === "checking" || phase.kind === "idle") && (
             <Button onClick={onClose}>{text("aria.close")}</Button>
           )}
         </div>
       </Surface>
-    </>
+    </div>
   );
 }
 

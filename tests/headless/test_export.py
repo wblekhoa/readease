@@ -321,6 +321,7 @@ class BookExportTests(unittest.TestCase):
         self.assertIn("disk full", reply["error"])
         self.assertFalse(os.path.exists(self.out))
 
+    # RE-PLAY-021
     def test_library_responds_during_finalisation_and_cancel_preserves_existing_file(self):
         from unittest.mock import patch
         from vieneu_reader.headless.server import _Session

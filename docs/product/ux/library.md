@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Library (UX)"
 status: active
-updated: 2026-10-17
+updated: 2026-10-19
 summary: "How the ReadEase Library shelf works: importing PDF and EPUB by button, drag-and-drop or Apple Books, refusal feedback, removing a book while keeping the original, and per-book reading progress."
 tags: [area/data-import, area/book, stack/react, stack/tauri, surface/macos]
 relations:
@@ -22,7 +22,7 @@ relations:
 - Success signal: a file goes from Finder (or Apple Books) to a readable book in one step, and opens where it was left.
 
 ## Scope
-- Included: the Library home screen (shelf), importing by button or drag-and-drop, importing from Apple Books, removing a
+- Included: the Library shelf, importing by button or drag-and-drop, importing from Apple Books, removing a
   book, per-book reading progress and per-book reading language.
 - Excluded: the reader itself (`ux/reading.md`), Move notes between Apple Books copies (Transfer screen), Read a
   selection (External screen).
@@ -30,7 +30,7 @@ relations:
 ## Current truth
 - The main window starts at 1280×820 logical pixels when no saved frame exists, capped to the display work area.
   Subsequent launches restore the reader's chosen size and position; the 960×600 minimum remains unchanged.
-- The Library is the default tab of the side column (Library · Paste text · Read a selection · Move notes). It shows
+- Read is the default tab; Library remains the dedicated shelf in the side column, alongside Paste text and Read a selection, with Move notes under Tools. It shows
   covers, titles and reading progress; the books being read also appear in the side column.
 - **Open PDF or EPUB** (or dragging files onto the window) imports text-based PDFs and reflowable EPUBs. The app copies
   each file into its own library folder; the original is left untouched. Importing the same file again focuses the
@@ -45,7 +45,7 @@ relations:
 ## Screens and states
 | Screen | States | Entry | Exit / next |
 |---|---|---|---|
-| Library (shelf) | empty · books listed · importing · import feedback (added N / refused with reason) | app launch (after first run), side column "Library" | open a book → Reader |
+| Library (shelf) | empty · books listed · importing · import feedback (added N / refused with reason) | side column "Library" | open a book → Reader |
 | Open PDF or EPUB (system file dialog) | open · cancelled | button on the shelf | shelf with feedback |
 | Drag and drop | hover with count of readable files · drop | files dragged over the window | shelf with feedback |
 | Apple Books sheet | loading · list · searching · item not importable (dimmed + reason) · importing · summary | "From Apple Books" | sheet closes → shelf |

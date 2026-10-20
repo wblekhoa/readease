@@ -4,35 +4,45 @@ type: logic
 product: readease
 title: "ReadEase — Help and feedback (logic)"
 status: active
-updated: 2026-10-15
-summary: "Rule RE-HELP-001: Report a Problem opens GitHub's bug form prefilled only with build id, macOS version and chip family, falls back to the plain form, and sends nothing from documents."
-tags: [stack/tauri, stack/rust, surface/macos]
+updated: 2026-10-20
+summary: "Feedback metadata URL and fallback, issue-submission boundary and local diagnostic-log ownership."
+tags: [area/security, stack/tauri, stack/rust, surface/macos]
 reqPrefix: RE-HELP
 relations:
   implements: [readease:app/src/ui/feedback.ts, readease:app/src-tauri/src/log.rs]
 ---
-# ReadEase — Help and feedback (logic)
+# ReadEase — Help and feedback
 
 ## Purpose
-- Let a reader report a problem without first hunting for the facts a report needs, and without anything from
-  their documents leaving the Mac.
-- Success signal: bug reports arrive with a build id and a macOS version filled in.
+
+Open a useful bug form without including document, library, preference or provider-key content.
+
+## Inputs and outputs
+
+`feedback_facts` → build id, macOS version, architecture → encoded GitHub URL. Facts failure uses the plain issue form; `+hash` and other metadata survive URL encoding.
 
 ## Rules
 
-| REQ-ID | Rule (behaviour-changing) | Status (live / not built / blocked) | Evidence (code path or test) |
+| REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
-| RE-HELP-001 | "Report a Problem or Suggest…" opens GitHub's bug form with only the build id, the macOS version and the chip family in the address; if those cannot be read, the plain form opens instead of nothing. | live | `app/tests/feedback.test.ts`; `app/src-tauri/src/log.rs` (`the_macos_version_is_read_out_of_the_system_plist`) |
+| RE-HELP-001 | Open feedback with build/macOS/chip metadata only; fall back to a plain form if facts are unavailable. | live | [001](#evidence) |
 
-## States and transitions
-| State | Trigger | Next state | Edge case |
-|---|---|---|---|
-| Menu item chosen | facts read | browser opens the prefilled form | the facts call fails → the plain form |
+## States and recovery
 
-## Fixed vs flexible
-- Fixed (logic the UI must not change): nothing from a document, the library or a setting goes into the address;
-  nothing is sent until the reader submits the form on GitHub.
-- Flexible (UI may explore): the menu wording, adding a separate form for ideas.
+| Event | Boundary |
+|---|---|
+| choose Report a Problem | read facts; open prefilled or fallback URL |
+| browser opens URL | metadata query already reaches GitHub |
+| user reviews/submits form | creates the issue; opening alone does not |
+
+[Privacy](../../../PRIVACY.md) owns network disclosure. Local stderr may be captured at `~/Library/Logs/ReadEase/readease.log`; on startup, >2 MiB rotates to one `.1` generation. Logs are not auto-uploaded/attached, and are not guaranteed free of user text.
+
+## Evidence
+
+- **001**: `app/tests/feedback.test.ts`; `app/src-tauri/src/log.rs` (`the_macos_version_is_read_out_of_the_system_plist`)
 
 ## Change log
-- 2026-10-15: created with RE-HELP-001 (prefilled bug form).
+
+- 2026-10-20: condensed feedback/transmission boundary; no payload change.
+- 2026-10-19: corrected URL-open versus issue-submit timing and documented local logs.
+- 2026-10-15: introduced prefilled feedback.

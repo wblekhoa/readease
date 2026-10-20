@@ -5,52 +5,77 @@ product: readease
 title: "ReadEase — Library (logic)"
 status: active
 updated: 2026-10-20
-summary: "Import and library rules (RE-LIB): only text-based PDF and EPUB up to 200 MiB, copied into the app library with the original untouched, duplicates focused, DRM and scans refused with a reason, per-book progress."
+summary: "Managed PDF/EPUB import, duplicate and failure handling, language/progress ownership, schema boundaries and the Apple Books import boundary."
 tags: [area/data-import, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-LIB
 relations:
   specifiedBy: [readease-ux-library]
   implements: [readease:src/vieneu_reader/importers/service.py, readease:src/vieneu_reader/importers/pdf.py, readease:src/vieneu_reader/importers/epub.py, readease:src/vieneu_reader/storage/repository.py, readease:src/vieneu_reader/integrations/apple_books.py]
 ---
-# ReadEase — Library (logic)
+# ReadEase — Library
 
 ## Purpose
-- Turn the reader's own files into readable books safely: never damage or delete the original, never half-import,
-  refuse what cannot be read with a reason the reader can act on.
-- Success signal: every refused file names its reason; no import leaves a partial copy or a broken entry.
+
+Import/remove documents safely, preserving originals and durable book state. [Home](home.md) owns entry routing; [reading](reading.md) owns heard acknowledgements; [notes](notes.md) owns annotation mirroring and explicit Apple Books writes.
+
+## Inputs and outputs
+
+`library.import(path)` returns `book_id`, title, format and `was_existing`. The caller chooses navigation: Home/Finder opens the result; Library shows aggregate added/existing/refused feedback. Import never implies autoplay.
+
+| Stored item | Owner / behavior |
+|---|---|
+| source file → managed copy + SQLite row | service validates format, size and readability before commit |
+| progress | segment/rate/voice per book; last-heard changes only with heard progress |
+| book language | explicit supported override or withdrawal to detected answer; opening does not force a voice change |
+| Apple Books link | asset → ReadEase book id; temporary packing for unpacked EPUB; source book unchanged |
 
 ## Rules
-| REQ-ID | Rule (behaviour-changing) | Status (live / not built) | Evidence (code path or test) |
+
+| REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
-| RE-LIB-001 | Only `.pdf` and `.epub` are accepted; any other file is refused before anything is copied. | live | `tests/importers/test_service.py` (`test_unsupported_extension_is_rejected_without_copying`) |
-| RE-LIB-002 | An import copies the file into the app's own library folder; the source file stays where it was, unchanged. | live | `tests/importers/test_service.py` (`test_import_copies_source_into_managed_library`) |
-| RE-LIB-003 | A file over 200 MiB is refused before the managed copy is made (`MAX_MANAGED_SOURCE_BYTES`). | live | `src/vieneu_reader/importers/service.py`; `tests/importers/test_service.py` (`test_oversized_source_is_rejected_before_managed_copy`) |
-| RE-LIB-004 | Importing a file whose content is already in the library returns the existing book (`was_existing`) and adds no second copy. | live | `tests/importers/test_service.py` (`test_duplicate_import_focuses_existing_managed_book`) |
-| RE-LIB-005 | A PDF without a text layer (a scan) is refused with "no text layer; OCR not supported". | live | `src/vieneu_reader/importers/pdf.py`; `tests/importers/test_pdf.py` (`test_textless_pdf_reports_that_ocr_is_not_supported`) |
-| RE-LIB-006 | An EPUB whose archive members are encrypted is refused with a named reason. | live | `src/vieneu_reader/importers/epub.py` (`_validate_archive`) |
-| RE-LIB-007 | Removing a book deletes its library rows and the app's own copy only; a file outside the library folder is never deleted. | live | `src/vieneu_reader/importers/service.py` (`remove_book`); `tests/headless/test_server.py` (`test_import_and_remove_walk_through_the_real_service`) |
-| RE-LIB-008 | Reading progress (position, rate, voice) is stored per book, independently, and updated in place. | live | `tests/storage/test_repository.py` (`test_progress_is_independent_per_book_and_updates_in_place`) |
-| RE-LIB-009 | From Apple Books, a book whose reading content is encrypted (DRM) cannot be imported; font obfuscation alone is not treated as DRM. | live | `tests/integrations/test_apple_books_sync.py` (`test_font_obfuscation_is_not_drm_but_encrypted_content_is`) |
-| RE-LIB-010 | Scanned PDFs are run through OCR so they can be imported. | not built | README "Limits": no OCR today |
+| RE-LIB-001 | Accept only PDF/EPUB; reject other extensions before copying. | live | [001](#evidence) |
+| RE-LIB-002 | Copy imports into managed storage without changing the original. | live | [002](#evidence) |
+| RE-LIB-003 | Reject files over 200 MiB before making a managed copy. | live | [003](#evidence) |
+| RE-LIB-004 | Deduplicate identical content, returning the existing book id. | live | [004](#evidence) |
+| RE-LIB-005 | Refuse PDFs without a text layer; no OCR fallback. | live | [005](#evidence) |
+| RE-LIB-006 | Refuse encrypted EPUB archive members with a named reason. | live | [006](#evidence) |
+| RE-LIB-007 | Remove only the library entry and managed copy; never an external source file. | live | [007](#evidence) |
+| RE-LIB-008 | Persist position, rate and voice independently per book. | live | [008](#evidence) |
+| RE-LIB-009 | Refuse Apple Books DRM content; font obfuscation alone is permitted. | live | [009](#evidence) |
+| RE-LIB-010 | Support OCR-based import of scanned PDFs. | not built | [010](#evidence) |
 
-## States and transitions
-| State | Trigger | Next state | Edge case |
-|---|---|---|---|
-| not in library | Open PDF or EPUB / drop / From Apple Books | importing | several files at once are imported one by one under one lock |
-| importing | file accepted and copied, row written | in library | database failure removes only the new copy (`test_database_failure_removes_only_the_new_managed_copy`) |
-| importing | file refused (type, size, no text, encrypted, damaged) | not in library | the source and library stay unchanged (`test_corrupt_import_leaves_source_and_library_unchanged`) |
-| in library | same content imported again | in library (focused) | a damaged row is healed by importing the same file again |
-| in library | Remove → confirm | not in library | a damaged row can still be removed |
+## States and recovery
 
-## Fixed vs flexible
-- Fixed (logic the UI must not change): the source file is never modified or deleted; refusals carry a reason; duplicate
-  imports never create a second book; limits are enforced in the engine, not only in the interface.
-- Flexible (UI may explore): shelf layout, ordering and filtering, how import feedback and the remove confirmation look.
+| Event | Result / safety boundary |
+|---|---|
+| supported readable import | commit managed file/row; deduplicate or heal damaged existing entry |
+| per-file import failure | preserve original/existing good import; remove only new partial work |
+| multi-file gesture | attempt serially/independently; one refusal does not roll back other successes |
+| missing/DRM/oversized Apple Books content | named refusal; never bypass protection |
+| older supported schema | ordered migration; failed step leaves original store unchanged |
+| future/malformed schema | refuse rather than guess a rewrite |
+| remove damaged or readable book | delete own row/copy; never the external source |
 
-## Open questions
-- None recorded.
+No OCR, DRM bypass or fixed-layout EPUB support. Home queue recovery is documented only in its [owner](home.md#states-and-recovery).
+
+## Evidence
+
+- **001**: `tests/importers/test_service.py` (`test_unsupported_extension_is_rejected_without_copying`)
+- **002**: `tests/importers/test_service.py` (`test_import_copies_source_into_managed_library`)
+- **003**: `src/vieneu_reader/importers/service.py`; `tests/importers/test_service.py` (`test_oversized_source_is_rejected_before_managed_copy`)
+- **004**: `tests/importers/test_service.py` (`test_duplicate_import_focuses_existing_managed_book`)
+- **005**: `src/vieneu_reader/importers/pdf.py`; `tests/importers/test_pdf.py` (`test_textless_pdf_reports_that_ocr_is_not_supported`)
+- **006**: `src/vieneu_reader/importers/epub.py` (`_validate_archive`)
+- **007**: `src/vieneu_reader/importers/service.py` (`remove_book`); `tests/headless/test_server.py` (`test_import_and_remove_walk_through_the_real_service`)
+- **008**: `tests/storage/test_repository.py` (`test_progress_is_independent_per_book_and_updates_in_place`)
+- **009**: `tests/integrations/test_apple_books_sync.py` (`test_font_obfuscation_is_not_drm_but_encrypted_content_is`)
+- **010**: README "Limits": no OCR today
+
+Schema/progress/language: `tests/storage/test_repository.py` (`UpgradingOverAnOlderInstallTests`, `TheFirstRealMigrationTests`). Import rollback: `tests/importers/test_service.py`, `tests/importers/test_pdf.py`, `tests/importers/test_epub.py`. Headless tests use temporary managed files/Apple Books fixtures; live permissions and new Home Finder/drop remain manual acceptance.
 
 ## Change log
-- 2026-10-10: created; REQ-IDs added as comments next to the evidence tests in the same commit.
-- 2026-10-15: no rule change; `tests/headless/test_server.py` now expects the note "Sđd., tr. 45" spoken as "Sách đã dẫn, trang 45" (RE-PLAY-018 in reading.md).
+
 - 2026-10-20: no rule change; `tests/headless/test_server.py` gained a `selection_translation` settings round-trip and sentence-progress frames (RE-PLAY-023 in reading.md); RE-LIB-007 evidence (`test_import_and_remove_walk_through_the_real_service`) is unchanged.
+- 2026-10-20: condensed import/state contract and linked adjacent owners; no behavior change.
+- 2026-10-19: reviewed service/storage evidence and schema/language boundaries.
+- 2026-10-10: introduced stable requirement IDs.

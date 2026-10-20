@@ -2,10 +2,12 @@
 
 ReadEase is a local-first macOS reader. It does not run an HTTP server, send
 telemetry, or upload document content to the ReadEase publisher. Out of the box it
-needs no API key and, once the voice model is prepared, no network at all.
+needs no API key. Once a voice model is prepared, reading with it needs no
+network; software-update checks and optional browser/provider connections are
+described below.
 
-One feature departs from that, only if you switch it on: an **outside AI voice**
-(see below) sends the passage being read to the provider whose key you entered.
+An optional **outside AI voice** (see below) sends the passage being read to
+the provider whose key you entered.
 Nothing about it is on by default and nothing turns it on by itself.
 
 Every source copy and app bundle carries the same static provenance marker,
@@ -21,8 +23,10 @@ model files, and reusable document-audio cache live under
 kept so existing readers do not lose their library when upgrading to ReadEase.
 
 Pasted text and text read from a selection are transient. They are not added
-to the library or persistent audio cache. The recent-reading list is held in
-memory and disappears when ReadEase exits.
+to the library or persistent audio cache. The current Paste draft and captured
+passage history are held in memory and disappear when ReadEase exits. The Read
+home can also show recent imported books derived from the library's existing
+import/listening timestamps; those book records remain in the library.
 
 ## Optional selection translation
 
@@ -78,14 +82,24 @@ revisions and hashes listed in `legal/MODEL_PROVENANCE.md`. Nothing about
 your documents or your Mac is sent with either request. Reading English with
 that voice afterwards is entirely local.
 
-The other time ReadEase reaches the network is an outside AI voice, described
-next. There is no third.
+Optional outside AI voices send the passage to their selected provider, as
+described below. Optional selection translation contacts only the installed
+Apple framework or the loopback model servers described above.
 
-**Help › Report a Problem or Suggest…** does not send anything itself: it
-opens GitHub's issue form in your browser with three facts already filled
+The app also checks its published GitHub updater feed after startup and can
+download a signed release archive. The feed address does not include document
+text, book titles or API keys. Like ordinary HTTPS requests, this exposes request
+metadata to the hosting service. The new background-update flow separates
+download from explicit installation/restart; temporary reading text is not
+snapshotted for restart.
+
+**Help › Report a Problem or Suggest…** opens GitHub's issue form in your browser with three facts already filled
 into the address - the app's build, the macOS version and the chip family
 (Apple silicon or Intel). Nothing from your documents, library or settings
-is added, and nothing reaches GitHub until you submit the form yourself.
+is added. Opening the prefilled URL sends those metadata fields to GitHub in
+the browser request. It does not create an issue; the report is created only
+after you review and submit the form yourself. Local diagnostic logs are not
+automatically uploaded or attached.
 
 ## The website
 

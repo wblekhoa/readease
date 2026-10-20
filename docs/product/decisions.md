@@ -4,13 +4,47 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-18
+updated: 2026-10-20
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-10-20 · Separate logic owners and shorten retrieval
+
+- **Context**: The owner approved the proposed documentation optimization: separate playback/translation/export, shorten rules and link shared policy instead of repeating it.
+- **Decision**: Keep the app map for ownership, data lifetime and operation precedence. Move translation/export rules into their owning logic files without changing IDs, status or test annotations. Keep operational detail and evidence below short rule tables; leave presentation with UX.
+- **Compatibility**: Existing rule IDs remain valid across files. Historical decisions/releases are retained. Native acceptance holds and the chapter-scope bridge gap stay explicit; no runtime change or new release is implied.
+- **Verification**: Compare the original rule/evidence inventory, validate links/relations and confirm non-document files are unchanged.
+- **Reversal**: Regroup files only if retrieval becomes worse; keep one definition per rule and stable IDs.
+
+## 2026-10-19 · Make logic documentation traceable to the current app
+
+- **Context**: The owner asked to focus on completing app logic documentation after reviewing Read home.
+- **Decision**: One app logic map links feature owners and records data lifetime, shared transport/concurrency, release status and verification gaps. Keep implementation evidence separate from native/manual acceptance; no new runtime behavior is authorized by a documentation status change.
+- **Identity repair**: Preserve RE-VOICE-009 for the default voice; the previously colliding rejected-key rule is RE-VOICE-014. Retag only its test comment, retain historical decision/release records and add missing existing export evidence annotations.
+- **Known source mismatch**: UI chapter scope is not forwarded by native `read_book`. Document it as an open contract gap, not a guaranteed playback bound. No fix is claimed in this pass.
+- **Evidence**: `systems/app/system.md`, feature logic documents and the cited source/tests. Feedback privacy distinguishes URL metadata transmission from issue submission; Apple Books mirroring differs from explicit Move notes writes.
+- **Reversal**: Update the owning contract after behavior or acceptance actually changes; do not erase open checks based only on a new build or screenshot.
+
+## 2026-10-19 · Name the shared reading home Đọc
+
+- **Context**: The owner wants an overall home rather than Library as the app's starting page, with recent work and reading settings, then specified: “tab sẽ có tên là đọc” and an empty state suggesting file, typed/pasted content and selection capture.
+- **Decision**: Read is the first/default tab. Keep Library/Paste/Selection as existing workspaces and group Move notes under Tools. Empty Read offers three entry actions; a populated Read derives up to five recent items and exposes existing voice/selection-translation settings.
+- **Privacy**: Keep the current draft and captures transient. No persistent recent-text archive, automatic clipboard read, upload or new dependency.
+- **Interactions**: Picking/dropping files opens the last successful import. Recent opens without autoplay. The current reading remains active across navigation.
+- **Evidence**: `app/tests/homeReading.test.ts`, UI build and browser/render checks. Native file/drag acceptance remains separate.
+- **Reversal**: Restore the launch route and remove the derived surface without migrating stored user content.
+
+## 2026-10-19 · Prepare updates without blocking reading
+
+- **Context**: The owner reported the update dialog prevents continued use, and chose the proposed sidebar notice plus detail popover ("theo đề xuất của bạn nhé").
+- **Decision**: Keep a quiet status above the sidebar footer, with an icon in the folded rail. Details are dismissible and non-modal. Download only prepares the signed archive; install only on explicit restart or armed quit. Keep the opt-in auto preference and menu entry.
+- **Safety**: Check export state again before apply, serialize duplicate operations, show recoverable failures, and invalidate cancelled quit timeouts. Warn about clearing temporary reading content on restart; do not persist it to solve an update UI issue.
+- **Evidence**: `app/tests/updateFlow.test.ts`, native quit-timeout test, build and browser preview checks. Signed old-to-new replacement remains a release-candidate check.
+- **Reversal**: Presentation can change after owner review; retain preparation/apply separation and export guards.
 
 ## 2026-10-18 · Finalize shared reading controls and release 0.1.23
 
