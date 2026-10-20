@@ -5,10 +5,9 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readingFault, faultKey } from "./ui/voiceFault";
-import { GradientBlur, MenuButton, RailDocument, RailGroup, RailCover,
+import { GradientBlur, MenuButton, RailGroup,
   RailIcon, RAIL_WIDTH,
   RailItem, SideColumn, Toolbar, pressedByPointer } from "./ui/patterns";
-import { useCover } from "./ui/useCover";
 import { useSideColumn } from "./ui/useSideColumn";
 import type { SidebarTab } from "./ui/sidebarState";
 import { useShelf } from "./ui/useShelf";
@@ -71,6 +70,7 @@ import {
   PauseIcon,
   AiSpeakerIcon,
   PlayIcon,
+  TextLargerIcon,
   PreviousIcon,
   BookClosedIcon,
   StopIcon,
@@ -177,27 +177,6 @@ function anchor(element: HTMLElement) {
   return { centre: rect.left + rect.width / 2, top: rect.top };
 }
 
-/** A row of the column's "Đang đọc" group. The cover is fetched here, per
- * row, through the same cache the shelf fills - so a document already seen
- * on the shelf costs nothing to draw again. */
-/** A reading-now document in the folded column: its cover alone. */
-function ReadingNowCover({ book, onPress }: { book: LibraryBook; onPress: () => void }) {
-  const cover = useCover(book.id);
-  return <RailCover title={book.title} cover={cover} progress={book.progress_ratio} onPress={onPress} />;
-}
-
-function ReadingNowRow({ book, onPress }: { book: LibraryBook; onPress: () => void }) {
-  const cover = useCover(book.id);
-  return (
-    <RailDocument
-      title={book.title}
-      cover={cover}
-      progress={book.progress_ratio}
-      chapter={book.progress_chapter}
-      onPress={onPress}
-    />
-  );
-}
 
 export default function App() {
   const exportBusy = useRef(false);
@@ -1517,7 +1496,6 @@ export default function App() {
     setOpenBook(book);
   }, []);
   const homeShelf = useShelf({ inBook, inWindow: IN_WINDOW, onOpen: openFromSystem, refreshKey: tab });
-  const { readingNow } = homeShelf;
   const goTab = (next: string) => {
     if (next === "home") { setOpenBook(null); setSelection(""); }
     if (next === "external") setHomeCapture(null);
@@ -1535,6 +1513,17 @@ export default function App() {
   const tools = useMemo(() => ([
     { value: "transfer", label: text("nav.transfer"), icon: <TransferIcon /> },
   ]), [language]);
+  /* The side column holds the settings too, as SpeakEase's does (owner,
+     20/10); opened from here, each sheet is centred, not pinned to the
+     footer button it also has. */
+  const [centredPanels, setCentredPanels] = useState(false);
+  useEffect(() => { if (readerPanel === null && !pronounceOpen) setCentredPanels(false); }, [readerPanel, pronounceOpen]);
+  const settingsItems = [
+    { key: "voice", label: text("settings.voice_title"), icon: <VoiceIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("voice"); } },
+    { key: "translation", label: text("translation.title"), icon: <ArrowSwapIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("translation"); } },
+    { key: "pronounce", label: text("pronounce.title"), icon: <TextLargerIcon />, open: () => { setHubOpen(false); setReaderPanel(null); setCentredPanels(true); setPronounceOpen(true); } },
+    { key: "hub", label: text("hub.title"), icon: <ReadingSettingsIcon />, open: () => { setReaderPanel(null); setPronounceOpen(false); setVoicesOpen(false); setHubOpen(true); } },
+  ];
 
   const overLimit = content.length > PASTE_LIMIT;
   const atOrigin =
@@ -1699,24 +1688,6 @@ export default function App() {
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </IconButton>
   );
-  const hubButton = (
-      <IconButton
-        onClick={(event) => {
-          // Lets go of the focus after a mouse press, like every opener (HIG
-          // 4.2): kept, its tooltip hung over the sheet it opened (27/09).
-          if (pressedByPointer()) event.currentTarget.blur();
-          setReaderPanel(null); setVoicesOpen(false); setHubOpen(true);
-        }}
-        aria-label={text("hub.title")}
-        title={text("hub.title")}
-        aria-haspopup="dialog"
-        aria-expanded={hubOpen}
-        className={hubOpen ? "text-ink" : ""}
-        data-popover-trigger
-      >
-        <ReadingSettingsIcon />
-      </IconButton>
-  );
   const languageSelect = (
       <Select
         pill
@@ -1731,7 +1702,6 @@ export default function App() {
   );
   const chrome = (
     <>
-      {hubButton}
       {themeSwitch}
       {languageSelect}
     </>
@@ -1812,20 +1782,12 @@ export default function App() {
                 />
               ))}
             </nav>
-            {readingNow.length > 0 && (
-              <div role="group" aria-label={text("sidebar.reading")} className="mt-2 flex flex-col items-center gap-1 border-t border-edge-alpha pt-2">
-                {readingNow.map((book) => (
-                  <ReadingNowCover
-                    key={book.id}
-                    book={book}
-                    onPress={() => { setTab("library"); setPosition(null); setOpenBook(book); }}
-                  />
-                ))}
-              </div>
-            )}
+            <div role="group" aria-label={text("nav.settings")} className="mt-2 flex flex-col items-center gap-1 border-t border-edge-alpha pt-2">
+              {settingsItems.map(item => <RailIcon key={item.key} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
+            </div>
           </>
         )}
-        railFoot={<>{hubButton}{themeSwitch}</>}
+        railFoot={themeSwitch}
       >
         {inBook ? (
           <>
@@ -1883,17 +1845,9 @@ export default function App() {
               <p className="m-0 px-3 pb-2 text-xs font-semibold text-ink-mute">{text("nav.tools")}</p>
               {tools.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => goTab(item.value)} />)}
             </div>
-            {readingNow.length > 0 && (
-              <RailGroup title={text("sidebar.reading")}>
-                {readingNow.map((book) => (
-                  <ReadingNowRow
-                    key={book.id}
-                    book={book}
-                    onPress={() => { setTab("library"); setPosition(null); setOpenBook(book); }}
-                  />
-                ))}
-              </RailGroup>
-            )}
+            <RailGroup title={text("nav.settings")}>
+              {settingsItems.map(item => <RailItem key={item.key} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
+            </RailGroup>
           </div>
         )}
       </SideColumn>
@@ -2813,6 +2767,7 @@ export default function App() {
       </Presence>
       <Presence open={(settingsOpen && speechSettings) || translationOpen}>
         {(speechSettings || translationOpen) && <SettingsPanel
+          centered={centredPanels}
           key={translationOpen ? "translation" : "voice"}
           panelKind={translationOpen ? "translation" : "voice"}
           translation={translation}
@@ -2984,6 +2939,7 @@ export default function App() {
       </Presence>
       <Presence open={pronounceOpen}>
         <PronunciationsPanel
+          centered={centredPanels}
           onChanged={() => setPronounceVersion((version) => version + 1)}
           onClose={() => setPronounceOpen(false)}
         />

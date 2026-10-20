@@ -4,14 +4,13 @@
  * saved place heard most recently for the column's "Đang đọc" group, and
  * the files the system asked the app to open (HIG 3.18).
  */
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { engineMessage } from "../i18n";
 import { bookPaths } from "./bookPaths";
 import { drainBookImports } from "./bookImport";
-import { orderShelf } from "./libraryOrder";
 import type { LibraryBook } from "../screens/Library";
 
 export function useShelf({
@@ -43,10 +42,6 @@ export function useShelf({
   }, []);
   useEffect(() => { if (!inBook) void loadShelf(); }, [inBook, refreshKey, loadShelf]);
 
-  const readingNow = useMemo(
-    () => orderShelf(shelf.filter((book) => book.segment_id)).slice(0, 5),
-    [shelf],
-  );
 
   /* Documents the system asked the app to open (HIG 3.18): import each -
      the engine returns the book it already had for a file it has seen -
@@ -78,5 +73,5 @@ export function useShelf({
     return () => { nudged.then((unlisten) => unlisten()).catch(() => undefined); };
   }, [inWindow, openFiles]);
 
-  return { readingNow, shelf, loading, error, importing, openPaths, reload: loadShelf };
+  return { shelf, loading, error, importing, openPaths, reload: loadShelf };
 }
