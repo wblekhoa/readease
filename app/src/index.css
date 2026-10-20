@@ -918,12 +918,22 @@ mark[data-style="5"] { background: var(--color-highlight-purple); }
    the page's ink on it. Stronger than a reader's yellow highlight (ya30)
    so the two are told apart; it may sit INSIDE a highlight and never
    replaces that colour. (Brand red at first; owner: "màu vàng".) */
+/* Light paper (audit 21/10): the DS light yellow ramp runs dark - its ya50
+   is the solid #9D6C00 and y100 #855300 - so the page's ink sat on them at
+   2.86:1. The pale steps carry "find" there and keep the text readable;
+   the dark theme keeps the ramp it was measured on. */
 mark[data-search] {
-  background: var(--yellow-alpha-ya50);
+  background: var(--light-yellow-alpha-ya20);
 }
 mark[data-search="current"] {
-  background: var(--yellow-y100);
+  background: var(--light-yellow-y40);
   color: var(--color-ink);
+}
+[data-theme="dark"] mark[data-search] {
+  background: var(--yellow-alpha-ya50);
+}
+[data-theme="dark"] mark[data-search="current"] {
+  background: var(--yellow-y100);
 }
 
 /* The note marker sitting at the head of a highlight.
