@@ -17,7 +17,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-from vieneu_reader.speech.kokoro import _fetch, _sha256
+from vieneu_reader.speech.kokoro import EnglishModelError, _fetch, _sha256
 
 MODEL_REPO = "tencent/Hy-MT2-1.8B-GGUF"
 MODEL_REVISION = "a0c709d9fac510f2c807aa3af52872340dc37a4a"
@@ -83,14 +83,18 @@ class TranslatorModel:
             progress_callback(0.98 * min(landed, DOWNLOAD_BYTES) / DOWNLOAD_BYTES, downloading)
 
         self._root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        mismatch = "Tệp bộ dịch tải về không khớp bản đã kiểm định. Hãy thử tải lại."
         try:
             self._file_fetcher(MODEL_URL, self.path, MODEL_SHA256, report)
+        except EnglishModelError as error:
+            # The shared fetcher's only own error: the hash did not match.
+            raise TranslatorModelError(mismatch) from error
         except Exception as error:  # a cancel is a BaseException and passes through
             raise TranslatorModelError(
                 "Chưa tải được bộ dịch. Kiểm tra kết nối mạng và dung lượng trống, rồi thử lại."
             ) from error
         if _sha256(self.path) != MODEL_SHA256:
-            raise TranslatorModelError("Tệp bộ dịch tải về không khớp bản đã kiểm định. Hãy thử tải lại.")
+            raise TranslatorModelError(mismatch)
         marker = self._root / _READY_MARKER
         descriptor = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(descriptor, "w", encoding="ascii") as handle:

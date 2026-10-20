@@ -60,7 +60,8 @@ if [[ ! -x "$engine" || -n "$newer" ]]; then
 fi
 
 # RE-PLAY-031: the translator's server, pinned and built from source.
-if [[ ! -x app/src-tauri/translator/llama-server ]]; then
+# Rebuilt when the script (its pinned commit) is newer than the binary.
+if [[ ! -x app/src-tauri/translator/llama-server || scripts/build-translator-server.sh -nt app/src-tauri/translator/llama-server ]]; then
   echo "==> building the translator server"
   ./scripts/build-translator-server.sh
 fi

@@ -21,6 +21,14 @@ requires an explicit license, size, offline-behavior, and bundle-impact review.
 PDF extraction runs on `pypdfium2` inside the headless sidecar; keep it there
 rather than adding a second PDF engine.
 
+The app bundles the translator's server (llama.cpp `llama-server`, pinned in
+`scripts/build-translator-server.sh`). Build it once before `cargo test` or
+`pnpm tauri dev` in a fresh checkout - Tauri refuses a missing resource:
+
+```bash
+./scripts/build-translator-server.sh
+```
+
 ## Change quality
 
 - Add a failing test before changing behavior, then run the narrow test and the
