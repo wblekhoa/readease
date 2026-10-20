@@ -1201,6 +1201,11 @@ export function RailItem({
  * SpeakEase carries, so the two apps read as one family (owner, 09/10:
  * "hệ thống app đồng bộ với nhau"). A brand name, the same in every
  * language. Home screens only: a book's column leads with the book. */
+/** A glyph on a soft brand-tinted tile: the entry points of Read home. */
+export function IconTile({ children }: { children: ReactNode }) {
+  return <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--color-brand-600)_14%,transparent)] text-brand-600">{children}</span>;
+}
+
 export function AppLogo({ className = "" }: { className?: string }) {
   return (
     <div role="img" aria-label="ReadEase" className={`flex select-none items-center gap-2.5 ${className}`}>
@@ -1210,7 +1215,7 @@ export function AppLogo({ className = "" }: { className?: string }) {
         width={31}
         height={31}
         draggable={false}
-        className="shrink-0 drop-shadow-[0_2px_6px_color-mix(in_srgb,var(--color-brand-600)_35%,transparent)]"
+        className="shrink-0 rounded-[7px]"
       />
       <span aria-hidden className="font-[family-name:var(--font-display)] text-[19px] font-bold leading-none tracking-[-0.02em]">
         <span className="text-ink">Read</span>

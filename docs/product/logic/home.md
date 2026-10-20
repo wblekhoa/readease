@@ -35,6 +35,7 @@ Entering Read clears the document view/selection, retaining running audio/origin
 | REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
 | RE-HOME-001 | Read is the default entry. Open existing input workflows without autoplay; derive recent content without a separate history store. | live | [001](#evidence) |
+| RE-HOME-002 | Read home leads with "Continue reading" for the most recently heard, started and unfinished book (cover, chapter, progress); Resume opens it and reads on from the saved position. Recents can be filtered by kind (all, document, paste, scan) and show relative days; the resumed book is not listed twice. | live | `app/tests/homeReading.test.ts` (`continue reading offers the latest heard…`, `recent dates read as…`) |
 
 ## Recent-content contract
 
@@ -64,6 +65,7 @@ Home/Finder share a queue, not the Library shelf's aggregate import-feedback own
 Additional queue coverage: `app/tests/bookImport.test.ts`. `home*` render recipes verify empty import, exact draft reopening, focused capture and preserved playback in both languages/themes. Native Finder/drop acceptance is still pending; mock routing does not prove it.
 
 ## Change log
+- 2026-10-20: RE-HOME-002 continue-reading card, kind filter, relative days.
 
 - 2026-10-20: condensed routing/recents/error contracts; rule and acceptance unchanged.
 - 2026-10-19: introduced the unreleased Read entry and its derived recents.
