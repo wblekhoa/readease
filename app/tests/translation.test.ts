@@ -32,3 +32,22 @@ test('selection settings use the target voice without replacing the saved origin
   assert.equal(selectionVoice({ ...settings, target: 'vi' }, voices, 'kokoro:af_heart'), 'vi-local');
   assert.equal(selectionVoice(settings, [voices[0]], 'vi-local'), null);
 });
+
+// RE-PLAY-029
+test('a setting saved before sources existed stays Scan-only', async () => {
+  const { translationSettings, translates } = await import('../src/ui/translation.ts');
+  const legacy = translationSettings({ enabled: true, provider: 'apple', target: 'en' });
+  assert.deepEqual(legacy.sources, { scan: true, paste: false });
+  assert.equal(translates(legacy, 'scan'), true);
+  assert.equal(translates(legacy, 'paste'), false);
+});
+
+test('each source has its own switch under the master one', async () => {
+  const { translationSettings, translates, selectionVoice } = await import('../src/ui/translation.ts');
+  const pasteOnly = translationSettings({ enabled: true, provider: 'apple', target: 'en', sources: { scan: false, paste: true } });
+  assert.equal(translates(pasteOnly, 'paste'), true);
+  assert.equal(translates(pasteOnly, 'scan'), false);
+  assert.equal(selectionVoice(pasteOnly, [], 'vi-local'), 'vi-local');
+  assert.equal(translates({ ...pasteOnly, enabled: false }, 'paste'), false);
+  assert.deepEqual(translationSettings({ enabled: true, provider: 'apple', sources: { scan: 'yes' } }).sources, { scan: false, paste: false });
+});

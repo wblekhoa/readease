@@ -29,6 +29,7 @@
  */
 import { TranslationSettings } from "./TranslationSettings";
 import type { TranslationPreference } from "./useTranslation";
+import { translates } from "./translation";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
 import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
@@ -170,8 +171,14 @@ export function SettingsPanel({
   output?: { name: string; default: boolean } | null;
   onClose: () => void;
 }) {
-  const translatingSelection = context === "external" && translation.settings.enabled;
-  const translationSummary = translation.settings.enabled ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
+  // RE-PLAY-029: Scan and Paste each read through translation when their own
+  // switch is on; there, the voice is the translation voice.
+  const translatingSelection = (context === "external" && translates(translation.settings, "scan"))
+    || (context === "paste" && translates(translation.settings, "paste"));
+  const translationOn = context === "external" ? translates(translation.settings, "scan")
+    : context === "paste" ? translates(translation.settings, "paste")
+    : translates(translation.settings, "scan") || translates(translation.settings, "paste");
+  const translationSummary = translationOn ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
   const panelTitle = text(panelKind === "translation" ? "translation.open_settings" : "player.settings");
   const downloading = models.job !== null;
   // Escape and a click on the book both put it away; neither does while a
@@ -220,7 +227,7 @@ export function SettingsPanel({
         {/* RE-PLAY-025: expose capture translation without implying books are translated. */}
         {panelKind === "voice" && <GroupedSection>
           <GroupedRow title={text("translation.title")}
-            subtitle={text(context === "external" ? "translation.mode_hint" : "translation.scope")}
+            subtitle={text(context === "reader" ? "translation.scope" : "translation.mode_hint")}
             trailing={<Button size="sm" onClick={onOpenTranslation} aria-label={`${text("translation.open_settings")}: ${translationSummary}`}>
               {translationSummary}
               <ChevronDownIcon />

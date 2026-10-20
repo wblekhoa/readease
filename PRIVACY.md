@@ -24,7 +24,7 @@ kept so existing readers do not lose their library when upgrading to ReadEase.
 
 Pasted text and text read from a selection are never added to the library or
 the persistent audio cache. By default ReadEase keeps a **history** of them on
-this Mac - the text you read, and for a translated selection its original and
+this Mac - the text you read, and for a translated selection or paste its original and
 translation - in `history.sqlite3` in the same folder, readable only by your
 macOS user. No audio is kept, and none of it is sent anywhere. History keeps
 entries for 30 days by default (7, 30, 90 or 365 days, or until you delete
@@ -34,20 +34,22 @@ selection screens; switched off, nothing new is written. The Read
 home can also show recent imported books derived from the library's existing
 import/listening timestamps; those book records remain in the library.
 
-## Optional selection translation
+## Optional translation before reading
 
 “Translate before reading” is off by default. Apple Translation uses installed on-device language packs;
-ReadEase does not download them or send the selected passage to a translation website. Apple may collect
+ReadEase does not download them or send the selected passage or pasted text to a translation website. It applies only to
+the sources you switch on (Read a selection, Paste text). Apple may collect
 framework usage/performance metadata under its system privacy policy, but not the original or translated text
 ([Apple TranslationSession documentation](https://developer.apple.com/documentation/Translation/TranslationSession)).
 
-Alternatively, ReadEase sends the selected text to a local Ollama server on `127.0.0.1:11434` or LM Studio on
+Alternatively, ReadEase sends the selected or pasted text to a local Ollama server on `127.0.0.1:11434` or LM Studio on
 `127.0.0.1:1234`. These connections use no proxy, redirect, API key or remote endpoint. Ollama cloud models,
 including aliases identified as remote by model metadata, are rejected. Install and run local models yourself;
 ReadEase does not control a third-party server's own logging or configuration. Use locally hosted models only.
 
-The original and translated passage stay in the in-memory selection history. Only translation preferences
-(provider, model name, source/target language, local voice and enabled state) are saved. Speaking the translation
+The original and its translation are kept in the History on this Mac described above, while History is on, and
+nowhere else. Only translation preferences (provider, model name, source/target language, local voice, sources and
+enabled state) are saved with your settings. Speaking the translation
 uses an installed local voice, never an automatic fallback to a paid voice. Stop cancels an in-flight translation.
 
 ## Exported audio

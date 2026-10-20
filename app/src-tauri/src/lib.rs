@@ -218,6 +218,38 @@ fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String>
     Ok(voices)
 }
 
+/// RE-PLAY-029: pasted text read in the chosen language - translated piece
+/// by piece natively, then read with the target-language voice. The same
+/// generation guard as a selection: Stop or a newer reading cancels the
+/// translation and nothing stale is spoken.
+#[tauri::command(async)]
+fn read_text_translated(
+    app: tauri::AppHandle,
+    engine: tauri::State<EngineSlot>,
+    text: String,
+    rate: f64,
+    translation: translation::Options,
+) -> Result<Option<serde_json::Value>, String> {
+    translation.validate()?;
+    let request = app.state::<SelectionRequest>();
+    let id = {
+        let mut generation = request.0.lock().unwrap();
+        *generation += 1;
+        translation::cancel_before(*generation);
+        *generation
+    };
+    let client = client_of(&engine);
+    if client.is_exporting() { return Err("translation:export_busy".into()); }
+    client.stop()?;
+    let spoken = translation::translate_long(&text, &translation, id)?;
+    let generation = request.0.lock().unwrap();
+    if *generation != id { return Ok(None); }
+    client.fire("read", serde_json::json!({
+        "text": spoken, "segment_id": null, "voice_id": translation.voice_id, "rate": rate,
+    }))?;
+    Ok(Some(serde_json::json!({ "text": spoken, "voice_id": translation.voice_id, "target": translation.target })))
+}
+
 #[tauri::command(async)]
 fn read_text(
     app: tauri::AppHandle,
@@ -655,6 +687,7 @@ pub fn run() {
             translation::translation_status,
             translation::translation_models,
             read_text,
+            read_text_translated,
             read_book,
             engine_request,
             reading_panel::floating_controller_enabled,

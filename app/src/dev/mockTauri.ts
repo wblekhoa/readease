@@ -781,7 +781,11 @@ const SETTINGS: Record<string, string | number | null> = {
    ("tối đa") with a unit count under it (27/09: never on a screen). */
 const PAID_VOICE = new URLSearchParams(window.location.search).get("voice");
 const EPHEMERAL = PAID_VOICE === "paid" || PAID_VOICE === "elevenlabs" || TRANSLATION_TARGET !== null;
-if (TRANSLATION_TARGET) Object.assign(SETTINGS, { selection_translation: { enabled: true, provider: "apple", source: TRANSLATION_TARGET === "vi" ? "en" : "vi", target: TRANSLATION_TARGET, model: "", voice: "" } });
+// `?translation_sources=paste` (or `scan,paste`) picks where it applies; left
+// out, the setting reads back Scan-only, like one saved before RE-PLAY-029.
+const TRANSLATION_SOURCES = new URLSearchParams(location.search).get("translation_sources");
+if (TRANSLATION_TARGET) Object.assign(SETTINGS, { selection_translation: { enabled: true, provider: "apple", source: TRANSLATION_TARGET === "vi" ? "en" : "vi", target: TRANSLATION_TARGET, model: "", voice: "",
+  ...(TRANSLATION_SOURCES === null ? {} : { sources: { scan: TRANSLATION_SOURCES.split(",").includes("scan"), paste: TRANSLATION_SOURCES.split(",").includes("paste") } }) } });
 
 function rememberSettings() {
   if (EPHEMERAL) return;
@@ -1513,7 +1517,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     );
     return Promise.resolve(null);
   }
-  if (["stop_reading", "read_book", "read_text", "export_book", "export_text", "read_selection_text"].includes(command)) translationEpoch++;
+  if (["stop_reading", "read_book", "read_text", "export_book", "export_text", "read_selection_text", "read_text_translated"].includes(command)) translationEpoch++;
   if (command === "read_selection_text" && args.translation) {
     const generation = translationEpoch;
     const options = args.translation as { target: string; voice_id: string };
@@ -1527,6 +1531,21 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     emit("reading:translation_ready", { entry_id: args.entryId });
     if (scenario === "voice_error") emit("reading:done", { ok: false, error: "voice_unavailable: local model missing" });
     else startMockReading(parts, null);
+    return { text: translated, voice_id: options.voice_id, target: options.target };
+  }
+  // RE-PLAY-029: a paste read through translation - the same scenarios as a
+  // translated selection (`?translation=slow|error`).
+  if (command === "read_text_translated") {
+    const generation = translationEpoch;
+    const options = args.translation as { target: string; voice_id: string };
+    const scenario = new URLSearchParams(location.search).get("translation");
+    await new Promise(resolve => setTimeout(resolve, scenario === "slow" ? 12000 : 700));
+    if (generation !== translationEpoch) return null;
+    if (scenario === "error") throw new Error("translation:local_unavailable");
+    const translated = options.target === "en"
+      ? "Reading every day helps us understand the world better.\n\nA short book read slowly stays with us longer."
+      : "Đọc sách mỗi ngày giúp chúng ta hiểu thế giới tốt hơn.\n\nMột cuốn sách ngắn đọc chậm sẽ ở lại với ta lâu hơn.";
+    startMockReading(mockParts(translated).map(part => part.segment_id), null);
     return { text: translated, voice_id: options.voice_id, target: options.target };
   }
   if (command === "read_text" || command === "read_selection_text") {

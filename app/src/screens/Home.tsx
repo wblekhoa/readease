@@ -126,7 +126,7 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
       <GradientBlur edge="bottom" />
       <div data-shell-footer className="relative z-10 flex flex-wrap items-center justify-end gap-2 px-6 pb-4 pt-6">
       <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
-      <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("home.scan_translation")} · {translation}</Button>
+      <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("translation.short")} · {translation}</Button>
       </div>
     </footer>
     {dragging !== null && <DropZone icon={<ImportIcon />} headline={text(dragging ? "home.drop" : "home.file_types")} tone={dragging ? "ok" : "error"} />}

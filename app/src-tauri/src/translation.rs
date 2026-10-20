@@ -52,6 +52,65 @@ pub(crate) fn translate(text: &str, options: &Options, generation: u64) -> Resul
         "target":options.target, "model":options.model, "text":text, "generation":generation}))
 }
 
+/// RE-PLAY-029: a pasted text longer than one native request (6,000 Swift
+/// characters) is translated in pieces cut at paragraph, then sentence,
+/// then word boundaries - never inside a word - and joined back in order.
+pub(crate) const PIECE_CHARS: usize = 5_000;
+
+pub(crate) fn pieces(text: &str, limit: usize) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let push = |current: &mut String, out: &mut Vec<String>| {
+        if !current.trim().is_empty() { out.push(current.trim().to_string()); }
+        current.clear();
+    };
+    for paragraph in text.split("\n\n") {
+        let paragraph = paragraph.trim();
+        if paragraph.is_empty() { continue; }
+        if paragraph.chars().count() > limit {
+            push(&mut current, &mut out);
+            // Sentences, then words, so no piece exceeds the limit.
+            let mut sentence_buf = String::new();
+            for word in paragraph.split_inclusive(|c: char| c.is_whitespace()) {
+                if sentence_buf.chars().count() + word.chars().count() > limit {
+                    let cut = sentence_buf.rfind(|c| c == '.' || c == '!' || c == '?' || c == '…')
+                        .filter(|&at| at + 1 < sentence_buf.len() && sentence_buf[..at].chars().count() > limit / 2);
+                    match cut {
+                        Some(at) => {
+                            let rest = sentence_buf[at + 1..].to_string();
+                            sentence_buf.truncate(at + 1);
+                            push(&mut sentence_buf, &mut out);
+                            sentence_buf.push_str(rest.trim_start());
+                        }
+                        None => push(&mut sentence_buf, &mut out),
+                    }
+                }
+                sentence_buf.push_str(word);
+            }
+            push(&mut sentence_buf, &mut out);
+            continue;
+        }
+        let joined = if current.is_empty() { 0 } else { current.chars().count() + 2 };
+        if joined + paragraph.chars().count() > limit { push(&mut current, &mut out); }
+        if !current.is_empty() { current.push_str("\n\n"); }
+        current.push_str(paragraph);
+    }
+    push(&mut current, &mut out);
+    out
+}
+
+/// Translate a whole text piece by piece under one generation; a newer
+/// generation (Stop, a new reading) cancels the rest.
+pub(crate) fn translate_long(text: &str, options: &Options, generation: u64) -> Result<String, String> {
+    let mut translated = Vec::new();
+    for piece in pieces(text, PIECE_CHARS) {
+        let result = translate(&piece, options, generation)?;
+        translated.push(result["text"].as_str().ok_or("translation:invalid_output")?.to_string());
+    }
+    if translated.is_empty() { return Err("translation:invalid_output".into()); }
+    Ok(translated.join("\n\n"))
+}
+
 #[tauri::command(async)]
 pub(crate) fn translation_status(source: String, target: String) -> Result<Value, String> {
     request(json!({"action":"status", "provider":"apple", "source":source, "target":target}))
@@ -75,6 +134,22 @@ mod tests {
         assert!(options.validate().is_err());
         options.provider = "apple".into(); options.target = "unknown".into();
         assert!(options.validate().is_err());
+    }
+    // RE-PLAY-029
+    #[test]
+    fn long_text_splits_at_paragraphs_and_never_over_the_limit() {
+        let para = "Một câu ngắn. ".repeat(30);
+        let text = format!("{para}\n\n{para}\n\n{para}");
+        let parts = pieces(&text, 1_000);
+        assert!(parts.len() >= 2);
+        assert!(parts.iter().all(|p| p.chars().count() <= 1_000), "{:?}", parts.iter().map(|p| p.chars().count()).collect::<Vec<_>>());
+        let rejoined: String = parts.join(" ").split_whitespace().collect::<Vec<_>>().join(" ");
+        assert_eq!(rejoined, text.split_whitespace().collect::<Vec<_>>().join(" "));
+        // A short text is one piece; empty paragraphs vanish.
+        assert_eq!(pieces("Xin chào.\n\n\n\nTạm biệt.", 5_000), vec!["Xin chào.\n\nTạm biệt."]);
+        // One huge paragraph is cut between words, every piece within the limit.
+        let huge = "chữ ".repeat(4_000);
+        assert!(pieces(&huge, 5_000).iter().all(|p| p.chars().count() <= 5_000 && !p.starts_with(' ')));
     }
     #[test]
     fn cancelled_generation_never_translates() {
