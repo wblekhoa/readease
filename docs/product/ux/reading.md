@@ -143,7 +143,7 @@ relations:
 In light theme, the selection workspace and its blocks remain white. Setup and capture blocks use a softened border (45% of the soft edge token) and a diffuse 16px-blur shadow (2px offset, 60% of the medium shadow colour) to separate them gently. Header/footer frost follows the white ground; dark theme retains its existing colours.
 Each captured passage uses the shared paper Surface, with 16px padding and a 12px gap between captures.
 The entire header is the expand/collapse hit area. In light theme, hovering the header strengthens the card border and diffuse shadow while keeping the fill white; dark theme retains its header wash. Summary and capture time share this area; Show only this passage and Replay remain separate sibling buttons with their own hover and keyboard focus. Expanded headers have rounded top corners; collapsed headers follow the whole card radius. The settings
-row (shortcut, floating controls, clear history) sits in its own compact block, aligned to the same 80ch column.
+row (shortcut, floating controls, clear history) sits in its own compact block, aligned to the same 80ch column. Clear history asks first - the scanned passages are also History on this Mac - with the sentence and Keep / Clear in place of the button.
 The setup starts after the measured header controls (the inner edge, without adding the header frost inset again). The setup clipping container reserves 16px vertical padding for its shadow; the history viewport overlaps that empty bottom padding by 16px so the visible setup-to-list gap is 16px rather than 32px; the history content also reserves 16px at its ends instead of external margin/gap at the viewport boundary.
 Both sides reserve equal scrollbar space so the blocks remain aligned when the history scrolls.
 History and focused-passage scrollers extend beneath the shared footer gradient blur instead of clipping above it.
@@ -244,6 +244,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-21: "Clear history" on Read a selection and "Delete all history" in the History panel ask first (two-step: the sentence, then Keep / Delete); search matches on light paper use the pale yellow steps (ya20 wash, y40 current) - the DS light ramp's ya50/y100 are dark gold.
 - 2026-10-20: RE-PLAY-029 - translation chosen per source; Paste reads its translation and shows it under the box.
 - 2026-10-15: Reader audit: exclusive chrome popovers, shared measured anchors and capped bodies; resize-driven chrome measurement.
 - 2026-10-15: Reader and app navigation share the folded icon rail and collapse/expand interactions.

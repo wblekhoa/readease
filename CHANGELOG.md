@@ -6,15 +6,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
-- Fixes from a full audit: a plain-text or converted document no longer
-  drops sentences that open with "Hồi", "Chương" or "Phần" (a chapter line
-  now needs its number, as in "Chương 3"); translating a long paste ending
-  sentences in "…" no longer stops; quitting while the translator is still
-  starting no longer waits for it; HTML marked hidden is not read; the same
-  scanned passage is kept once in History; deleting all history asks first;
-  a stray code note no longer shows in the voice panel; several messages that
-  still described the old session-only history or named places that no longer
-  exist are corrected.
+- Search results are easier to read on light paper: the highlight on each
+  match is a paler yellow, with the text clear on it.
+- Deleting all history, or clearing the Read a selection list, now asks
+  first.
 
 - More files can be read: besides EPUB and PDF, the library now takes Word
   (.docx, .doc), RTF, OpenDocument (.odt), Markdown, HTML and plain text.
