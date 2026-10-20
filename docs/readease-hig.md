@@ -2190,11 +2190,15 @@ trị thẳng vào tiện ích. Ô `primary_hover` (bước `hover` của audit)
 DOL `#D42525`/`#B31F1F` viết cứng, không lật theme. Đo (công thức WCAG trên mã DS, 27/09): chữ trắng trên b100 6,44:1
 (sáng) / 4,55:1 (tối), trên nền hover 8,05 / 5,37; chấm đầu dòng trên desk 6,6 / 4,4 (đo 21/09). Hệ quả: brand và `danger` là hai sắc khác hẳn (không còn phải giữ luật "hai sắc đỏ không đứng cạnh
 nhau"); vòng focus (info b60) là họ hàng của brand — Apple cũng dùng một màu xanh cho cả accent lẫn focus ring, đó là
-điều mong muốn. **Icon app (22/09)**: vòng sóng âm hữu cơ — các dải xanh uốn thành một vòng không đối xứng; nguồn chủ
-duyệt là `assets/branding/readease-icon-master.png` (1254 px, sha256 `26379365…`), `tauri icon` sinh lại cả bộ +
-`readease.icns` + `site/icon.png`. Bản xoay-hue 224° từ icon đỏ (21/09) chỉ là bước đệm, đã thay. Bạn đồng hành:
-`readease-wave-mark-flat-white.png` (64 px) — mark phẳng cho toolbar/UI nhỏ, CHƯA nối vào app, đợi chủ chỉ chỗ đặt.
-Ba concept bị loại, không mở lại: hình cuốn sách · vòng tròn hình học cứng · biến thể ba bướu đọc ra như nút play.
+điều mong muốn. **Icon app (20/10, thay bản 22/09)**: **B4·4 — hai sợi sóng 5 nhịp đan nhau** trên khối bo góc màu brand, phẳng, không
+phát sáng. Công thức: r = 25 + 5,5·sin(5θ + φ), φ = 0 (sợi trước, trắng) và π (sợi sau, `blue-b40` #A7B7ED), nét 5,5 trên
+lưới 100; nền `blue-b100` #2B52D4; thân 4..96, bo góc 22,5 %. Nguồn vector `assets/branding/readease-icon.svg`; bản
+PNG/ICNS sinh bằng `scripts/render-icon.swift` (CoreGraphics, không phụ thuộc) → `readease-icon-master.png` (1024, lưới
+macOS 824) → `./scripts/build-icon.sh` + `tauri icon`; mark sát mép cho cột bên (`app/src/assets/readease-mark.png`) và
+`site/icon.png`; glyph trắng `readease-wave-mark-flat-white.png`. **Khuôn chung cho các app cùng nhà** (SpeakEase, Spotkey…):
+nền phẳng một màu brand của app, MỘT hình trắng ở giữa (sợi phụ được phép dùng tông nhạt cùng họ màu), không gradient/
+phát sáng, đọc được ở 16 px. Bị loại lần này: vòng sóng phát sáng (lệch khuôn, mờ ở cỡ nhỏ), sách mở + sóng, trang giấy
++ sóng, và các biến thể B1–B8 khác (chủ chọn B4·4, 20/10). Ba concept loại 22/09 vẫn không mở lại.
 Ảnh chụp trong README đã chụp lại theo brand xanh (#30).
 
 **Trên vật liệu** (cột bên trên `NSVisualEffectView`, 20/09) thang đục nhường cho thang alpha của DS — cùng một

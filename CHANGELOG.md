@@ -6,6 +6,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- New app icon: two flat wave strands on the ReadEase blue, simpler and
+  clearer at small sizes, matching the family style of SpeakEase.
 - Pasted text and scanned selections (with their translation) are now kept
   in a history on this Mac, so you can reopen and read them again after
   quitting. Open History on the Paste or Read a selection screen to delete
