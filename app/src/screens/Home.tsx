@@ -23,6 +23,9 @@ const RECENT_LIMIT = 8;
 const when = (at: number) => relativeDay(at, Date.now(), currentLanguage(), {
   today: text("home.today"), yesterday: text("home.yesterday"), daysAgo: days => text("home.days_ago", { days }),
 });
+/* One line per item (owner, 20/10: minimal): a kind glyph, the title, and
+   the day - plus progress for a started document. The kind and the details
+   the second line used to spell out stay in the accessible name. */
 function RecentRow({ item, kept, onOpen }: { item: Item; kept: boolean; onOpen: () => void }) {
   const title = item.kind === "book" ? item.source.title : summarise(item.source.text);
   const kind = text(item.kind === "book" ? "home.document" : item.kind === "paste" ? "nav.paste" : "nav.external");
@@ -30,15 +33,14 @@ function RecentRow({ item, kept, onOpen }: { item: Item; kept: boolean; onOpen: 
     ? `${Math.round(item.source.progress_ratio * 100)}%${item.source.progress_chapter ? ` · ${item.source.progress_chapter}` : ""}`
     : item.kind === "external" && item.source.target ? text("home.translated", { language: item.source.target.toUpperCase() })
       : item.kind !== "book" ? text(item.id === "paste" ? "home.draft" : kept ? "home.saved" : "home.session") : item.source.source_format.toUpperCase();
+  const progress = item.kind === "book" && item.source.progress_ratio ? `${Math.round(item.source.progress_ratio * 100)}%` : null;
   const date = when(item.at);
-  return <Button variant="ghost" onClick={onOpen} aria-label={text("home.open_recent", { title })}
-    className="!h-auto w-full !justify-start gap-3 !rounded-2xl !px-3 !py-3 text-left">
-    {item.kind === "book" ? <RecentBookCover id={item.source.id} /> : <span className="flex h-12 w-8 shrink-0 items-center justify-center text-ink-mute">{item.kind === "paste" ? <ClipboardIcon /> : <CursorTextIcon />}</span>}
-    <span className="min-w-0 flex-1">
-      <span className="block truncate font-medium text-ink">{title}</span>
-      <span className="mt-1 block truncate text-xs text-ink-mute">{kind} · {detail}</span>
-    </span>
-    <span className="shrink-0 text-xs text-ink-mute">{date}</span>
+  return <Button variant="ghost" onClick={onOpen} aria-label={`${text("home.open_recent", { title })} · ${kind} · ${detail}`}
+    className="!h-auto w-full !justify-start gap-3 !rounded-2xl !px-3 !py-2.5 text-left">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center text-ink-mute [&_svg]:h-[18px] [&_svg]:w-[18px]">{item.kind === "book" ? <BookIcon /> : item.kind === "paste" ? <ClipboardIcon /> : <CursorTextIcon />}</span>
+    <span className="min-w-0 flex-1 truncate font-normal text-ink">{title}</span>
+    {progress && <span className="shrink-0 text-xs tabular-nums text-ink-mute">{progress}</span>}
+    <span className="w-24 shrink-0 text-right text-xs text-ink-mute">{date}</span>
   </Button>;
 }
 export function Home({ books, loading, error, importing, paste, pastes = [], onOpenPaste, onResumeBook, historyKept = false, captures, active, onImport, onPaste, onScan, onOpenBook, onOpenCapture, onRetry, onSettings, onTranslation, voice, translation, settingsBlocked }: {
@@ -133,7 +135,7 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
               ...(kinds.has("external") ? [{ value: "external" as const, label: text("nav.external") }] : []),
             ]} />}
           </div>
-          <div className="divide-y divide-edge-alpha">{recent.map(item => <RecentRow key={item.id} item={item} kept={historyKept} onOpen={() => {
+          <div className="flex flex-col">{recent.map(item => <RecentRow key={item.id} item={item} kept={historyKept} onOpen={() => {
             if (item.kind === "book") onOpenBook(item.source);
             else if (item.kind === "external") onOpenCapture(item.source);
             else if (item.id !== "paste" && onOpenPaste) onOpenPaste(item.source.text);
