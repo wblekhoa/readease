@@ -22,6 +22,10 @@ import Foundation
         assert(try! localBase("ollama") == "http://127.0.0.1:11434/v1")
         assert(try! localBase("lmstudio") == "http://127.0.0.1:1234/v1")
         reject { _ = try localBase("https://example.com") }
+        // RE-PLAY-031: ReadEase's own server, on the host's loopback port only.
+        assert(try! localBase("readease", port: 18000) == "http://127.0.0.1:18000/v1")
+        reject { _ = try localBase("readease") }
+        reject { _ = try localBase("readease", port: 80) }
         assert(try! cleanTranslation("<think>Reasoning</think>\nHello") == "Hello")
         reject { _ = try cleanTranslation("<think>unfinished") }
         reject { _ = try cleanTranslation(" \n ") }
@@ -39,6 +43,14 @@ import Foundation
             let en = request(["action":"translate", "provider":"apple", "text":"I would like to read this book in Vietnamese.", "source":"en", "target":"vi", "generation":23])
             guard let vietnamese = en["text"] as? String, vietnamese.contains("Việt") else { fatalError("Apple reverse translation failed: \(en)") }
             print("PASS Apple VI→EN + EN→VI through production bridge, \(Date().timeIntervalSince(start))s")
+        }
+        if let raw = ProcessInfo.processInfo.environment["READEASE_TRANSLATOR_PORT"], let port = Int(raw) {
+            let start = Date()
+            let vi = request(["action":"translate", "provider":"readease", "port":port, "text":"Reading every day helps us understand the world better.", "source":"en", "target":"vi", "generation":40])
+            guard let vietnamese = vi["text"] as? String, vietnamese.contains("đọc") else { fatalError("ReadEase EN→VI failed: \(vi)") }
+            let en = request(["action":"translate", "provider":"readease", "port":port, "text":"Đọc sách mỗi ngày giúp chúng ta hiểu thế giới tốt hơn.", "source":"vi", "target":"en", "generation":41])
+            guard let english = en["text"] as? String, english.lowercased().contains("read") else { fatalError("ReadEase VI→EN failed: \(en)") }
+            print("PASS ReadEase translator EN→VI + VI→EN through production bridge, \(Date().timeIntervalSince(start))s")
         }
         if CommandLine.arguments.contains("--fixture") {
             let models = request(["action":"models", "provider":"ollama"])

@@ -4,6 +4,7 @@ mod identity;
 mod reading_tray;
 mod reading_panel;
 mod translation;
+mod local_translator;
 
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -218,6 +219,23 @@ fn engine_voices(engine: tauri::State<EngineSlot>) -> Result<Vec<Voice>, String>
     Ok(voices)
 }
 
+/// RE-PLAY-031: ReadEase's own translator needs its server up first; the
+/// engine says where the downloaded model is, and the host starts the
+/// bundled server on it. Any other provider passes through untouched.
+fn with_translator(app: &tauri::AppHandle, client: &Engine, mut options: translation::Options) -> Result<translation::Options, String> {
+    if options.provider != "readease" && options.provider != "auto" { return Ok(options); }
+    let status = client.request("model.status", serde_json::json!({}))?;
+    let path = status["translator"]["path"].as_str();
+    // Automatic: ReadEase's own translator once it is downloaded, else Apple.
+    if options.provider == "auto" {
+        if path.is_none() { options.provider = "apple".into(); return Ok(options); }
+        options.provider = "readease".into();
+    }
+    let path = path.ok_or("translation:translator_missing")?;
+    options.port = local_translator::port(app, std::path::Path::new(path))?;
+    Ok(options)
+}
+
 /// RE-PLAY-029: pasted text read in the chosen language - translated piece
 /// by piece natively, then read with the target-language voice. The same
 /// generation guard as a selection: Stop or a newer reading cancels the
@@ -241,6 +259,7 @@ fn read_text_translated(
     let client = client_of(&engine);
     if client.is_exporting() { return Err("translation:export_busy".into()); }
     client.stop()?;
+    let translation = with_translator(&app, &client, translation)?;
     let spoken = translation::translate_long(&text, &translation, id)?;
     let generation = request.0.lock().unwrap();
     if *generation != id { return Ok(None); }
@@ -409,7 +428,8 @@ fn read_selection_text(
             client.stop()?;
             reading_tray::translating(&app);
         }
-        let result = translation::translate(&spoken, &options, id);
+        let result = with_translator(&app, &client, options.clone())
+            .and_then(|options| translation::translate(&spoken, &options, id));
         let generation = request.0.lock().unwrap();
         if *generation != id { return Ok(None); }
         match result {
@@ -444,6 +464,9 @@ fn engine_request(
     method: String,
     params: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
+    // RE-PLAY-031: the server holds the model file open; let it go before
+    // the engine deletes it.
+    if method == "model.remove_build" && params["engine"] == "translator" { local_translator::stop(); }
     let reply = client_of(&engine).request(&method, params.clone())?;
     if method == "config.set" && params["key"] == "ui_language" {
         reading_tray::language(&app, params["value"].as_str().unwrap_or("en"));
@@ -715,6 +738,9 @@ pub fn run() {
         .build(context)
         .expect("error while building tauri application")
         .run(|app, event| {
+            // The translator's server is a child of this app, not of the
+            // system: it goes when the app goes (RE-PLAY-031).
+            if let tauri::RunEvent::Exit = event { local_translator::stop(); }
             // The system's "open these documents" (HIG 3.18): queue the
             // paths and nudge the page; it takes them when it can.
             // ⌘Q with an update waiting: the page installs, then `exit_now`.

@@ -55,11 +55,24 @@ test('each source has its own switch under the master one', async () => {
 // RE-PLAY-030
 test('the hub calls the chosen translator ready only when it can translate now', async () => {
   const { translationSettings, translatorReady } = await import('../src/ui/translation.ts');
-  const apple = translationSettings({ enabled: true, provider: 'apple' });
+  const apple = translationSettings({ enabled: true, provider: 'apple', sources: { scan: true, paste: false } });
   assert.equal(translatorReady(apple, { state: 'ready', models: [] }), true);
   assert.equal(translatorReady(apple, { state: 'missing', reason: 'hub.translate_apple_packs' }), false);
   assert.equal(translatorReady(apple, { state: 'checking' }), false);
   const ollama = translationSettings({ enabled: true, provider: 'ollama', model: 'qwen3:4b' });
   assert.equal(translatorReady(ollama, { state: 'ready', models: ['qwen3:4b'] }), true);
   assert.equal(translatorReady(ollama, { state: 'ready', models: ['gemma3:4b'] }), false);
+});
+
+// RE-PLAY-031
+test('Automatic means ReadEase once downloaded, Apple until then; an old Apple default becomes Automatic', async () => {
+  const { translationSettings, resolvedProvider } = await import('../src/ui/translation.ts');
+  assert.equal(translationSettings(null).provider, 'auto');
+  assert.equal(translationSettings({ enabled: true, provider: 'apple' }).provider, 'auto');
+  assert.equal(translationSettings({ enabled: true, provider: 'apple', sources: { scan: true, paste: false } }).provider, 'apple');
+  assert.equal(translationSettings({ enabled: true, provider: 'readease', sources: { scan: true, paste: true } }).enabled, true);
+  const auto = translationSettings(null);
+  assert.equal(resolvedProvider(auto, false), 'apple');
+  assert.equal(resolvedProvider(auto, true), 'readease');
+  assert.equal(resolvedProvider({ ...auto, provider: 'ollama' }, true), 'ollama');
 });

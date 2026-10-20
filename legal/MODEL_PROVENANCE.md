@@ -10,6 +10,12 @@ Application Support directory during explicit first-run setup.
 | MOSS Audio Tokenizer Nano ONNX codec | `OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX` | `ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae` | Apache-2.0 | README SHA-256 `3c7b9e9ef1c8c5e5c829a077a1d32c1f7aea1668f2bf17ead318ff04bf1e6fe4` |
 | Kokoro-82M v1.0 ONNX (English voice; `onnx/model.onnx`, `tokenizer.json`, six `voices/*.bin`) | `onnx-community/Kokoro-82M-v1.0-ONNX` | `1939ad2a8e416c0acfeecc08a694d14ef25f2231` | Apache-2.0 | per-file SHA-256 pinned in `src/vieneu_reader/speech/kokoro.py` (`MODEL_FILES`); `model.onnx` `8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb` |
 | misaki English lexicon (`us_gold.json`, `us_silver.json`) | `hexgrad/misaki` (GitHub, raw file download) | `fba1236595f2d2bf21d414ba6e57d25256afada3` | Apache-2.0 | SHA-256 `dc414872a49a28ae6c141463d502fd945f3b2fde040484fdc47d00cc4612686f`, `de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475` |
+| Hy-MT2 1.8B Q4_K_M GGUF (ReadEase translator; `Hy-MT2-1.8B-Q4_K_M.gguf`) | `tencent/Hy-MT2-1.8B-GGUF` | `a0c709d9fac510f2c807aa3af52872340dc37a4a` | Apache-2.0 | SHA-256 `dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699` (the repository's own LFS hash), pinned in `src/vieneu_reader/translation/model.py` |
+
+The ReadEase translator (RE-PLAY-031) is optional too: downloaded only when
+the reader asks for it under Voices & models › Translation, checked against
+the pinned hash before it is marked ready, removable from the same place. It
+is run by the bundled `llama-server` (llama.cpp, MIT) on 127.0.0.1 only.
 
 The English voice is optional: nothing of it is fetched on first run. It is
 downloaded when the reader asks for it under Settings › Reading models, every

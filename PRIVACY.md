@@ -47,6 +47,11 @@ Alternatively, ReadEase sends the selected or pasted text to a local Ollama serv
 including aliases identified as remote by model metadata, are rejected. Install and run local models yourself;
 ReadEase does not control a third-party server's own logging or configuration. Use locally hosted models only.
 
+ReadEase can also download its own translator (Tencent's Hy-MT2, about 1.1 GB, from a pinned
+Hugging Face revision checked against its published hash) when you ask for it in Voices & models.
+It runs inside ReadEase's bundled translation server, which listens on 127.0.0.1 only and makes no
+network connections of its own; the text never leaves this Mac. Remove it from the same place.
+
 The original and its translation are kept in the History on this Mac described above, while History is on, and
 nowhere else. Only translation preferences (provider, model name, source/target language, local voice, sources and
 enabled state) are saved with your settings. Speaking the translation

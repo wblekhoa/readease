@@ -17,10 +17,14 @@ pub(crate) struct Options {
     pub target: String,
     pub model: String,
     pub voice_id: String,
+    /// RE-PLAY-031: where ReadEase's own server listens, filled in by the
+    /// host just before translating - never taken from the webview.
+    #[serde(default, skip_deserializing)]
+    pub port: u16,
 }
 impl Options {
     pub fn validate(&self) -> Result<(), String> {
-        if !["apple", "ollama", "lmstudio"].contains(&self.provider.as_str()) {
+        if !["auto", "apple", "ollama", "lmstudio", "readease"].contains(&self.provider.as_str()) {
             return Err("translation:provider".into());
         }
         if !["auto", "vi", "en"].contains(&self.source.as_str()) || !["vi", "en"].contains(&self.target.as_str()) {
@@ -49,7 +53,8 @@ fn request(value: Value) -> Result<Value, String> {
 pub(crate) fn translate(text: &str, options: &Options, generation: u64) -> Result<Value, String> {
     options.validate()?;
     request(json!({"action":"translate", "provider":options.provider, "source":options.source,
-        "target":options.target, "model":options.model, "text":text, "generation":generation}))
+        "target":options.target, "model":options.model, "text":text, "generation":generation,
+        "port":options.port}))
 }
 
 /// RE-PLAY-029: a pasted text longer than one native request (6,000 Swift
@@ -126,7 +131,7 @@ mod tests {
     use super::*;
     #[test]
     fn rejects_paid_voices_remote_providers_and_invalid_languages() {
-        let mut options = Options { provider:"apple".into(), source:"auto".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into() };
+        let mut options = Options { provider:"apple".into(), source:"auto".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0 };
         assert!(options.validate().is_ok());
         options.voice_id = "openai:alloy".into();
         assert!(options.validate().is_err());
@@ -154,7 +159,7 @@ mod tests {
     #[test]
     fn cancelled_generation_never_translates() {
         cancel_before(10);
-        let options = Options { provider:"apple".into(), source:"vi".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into() };
+        let options = Options { provider:"apple".into(), source:"vi".into(), target:"en".into(), model:String::new(), voice_id:"af_heart".into(), port: 0 };
         assert_eq!(translate("Xin chào", &options, 9).unwrap_err(), "translation:cancelled");
     }
 }

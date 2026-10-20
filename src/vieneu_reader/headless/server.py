@@ -326,8 +326,12 @@ class _Session:
         audio_cache: "AudioCache | None" = None,
         english_engine: "EnglishEngine | None" = None,
         history: "HistoryStore | None" = None,
+        translator: "TranslatorModel | None" = None,
     ):
         self._writer = writer
+        # ReadEase's own translation model (RE-PLAY-031): fetched, checked and
+        # removed here; the host runs it.
+        self._translator = translator
         self._engine = engine
         # Paste and scan history on this Mac (RE-HIST-001), or None in a
         # test that has no use for it.
@@ -1941,6 +1945,11 @@ class _Session:
                 self._fail(request_id, "no English model on this server")
                 return
             prepare = self._english_engine.prepare_model
+        elif params.get("engine") == "translator":
+            if self._translator is None:
+                self._fail(request_id, "no translator on this server")
+                return
+            prepare = self._translator.prepare_model
         else:
             prepare = getattr(self._engine, "prepare_model", None)
         if prepare is None:
@@ -1998,6 +2007,12 @@ class _Session:
     def _model_remove_build(
         self, request_id: Any, params: dict[str, Any]
     ) -> None:
+        if params.get("engine") == "translator":
+            if self._translator is None:
+                self._fail(request_id, "no translator on this server")
+                return
+            self._reply(request_id, {"removed": bool(self._translator.remove())})
+            return
         if params.get("engine") == "english":
             if self._english_engine is None:
                 self._fail(request_id, "no English model on this server")
@@ -2597,6 +2612,17 @@ class _Session:
                 "ready": bool(english.is_model_ready),
                 "installed": int(english.installed_size()),
                 "download_bytes": ENGLISH_DOWNLOAD_BYTES,
+            }
+        translator = self._translator
+        if translator is not None:
+            from vieneu_reader.translation.model import DOWNLOAD_BYTES as TRANSLATOR_BYTES
+            ready = bool(translator.is_model_ready)
+            status["translator"] = {
+                "ready": ready,
+                "installed": int(translator.installed_size()),
+                "download_bytes": TRANSLATOR_BYTES,
+                # The host starts its server on this file; never sent anywhere.
+                "path": str(translator.path) if ready else None,
             }
         self._reply(request_id, status)
 
@@ -3461,6 +3487,7 @@ def serve(
     background: bool = False,
     english_engine: "EnglishEngine | None" = None,
     history: "HistoryStore | None" = None,
+    translator: "TranslatorModel | None" = None,
 ) -> None:
     """Answer requests until the reader closes.
 
@@ -3471,7 +3498,7 @@ def serve(
         reader, writer, engine,
         repository=repository, service=service, settings_path=settings_path,
         notes_deps=notes_deps, audio_cache=audio_cache,
-        english_engine=english_engine, history=history,
+        english_engine=english_engine, history=history, translator=translator,
     )
     if background:
         session.start_background_work()
@@ -3545,6 +3572,8 @@ def main() -> int:
     audio_cache = AudioCache(paths.cache / "Audio")
     from vieneu_reader.storage.history import HistoryStore
     history = HistoryStore(paths.root / "history.sqlite3")
+    from vieneu_reader.translation.model import TranslatorModel
+    translator = TranslatorModel(paths.models)
 
     # The SDK prints progress to stdout; the protocol channel must stay clean.
     protocol = sys.stdout
@@ -3557,6 +3586,7 @@ def main() -> int:
         background=True,
         english_engine=english_engine,
         history=history,
+        translator=translator,
     )
     return 0
 
