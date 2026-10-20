@@ -121,6 +121,8 @@ import { Library, type LibraryBook } from "./screens/Library";
 import { Reader, type PageInfo } from "./screens/Reader";
 import { FirstRun } from "./screens/Setup";
 import { Transfer } from "./screens/Transfer";
+import { HistoryPanel } from "./ui/HistoryPanel";
+import { clearHistory, deleteHistory, loadHistory, mergeCaptures, saveHistory, setHistorySetting, withEntry, DEFAULT_HISTORY_DAYS, type HistoryKind, type HistoryState } from "./ui/readingHistory";
 import { currentLanguage, engineMessage, setLanguage, systemLanguage, text, type Language } from "./i18n";
 
 const PASTE_LIMIT = 100_000;
@@ -338,6 +340,24 @@ export default function App() {
      position, and again when the reading is over. */
   const [remaining, setRemaining] = useState<number | null>(null);
   const [externalHistory, setExternalHistory] = useState<ExternalEntry[]>([]);
+  // Paste and scan history kept on this Mac (RE-HIST-001…004): loaded once,
+  // then kept in step with every save, delete and setting change.
+  const [history, setHistory] = useState<HistoryState>({ enabled: true, days: DEFAULT_HISTORY_DAYS, entries: [] });
+  const [historyPanel, setHistoryPanel] = useState<HistoryKind | null>(null);
+  useEffect(() => {
+    let live = true;
+    loadHistory().then(state => {
+      if (!live) return;
+      setHistory(state);
+      setExternalHistory(session => mergeCaptures(session, state.entries));
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+  const keepInHistory = useCallback((kind: HistoryKind, saved: string, extra: { original?: string; target?: string } = {}) => {
+    void saveHistory(kind, saved, extra).then(entry => {
+      if (entry) setHistory(state => ({ ...state, entries: withEntry(state.entries, entry) }));
+    });
+  }, []);
   /* WHICH captured passage the voice is in. `position` alone cannot say:
    * every passage in the history has a `part-2`, so without this the marker
    * would land in all of them at once. */
@@ -1014,7 +1034,10 @@ export default function App() {
       setScanVoice(translatedVoice);
       // Translation entries are added only once their spoken text is known,
       // so paragraph ids always belong to what the user hears.
-      if (!settings.enabled) setExternalHistory(history => [{ at, text: captured }, ...history].slice(0, 50));
+      if (!settings.enabled) {
+        setExternalHistory(history => [{ at, text: captured }, ...history].slice(0, 50));
+        keepInHistory("scan", captured);
+      }
       setReadingAt(at);
       onPlayer({ type: "start" });
       setOrigin({ kind: "external" });
@@ -1034,6 +1057,7 @@ export default function App() {
         if (!result) { onPlayer({ type: "stop" }); current.current = null; return; }
         if (result.target) {
           setExternalHistory(history => [{ at, text: result.text, original: captured, target: result.target!, voiceId: result.voice_id }, ...history].slice(0, 50));
+          keepInHistory("scan", result.text, { original: captured, target: result.target! });
           current.current = { kind: "text", text: result.text };
           setScanVoice(result.voice_id);
         }
@@ -1092,13 +1116,14 @@ export default function App() {
     setOrigin({ kind: "paste" });
     current.current = { kind: "text", text: content };
     setPosition(null);
+    keepInHistory("paste", content);
     try {
       await invoke("read_text", { text: content, segmentId: null, voiceId, rate });
     } catch (error) {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
     }
-  }, [content, voiceId, rate, exporting]);
+  }, [content, voiceId, rate, exporting, keepInHistory]);
 
   const readBookFrom = useCallback(async (segmentId: string | null) => {
     // A paragraph clicked while an export runs would queue behind it.
@@ -2137,6 +2162,8 @@ export default function App() {
         {tab === "home" ? (
           <Home books={homeShelf.shelf} loading={homeShelf.loading} error={homeShelf.error} importing={homeShelf.importing}
             paste={{ text: content, at: pasteAt }} captures={externalHistory}
+            pastes={history.entries.filter(entry => entry.kind === "paste")} historyKept={history.enabled}
+            onOpenPaste={saved => { setContent(saved); setPasteAt(Date.now()); setTab("paste"); }}
             active={reading !== "idle" && previewing === null && origin ? {
               title: origin.kind === "book" ? origin.book.title : summarise(current.current?.kind === "text" ? current.current.text : content),
               paused: reading === "paused", onToggle: togglePause,
@@ -2199,7 +2226,11 @@ export default function App() {
             history={externalHistory}
             playback={origin?.kind === "external" && (reading === "reading" || reading === "paused") ? reading : null}
             onTogglePlayback={togglePause}
-            onClearHistory={() => setExternalHistory([])}
+            onClearHistory={() => {
+              setExternalHistory([]);
+              void clearHistory("scan").then(() => setHistory(state => ({ ...state, entries: state.entries.filter(entry => entry.kind !== "scan") })));
+            }}
+            onHistory={() => setHistoryPanel(open => (open === "scan" ? null : "scan"))}
             /* "reading" is a fact of the playback state - the voice IS
                reading a scanned passage, however it was started - not the
                host's capture event, which says a capture started and never
@@ -2273,6 +2304,9 @@ export default function App() {
                 do - so a gap between them: as one run of text they read
                 "100.004 / 100.000 ký tựNội dung dài hơn…" (27/09). */}
             <div className="flex flex-wrap items-baseline gap-x-2 py-2 text-xs text-ink-mute">
+              <Button variant="ghost" size="sm" data-popover-trigger onClick={() => setHistoryPanel(open => (open === "paste" ? null : "paste"))}>
+                {text("history.button")}
+              </Button>
               <span className={overLimit ? "font-semibold text-danger" : ""}>
                 {text("paste.count", {
                   count: content.length.toLocaleString(locale),
@@ -2905,6 +2939,43 @@ export default function App() {
             onSave={() => void exportJob.save()}
             onDone={() => { setReviewOpen(false); exportJob.close(); }}
             onClose={() => setReviewOpen(false)}
+          />
+        )}
+      </Presence>
+      <Presence open={historyPanel !== null && (tab === "paste" || tab === "external")}>
+        {historyPanel && (
+          <HistoryPanel
+            kind={historyPanel}
+            entries={history.entries}
+            enabled={history.enabled}
+            days={history.days}
+            onOpen={entry => {
+              setHistoryPanel(null);
+              if (entry.kind === "paste") { setContent(entry.text); setPasteAt(Date.now()); }
+              else { setExternalHistory(session => mergeCaptures(session, [entry])); setHomeCapture(entry.at); }
+            }}
+            onDelete={entry => void deleteHistory(entry.id).then(() => {
+              setHistory(state => ({ ...state, entries: state.entries.filter(other => other.id !== entry.id) }));
+              if (entry.kind === "scan") setExternalHistory(session => session.filter(item => !(item.text === entry.text && (item.original ?? null) === entry.original)));
+            }).catch(console.error)}
+            onClearAll={() => void clearHistory().then(() => {
+              setHistory(state => ({ ...state, entries: [] }));
+              setExternalHistory([]);
+            }).catch(console.error)}
+            onEnabled={enabled => {
+              setHistory(state => ({ ...state, enabled }));
+              void setHistorySetting("history_enabled", enabled).catch(console.error);
+            }}
+            onDays={days => {
+              setHistory(state => ({ ...state, days }));
+              void setHistorySetting("history_days", days).then(loadHistory).then(state => {
+                setHistory(state);
+                // What the new retention removed from the file leaves the screen too.
+                const cutoff = state.days ? Date.now() - state.days * 86_400_000 : -Infinity;
+                setExternalHistory(session => mergeCaptures(session.filter(item => item.at >= cutoff), state.entries));
+              }).catch(console.error);
+            }}
+            onClose={() => setHistoryPanel(null)}
           />
         )}
       </Presence>

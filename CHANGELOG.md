@@ -6,6 +6,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Pasted text and scanned selections (with their translation) are now kept
+  in a history on this Mac, so you can reopen and read them again after
+  quitting. Open History on the Paste or Read a selection screen to delete
+  one, delete everything, choose how long to keep them (7, 30, 90 or 365
+  days, or until deleted) or switch history off. Audio is never kept, and
+  nothing is sent anywhere.
+
 - The Vietnamese voice says "100m²" as "một trăm mét vuông" (it dropped
   "vuông"), "8h-17h30" as "tám giờ đến mười bảy giờ ba mươi phút", "T2-T6"
   as "thứ hai đến thứ sáu" (it spelled "tê hai tê sáu"), and "$20" or

@@ -325,9 +325,13 @@ class _Session:
         notes_deps: "dict[str, Any] | None" = None,
         audio_cache: "AudioCache | None" = None,
         english_engine: "EnglishEngine | None" = None,
+        history: "HistoryStore | None" = None,
     ):
         self._writer = writer
         self._engine = engine
+        # Paste and scan history on this Mac (RE-HIST-001), or None in a
+        # test that has no use for it.
+        self._history = history
         # The second local model, for books in English - or None in a test
         # that has no use for it. Its voices are listed only once it is
         # downloaded, so choosing one can never be followed by a refusal
@@ -567,6 +571,9 @@ class _Session:
         # person reads (and tidies) while listening - deferring it until the
         # chapter ends would look like the button did nothing.
         "annotations.delete", "annotations.update",
+        # A scanned passage is saved to its history the moment it is read -
+        # which is while it is being read (RE-HIST-001).
+        "history.add", "history.list", "history.delete", "history.clear",
     })
 
     def _stop_requested(self) -> bool:
@@ -777,6 +784,8 @@ class _Session:
                 self._notes_plan(request_id, request.get("params") or {})
             elif method == "notes.transfer":
                 self._notes_transfer(request_id, request.get("params") or {})
+            elif method in ("history.add", "history.list", "history.delete", "history.clear"):
+                self._history_request(method, request_id, request.get("params") or {})
             elif method == "config.get":
                 self._config_get(request_id, request.get("params") or {})
             elif method == "config.set":
@@ -2419,6 +2428,10 @@ class _Session:
         # applied to every reading before the text is made speakable
         # (`domain/pronunciation.py`).
         "pronunciations",
+        # Paste and scan history (RE-HIST-001/003): whether it is kept, and
+        # for how many days (0 = until deleted).
+        "history_enabled",
+        "history_days",
     }) | _SECRET_CONFIG_KEYS
 
     def _pronunciations(self):
@@ -2426,6 +2439,58 @@ class _Session:
         next press of Read, as the chime and the notes setting do."""
 
         return pronunciations_of(self._settings_document())
+
+    def _history_settings(self) -> tuple[bool, int]:
+        from vieneu_reader.storage.history import DEFAULT_RETENTION_DAYS, RETENTION_DAYS
+
+        document = self._settings_document()
+        enabled = document.get("history_enabled", True) is not False
+        days = document.get("history_days", DEFAULT_RETENTION_DAYS)
+        if isinstance(days, bool) or not isinstance(days, int) or days not in RETENTION_DAYS:
+            days = DEFAULT_RETENTION_DAYS
+        return enabled, days
+
+    def _history_request(self, method: str, request_id: Any, params: dict[str, Any]) -> None:
+        """Paste and scan history (RE-HIST-001…004). Kept only while the
+        reader leaves it on; listing applies the chosen retention first."""
+
+        if self._history is None:
+            self._fail(request_id, "no history on this server")
+            return
+        enabled, days = self._history_settings()
+        now = int(time.time() * 1000)
+        kind = params.get("kind")
+        if kind is not None and kind not in ("paste", "scan"):
+            self._fail(request_id, f"unknown history kind: {kind}")
+            return
+        if method == "history.add":
+            if not enabled:
+                # Off means nothing new is written - not an error to the
+                # shell, which saves without asking first.
+                self._reply(request_id, {"saved": False})
+                return
+            try:
+                entry = self._history.add(
+                    str(kind or ""), str(params.get("text") or ""),
+                    original=params.get("original"), target=params.get("target"), at=now,
+                )
+            except ValueError as error:
+                self._fail(request_id, str(error))
+                return
+            self._reply(request_id, {"saved": True, "entry": entry.as_dict()})
+        elif method == "history.list":
+            entries = self._history.list(now=now, days=days, kind=kind)
+            self._reply(request_id, {"enabled": enabled, "days": days,
+                                     "entries": [entry.as_dict() for entry in entries]})
+        elif method == "history.delete":
+            try:
+                entry_id = int(params.get("id"))
+            except (TypeError, ValueError):
+                self._fail(request_id, f"unknown history entry: {params.get('id')}")
+                return
+            self._reply(request_id, {"deleted": self._history.delete(entry_id)})
+        else:
+            self._reply(request_id, {"deleted": self._history.clear(kind)})
 
     def _config_get(self, request_id: Any, params: dict[str, Any]) -> None:
         from vieneu_reader.settings import load_settings
@@ -3395,6 +3460,7 @@ def serve(
     audio_cache: "AudioCache | None" = None,
     background: bool = False,
     english_engine: "EnglishEngine | None" = None,
+    history: "HistoryStore | None" = None,
 ) -> None:
     """Answer requests until the reader closes.
 
@@ -3405,7 +3471,7 @@ def serve(
         reader, writer, engine,
         repository=repository, service=service, settings_path=settings_path,
         notes_deps=notes_deps, audio_cache=audio_cache,
-        english_engine=english_engine,
+        english_engine=english_engine, history=history,
     )
     if background:
         session.start_background_work()
@@ -3477,6 +3543,8 @@ def main() -> int:
     # model again. It matters more once a voice bills by the character: a
     # sentence already spoken must never be bought twice.
     audio_cache = AudioCache(paths.cache / "Audio")
+    from vieneu_reader.storage.history import HistoryStore
+    history = HistoryStore(paths.root / "history.sqlite3")
 
     # The SDK prints progress to stdout; the protocol channel must stay clean.
     protocol = sys.stdout
@@ -3488,6 +3556,7 @@ def main() -> int:
         audio_cache=audio_cache,
         background=True,
         english_engine=english_engine,
+        history=history,
     )
     return 0
 

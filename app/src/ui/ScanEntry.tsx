@@ -61,7 +61,12 @@ export function ScanEntry({
   const language = currentLanguage();
   const capturedAt = useMemo(() => {
     const date = new Date(entry.at);
-    return { iso: date.toISOString(), label: date.toLocaleTimeString(language === "vi" ? "vi-VN" : "en-GB", { hour: "2-digit", minute: "2-digit" }) };
+    const locale = language === "vi" ? "vi-VN" : "en-GB";
+    // A passage kept from another day (RE-HIST-001) says which day.
+    const today = new Date().toDateString() === date.toDateString();
+    return { iso: date.toISOString(), label: today
+      ? date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+      : date.toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) };
   }, [entry.at, language]);
 
   useEffect(() => {

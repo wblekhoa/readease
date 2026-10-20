@@ -9,7 +9,7 @@ summary: "Reading order, feature owners, shared data lifetime and operation prec
 tags: [area/reading, area/storage, area/navigation, area/docs, stack/react, stack/tauri, stack/python, surface/macos]
 relations:
   partOf: [readease-goal]
-  dependsOn: [readease-logic-home, readease-logic-reading, readease-logic-translation, readease-logic-export, readease-logic-library, readease-logic-voices, readease-logic-notes, readease-logic-updates, readease-logic-help]
+  dependsOn: [readease-logic-history, readease-logic-home, readease-logic-reading, readease-logic-translation, readease-logic-export, readease-logic-library, readease-logic-voices, readease-logic-notes, readease-logic-updates, readease-logic-help]
   implements: [readease:app/src/App.tsx, readease:app/src-tauri/src/lib.rs, readease:app/src-tauri/src/engine.rs, readease:src/vieneu_reader/headless/server.py]
 ---
 # ReadEase — App logic map
@@ -29,6 +29,7 @@ ReadEase has one text-to-speech transport with document, Paste and selection inp
 | what survives note edits/sync/edition transfer? | [Notes](../../logic/notes.md) |
 | when may an update install/restart? | [Updates](../../logic/updates.md) |
 | what reaches the feedback site or local log? | [Help](../../logic/help.md) |
+| what pasted/scanned text is kept, and for how long? | [History](../../logic/history.md) |
 
 Each rule has one definition. File moves keep existing IDs and source/test annotations. Presentation belongs to [UX](../../ux/reading.md), rationale to [decisions](../../decisions.md), distribution to [releases](../../releases.md); history is not current acceptance evidence.
 
@@ -58,8 +59,9 @@ Opening a workspace/content does not start speech. A displayed page is not heard
 | annotations, local edits and deletion tombstones | library repository; persistent |
 | voice/rate, language choices, favorites, pronunciation, translation setup | engine configuration; preferences, not passage history |
 | theme, reading layout, sidebar, chapter scope, updater policy | webview preference storage |
-| draft, captures/originals/translations, request/origin/position | App memory/native transport; session only; no passage cache/library row |
-| Home recents | derived, no second store; book timestamps survive, session-text entries do not |
+| draft, request/origin/position | App memory/native transport; session only; no passage cache/library row |
+| paste/scan history (text, original, translation) | [`history.sqlite3`](../../logic/history.md), owner-only; on by default, retention 7/30/90/365 days or until deleted; never audio |
+| Home recents | derived, no second store; book timestamps and kept history survive, an unsaved draft does not |
 | export job/review audio | app-wide job + temporary audio/session; chosen output files persist; no relaunch resume |
 | updater archive/armed quit | updater/native session; auto policy persists, no guaranteed transfer resume |
 
@@ -82,6 +84,7 @@ Without export/update interception, the single main window normally closes the a
 
 ## Change log
 
+- 2026-10-20: paste/scan history kept on this Mac (RE-HIST-001…004).
 - 2026-10-20: chapter-scope mismatch closed (RE-PLAY-027).
 - 2026-10-20: shortened the map to ownership/lifetime/precedence and linked detail owners; stable IDs retained.
 - 2026-10-19: documented the current app boundaries and known gaps.
