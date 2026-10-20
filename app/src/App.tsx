@@ -1125,10 +1125,6 @@ export default function App() {
     }
   }, [content, voiceId, rate, exporting, keepInHistory]);
 
-  /* "Đọc tiếp" on Read home (RE-HOME-002): the book opens, and once it is
-     the open book the reading starts from where it was last heard - the
-     engine resumes from saved progress when no segment is given. */
-  const resumeAfterOpen = useRef<string | null>(null);
   const readBookFrom = useCallback(async (segmentId: string | null) => {
     // A paragraph clicked while an export runs would queue behind it.
     if (!openBook || !voiceId || exporting) return;
@@ -1150,11 +1146,6 @@ export default function App() {
       onPlayer({ type: "failed", error: String(error) });
     }
   }, [openBook, voiceId, rate, scope, exporting]);
-  useEffect(() => {
-    if (!openBook || resumeAfterOpen.current !== openBook.id || !voiceId) return;
-    resumeAfterOpen.current = null;
-    void readBookFrom(null);
-  }, [openBook, voiceId, readBookFrom]);
 
   /** Change the voice, and carry on with it.
    *
@@ -1631,7 +1622,10 @@ export default function App() {
           : Math.min(...rects.map((rect) => rect.top));
       };
       const top = edge(headerRow.current, "top");
-      const bottom = edge(footerRow.current, "bottom");
+      // Read home has no transport; its own settings bar is the footer the
+      // voice and translation panels must clear (owner, 20/10).
+      const homeFooter = footerRow.current ? null : root.querySelector<HTMLElement>("[data-shell-footer]");
+      const bottom = edge(footerRow.current ?? homeFooter, "bottom");
       const inset = (name: string, value: string) => {
         if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
       };
@@ -1653,11 +1647,11 @@ export default function App() {
     const observer = new ResizeObserver(() => {
       if (!frame) frame = requestAnimationFrame(() => { frame = 0; apply(); });
     });
-    for (const element of [root, headerBar.current, footerBar.current, headerRow.current, footerRow.current]) {
+    for (const element of [root, headerBar.current, footerBar.current, headerRow.current, footerRow.current, root.querySelector<HTMLElement>("[data-shell-footer]")]) {
       if (element) observer.observe(element);
     }
     return () => { observer.disconnect(); if (frame) cancelAnimationFrame(frame); };
-  }, [gate, language, showFooter, screen, sideOpen]);
+  }, [gate, language, showFooter, screen, sideOpen, tab]);
   // Navigation changes the popover's context; returning must not revive it.
   useEffect(() => { setReaderPanel(null); }, [screen, openBook?.id]);
   // A preference load/save failure needs a visible retry path.
@@ -2180,7 +2174,6 @@ export default function App() {
             } : undefined}
             onImport={homeShelf.openPaths} onPaste={() => setTab("paste")} onScan={() => goTab("external")}
             onOpenBook={book => { setPosition(null); setOpenBook(book); setTab("library"); }}
-            onResumeBook={book => { resumeAfterOpen.current = book.id; setPosition(null); setOpenBook(book); setTab("library"); }}
             onOpenCapture={entry => { setHomeCapture(entry.at); setTab("external"); }}
             onRetry={() => void homeShelf.reload()}
             onSettings={() => { setHubOpen(false); setReaderPanel("voice"); }}

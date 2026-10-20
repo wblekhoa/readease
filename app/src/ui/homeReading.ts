@@ -18,15 +18,6 @@ export function homeRecents<B extends RecentBook, C extends RecentCapture>(books
   return items.sort((a, b) => b.at - a.at).slice(0, limit);
 }
 
-/** The book to offer "Continue reading" for: the most recently heard one that
- * is started and not finished. A book only imported is not resumed. */
-export function continueBook<B extends RecentBook & { progress_ratio: number | null }>(books: readonly B[]): B | null {
-  const started = books.filter(book => !book.damaged && book.listened_at && book.progress_ratio !== null
-    && book.progress_ratio > 0 && book.progress_ratio < 0.995);
-  started.sort((a, b) => (Date.parse(b.listened_at ?? "") || 0) - (Date.parse(a.listened_at ?? "") || 0));
-  return started[0] ?? null;
-}
-
 /** "Hôm nay 09:57", "Hôm qua", "3 ngày trước", then the date - how a list
  * of things read recently is scanned. `labels` keeps this pure. */
 export function relativeDay(at: number, now: number, locale: string, labels: { today: string; yesterday: string; daysAgo: (n: number) => string }): string {
