@@ -580,7 +580,9 @@ export function Notice({
         // A callout arrives: it rises 4 px and fades in (HIG 3.17). The
         // lines under a control do not - they answer an action already
         // taken and should read as part of it, not as news.
-        ? "notice-in rounded-2xl border border-info-edge bg-info-wash px-3.5 py-2.5 text-ink"
+        // No border (owner, 20/10): the wash alone sets it apart, so a
+        // callout reads as a quiet aside rather than one more framed box.
+        ? "notice-in rounded-2xl bg-info-wash px-3.5 py-2.5 text-ink"
         : "text-ink-mute";
   const size = fine ? "text-xs italic" : compact ? "text-xs" : "text-sm";
   if (action && tone === "info") {

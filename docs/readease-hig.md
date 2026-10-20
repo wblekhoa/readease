@@ -49,6 +49,7 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
 | disabled | chữ luôn `ink-faint`, **không bao giờ opacity**; control có viền giữ nguyên viền `edge-strong`, control không viền vẫn không viền. Ngược lại: **chữ có nghĩa thì không bao giờ `ink-faint`** — gợi ý trong menu ("Đang mở", "⌃⌘S"), "Đang dùng" cạnh giọng, dòng dữ kiện của hàng, nhắc "bấm để tới" đều `ink-mute` (17/09, chủ: "status mờ quá"; faint đo 1,76:1 trên nền tối). Faint chỉ còn cho glyph trang trí, dấu "+" giữa phím, lựa chọn chưa chọn |
 | loading | chữ đổi sang trạng thái ("Đang nhập sách…", "Đang chuẩn bị giọng đọc…") — không spinner mồ côi |
 | error | `Notice tone=error` màu **danger**, nói-gì-sai + làm-gì-tiếp |
+| ghi chú / giải thích | `Notice tone="info"` = nền `info-wash`, **không viền** (chủ 20/10). Ghi chú cho cả một nhóm hàng đặt **dưới** danh sách, không nằm trong danh sách (để không dính vạch kẻ): `compact` = chữ 12 px đứng, thay cho chữ nghiêng `fine` cũ |
 
 **Do/Don't sống của bảng này** (vòng audit 01/09, đo bằng số ở cả hai theme):
 - ✗ **hai công thức focus.** Control từng `outline-none` rồi tự đổi màu viền khi focus; ở control

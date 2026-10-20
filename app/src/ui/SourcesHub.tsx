@@ -113,7 +113,7 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading, tr
         voicesOf={voicesOf}
         onSaveKey={onSaveKey}
       />
-      <Notice fine className="mt-2 block">{text("hub.api_note")} {text("key.local_only")}</Notice>
+      <Notice tone="info" compact className="mt-3 block">{text("hub.api_note")} {text("key.local_only")}</Notice>
     </>
   );
 }
