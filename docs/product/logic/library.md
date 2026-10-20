@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Library (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "Managed PDF/EPUB import, duplicate and failure handling, language/progress ownership, schema boundaries and the Apple Books import boundary."
 tags: [area/data-import, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-LIB
@@ -33,7 +33,7 @@ Import/remove documents safely, preserving originals and durable book state. [Ho
 
 | REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
-| RE-LIB-001 | Accept only PDF/EPUB; reject other extensions before copying. | live | [001](#evidence) |
+| RE-LIB-001 | Accept only the supported formats (PDF, EPUB, and since RE-LIB-011 the text documents); reject other extensions before copying. | live | [001](#evidence) |
 | RE-LIB-002 | Copy imports into managed storage without changing the original. | live | [002](#evidence) |
 | RE-LIB-003 | Reject files over 200 MiB before making a managed copy. | live | [003](#evidence) |
 | RE-LIB-004 | Deduplicate identical content, returning the existing book id. | live | [004](#evidence) |
@@ -43,6 +43,7 @@ Import/remove documents safely, preserving originals and durable book state. [Ho
 | RE-LIB-008 | Persist position, rate and voice independently per book. | live | [008](#evidence) |
 | RE-LIB-009 | Refuse Apple Books DRM content; font obfuscation alone is permitted. | live | [009](#evidence) |
 | RE-LIB-010 | Support OCR-based import of scanned PDFs. | not built | [010](#evidence) |
+| RE-LIB-011 | Import text documents as books: `.txt`, `.md`, `.html` and `.docx` with the standard library, `.doc`, `.rtf` and `.odt` through macOS `textutil` (to HTML, so text and paragraphs survive). Headings become chapters (Markdown `#`/`##`, HTML `h1`/`h2`, Word `Heading 1/2` and `Title`); a document without marked headings splits at short lines of their own like "Chương 3" / "Part II". UTF-8 (BOM or not) and UTF-16 with a BOM are read; any other encoding is refused in words, never guessed. Text sources are capped at 20 MB; Word's main part at 100 MB with an element bound and no XML entity declarations. Each format is its own `source_format`, equal to the suffix (`.markdown`/`.htm` are not accepted yet). | live | [011](#evidence) |
 
 ## States and recovery
 
@@ -70,10 +71,13 @@ No OCR, DRM bypass or fixed-layout EPUB support. Home queue recovery is document
 - **008**: `tests/storage/test_repository.py` (`test_progress_is_independent_per_book_and_updates_in_place`)
 - **009**: `tests/integrations/test_apple_books_sync.py` (`test_font_obfuscation_is_not_drm_but_encrypted_content_is`)
 - **010**: README "Limits": no OCR today
+- **011**: `src/vieneu_reader/importers/text.py`; `tests/importers/test_text.py` (every format, encodings, empty refusal, unsafe docx, damaged rtf, and the managed round trip `test_a_markdown_book_is_managed_reopened_and_reimported_as_the_same_book`); `app/tests/bookPaths.test.ts`. Probe 20/10: `.docx`/`.doc`/`.rtf`/`.odt` written by macOS itself import with their "Chương N" chapters.
 
 Schema/progress/language: `tests/storage/test_repository.py` (`UpgradingOverAnOlderInstallTests`, `TheFirstRealMigrationTests`). Import rollback: `tests/importers/test_service.py`, `tests/importers/test_pdf.py`, `tests/importers/test_epub.py`. Headless tests use temporary managed files/Apple Books fixtures; live permissions and new Home Finder/drop remain manual acceptance.
 
 ## Change log
+
+- 2026-10-21: RE-LIB-011 - text documents (TXT, Markdown, HTML, Word, RTF, ODT) import as books; RE-LIB-001 widened to match.
 
 - 2026-10-20: no rule change; `tests/headless/test_server.py` gained a `selection_translation` settings round-trip and sentence-progress frames (RE-PLAY-023 in reading.md); RE-LIB-007 evidence (`test_import_and_remove_walk_through_the_real_service`) is unchanged.
 - 2026-10-20: condensed import/state contract and linked adjacent owners; no behavior change.

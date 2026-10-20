@@ -10,7 +10,7 @@ import sqlite3
 from threading import RLock
 from typing import Any, Callable, Sequence
 
-from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
+from vieneu_reader.domain.models import BOOK_FORMATS, BookDocument, Chapter, Segment, stable_id
 from vieneu_reader.domain.prosody import ends_sentence
 
 from .errors import RepositoryCorruptionError, RepositoryError
@@ -237,7 +237,7 @@ def _document_from_payload(payload: str) -> BookDocument:
         title = _required_text(data, "title")
         source_format = _required_text(data, "source_format")
         source_hash = _required_text(data, "source_hash")
-        if source_format not in {"epub", "pdf"} or not _is_sha256(source_hash):
+        if source_format not in BOOK_FORMATS or not _is_sha256(source_hash):
             raise ValueError("book source identity is invalid")
         if book_id != stable_id(source_hash, source_format):
             raise ValueError("book id does not match its source identity")

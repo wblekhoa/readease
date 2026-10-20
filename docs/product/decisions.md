@@ -12,6 +12,16 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-21 · Text documents as books, with no new dependency
+- **Context**: the owner asked for more readable formats ("như là .md, .doc…").
+- **Decision**: TXT, Markdown, HTML and DOCX read with the standard library; DOC, RTF and ODT through macOS's own
+  `textutil` (always present, no download) converted to HTML for the same reader. Each format is its own
+  `source_format` = suffix. Legacy 8-bit encodings are refused rather than guessed. Open With registration for
+  .docx/.doc/.rtf/.odt/.md only.
+- **Evidence**: `tests/importers/test_text.py`; probe of macOS-written docx/doc/rtf/odt.
+- **Downgrade**: a book imported from one of these formats shows as damaged (removable) on the shelf of an older
+  ReadEase - the shelf reads row by row; the other books are unaffected.
+- **Reversal**: drop `TEXT_PARSERS` from the service; existing rows stay readable only while the formats stay allowed.
 ## 2026-10-20 · ReadEase's own translator: Hy-MT2 1.8B on a bundled llama.cpp server
 - **Context**: translation needed Apple's packs (macOS 26) or the reader's own Ollama/LM Studio; the owner asked for a
   model ReadEase installs itself.

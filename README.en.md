@@ -2,7 +2,7 @@
 
 **Source-available · free for noncommercial use** ([PolyForm Noncommercial 1.0.0](LICENSE)). The source is public so anyone can check the promise below for themselves: with the on-device voice, nothing leaves the Mac.
 
-ReadEase is a local-first macOS app that reads your **EPUB and PDF files** (text-based PDFs, reflowable EPUBs) and pasted text aloud with the Vietnamese VieNeu-TTS voice - and, optionally, the English Kokoro voice. By default it requires **no API key**, sends no document content anywhere and works offline after the first voice-model setup. It opens only the files you bring to it.
+ReadEase is a local-first macOS app that reads your **EPUB, PDF, Word, Markdown and text files** (text-based PDFs, reflowable EPUBs, .docx/.doc, RTF, ODT, HTML, TXT) and pasted text aloud with the Vietnamese VieNeu-TTS voice - and, optionally, the English Kokoro voice. By default it requires **no API key**, sends no document content anywhere and works offline after the first voice-model setup. It opens only the files you bring to it.
 
 > **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).
 
@@ -61,7 +61,7 @@ Documents, progress, notes and downloaded voices live in `~/Library/Application 
 
 - Export a chapter range or a whole book as an M4B audiobook with chapter marks and an available cover, using a downloaded on-device voice. Browse or minimise while it runs; progress and Cancel stay visible across screens. Keep the app open and the Mac awake; playback waits.
 
-- **Library:** import your text-based PDFs and reflowable EPUBs, save reading progress and continue later.
+- **Library:** import your text-based PDFs, reflowable EPUBs, Word, RTF, ODT, Markdown, HTML and plain-text documents, save reading progress and continue later.
 - **In-app reader:** choose a chapter, read continuously by paragraph or read only selected text.
 - **Headings, chapters and footnotes that sound right:** a heading is read a touch slower and louder with a breath before and after; a new chapter opens with a short chime (marimba, harp or piano - or none, under **Voice settings**); a bibliographic footnote ("Ibid., p. 45") is not read, a remark keeps its first two sentences, and an in-text citation "(Tran, 2019)" is skipped - switch to reading them whole, or none, in the same place. The text on the page does not change.
 - **Markdown:** pasted and scanned text is read as meant - emphasis, strikethrough, links (their words, not the address), headings, quotes, bullets, task boxes and table rows lose their marks; rules and link definitions are silent; code loses its backticks and keeps its content. Displayed text stays as captured; powers like `2**10`, `snake_case` and unpaired marks stay literal. Books omit only paired bold markers.
@@ -81,7 +81,7 @@ The English option translates the app interface, status messages and common impo
 ### Read a PDF or EPUB
 
 1. Open ReadEase from `~/Applications`.
-2. Choose **Library → Open PDF or EPUB**, or drag a supported file into the window.
+2. Choose **Library → Open a book or document**, or drag a supported file into the window.
 3. Select a document and chapter, then click **Read** for continuous playback.
 4. Select text in the reader and click **Read selection** to hear only that passage.
 5. Use **Previous**, **Next**, **Stop**, voice and speed controls in the player.

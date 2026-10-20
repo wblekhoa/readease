@@ -29,6 +29,7 @@ from .epub_presentation import (
 )
 from .errors import CorruptBookError, LibraryStorageError, UnsupportedBookError
 from .pdf import import_pdf, load_pdf_cover
+from .text import TEXT_PARSERS
 
 
 BookParser = Callable[[Path], BookDocument]
@@ -73,7 +74,7 @@ class LibraryService:
         self._parsers = {
             suffix.lower(): parser
             for suffix, parser in (
-                parsers or {".epub": import_epub, ".pdf": import_pdf}
+                parsers or {".epub": import_epub, ".pdf": import_pdf, **TEXT_PARSERS}
             ).items()
         }
         self._import_lock = RLock()
@@ -368,7 +369,9 @@ class LibraryService:
         suffix = source_path.suffix.lower()
         parser = self._parsers.get(suffix)
         if parser is None:
-            raise UnsupportedBookError("Vui lòng chọn tệp PDF hoặc EPUB.")
+            raise UnsupportedBookError(
+                "Vui lòng chọn sách hoặc tài liệu: EPUB, PDF, Word, RTF, ODT, Markdown, HTML hoặc TXT."
+            )
         if not source_path.is_file():
             raise CorruptBookError("Không tìm thấy tệp đã chọn.")
         try:

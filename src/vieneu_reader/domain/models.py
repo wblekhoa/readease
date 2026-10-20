@@ -25,6 +25,10 @@ a new source block, a new visual line, or a length-bounded split of the
 same block."""
 
 
+#: Every format a managed book can come from; each is also its file suffix.
+BOOK_FORMATS = frozenset({"pdf", "epub", "txt", "md", "html", "docx", "doc", "rtf", "odt"})
+
+
 @dataclass(frozen=True, slots=True)
 class Segment:
     id: str
@@ -47,7 +51,8 @@ class Chapter:
 class BookDocument:
     id: str
     title: str
-    source_format: Literal["pdf", "epub"]
+    # RE-LIB-011: the text formats are their suffix, like the first two.
+    source_format: Literal["pdf", "epub", "txt", "md", "html", "docx", "doc", "rtf", "odt"]
     source_hash: str
     chapters: tuple[Chapter, ...]
 

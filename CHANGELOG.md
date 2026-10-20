@@ -6,6 +6,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- More files can be read: besides EPUB and PDF, the library now takes Word
+  (.docx, .doc), RTF, OpenDocument (.odt), Markdown, HTML and plain text.
+  Headings become chapters; a typed-up file with lines like "Chương 3"
+  gets its chapters too. Text files must be UTF-8 or UTF-16.
+
 - ReadEase has its own translator. In Voices & models → Translation,
   download the ReadEase translator (about 1.1 GB, once) and English ↔
   Vietnamese translation runs on this Mac with no Apple language packs or

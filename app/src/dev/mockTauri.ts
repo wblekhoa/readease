@@ -990,14 +990,14 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       return { books: LIBRARY };
     case "library.import": {
       const name = String(params.path ?? "").split("/").pop() || "Sách mới.epub";
-      const title = name.replace(/\.(epub|pdf)$/i, "");
+      const title = name.replace(/\.(epub|pdf|docx|doc|rtf|odt|md|html|txt)$/i, "");
       const existing = LIBRARY.find(book => book.title === title);
       if (existing) return { book_id: existing.id, was_existing: true };
       const id = `imported-${Date.now()}`;
       LIBRARY.push({
         id,
         title,
-        source_format: /\.pdf$/i.test(name) ? "pdf" : "epub",
+        source_format: (name.match(/\.(pdf|docx|doc|rtf|odt|md|html|txt)$/i)?.[1].toLowerCase()) ?? "epub",
         segment_id: null, progress_ratio: null, progress_chapter: null,
         chapters: 7, size_bytes: 2_100_000,
         imported_at: new Date().toISOString(), from_apple_books: false,

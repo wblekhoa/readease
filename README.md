@@ -2,7 +2,7 @@
 
 **Miễn phí, mã nguồn công khai — dùng phi thương mại** ([PolyForm Noncommercial 1.0.0](LICENSE)). Công khai để ai cũng tự kiểm được lời hứa bên dưới: đọc bằng giọng trên máy thì tài liệu của bạn không đi đâu cả.
 
-Ứng dụng macOS đọc thành tiếng các tệp **EPUB và PDF** cùng văn bản dán vào, bằng giọng tiếng Việt **VieNeu-TTS chạy cục bộ** (và giọng tiếng Anh Kokoro, tuỳ chọn). Mặc định ReadEase không cần API key, không gửi nội dung tài liệu đi đâu cả và đọc được offline sau khi chuẩn bị giọng lần đầu. Tài liệu là của bạn — ReadEase chỉ mở những tệp bạn tự đưa vào.
+Ứng dụng macOS đọc thành tiếng các tệp **EPUB, PDF, Word, Markdown, TXT…** cùng văn bản dán vào, bằng giọng tiếng Việt **VieNeu-TTS chạy cục bộ** (và giọng tiếng Anh Kokoro, tuỳ chọn). Mặc định ReadEase không cần API key, không gửi nội dung tài liệu đi đâu cả và đọc được offline sau khi chuẩn bị giọng lần đầu. Tài liệu là của bạn — ReadEase chỉ mở những tệp bạn tự đưa vào.
 
 > **Một ngoại lệ, và bạn phải tự bật:** ReadEase đọc được bằng **giọng AI trả phí của OpenAI hoặc ElevenLabs**, bằng khoá của chính bạn. Khi dùng, đoạn văn sắp đọc sẽ được gửi thẳng từ máy bạn tới nhà cung cấp đó — không qua máy chủ nào của ReadEase, vì không có máy chủ nào cả. Không gửi tên tài liệu, tiến độ, ghi chú hay bất cứ thứ gì nhận dạng bạn. Giá tính theo ký tự và **hiện sẵn trong nút đọc trước khi bấm**; bạn đặt được trần cho cả phạm vi đọc lẫn số tiền mỗi phiên. Không bật thì không có gì rời khỏi máy. Chi tiết: [PRIVACY.md](PRIVACY.md).
 
@@ -60,7 +60,7 @@ Tài liệu, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/
 
 ## ReadEase làm được gì?
 
-- **Thư viện:** nhập tệp PDF có lớp văn bản và EPUB của bạn, lưu tiến độ và tiếp tục đọc ở lần sau.
+- **Thư viện:** nhập EPUB, PDF có lớp văn bản, Word (.docx, .doc), RTF, ODT, Markdown, HTML hoặc TXT của bạn, lưu tiến độ và tiếp tục đọc ở lần sau.
 - **Trình đọc trong app:** chọn chương, đọc liên tục theo đoạn, đọc riêng phần đang quét chọn và điều chỉnh giọng/tốc độ.
 - **Đọc có ngắt nghỉ:** ReadEase ngắt theo cấu trúc văn bản chứ không đọc luông tuồng — nghỉ dài nhất khi sang chương, vừa khi hết đoạn, rồi ngắn dần ở tiêu đề, danh sách, dấu chấm, dấu hai chấm và gạch ngang. Cụm chữ viết hoa toàn bộ (chữ trên biển báo, tiêu đề) được đọc như chữ thường để phát âm đúng, nhưng chữ hiển thị vẫn nguyên như tác giả viết. Khoảng nghỉ co lại khi bạn tăng tốc độ đọc.
 - **Tiêu đề, chương và chú thích nghe ra hồn:** tiêu đề đọc chậm hơn một chút, to hơn một chút và có hơi thở trước sau; sang chương mới có một âm hiệu ngắn (marimba, harp hoặc piano — tắt được trong **Cài đặt giọng đọc**); chú thích thư mục kiểu "Sđd., tr. 45" không đọc, lời bàn đọc hai câu đầu, trích dẫn trong ngoặc "(Trần, 2019)" bỏ qua — đổi sang đọc đầy đủ hoặc bỏ hẳn cũng ở đó. Chữ trên trang không đổi.
@@ -81,7 +81,7 @@ Tài liệu, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/
 ### 1. Đọc PDF hoặc EPUB trong Thư viện
 
 1. Mở **ReadEase** trong `~/Applications`.
-2. Chọn **Thư viện** → **Mở PDF hoặc EPUB**, hoặc kéo tệp vào cửa sổ.
+2. Chọn **Thư viện** → **Mở sách hoặc tài liệu**, hoặc kéo tệp vào cửa sổ.
 3. Chọn tài liệu và chương, rồi bấm **Đọc** để đọc liên tục.
 4. Quét chọn một phần trong trình đọc và bấm **Đọc phần đã chọn** nếu chỉ muốn nghe đoạn đó.
 5. Dùng **Trước**, **Sau**, **Dừng**, giọng đọc và tốc độ ở thanh phát phía dưới.
@@ -165,7 +165,7 @@ Model VieNeu, codec MOSS và các dependency giữ giấy phép riêng của nh�
 
 # English
 
-ReadEase — Thư Âm is a local-first macOS app that reads your **EPUB and PDF files** and pasted text aloud with the Vietnamese VieNeu-TTS voice (and, optionally, the English Kokoro voice). It opens only the files you bring to it. By default it requires no API key and works offline after the first voice-model setup.
+ReadEase — Thư Âm is a local-first macOS app that reads your **EPUB, PDF, Word, Markdown and text files** and pasted text aloud with the Vietnamese VieNeu-TTS voice (and, optionally, the English Kokoro voice). It opens only the files you bring to it. By default it requires no API key and works offline after the first voice-model setup.
 
 > **One exception, and you have to switch it on:** ReadEase can read with a paid **OpenAI or ElevenLabs** voice on your own key. When you do, the passage being read goes straight from your Mac to that provider — through no ReadEase server, because there is none. No title, progress, notes or anything identifying you is sent. These voices bill by the character; the figure is shown **in the read button before you press it**, and you can cap both how much one press may read and what a session may spend. Leave it off and nothing leaves the Mac. Details: [PRIVACY.md](PRIVACY.md).
 
@@ -182,7 +182,7 @@ Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, 8 GB of mem
 
 ## Main features
 
-- Import and read text-based PDFs and reflowable EPUBs.
+- Import and read text-based PDFs, reflowable EPUBs, Word, RTF, ODT, Markdown, HTML and plain-text documents.
 - Pause where the writing does: longest between chapters, then paragraphs, headings, list items, full stops, colons and dashes, instead of running the text together. Words written in capitals for emphasis are spoken as ordinary words so they are pronounced rather than announced, while the page keeps what the author wrote. Pauses shorten as the reading speed rises.
 - Preserve local library progress and show meaningful EPUB images in reading order.
 - Read pasted text and automatically segment long passages.
