@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { currentLanguage, engineMessage, text } from "../i18n";
 import { Button, Notice, ProgressBar, SegmentedControl, Surface } from "../ui/controls";
-import { DropZone, IconTile, MiniCover } from "../ui/patterns";
+import { DropZone, GradientBlur, IconTile, MiniCover } from "../ui/patterns";
 import { BookIcon, ClipboardIcon, CursorTextIcon, ImportIcon, PlayIcon, VoiceIcon } from "../ui/icons";
 import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { continueBook, homeRecents, relativeDay, type HomeRecent } from "../ui/homeReading";
@@ -32,7 +32,7 @@ function RecentRow({ item, kept, onOpen }: { item: Item; kept: boolean; onOpen: 
       : item.kind !== "book" ? text(item.id === "paste" ? "home.draft" : kept ? "home.saved" : "home.session") : item.source.source_format.toUpperCase();
   const date = when(item.at);
   return <Button variant="ghost" onClick={onOpen} aria-label={text("home.open_recent", { title })}
-    className="!h-auto w-full !justify-start gap-3 !px-3 !py-3 text-left">
+    className="!h-auto w-full !justify-start gap-3 !rounded-2xl !px-3 !py-3 text-left">
     {item.kind === "book" ? <RecentBookCover id={item.source.id} /> : <span className="flex h-12 w-8 shrink-0 items-center justify-center text-ink-mute">{item.kind === "paste" ? <ClipboardIcon /> : <CursorTextIcon />}</span>}
     <span className="min-w-0 flex-1">
       <span className="block truncate font-medium text-ink">{title}</span>
@@ -89,13 +89,13 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
   /* Minimal (owner, 20/10): an icon and a name; the longer hint is the
      button's tooltip, not a second line on every visit. */
   const action = (label: string, detail: string, icon: ReactNode, onClick: () => void, disabled = false) => <Button variant="ghost" onClick={onClick} disabled={disabled} title={detail}
-    className="!h-auto !justify-start gap-3 !px-3 !py-3 text-left">
+    className="!h-auto !justify-start gap-3 !rounded-2xl !px-3 !py-3 text-left">
     <IconTile>{icon}</IconTile>
     <span className="min-w-0 truncate font-semibold">{label}</span>
   </Button>;
-  return <section className="shell-inset flex min-h-0 flex-1 flex-col">
+  return <section className="shell-inset relative flex min-h-0 flex-1 flex-col">
     <div className="selection-scroll-mask min-h-0 flex-1 overflow-y-auto">
-      <div className={`@container mx-auto w-full max-w-[56rem] px-2 pb-8 ${empty ? "pt-10" : "pt-4"}`}>
+      <div className={`@container mx-auto w-full max-w-[56rem] px-2 pb-24 ${empty ? "pt-10" : "pt-4"}`}>
         {empty && <div className="mb-7 text-center"><span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-tint text-ink-mute"><BookIcon /></span>
           <h1 className="m-0 text-xl font-semibold">{text("home.empty_title")}</h1><p className="m-0 mt-2 text-sm text-ink-mute">{text("home.empty_hint")}</p></div>}
         <div className="grid grid-cols-1 gap-3 @min-[36rem]:grid-cols-3">
@@ -110,7 +110,7 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
           <Button variant="ghost" onClick={active.onOpen}>{text("home.open_content")}</Button>
           <Button variant="primary" onClick={active.onToggle}>{text(active.paused ? "home.resume" : "player.pause")}</Button>
         </Surface>}
-        {resume && <Surface className="mt-6 flex items-center gap-4 p-4" aria-label={text("home.continue")}>
+        {resume && <Surface className="mt-6 flex items-center gap-4 !rounded-3xl p-5" aria-label={text("home.continue")}>
           <RecentBookCover id={resume.id} size="md" />
           <span className="min-w-0 flex-1">
             <span className="block text-xs font-medium text-ink-mute">{text("home.continue")}</span>
@@ -143,9 +143,15 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
     </div>
     {/* Reading settings stay at the foot of the screen (owner, 20/10):
         always in reach, never scrolled away, and out of the content. */}
-    <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-edge-alpha py-3" aria-label={text("home.settings")}>
+    {/* Edge to edge, past the main column's px-6: inside it the blur
+        stopped 24 px short of each side and showed as a cropped box
+        (owner, 20/10). The row keeps the content's inset. */}
+    <footer className="absolute -left-6 -right-6 bottom-0 z-20" aria-label={text("home.settings")}>
+      <GradientBlur edge="bottom" />
+      <div className="relative z-10 flex flex-wrap items-center gap-2 px-6 pb-4 pt-6">
       <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
       <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("home.scan_translation")} · {translation}</Button>
+      </div>
     </footer>
     {dragging !== null && <DropZone icon={<ImportIcon />} headline={text(dragging ? "home.drop" : "home.file_types")} tone={dragging ? "ok" : "error"} />}
   </section>;
