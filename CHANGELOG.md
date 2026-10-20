@@ -6,9 +6,9 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
-- Read home opens with "Continue reading" for the book you were last
-  listening to - one press resumes it where you stopped - and recent
-  items can be filtered by documents, pastes or scans.
+- Read home is simpler: three ways to start, then one list of what you
+  read recently, one line each; voice and translation settings stay at the
+  bottom.
 
 - New app icon: two flat wave strands on the ReadEase blue, simpler and
   clearer at small sizes, matching the family style of SpeakEase.

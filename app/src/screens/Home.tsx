@@ -3,22 +3,16 @@ import { useEffect, useState, type ReactNode } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { currentLanguage, engineMessage, text } from "../i18n";
-import { Button, Notice, ProgressBar, SegmentedControl, Surface } from "../ui/controls";
-import { DropZone, GradientBlur, IconTile, MiniCover } from "../ui/patterns";
-import { BookIcon, ClipboardIcon, CursorTextIcon, ImportIcon, PlayIcon, VoiceIcon } from "../ui/icons";
+import { Button, Notice, Surface } from "../ui/controls";
+import { DropZone, GradientBlur, IconTile } from "../ui/patterns";
+import { BookIcon, ClipboardIcon, CursorTextIcon, ImportIcon, VoiceIcon } from "../ui/icons";
 import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
-import { continueBook, homeRecents, relativeDay, type HomeRecent } from "../ui/homeReading";
+import { homeRecents, relativeDay, type HomeRecent } from "../ui/homeReading";
 import { summarise } from "../ui/scanHistory";
-import { useCover } from "../ui/useCover";
 import type { LibraryBook } from "./Library";
 import type { ExternalEntry } from "./External";
 
 type Item = HomeRecent<LibraryBook, ExternalEntry>;
-function RecentBookCover({ id, size = "sm" }: { id: string; size?: "sm" | "md" }) {
-  const cover = useCover(id);
-  return <MiniCover source={cover} fallback={<BookIcon />} size={size} />;
-}
-type Filter = "all" | "book" | "paste" | "external";
 const RECENT_LIMIT = 8;
 const when = (at: number) => relativeDay(at, Date.now(), currentLanguage(), {
   today: text("home.today"), yesterday: text("home.yesterday"), daysAgo: days => text("home.days_ago", { days }),
@@ -43,13 +37,11 @@ function RecentRow({ item, kept, onOpen }: { item: Item; kept: boolean; onOpen: 
     <span className="w-24 shrink-0 text-right text-xs text-ink-mute">{date}</span>
   </Button>;
 }
-export function Home({ books, loading, error, importing, paste, pastes = [], onOpenPaste, onResumeBook, historyKept = false, captures, active, onImport, onPaste, onScan, onOpenBook, onOpenCapture, onRetry, onSettings, onTranslation, voice, translation, settingsBlocked }: {
+export function Home({ books, loading, error, importing, paste, pastes = [], onOpenPaste, historyKept = false, captures, active, onImport, onPaste, onScan, onOpenBook, onOpenCapture, onRetry, onSettings, onTranslation, voice, translation, settingsBlocked }: {
   books: readonly LibraryBook[]; loading: boolean; error: string | null; importing: boolean;
   paste: { text: string; at: number }; captures: readonly ExternalEntry[];
   /** Pastes kept in the history (RE-HIST-001), and how to reopen one. */
   pastes?: readonly { text: string; at: number }[]; onOpenPaste?: (text: string) => void;
-  /** Open a book and carry on reading from where it was last heard (RE-HOME-002). */
-  onResumeBook?: (book: LibraryBook) => void;
   /** Whether pastes and scans are kept on this Mac, which is what their row says. */
   historyKept?: boolean;
   active?: { title: string; paused: boolean; onToggle: () => void; onOpen: () => void };
@@ -58,12 +50,9 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
   onRetry: () => void; onSettings: () => void; onTranslation: () => void;
   voice: string; translation: string; settingsBlocked: boolean;
 }) {
-  const [filter, setFilter] = useState<Filter>("all");
-  const resume = active ? null : continueBook(books);
-  const everything = homeRecents(books, paste, captures, pastes, 200).filter(item => !(resume && item.id === `book:${resume.id}`));
-  const recent = everything.filter(item => filter === "all" || item.kind === filter).slice(0, RECENT_LIMIT);
-  const kinds = new Set(everything.map(item => item.kind));
-  const empty = !loading && !error && everything.length === 0 && !active && !resume;
+  const everything = homeRecents(books, paste, captures, pastes, 200);
+  const recent = everything.slice(0, RECENT_LIMIT);
+  const empty = !loading && !error && everything.length === 0 && !active;
   const [dragging, setDragging] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   useEffect(() => {
@@ -112,28 +101,10 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
           <Button variant="ghost" onClick={active.onOpen}>{text("home.open_content")}</Button>
           <Button variant="primary" onClick={active.onToggle}>{text(active.paused ? "home.resume" : "player.pause")}</Button>
         </Surface>}
-        {resume && <Surface className="mt-6 flex items-center gap-4 !rounded-3xl p-5" aria-label={text("home.continue")}>
-          <RecentBookCover id={resume.id} size="md" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-xs font-medium text-ink-mute">{text("home.continue")}</span>
-            <span className="mt-1 block truncate text-base font-semibold">{resume.title}</span>
-            <span className="mt-1 block truncate text-xs text-ink-mute">
-              {resume.progress_chapter ? `${resume.progress_chapter} · ` : ""}{Math.round((resume.progress_ratio ?? 0) * 100)}% · {when(Date.parse(resume.listened_at ?? "") || 0)}
-            </span>
-            <span className="mt-2 block max-w-[20rem]"><ProgressBar value={resume.progress_ratio ?? 0} /></span>
-          </span>
-          <Button variant="ghost" onClick={() => onOpenBook(resume)}>{text("home.open_content")}</Button>
-          {onResumeBook && <Button variant="primary" onClick={() => onResumeBook(resume)}><PlayIcon />{text("home.resume_reading")}</Button>}
-        </Surface>}
         {everything.length > 0 && <section className="mt-7" aria-label={text("home.recent")}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <h3 className="m-0 text-sm font-semibold">{text("home.recent")}</h3>
-            {kinds.size > 1 && <SegmentedControl<Filter> label={text("home.filter")} value={filter} onChange={setFilter} options={[
-              { value: "all", label: text("home.filter_all") },
-              ...(kinds.has("book") ? [{ value: "book" as const, label: text("home.document") }] : []),
-              ...(kinds.has("paste") ? [{ value: "paste" as const, label: text("nav.paste") }] : []),
-              ...(kinds.has("external") ? [{ value: "external" as const, label: text("nav.external") }] : []),
-            ]} />}
+
           </div>
           <div className="flex flex-col">{recent.map(item => <RecentRow key={item.id} item={item} kept={historyKept} onOpen={() => {
             if (item.kind === "book") onOpenBook(item.source);
@@ -145,12 +116,15 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
     </div>
     {/* Reading settings stay at the foot of the screen (owner, 20/10):
         always in reach, never scrolled away, and out of the content. */}
-    {/* Edge to edge, past the main column's px-6: inside it the blur
+    {/* Right-aligned: the voice and translation panels open from the
+        bottom-right corner, as they do above the reader's transport, so the
+        buttons sit under them (owner, 20/10).
+        Edge to edge, past the main column's px-6: inside it the blur
         stopped 24 px short of each side and showed as a cropped box
         (owner, 20/10). The row keeps the content's inset. */}
     <footer className="absolute -left-6 -right-6 bottom-0 z-20" aria-label={text("home.settings")}>
       <GradientBlur edge="bottom" />
-      <div className="relative z-10 flex flex-wrap items-center gap-2 px-6 pb-4 pt-6">
+      <div data-shell-footer className="relative z-10 flex flex-wrap items-center justify-end gap-2 px-6 pb-4 pt-6">
       <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
       <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("home.scan_translation")} · {translation}</Button>
       </div>
