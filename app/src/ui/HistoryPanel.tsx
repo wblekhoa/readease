@@ -8,6 +8,7 @@
  * kind; the switch, the days and "delete all" cover both, because they are
  * one setting in the engine and the reader should not have to set it twice.
  */
+import { useState } from "react";
 import { currentLanguage, text } from "../i18n";
 import { Button, IconButton, Select, Surface, Switch } from "./controls";
 import { Scrim, useDismiss } from "./patterns";
@@ -29,6 +30,8 @@ export function HistoryPanel({ kind, entries, enabled, days, onOpen, onDelete, o
 }) {
   const layer = useDismiss(onClose);
   const mine = entries.filter(entry => entry.kind === kind);
+  // Deleting everything is not undone, and covers both lists: asked first.
+  const [confirming, setConfirming] = useState(false);
   const date = new Intl.DateTimeFormat(currentLanguage(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (<>
     <Scrim />
@@ -89,8 +92,12 @@ export function HistoryPanel({ kind, entries, enabled, days, onOpen, onDelete, o
           ))}
         </ul>
       </div>
-      <div className="flex items-center justify-end border-t border-edge px-5 py-2.5">
-        <Button variant="ghost" size="sm" disabled={entries.length === 0} onClick={onClearAll}>{text("history.clear_all")}</Button>
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-edge px-5 py-2.5">
+        {confirming ? <>
+          <span className="mr-auto text-sm text-ink-mute">{text("history.clear_confirm")}</span>
+          <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>{text("library.remove_keep")}</Button>
+          <Button variant="danger" size="sm" onClick={() => { setConfirming(false); onClearAll(); }}><TrashIcon />{text("history.clear_all")}</Button>
+        </> : <Button variant="ghost" size="sm" disabled={entries.length === 0} onClick={() => setConfirming(true)}>{text("history.clear_all")}</Button>}
       </div>
     </Surface>
   </>);

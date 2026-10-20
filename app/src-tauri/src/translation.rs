@@ -92,12 +92,16 @@ pub(crate) fn pieces(text: &str, limit: usize) -> Vec<String> {
             let mut sentence_buf = String::new();
             for word in paragraph.split_inclusive(|c: char| c.is_whitespace()) {
                 if sentence_buf.chars().count() + word.chars().count() > limit {
-                    let cut = sentence_buf.rfind(|c| c == '.' || c == '!' || c == '?' || c == '…')
-                        .filter(|&at| at + 1 < sentence_buf.len() && sentence_buf[..at].chars().count() > limit / 2);
+                    // Cut just after the last sentence end, at a CHAR boundary:
+                    // "…" is three bytes, and slicing at its first byte panics.
+                    let cut = sentence_buf.char_indices().rev()
+                        .find(|&(_, c)| c == '.' || c == '!' || c == '?' || c == '…')
+                        .map(|(at, c)| at + c.len_utf8())
+                        .filter(|&end| end < sentence_buf.len() && sentence_buf[..end].chars().count() > limit / 2);
                     match cut {
-                        Some(at) => {
-                            let rest = sentence_buf[at + 1..].to_string();
-                            sentence_buf.truncate(at + 1);
+                        Some(end) => {
+                            let rest = sentence_buf[end..].to_string();
+                            sentence_buf.truncate(end);
                             push(&mut sentence_buf, &mut out);
                             sentence_buf.push_str(rest.trim_start());
                         }
@@ -167,7 +171,12 @@ mod tests {
         // A short text is one piece; empty paragraphs vanish.
         assert_eq!(pieces("Xin chào.\n\n\n\nTạm biệt.", 5_000), vec!["Xin chào.\n\nTạm biệt."]);
         // One huge paragraph is cut between words, every piece within the limit.
-        let huge = "chữ ".repeat(4_000);
+        // A long paragraph whose sentences end in "…" (three bytes) cuts
+        // after the ellipsis without panicking.
+        let ellipses = "Câu này còn dang dở… ".repeat(400);
+        let parts = pieces(&ellipses, 1_000);
+        assert!(parts.iter().all(|p| p.chars().count() <= 1_000 && p.ends_with('…')));
+                let huge = "chữ ".repeat(4_000);
         assert!(pieces(&huge, 5_000).iter().all(|p| p.chars().count() <= 5_000 && !p.starts_with(' ')));
     }
     // RE-PLAY-031

@@ -48,6 +48,12 @@ class HistoryStoreTests(unittest.TestCase):
         self.store.add("scan", "Cùng một đoạn.", at=5000)
         self.assertEqual(len(self.store.list(now=6000, days=0)), 3)
 
+    # RE-HIST-002
+    def test_a_translated_scan_whose_original_has_line_breaks_is_one_entry(self):
+        self.store.add("scan", "Hello you.", original="Xin chào\nbạn.", target="en", at=1)
+        self.store.add("scan", "Hello you.", original="Xin chào\nbạn.", target="en", at=2)
+        self.assertEqual(len(self.store.list(now=3, days=0)), 1)
+
     # RE-HIST-003
     def test_entries_older_than_the_chosen_days_are_deleted_not_just_hidden(self):
         now = 100 * DAY_MS

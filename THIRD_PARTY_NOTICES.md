@@ -40,7 +40,7 @@ headless browser to check the interface against WCAG 2 A/AA. It is a
 
 The macOS bundle is a **Tauri** shell - a Rust host with a WebKit view - and
 the Python speech engine frozen by **PyInstaller** as a sidecar. It carries no
-Qt and no PySide. It is ad-hoc signed, not notarized.
+Qt and no PySide. Releases are signed with a Developer ID and notarized; a build you make from source is ad-hoc signed.
 
 ### Speech engine (Python, frozen)
 
@@ -107,7 +107,8 @@ Qt and no PySide. It is ad-hoc signed, not notarized.
 The Vietnamese model and codec are fetched into
 `~/Library/Application Support/VieNeu Reader/Models` by the app on first use;
 the English model and lexicon land in the same folder only when the reader
-asks for them under Settings › Reading models. Provenance and pinning:
+asks for them under Voices & models, and the translator model lands in
+`Models/hy-mt2-1.8b-gguf` only when requested there too. Provenance and pinning:
 `legal/MODEL_PROVENANCE.md`.
 
 One model does ship inside the bundle: **graphemes_to_phonemes_en_us**

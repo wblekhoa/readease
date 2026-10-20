@@ -71,6 +71,7 @@ History holds at most 50 captures. Failed/cancelled translation creates no compl
 Configuration round-trip: `tests/headless/test_server.py::test_translation_preferences_round_trip_without_passage_data`. Fixtures establish protocol/cancellation/configuration, not real-model translation quality. Complete native end-to-end owner acceptance remains pending despite inclusion in v0.1.23; status is unchanged. See the [status convention](../systems/app/system.md#status-and-verification).
 
 ## Change log
+- 2026-10-21: audit fixes - the paste splitter cuts after "…" at a character boundary (it panicked on the 3-byte ellipsis); the translator server starts without holding the lock, so quitting or removing the model mid-start returns at once (`a_stop_during_the_warm_up_does_not_wait_for_it`).
 - 2026-10-20: RE-PLAY-031 - ReadEase translator (Hy-MT2 via bundled llama.cpp) and the Automatic provider.
 - 2026-10-20: RE-PLAY-030 - translator status in Voices & models.
 - 2026-10-20: RE-PLAY-029 - sources per switch; Paste translated whole before reading.

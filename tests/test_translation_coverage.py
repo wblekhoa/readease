@@ -102,7 +102,9 @@ UNTRANSLATED_BY_DESIGN: frozenset[tuple[str, str]] = frozenset(
         ("domain/divisions.py", "mươi"),
         # Same class (RE-LIB-011): the chapter-line matcher for plain text and
         # the Word heading-style matcher - data for a matcher, never shown.
-        ("importers/text.py", r"^(?:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+[\w.:\-–—]+(?:[\s:.\-–—].{0,80})?$"),
+        ("importers/text.py", r"^(?:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+"),
+        ("importers/text.py", r"(?:\d+|[ivxlcdm]+|thứ\s+\w+|một|hai|ba|bốn|tư|năm|sáu|bảy|tám|chín|mười(?:\s+\w+)?"
+                              r"|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[a-z]+teen|twenty(?:-\w+)?)"),
         ("importers/text.py", r"^(?:heading|tieude|titre|überschrift|ueberschrift)\s*([12])$|^title$"),
         ("domain/divisions.py", "chương"),
         # Abbreviations the sentence splitter matches against. They are data

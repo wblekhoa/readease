@@ -125,8 +125,8 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
     <footer className="absolute -left-6 -right-6 bottom-0 z-20" aria-label={text("home.settings")}>
       <GradientBlur edge="bottom" />
       <div data-shell-footer className="relative z-10 flex flex-wrap items-center justify-end gap-2 px-6 pb-4 pt-6">
-      <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
-      <Button size="sm" variant="ghost" data-popover-trigger disabled={settingsBlocked} onClick={onTranslation}>{text("translation.short")} · {translation}</Button>
+      <Button size="sm" variant="ghost" data-popover-trigger aria-haspopup="dialog" aria-label={`${text("player.settings_open")}: ${voice || text("translation.choose_voice")}`} disabled={settingsBlocked} onClick={onSettings}><VoiceIcon /><span className="max-w-[24ch] truncate">{voice || text("translation.choose_voice")}</span></Button>
+      <Button size="sm" variant="ghost" data-popover-trigger aria-haspopup="dialog" aria-label={`${text("translation.open_settings")}: ${translation}`} disabled={settingsBlocked} onClick={onTranslation}>{text("translation.short")} · {translation}</Button>
       </div>
     </footer>
     {dragging !== null && <DropZone icon={<ImportIcon />} headline={text(dragging ? "home.drop" : "home.file_types")} tone={dragging ? "ok" : "error"} />}

@@ -56,6 +56,7 @@ export function External({
   onHistory?: () => void;
 }) {
   const [granted, setGranted] = useState<boolean | null>(null);
+  const [clearing, setClearing] = useState(false);
   const [asked, setAsked] = useState(false);
   /* A moment of "you have it now" after the grant is seen, then nothing:
      the card is gone and the line is not kept (owner, 19/09). */
@@ -218,13 +219,19 @@ export function External({
           {text("history.button")}
         </Button>
       )}
-      {!bare && (
+      {!bare && (clearing ? <>
+        {/* The list is also History on this Mac now: emptying it deletes
+            what is saved, so it is asked first (audit 21/10). */}
+        <span className="text-sm text-ink-mute">{text("external.history_clear_confirm")}</span>
+        <Button variant="ghost" size="sm" onClick={() => setClearing(false)}>{text("library.remove_keep")}</Button>
+        <Button variant="danger" size="sm" onClick={() => { setClearing(false); onClearHistory(); }}>{text("external.history_clear")}</Button>
+      </> : (
         /* The Qt shell could empty this list; the rewrite dropped the
            action until the parity audit found it (2026-09-02). */
-        <Button variant="ghost" size="sm" onClick={onClearHistory}>
+        <Button variant="ghost" size="sm" onClick={() => setClearing(true)}>
           {text("external.history_clear")}
         </Button>
-      )}
+      ))}
     </div>
   );
 

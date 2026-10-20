@@ -14,7 +14,7 @@
 <p align="center"><sub>Trình đọc — đoạn đang đọc được tô sáng, hình được đánh số và nhắc đúng chỗ. Nội dung minh hoạ.</sub></p>
 
 <p align="center">
-  <img src="assets/screenshots/shelf.png" width="400" alt="Thư viện: bìa sách, tiến độ đã đọc, nút Từ Apple Books và Mở PDF hoặc EPUB">
+  <img src="assets/screenshots/shelf.png" width="400" alt="Thư viện: bìa sách, tiến độ đã đọc, nút Từ Apple Books và Mở sách hoặc tài liệu">
   <img src="assets/screenshots/voices.png" width="400" alt="Danh sách giọng đọc: 20 giọng Việt và 6 giọng Anh trên máy, lọc theo ngôn ngữ và giới tính, nghe thử và bật giọng để đổi nhanh">
 </p>
 <p align="center"><sub>Thư viện với tiến độ từng tài liệu · Danh sách 20 giọng trên máy, nghe thử trước khi chọn.</sub></p>
@@ -54,7 +54,7 @@ Bạn **không cần** API key, Homebrew, Python hay kiến thức lập trình.
 
 ### Lần đầu mở app
 
-Màn đầu tiên **"Chọn cách đọc để bắt đầu"** liệt kê máy bạn đọc được gì: mỗi thứ tiếng một nhóm, mỗi bản giọng một dòng với dung lượng và nút **Tải và dùng**. Không bắt buộc tải gì — **Vào thư viện** luôn bấm được, và bạn có thể tải giọng sau ở nút **Giọng đọc & mô hình** trên trang chủ. App **chỉ tải bản bạn chọn**: tiếng Việt *Tiêu chuẩn* ~330 MB, *Cao nhất* ~625 MB (đọc chậm hơn chừng 11 %), tiếng Anh ~330 MB; sau đó đọc offline. Đổi bản khi đang đọc thì app hỏi lại trước và nói rõ cần tải bao nhiêu; bản không dùng nữa xoá được bằng một nút ngay chỗ đó.
+Màn đầu tiên **"Chọn cách đọc để bắt đầu"** liệt kê máy bạn đọc được gì: mỗi thứ tiếng một nhóm, mỗi bản giọng một dòng với dung lượng và nút **Tải và dùng**. Không bắt buộc tải gì — **Bắt đầu đọc** luôn bấm được, kể cả khi chưa tải gì, và bạn có thể tải giọng sau ở nút **Giọng đọc & mô hình** trên trang chủ. App **chỉ tải bản bạn chọn**: tiếng Việt *Tiêu chuẩn* ~330 MB, *Cao nhất* ~625 MB (đọc chậm hơn chừng 11 %), tiếng Anh ~330 MB; sau đó đọc offline. Đổi bản khi đang đọc thì app hỏi lại trước và nói rõ cần tải bao nhiêu; bản không dùng nữa xoá được bằng một nút ngay chỗ đó.
 
 Tài liệu, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/Application Support/VieNeu Reader/`, ngoài app — nâng cấp bằng cách kéo bản mới đè lên bản cũ, không mất gì. Chi tiết cài đặt, cấp quyền và xử lý lỗi: [INSTALL.md](INSTALL.md).
 
@@ -70,8 +70,10 @@ Tài liệu, tiến độ, ghi chú và giọng đã tải nằm ở `~/Library/
 - **Dán nội dung:** dán tối đa 100.000 ký tự; ReadEase giữ ranh giới đoạn văn và tự chia nội dung dài thành các phần vừa nghe.
 - **Quét đọc ở mọi ứng dụng:** bôi đen chữ ở bất kỳ đâu — trang web, PDF, thư, ghi chú, Apple Books — rồi nhấn phím tắt đọc (mặc định **Option-Command-R**, đổi được trong màn hình **Quét đọc**) để nghe mà không cần chuyển cửa sổ. Phần được trình quản lý mật khẩu đánh dấu bí mật thì app từ chối đọc.
 - **Dừng mà không phải rời chỗ đang đọc:** nhấn lại chính phím tắt đó là dừng. Trong lúc đang đọc, ReadEase cũng hiện một biểu tượng nhỏ trên thanh menu — bấm vào là dừng, và nó biến mất khi đọc xong.
-- **Lịch sử phiên:** nghe lại tối đa 10 nội dung gần nhất từ tài liệu, nội dung dán hoặc Apple Books. Lịch sử biến mất khi thoát app.
-- **Riêng tư và local-first:** tài liệu, tiến độ, mô hình và cache audio ở trên máy; không có telemetry hay máy chủ nền.
+- **Lịch sử trên máy:** nội dung bạn dán hoặc quét đọc được lưu lại trên máy này (bật mặc định, tắt được; giữ 7, 30, 90 hoặc 365 ngày, hoặc đến khi bạn xoá — mặc định 30 ngày) để nghe lại. Chỉ lưu chữ và bản dịch, không lưu âm thanh, không gửi đi đâu. Xoá từng mục hoặc tất cả, hay tắt hẳn, ngay trong bảng Lịch sử.
+- **Dịch trước khi đọc:** bật riêng cho Quét đọc và Dán nội dung; dịch trên máy bằng bộ dịch ReadEase (Hy-MT2, tải ~1,1 GB khi bạn yêu cầu, chạy bằng llama.cpp kèm app trên 127.0.0.1), Apple Translation, hoặc Ollama/LM Studio bạn tự chạy. Xem [PRIVACY.md](PRIVACY.md).
+- **Riêng tư và local-first:** tài liệu, tiến độ, mô hình và cache audio ở trên máy; không có telemetry; không cần API key trừ khi bạn tự chọn giọng AI bên ngoài; máy chủ duy nhất là bộ dịch tuỳ chọn, chỉ lắng nghe trên 127.0.0.1.
+- **Cột bên:** bật/tắt bằng ⌥⌘S, chứa điều hướng và nhóm Cài đặt: Giọng đọc, Dịch trước khi đọc, Cách đọc riêng, Giọng đọc & mô hình.
 - **Giao diện song ngữ:** chuyển tức thời giữa `🇻🇳 Tiếng Việt` và `🇬🇧 English`; lựa chọn được lưu cho lần mở sau. VieNeu vẫn là mô hình giọng đọc tiếng Việt.
 - **Chọn cách đọc theo nhu cầu:** mỗi ngôn ngữ một mô hình trên máy — tiếng Việt (VieNeu, 330 hoặc 625 MB) và tiếng Anh (Kokoro-82M, 330 MB, sáu giọng Mỹ) — tải hay xoá tuỳ bạn, không bắt buộc tải mô hình nào; hoặc dùng giọng API bằng khoá của bạn. Màn đầu tiên và nút **Giọng đọc & mô hình** trên trang chủ là nơi xem máy đọc được gì, bằng gì, và thêm bớt.
 - **Chọn ngôn ngữ đọc trước, rồi chọn giọng:** bảng giọng đọc hỏi bạn đọc bằng tiếng gì, rồi mới hiện giọng và mô hình của tiếng đó. Không giọng nào bị chặn: khi nội dung đang mở là thứ tiếng khác với giọng đang chọn, app chỉ gợi ý — một câu và một nút — còn chọn gì là quyền của bạn.
@@ -94,7 +96,7 @@ Với EPUB dạng reflowable, ReadEase hiển thị văn bản và ảnh raster 
 2. Dán văn bản, chọn giọng và tốc độ.
 3. Bấm **Đọc nội dung**. Với văn bản dài, trạng thái sẽ hiển thị tiến độ như **Đang đọc đoạn 2/7**.
 
-Bản nháp chỉ tồn tại trong phiên hiện tại, không tạo tài liệu mới và không thay đổi tiến độ của tài liệu trong Thư viện.
+Nội dung dán không được thêm vào Thư viện, không lưu âm thanh và không thay đổi tiến độ của tài liệu trong Thư viện; chữ được giữ trong Lịch sử trên máy này (tắt được).
 
 ### 3. Quét đọc phần đang chọn ở bất kỳ ứng dụng nào
 
@@ -109,7 +111,7 @@ ReadEase **không bao giờ** tự xem clipboard. App chỉ đọc đúng lúc b
 
 ### 4. Nghe lại nội dung gần đây
 
-Mở **Lịch sử phiên** trên thanh phát để nghe lại nội dung. Các mục trùng chính xác được gộp; bạn có thể xóa lịch sử ngay, và toàn bộ lịch sử tự mất khi thoát ReadEase.
+Mở bảng **Lịch sử** ở màn hình **Dán nội dung** hoặc **Quét đọc** để nghe lại nội dung đã dán hoặc quét. Lịch sử được lưu trên máy này (file `history.sqlite3`), bật mặc định; chỉ giữ chữ và bản dịch, không có âm thanh, không gửi đi đâu. Bạn chọn giữ 7, 30, 90 hoặc 365 ngày, hoặc đến khi tự xoá (mặc định 30 ngày); xoá từng mục, xoá tất cả hoặc tắt lưu ngay trong bảng đó.
 
 
 ### 5. Chuyển ghi chú sang bản khác
@@ -124,14 +126,14 @@ ReadEase lưu tài liệu đã nhập, vị trí đọc, mô hình và audio cac
 ~/Library/Application Support/VieNeu Reader/
 ```
 
-Tên thư mục cũ được giữ để người dùng nâng cấp không mất thư viện và tiến độ. Nội dung dán hoặc quét chọn không được thêm vào Thư viện, không ghi log và không lưu audio cache. Màn Dán nội dung có thể xuất ra file WAV kèm phụ đề, vào nơi bạn chọn; metadata của file WAV ghi rõ đây là giọng do AI tạo (xem [PRIVACY.md](PRIVACY.md)). Lần chuẩn bị mô hình đầu tiên cần mạng; sau đó việc đọc diễn ra cục bộ.
+Tên thư mục cũ được giữ để người dùng nâng cấp không mất thư viện và tiến độ. Nội dung dán hoặc quét chọn không được thêm vào Thư viện, không ghi log và không lưu audio cache; chữ (và bản dịch nếu có) được giữ trong Lịch sử trên máy này, bật mặc định và tắt được. Màn Dán nội dung có thể xuất ra file WAV kèm phụ đề, vào nơi bạn chọn; metadata của file WAV ghi rõ đây là giọng do AI tạo (xem [PRIVACY.md](PRIVACY.md)). Lần chuẩn bị mô hình đầu tiên cần mạng; sau đó việc đọc diễn ra cục bộ.
 
 ## Giới hạn hiện tại
 
 - PDF scan chỉ chứa ảnh cần OCR trước khi nhập; ReadEase chưa tích hợp OCR.
 - Chưa hỗ trợ PDF đặt mật khẩu, EPUB có DRM hoặc tệp bị hỏng.
 - Trình đọc EPUB chưa tái tạo toàn bộ CSS/layout của tệp, fixed-layout, SVG tương tác, bảng phức tạp hoặc mô tả ảnh bằng AI.
-- Bản source này được build và ký ad-hoc trên máy của bạn; chưa phải binary có Developer ID và notarization để phát hành đại trà.
+- Bản bạn tự build từ source được ký ad-hoc trên máy của bạn. Các bản trên trang Releases được ký bằng Developer ID và đã notarize.
 
 ## Chạy local để phát triển
 
@@ -178,7 +180,7 @@ Download `ReadEase-<version>-arm64.dmg`, open it and drag `ReadEase.app` into Ap
 > [!NOTE]
 > Releases are signed with an Apple Developer ID certificate and notarized by Apple, so the app opens like any other. Full guide, including the older 0.1.0/0.1.1 builds that macOS blocks: [INSTALL.en.md](INSTALL.en.md).
 
-Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, 8 GB of memory (16 GB is smoother if you use both the Vietnamese and the English voice; a voice left unused for five minutes is released), about 220 MB for the app plus a one-time voice download (~330 MB Standard or ~625 MB Highest), and internet only for those two downloads. No API key, no account, no cost. In the app, click **Set up voice** once.
+Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, 8 GB of memory (16 GB is smoother if you use both the Vietnamese and the English voice; a voice left unused for five minutes is released), about 220 MB for the app plus a one-time voice download (~330 MB Standard or ~625 MB Highest), and internet only for those two downloads. No API key, no account, no cost. On the first screen, press **Download and use** on a Vietnamese or English voice (Standard · 330 MB or Highest · 625 MB for Vietnamese), or skip it and add voices later under **Voices & models**.
 
 ## Main features
 
@@ -188,8 +190,9 @@ Requirements: an Apple Silicon Mac (M1 or newer), macOS 15 or newer, 8 GB of mem
 - Read pasted text and automatically segment long passages.
 - Read selected text from any app with a configurable shortcut (**Option-Command-R** by default) after granting Accessibility permission.
 - Stop without leaving what you are reading: press the same shortcut again, or click the menu bar item that appears while a reading is under way.
-- Replay up to 10 recent items during the current session.
-- Keep documents, model data, progress and audio cache on the Mac; no API key, telemetry or background server.
+- Keep a History of pasted and scanned text on this Mac (on by default, switchable; kept 7, 30, 90 or 365 days or until you delete it; text and translation only, no audio, never sent anywhere) and replay it.
+- Translate before reading, switched on separately for Read a selection and Paste text: on-device with the ReadEase translator (Hy-MT2, a ~1.1 GB download only when you ask, run by the bundled llama.cpp on 127.0.0.1), Apple Translation, or Ollama / LM Studio that you run yourself. See [PRIVACY.md](PRIVACY.md).
+- Keep documents, model data, progress and audio cache on the Mac; no telemetry, and no API key unless you choose an outside AI voice. The only server is the optional translator, listening on 127.0.0.1 only.
 
 ## Local development
 

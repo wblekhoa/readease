@@ -546,7 +546,6 @@ export function SuggestionDot() {
 /** One-line outcome: quiet when fine, danger-toned when not. */
 export function Notice({
   tone = "ok",
-  fine = false,
   compact = false,
   children,
   className = "",
@@ -562,11 +561,6 @@ export function Notice({
    * is a CALLOUT - it explains something before you act, stands on its own,
    * and gets the DS info fill to say so (owner, 09/09). */
   tone?: "ok" | "error" | "info";
-  /** Fine print: 12px and italic, for the aside that qualifies a control
-   * rather than telling somebody something happened. A separate flag and not
-   * a className, because `text-xs` handed in from outside would fight the
-   * `text-sm` in here and the winner would depend on stylesheet order. */
-  fine?: boolean;
   /** A small callout: an `info` wash at 12px, upright - for an aside under a
    * list that should not outweigh the rows above it (owner, 20/10). */
   compact?: boolean;
@@ -584,7 +578,7 @@ export function Notice({
         // callout reads as a quiet aside rather than one more framed box.
         ? "notice-in rounded-2xl bg-info-wash px-3.5 py-2.5 text-ink"
         : "text-ink-mute";
-  const size = fine ? "text-xs italic" : compact ? "text-xs" : "text-sm";
+  const size = compact ? "text-xs" : "text-sm";
   if (action && tone === "info") {
     return (
       <div className={`${voice} ${className}`}>

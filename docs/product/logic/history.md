@@ -40,4 +40,5 @@ relations:
 - Flexible: where the History panel opens, how many rows it shows, labels.
 
 ## Change log
+- 2026-10-21: a translated scan whose original has line breaks is matched as the same entry (RE-HIST-002); deleting all history and clearing the scan list ask first.
 - 2026-10-20: created (RE-HIST-001…004).

@@ -1550,7 +1550,7 @@ export default function App() {
   /* RE-HOME-001: Read is the common entry; reading workspaces follow it.
      Moving notes remains a separate utility. */
   const tabs = useMemo(() => ([
-    { value: "home", label: text("nav.home"), icon: <VoiceIcon /> },
+    { value: "home", label: text("nav.home"), icon: <AiSpeakerIcon /> },
     { value: "library", label: text("nav.library"), icon: <BookIcon /> },
     { value: "paste", label: text("nav.paste"), icon: <ClipboardIcon /> },
     { value: "external", label: text("nav.external"), icon: <CursorTextIcon /> },
@@ -2185,7 +2185,7 @@ export default function App() {
             onSettings={() => { setHubOpen(false); setReaderPanel("voice"); }}
             onTranslation={() => { setHubOpen(false); setReaderPanel("translation"); }}
             voice={`${voiceName(voices.find(voice => voice.id === voiceId)?.label) || text("translation.choose_voice")} · ${rate}×`}
-            translation={translationSummary} settingsBlocked={reading !== "idle" || exporting}
+            translation={translationOn ? translation.settings.target.toUpperCase() : text("translation.off")} settingsBlocked={reading !== "idle" || exporting}
           />
         ) : tab === "library" ? (
           openBook ? (

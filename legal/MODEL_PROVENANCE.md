@@ -2,7 +2,7 @@
 
 Model weights are not committed to this repository or embedded in the app
 bundle. ReadEase downloads only the exact revisions below into its private
-Application Support directory during explicit first-run setup.
+Application Support directory when you ask for it under Voices & models.
 
 | Asset | Repository | Revision | Declared license | Model-card receipt |
 | --- | --- | --- | --- | --- |
@@ -12,13 +12,13 @@ Application Support directory during explicit first-run setup.
 | misaki English lexicon (`us_gold.json`, `us_silver.json`) | `hexgrad/misaki` (GitHub, raw file download) | `fba1236595f2d2bf21d414ba6e57d25256afada3` | Apache-2.0 | SHA-256 `dc414872a49a28ae6c141463d502fd945f3b2fde040484fdc47d00cc4612686f`, `de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475` |
 | Hy-MT2 1.8B Q4_K_M GGUF (ReadEase translator; `Hy-MT2-1.8B-Q4_K_M.gguf`) | `tencent/Hy-MT2-1.8B-GGUF` | `a0c709d9fac510f2c807aa3af52872340dc37a4a` | Apache-2.0 | SHA-256 `dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699` (the repository's own LFS hash), pinned in `src/vieneu_reader/translation/model.py` |
 
-The ReadEase translator (RE-PLAY-031) is optional too: downloaded only when
+The ReadEase translator is optional too: downloaded only when
 the reader asks for it under Voices & models › Translation, checked against
 the pinned hash before it is marked ready, removable from the same place. It
 is run by the bundled `llama-server` (llama.cpp, MIT) on 127.0.0.1 only.
 
-The English voice is optional: nothing of it is fetched on first run. It is
-downloaded when the reader asks for it under Settings › Reading models, every
+The English voice is optional: nothing of it is fetched until you ask. It is
+downloaded when the reader asks for it under Voices & models, every
 file is checked against the hash pinned in code before the ready marker is
 written, and it can be removed from the same place.
 

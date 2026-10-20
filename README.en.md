@@ -14,7 +14,7 @@ ReadEase is a local-first macOS app that reads your **EPUB, PDF, Word, Markdown 
 <p align="center"><sub>The reader - the passage being read is highlighted; figures are numbered and announced in place. Demo content.</sub></p>
 
 <p align="center">
-  <img src="assets/screenshots/shelf.png" width="400" alt="The library: covers, reading progress, From Apple Books and Open PDF or EPUB buttons">
+  <img src="assets/screenshots/shelf.png" width="400" alt="The library: covers, reading progress, From Apple Books and Open a book or document buttons">
   <img src="assets/screenshots/voices.png" width="400" alt="The voice list: 20 on-device voices, a male/female filter, preview and quick-switch toggles">
 </p>
 <p align="center"><sub>The library with per-document progress · 20 on-device voices, each with a preview before you commit.</sub></p>
@@ -53,7 +53,7 @@ You do not need an API key, Homebrew, Python or programming knowledge.
 
 ## First launch
 
-The first screen, **"Choose how to read, to begin"**, lists what this Mac can read with: one group per language, one row per voice model with its size and a **Download and use** button. Nothing is required - **Go to the library** is always available, and voices can be added later under **Voices & models** on the home screen. Only what you pick is downloaded: Vietnamese *Standard* ~330 MB, *Highest* ~625 MB (reads about 11 % slower), English ~330 MB; reading is offline after that. Switching models mid-reading asks first and says how much would be downloaded; a model you no longer use is removed with one button in the same place.
+The first screen, **"Choose how to read, to begin"**, lists what this Mac can read with: one group per language, one row per voice model with its size and a **Download and use** button. Nothing is required - **Start reading** is always available, even before anything is downloaded, and voices can be added later under **Voices & models** on the home screen. Only what you pick is downloaded: Vietnamese *Standard* ~330 MB, *Highest* ~625 MB (reads about 11 % slower), English ~330 MB; reading is offline after that. Switching models mid-reading asks first and says how much would be downloaded; a model you no longer use is removed with one button in the same place.
 
 Documents, progress, notes and downloaded voices live in `~/Library/Application Support/VieNeu Reader/`, outside the app - upgrading is dragging the new build over the old one, and nothing is lost. Gatekeeper details, permissions and troubleshooting: [INSTALL.en.md](INSTALL.en.md).
 
@@ -67,10 +67,12 @@ Documents, progress, notes and downloaded voices live in `~/Library/Application 
 - **Markdown:** pasted and scanned text is read as meant - emphasis, strikethrough, links (their words, not the address), headings, quotes, bullets, task boxes and table rows lose their marks; rules and link definitions are silent; code loses its backticks and keeps its content. Displayed text stays as captured; powers like `2**10`, `snake_case` and unpaired marks stay literal. Books omit only paired bold markers.
 - **EPUB figures:** show meaningful local raster images in reading order, number them as **Figure 1, Figure 2…**, and add a spoken cue at the correct position.
 - **Paste text:** paste up to 100,000 characters while preserving paragraph boundaries; long passages are split into manageable playback parts.
-- **Read from Apple Books:** select text and press the read shortcut (**Control-Option-Command-R** by default, changeable in the **Read books** view) without bringing ReadEase to the foreground.
-- **Session history:** replay up to 10 recent items from books, pasted text or Apple Books. History disappears when the app closes.
+- **Read a selection in any app:** select text anywhere - a web page, PDF, mail, notes, Apple Books - and press the read shortcut (**Option-Command-R** by default, changeable in the **Read a selection** view) to hear it without switching windows. Text a password manager marks as secret is refused. Press the shortcut again to stop.
+- **History on this Mac:** pasted and scanned text is kept here so you can replay it (on by default, switchable; kept 7, 30, 90 or 365 days or until you delete it, 30 by default; text and translation only, no audio, never sent anywhere). Delete one item or all, or switch it off, in the History panel of the Paste text and Read a selection screens.
+- **Translate before reading:** switched on separately for Read a selection and Paste text; translation runs on the Mac with the ReadEase translator (Hy-MT2, a ~1.1 GB download only when you press Download under Voices & models › Translation, run by the bundled llama.cpp on 127.0.0.1), Apple Translation, or Ollama / LM Studio that you run yourself. See [PRIVACY.md](PRIVACY.md).
+- **Side column:** toggled with ⌥⌘S; it holds navigation and a Settings group: Voice, Translate before reading, Pronunciations, Voices & models.
 - **Vietnamese and English UI:** choose `🇻🇳 Tiếng Việt` or `🇬🇧 English` from the language selector. The choice is applied immediately and saved for the next launch.
-- **Local-first privacy:** documents, progress, model data and audio cache stay on the Mac. There is no API key, telemetry or background server.
+- **Local-first privacy:** documents, progress, model data and audio cache stay on the Mac. There is no telemetry, and no API key unless you choose an outside AI voice; the only server is the optional translator, which listens on 127.0.0.1 only.
 - **Choose how to read:** one model per language on the Mac — Vietnamese (VieNeu, 330 or 625 MB) and English (Kokoro-82M, 330 MB, six American voices) — fetched or removed as you need, none of them required; or API voices on your own key. The first-run screen and the **Voices & models** button on the home screen show what this Mac reads, with what, and let you add or remove.
 - **Pick the language first, then the voice:** the voice panel asks which language you read in, then shows that language's voices and models. No voice is ever blocked: when the text in front of you is in the other language, the app only suggests — one sentence, one button — and the choice stays yours.
 
@@ -94,22 +96,22 @@ For reflowable EPUBs, ReadEase displays text and local raster images in reading 
 2. Paste the content and select a voice and speed.
 3. Click **Read text**. Long text shows progress such as **Reading part 2/7**.
 
-Pasted text stays in the current session, does not become a library document and does not change saved progress.
+Pasted text is not added to the library, no audio is cached and saved progress does not change; the text is kept in History on this Mac (switchable).
 
-### Read selected text from Apple Books
+### Read a selection in any app
 
 1. Open the **Read a selection** view in ReadEase to confirm shortcut status.
-2. Open Apple Books and select the text you want to hear.
-3. Press the read shortcut shown in the **Read a selection** view (**Control-Option-Command-R** unless you changed it).
+2. Go to any app - a browser, Preview, Mail, Apple Books - and select the text you want to hear.
+3. Press the read shortcut shown in the **Read a selection** view (**Option-Command-R** unless you changed it).
 4. The first time, enable ReadEase in **System Settings → Privacy & Security → Accessibility**. Use **Open permission settings** in ReadEase to open the correct pane directly.
 
-For each shortcut transaction, ReadEase keeps an in-memory copy of the current clipboard, sends the copy command to Apple Books, then restores every clipboard item/type/byte before reading. If restoration cannot be verified, the app stops before playback. ReadEase does not monitor the screen in the background.
+For each shortcut transaction, ReadEase keeps an in-memory copy of the current clipboard, sends the copy command to the frontmost app, then restores every clipboard item/type/byte before reading. If restoration cannot be verified, the app stops before playback. ReadEase does not monitor the screen in the background.
 
-ReadEase does not watch the clipboard either, unless you switch on **Read as soon as you copy in Apple Books** in the **Read books** view. While that is on, ReadEase checks the clipboard's change counter a few times a second and reads newly copied text **while Apple Books is the frontmost app**; it reads only when Apple Books is in front at two consecutive checks, and skips items marked concealed, which password managers set. macOS does not record which app did the copying, so a gap remains: copying elsewhere and switching to Apple Books inside the same fraction of a second can still be read. Switching it off stops the checking. See [`PRIVACY.md`](PRIVACY.md) for details.
+ReadEase never watches the clipboard on its own. It reads only at the moment you press the shortcut, and only what you had selected then. Because the shortcut works in any app, ReadEase reads **exactly what is selected** - it cannot tell sensitive text from ordinary text; text a password manager marks as secret is refused, the rest is not. See [`PRIVACY.md`](PRIVACY.md) for details.
 
 ### Replay recent content
 
-Open **Session history** in the player to replay recent content. Exact duplicates are grouped, history can be cleared immediately and the entire list disappears when ReadEase closes.
+Open the **History** panel on the Paste text or Read a selection screen to replay what you pasted or scanned. History is saved on this Mac (`history.sqlite3`), on by default; it keeps text and translation only, no audio, and sends nothing anywhere. Choose 7, 30, 90 or 365 days, or until you delete it (30 by default); delete one item or all, or switch it off, in the same panel.
 
 ## Local data and privacy
 
@@ -119,7 +121,7 @@ ReadEase stores imported documents, reading progress, voice-model data and audio
 ~/Library/Application Support/VieNeu Reader/
 ```
 
-The legacy directory name is intentionally preserved so existing users do not lose their library or progress. Pasted or selected text is not added to the library, written to logs or stored in the audio cache. Paste text can be exported as a WAV with subtitles beside it, to a place you choose; the WAV's metadata marks the speech as AI-generated (see [PRIVACY.md](PRIVACY.md)). The first voice-model setup requires the internet; reading is local afterward.
+The legacy directory name is intentionally preserved so existing users do not lose their library or progress. Pasted or selected text is not added to the library, written to logs or stored in the audio cache; the text (and its translation) is kept in History on this Mac, which is on by default and can be switched off. Paste text can be exported as a WAV with subtitles beside it, to a place you choose; the WAV's metadata marks the speech as AI-generated (see [PRIVACY.md](PRIVACY.md)). The first voice-model setup requires the internet; reading is local afterward.
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy boundary.
 
@@ -128,9 +130,8 @@ See [PRIVACY.md](PRIVACY.md) for the full privacy boundary.
 - Image-only scanned PDFs require OCR before import; ReadEase does not include OCR yet.
 - Password-protected PDFs, DRM-protected EPUBs and damaged files are not supported.
 - The EPUB reader does not reproduce every stylesheet/layout, interactive SVG, complex table or fixed-layout publication.
-- The external read-selection shortcut currently supports Apple Books only.
 - VieNeu provides Vietnamese speech. English UI support does not add an English voice model.
-- The source build is ad-hoc signed on the user’s Mac and is not a Developer ID-signed, notarized public binary.
+- A build you make from source is ad-hoc signed on your Mac. The builds on the Releases page are signed with a Developer ID and notarized.
 
 ## Local development
 
