@@ -92,7 +92,7 @@ const SCREENS = {
   home_empty: [["wait", /^Bạn muốn đọc gì\?$|^What would you like to read\?$/]],
   home_error: [["wait", /./, "[role=alert]"]],
   home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
-  home_translation: [["click", /^Dịch · |^Translate · /], ["wait", /^Cài đặt dịch$|^Translation settings$/, "[role=dialog]"]],
+  home_translation: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Cài đặt dịch$|^Translation settings$/, "[role=dialog]"]],
   home_import: [["click", /^Mở tài liệu|^Open a document/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   home_paste: [...UNFOLD, ["click", /^Nhập hoặc dán nội dung|^Type or paste text/], ["click-at", "textarea"], ["type", "Nội dung thử của trang Đọc."],
     ["click", /^Đọc$|^Read$/], ["click", /^Mở lại Nội dung thử|^Reopen Nội dung thử/], ["wait", /^Dán nội dung$|^Paste text$/, "h2"]],
@@ -737,12 +737,22 @@ async function main() {
               await evalJs(AXE_SOURCE);
               const report = await evalJs(`(async () => {
                 try {
+                  // Colours are measured at rest: a control that had just
+                  // become enabled was read halfway through its colour
+                  // transition, so its contrast changed run to run (21/10).
+                  const still = document.createElement("style");
+                  still.textContent = "*, *::before, *::after { transition: none !important; }";
+                  document.head.append(still);
+                  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                   const found = await axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] }, resultTypes: ["violations"] });
+                  still.remove();
                   return { ok: true, violations: found.violations.map((v) => ({ id: v.id, impact: v.impact,
                     // A contrast finding carries its own measure (27/09): the
                     // selector alone left the colours to be guessed.
                     targets: v.nodes.slice(0, 3).map((n) => String(n.target[0]).slice(0, 80)
-                      + (v.id === "color-contrast" && n.any?.[0]?.data ? \` (\${n.any[0].data.fgColor} on \${n.any[0].data.bgColor}, \${n.any[0].data.contrastRatio}:1)\` : "")) })) };
+                      + (v.id === "color-contrast" && n.any?.[0]?.data ? \` (\${n.any[0].data.fgColor} on \${n.any[0].data.bgColor}, \${n.any[0].data.contrastRatio}:1)\` : "")
+                      // and the words it was about, so the element can be found (21/10)
+                      + \` «\${(String(n.html || "").replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim() || String(n.html || "").slice(0, 90)).slice(0, 90)}»\`) })) };
                 } catch (error) { return { ok: false, error: String((error && error.message) || error) }; }
               })()`);
               if (!report || !report.ok) findings.push({ cell, kind: "axe-failed", detail: report?.error || "axe did not answer" });
@@ -905,7 +915,9 @@ async function main() {
         if (!(await findAndClick(/^Đọc tiếp$/))) expect("transport", false, "no Continue button to start a reading");
         else if (!(await waitFor(/^Tạm dừng$/, 6000, "button"))) expect("transport", false, "the reading did not start");
         else {
-          const group = await evalJs(`(() => { const pause = [...document.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Tạm dừng");
+          // The paragraph being read carries its own small Pause (the reading
+          // position control); the transport's is the one outside the page.
+          const group = await evalJs(`(() => { const pause = [...document.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "Tạm dừng" && !b.closest("[data-segment], .voice-here"));
             const g = pause && pause.closest("[role=group]"); return g ? (g.getAttribute("aria-label") || "") : null; })()`);
           expect("transport", !!group, group === null ? "the transport is not a group" : "the transport group has no name");
           // The bar is at the bottom of the window, so its voice menu opens
@@ -978,32 +990,32 @@ async function main() {
       // open; the next time the sheet opens it heads the list under "Yêu
       // thích"; the voice select lists it first; and it is still starred
       // after a reload (the mock keeps its settings across one, as the
-      // engine keeps settings.json). "Thái Sơn" is one of the five switched
+      // engine keeps settings.json). "Trúc Ly" is one of the five switched
       // on from the start, so the select offers it.
       const VOICES_SHEET = [["click", /^Cài đặt giọng đọc$/], ["click", /^Quản lý giọng/], ["wait", /^Danh sách giọng đọc$/]];
       const heads = () => evalJs(`[...document.querySelectorAll('[role="dialog"] h3')].map((h) => h.textContent.trim())`);
       // Where the row stands is its place among the rows, not its pixels:
       // clicking scrolls the list to put the button in view.
       const star = () => evalJs(`(() => { const rows = [...document.querySelectorAll('[role="dialog"] button[aria-label^="Yêu thích "]')];
-        const at = rows.findIndex((e) => e.getAttribute("aria-label") === "Yêu thích Thái Sơn");
+        const at = rows.findIndex((e) => e.getAttribute("aria-label") === "Yêu thích Trúc Ly");
         return at < 0 ? null : { pressed: rows[at].getAttribute("aria-pressed"), at }; })()`);
       const firstStar = () => evalJs(`document.querySelector('[role="dialog"] button[aria-label^="Yêu thích "]')?.getAttribute("aria-label") ?? null`);
       const starredGroup = async () => {
         const [, first] = await heads();
-        return first === "Yêu thích (1)" && (await firstStar()) === "Yêu thích Thái Sơn";
+        return first === "Yêu thích (1)" && (await firstStar()) === "Yêu thích Trúc Ly";
       };
       if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("favorite", false, "could not open the voices sheet");
       else {
         const before = await star();
-        if (!before) expect("favorite", false, 'no star on "Thái Sơn" in the voices sheet');
+        if (!before) expect("favorite", false, 'no star on "Trúc Ly" in the voices sheet');
         else {
-          await findAndClick(/^Yêu thích Thái Sơn$/);
+          await findAndClick(/^Yêu thích Trúc Ly$/);
           const after = await star();
           expect("favorite", before.pressed === "false" && after?.pressed === "true", `the star went ${before.pressed} -> ${after?.pressed}`);
           expect("favorite", after?.at === before.at, `the row moved from place ${before.at} to ${after?.at} while the sheet was open`);
           await key("Escape");
           for (const [, re] of VOICES_SHEET.slice(0, 2)) await findAndClick(re);
-          expect("favorite", await starredGroup(), `reopened, the sheet starts ${JSON.stringify((await heads()).slice(1, 2))} / ${await firstStar()}, not "Yêu thích (1)" / Thái Sơn`);
+          expect("favorite", await starredGroup(), `reopened, the sheet starts ${JSON.stringify((await heads()).slice(1, 2))} / ${await firstStar()}, not "Yêu thích (1)" / Trúc Ly`);
           await key("Escape");
           // The Voice picker in the settings panel (HIG 3.13 - a select until
           // 26/09) opens on its Favourites group, the starred voice first.
@@ -1012,7 +1024,7 @@ async function main() {
           const listed = await evalJs(`(() => { const box = document.querySelector('[role="dialog"][aria-label="Chọn giọng"]'); if (!box) return null;
             return [box.querySelector("h3")?.textContent.trim() ?? null,
               box.querySelector("[data-voice-row] button[aria-pressed]")?.getAttribute("aria-label") ?? null]; })()`);
-          expect("favorite", listed?.[0] === "Yêu thích" && listed?.[1] === "Yêu thích Thái Sơn", `the Voice picker starts ${JSON.stringify(listed)}, not Yêu thích / Thái Sơn`);
+          expect("favorite", listed?.[0] === "Yêu thích" && listed?.[1] === "Yêu thích Trúc Ly", `the Voice picker starts ${JSON.stringify(listed)}, not Yêu thích / Trúc Ly`);
           await key("Escape");
           await key("Escape");
           if (!(await goto([...OPEN_BOOK, ...VOICES_SHEET]))) expect("favorite", false, "could not reopen the voices sheet after a reload");
@@ -1024,12 +1036,12 @@ async function main() {
             if ((await findAndClick(/^Đọc tiếp$/)) && (await waitFor(/^Tạm dừng$/, 6000, "button"))) {
               await findAndClick(/^Đổi giọng$/);
               const first = await evalJs(`document.querySelector('[role="menu"] [role="menuitem"]')?.textContent.trim() ?? null`);
-              expect("favorite", /^Thái Sơn\s*Yêu thích/.test(first ?? ""), `Change voice starts with ${JSON.stringify(first)}, not the starred "Thái Sơn"`);
+              expect("favorite", /^Trúc Ly\s*Yêu thích/.test(first ?? ""), `Change voice starts with ${JSON.stringify(first)}, not the starred "Trúc Ly"`);
               await key("Escape");
               await findAndClick(/^Dừng$/);
             } else expect("favorite", false, "could not start a reading to open Change voice");
             for (const [, re] of VOICES_SHEET.slice(0, 2)) await findAndClick(re);
-            await findAndClick(/^Yêu thích Thái Sơn$/);
+            await findAndClick(/^Yêu thích Trúc Ly$/);
           }
         }
         crashed("favorite");
@@ -1576,7 +1588,9 @@ async function main() {
         expect("update", !!u && u.modal !== "true", "update details must be non-modal");
         await findAndClick(/^Tải xuống$/);
         expect("update", (await until(sheet, v => v === null)) === null, "download must leave the app usable");
-        const ready = await until(() => evalJs(`document.querySelector('[data-update-notice]')?.textContent`), v => /Sẵn sàng cập nhật/.test(v ?? ""));
+        // In a narrow window the side column is folded and the notice is an
+        // icon: its words are its accessible name, not its text (21/10).
+        const ready = await until(() => evalJs(`(() => { const n = document.querySelector('[data-update-notice]'); return n ? (n.textContent.trim() || n.getAttribute("aria-label")) : null; })()`), v => /Sẵn sàng cập nhật/.test(v ?? ""));
         expect("update", /Sẵn sàng cập nhật/.test(ready ?? ""), "download did not reach ready without installing");
         await perform("check-updates");
         await until(sheet, v => !!v);

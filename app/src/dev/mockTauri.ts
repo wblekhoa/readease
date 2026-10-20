@@ -855,6 +855,10 @@ if (PAID_VOICE === "paid") {
 }
 if (PAID_VOICE === "elevenlabs") {
   SETTINGS.elevenlabs_api_key = "set";
+  // The voice is built with the model the reader chose; without the choice
+  // the catalogue lists v4 Turbo ids and this flash one matched nothing, so
+  // no paid voice was in use and the cost cells never opened (audit 21/10).
+  SETTINGS.elevenlabs_model = "eleven_flash_v2_5";
   SETTINGS.voice = "elevenlabs:eleven_flash_v2_5:nhu";
 }
 if (new URLSearchParams(window.location.search).get("vietnamese") === "missing") {
