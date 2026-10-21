@@ -6,6 +6,11 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Faster: a book starts speaking at once when you press Read (its words are
+  prepared while the page opens), a translated book starts after its first
+  few paragraphs instead of the whole chapter, and ReadEase's own translator
+  is started as soon as you open a screen that translates.
+
 - Translate before reading now works for books in the Library too. Switch
   on "Library" in Translation settings: a book is translated a chapter at a
   time as you listen, read with the translation voice, and each paragraph

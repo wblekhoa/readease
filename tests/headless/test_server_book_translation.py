@@ -83,8 +83,16 @@ class BookTranslationTests(unittest.TestCase):
         self.assertEqual(saved.voice_id, "adam")
 
     # RE-PLAY-032
-    def test_a_paragraph_without_a_translation_is_refused_by_name(self):
+    def test_the_reading_stops_at_the_first_paragraph_not_yet_translated(self):
         self.store.put(BOOK_ID, "en", "x", {self.ids[0]: "The first."})
+        engine = FakeEngine(chunks_per_sentence=1)
+        replies = self.run_([{"id": 2, "method": "read.book", "params": {
+            "book_id": BOOK_ID, "voice_id": "af_heart", "chapters": 1, "translation": {"target": "en"}}}], engine)
+        self.assertTrue(replies[-1]["ok"])
+        self.assertEqual([t for t, _ in engine.requests], ["The first."])
+
+    # RE-PLAY-032
+    def test_nothing_translated_where_it_starts_is_refused_by_name(self):
         replies = self.run_([{"id": 2, "method": "read.book", "params": {
             "book_id": BOOK_ID, "voice_id": "af_heart", "chapters": 1, "translation": {"target": "en"}}}])
         self.assertFalse(replies[-1]["ok"])
