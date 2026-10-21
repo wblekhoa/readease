@@ -384,6 +384,10 @@ const STATES = {
   first_run_hold: "model=missing&download=hold",
   // A reading whose voice has not made its first sound.
   warm_hold: "warm=hold",
+  // RE-PLAY-032: a Vietnamese book with the Library translating to English -
+  // each paragraph's kept translation under it, and the voice panel's
+  // translation voice.
+  library_translated: "translation=vi-en&translation_sources=library",
 };
 // A state that only reaches some screens: the long names show on these.
 const STATE_ON = {
@@ -394,6 +398,7 @@ const STATE_ON = {
   long: ["shelf", "reader", "contents", "book_notes", "search"],
   paid: ["reader", "cost", "player_settings", "audiobook_form"],
   paid_eleven: ["reader", "cost"],
+  library_translated: ["reader", "player_settings"],
   voicefail_network: ["reading_failed"],
   voicefail_blocked: ["reading_failed"],
   voicefail_budget: ["reading_failed"],

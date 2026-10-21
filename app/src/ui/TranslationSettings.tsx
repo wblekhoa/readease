@@ -12,6 +12,7 @@ import { VoicePicker } from './VoicePicker';
 const SOURCES = [
   { id: 'scan', title: 'translation.source_scan', hint: 'translation.source_scan_hint' },
   { id: 'paste', title: 'translation.source_paste', hint: 'translation.source_paste_hint' },
+  { id: 'library', title: 'translation.source_library', hint: 'translation.source_library_hint' },
 ] as const satisfies readonly { id: TranslationSource; title: TextKey; hint: TextKey }[];
 
 export function TranslationSettings({ preference, voices, locked, rate, rates, onRate, onOpenHub, downloading, mode, favorites, previewing, onPreview, onStopPreview, onFavorite }: {

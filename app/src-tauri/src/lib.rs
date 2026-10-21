@@ -236,6 +236,86 @@ fn with_translator(app: &tauri::AppHandle, client: &Engine, mut options: transla
     Ok(options)
 }
 
+/// RE-PLAY-032: translate a chapter's paragraphs that the engine has not
+/// kept yet, keep them, and say how far it got. Stops quietly when a newer
+/// reading (or Stop) moves the generation on.
+fn translate_chapter(app: &tauri::AppHandle, client: &Engine, book_id: &str, options: &translation::Options,
+                     chapter: &serde_json::Value, id: u64, announce: bool) -> Result<bool, String> {
+    use tauri::Emitter;
+    let missing: Vec<(String, String)> = chapter["paragraphs"].as_array().into_iter().flatten()
+        .filter(|p| p["translated"] != true)
+        .filter_map(|p| Some((p["segment_id"].as_str()?.to_string(), p["text"].as_str()?.to_string())))
+        .collect();
+    let total = missing.len();
+    let mut batch = serde_json::Map::new();
+    let keep = |batch: &mut serde_json::Map<String, serde_json::Value>| -> Result<(), String> {
+        if batch.is_empty() { return Ok(()); }
+        client.request("translation.put", serde_json::json!({
+            "book_id": book_id, "target": options.target, "provider": options.provider,
+            "items": std::mem::take(batch),
+        }))?;
+        Ok(())
+    };
+    for (done, (segment_id, text)) in missing.into_iter().enumerate() {
+        if *app.state::<SelectionRequest>().0.lock().unwrap() != id { keep(&mut batch)?; return Ok(false); }
+        if announce { let _ = app.emit("reading:book_translating", serde_json::json!({ "done": done, "total": total })); }
+        let translated = translation::translate_long(&text, options, id)?;
+        batch.insert(segment_id, serde_json::Value::String(translated));
+        if batch.len() >= 8 { keep(&mut batch)?; }
+    }
+    keep(&mut batch)?;
+    if announce { let _ = app.emit("reading:book_translating", serde_json::json!({ "done": total, "total": total })); }
+    Ok(true)
+}
+
+/// RE-PLAY-032: a library book read in the chosen language, a chapter at a
+/// time. This chapter is translated first (what is already kept is not
+/// translated again), then read with the translation voice; the next one is
+/// translated in the background while this one plays. The page asks again
+/// at the chapter's end with the segment this returns.
+#[tauri::command(async)]
+fn read_book_translated(
+    app: tauri::AppHandle,
+    engine: tauri::State<EngineSlot>,
+    book_id: String,
+    segment_id: Option<String>,
+    rate: f64,
+    translation: translation::Options,
+) -> Result<Option<serde_json::Value>, String> {
+    translation.validate()?;
+    let request = app.state::<SelectionRequest>();
+    let id = {
+        let mut generation = request.0.lock().unwrap();
+        *generation += 1;
+        translation::cancel_before(*generation);
+        *generation
+    };
+    let client = client_of(&engine);
+    if client.is_exporting() { return Err("translation:export_busy".into()); }
+    client.stop()?;
+    let options = with_translator(&app, &client, translation)?;
+    let plan = client.request("translation.paragraphs", serde_json::json!({
+        "book_id": book_id, "target": options.target, "segment_id": segment_id, "chapters": 2,
+    }))?;
+    let chapters = plan["chapters"].as_array().cloned().unwrap_or_default();
+    let Some(first) = chapters.first() else { return Ok(None) };
+    if !translate_chapter(&app, &client, &book_id, &options, first, id, true)? { return Ok(None); }
+    if *request.0.lock().unwrap() != id { return Ok(None); }
+    client.fire("read.book", serde_json::json!({
+        "book_id": book_id, "segment_id": segment_id, "voice_id": options.voice_id, "rate": rate,
+        "chapters": 1, "translation": { "target": options.target },
+    }))?;
+    let next = chapters.get(1).cloned();
+    let next_segment = next.as_ref().and_then(|c| c["paragraphs"][0]["segment_id"].as_str().map(str::to_string));
+    if let Some(next) = next {
+        let (app, client, book_id, options) = (app.clone(), client.clone(), book_id.clone(), options.clone());
+        std::thread::spawn(move || { let _ = translate_chapter(&app, &client, &book_id, &options, &next, id, false); });
+    }
+    Ok(Some(serde_json::json!({
+        "target": options.target, "voice_id": options.voice_id, "next_segment_id": next_segment,
+    })))
+}
+
 /// RE-PLAY-029: pasted text read in the chosen language - translated piece
 /// by piece natively, then read with the target-language voice. The same
 /// generation guard as a selection: Stop or a newer reading cancels the
@@ -711,6 +791,7 @@ pub fn run() {
             translation::translation_models,
             read_text,
             read_text_translated,
+            read_book_translated,
             read_book,
             engine_request,
             reading_panel::floating_controller_enabled,
