@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Translate before reading (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "Translate before reading for Read a selection and Paste text, each with its own switch: provider and target-voice eligibility, long-paste splitting, generation cancellation, bounded input/output and pending native acceptance."
 tags: [area/translation, area/capture, area/voice, stack/react, stack/tauri, stack/swift, surface/macos]
 reqPrefix: RE-PLAY
@@ -71,6 +71,7 @@ History holds at most 50 captures. Failed/cancelled translation creates no compl
 Configuration round-trip: `tests/headless/test_server.py::test_translation_preferences_round_trip_without_passage_data`. Fixtures establish protocol/cancellation/configuration, not real-model translation quality. Complete native end-to-end owner acceptance remains pending despite inclusion in v0.1.23; status is unchanged. See the [status convention](../systems/app/system.md#status-and-verification).
 
 ## Change log
+- 2026-10-21: audit 21/10: hub/settings copy no longer points to macOS 15 workarounds or "Models and voices"; translator remove button named; panel titled "Dịch trước khi đọc".
 - 2026-10-21: audit fixes - the paste splitter cuts after "…" at a character boundary (it panicked on the 3-byte ellipsis); the translator server starts without holding the lock, so quitting or removing the model mid-start returns at once (`a_stop_during_the_warm_up_does_not_wait_for_it`).
 - 2026-10-20: RE-PLAY-031 - ReadEase translator (Hy-MT2 via bundled llama.cpp) and the Automatic provider.
 - 2026-10-20: RE-PLAY-030 - translator status in Voices & models.

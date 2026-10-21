@@ -28,7 +28,7 @@ export function BookExportPanel({ title, chapters, voice, rate, available, busy,
     >
       <div className="flex shrink-0 items-start gap-4 px-6 pb-5 pt-6">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-base font-bold">{text("audiobook.title")}</h3>
+          <h2 className="m-0 text-base font-bold">{text("audiobook.title")}</h2>
           <p className="m-0 mt-2 break-words text-sm leading-relaxed text-ink-mute">{title}</p>
         </div>
         <IconButton onClick={onClose} aria-label={text("aria.close")}><CloseIcon /></IconButton>

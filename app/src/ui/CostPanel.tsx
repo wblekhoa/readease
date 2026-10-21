@@ -154,7 +154,7 @@ export function CostPanel({
       className="absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] left-1/2 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom -translate-x-1/2 flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center gap-2 px-6 pb-2 pt-5">
-        <h3 className="m-0 flex-1 text-sm font-bold">{text("cost.title")}</h3>
+        <h2 className="m-0 flex-1 text-base font-bold">{text("cost.title")}</h2>
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>

@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Voices and models (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "Voice/model eligibility, explicit download lifecycle, key verification, pricing/session-budget guards and language preference ownership."
 tags: [area/voice, area/security, area/performance, stack/python, surface/macos]
 reqPrefix: RE-VOICE
@@ -91,6 +91,7 @@ Catalogue/language/startup policy: `app/tests/readingSources.test.ts`, `app/test
 
 ## Change log
 
+- 2026-10-21: audit 21/10: no rule change; the voice panel is titled "Giọng đọc" like its side-column item.
 - 2026-10-20: condensed voice/model states and linked translation/export owners; identities unchanged.
 - 2026-10-19: repaired the duplicate default/rejected-key identifier.
 - 2026-10-15: measured default Adam → Đức Trí; see `../decisions.md`.

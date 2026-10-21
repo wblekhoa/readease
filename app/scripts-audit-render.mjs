@@ -91,8 +91,8 @@ const SCREENS = {
   home: [["wait", /^Gần đây$|^Recent$/]],
   home_empty: [["wait", /^Bạn muốn đọc gì\?$|^What would you like to read\?$/]],
   home_error: [["wait", /./, "[role=alert]"]],
-  home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
-  home_translation: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Cài đặt dịch$|^Translation settings$/, "[role=dialog]"]],
+  home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Giọng đọc$|^Voice$/, "[role=dialog]"]],
+  home_translation: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Dịch trước khi đọc$|^Translate before reading$/, "[role=dialog]"]],
   home_import: [["click", /^Mở tài liệu|^Open a document/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   home_paste: [...UNFOLD, ["click", /^Nhập hoặc dán nội dung|^Type or paste text/], ["click-at", "textarea"], ["type", "Nội dung thử của trang Đọc."],
     ["click", /^Đọc$|^Read$/], ["click", /^Mở lại Nội dung thử|^Reopen Nội dung thử/], ["wait", /^Dán nội dung$|^Paste text$/, "h2"]],
@@ -149,11 +149,11 @@ const SCREENS = {
   // 23/09 no cell opened either, so axe had never seen a control in them -
   // and four of their selects had no name. The reading panel opens its finer
   // choices too, or the sliders and switches under "Tuỳ chỉnh" stay unseen.
-  player_settings: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"]],
+  player_settings: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Giọng đọc$|^Voice$/, "[role=dialog]"]],
   // The Voice picker open over its panel (HIG 3.13, owner 26/09): its rows,
   // their two buttons, and where it lands in a 600px window - over its own
   // button, since neither side of it holds the whole list.
-  voice_picker: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Cài đặt giọng đọc$|^Voice settings$/, "[role=dialog]"],
+  voice_picker: [...OPEN_BOOK, ["click", /^Cài đặt giọng đọc$|^Voice settings$/], ["wait", /^Giọng đọc$|^Voice$/, "[role=dialog]"],
     ["click-at", '[role="dialog"] [aria-haspopup="dialog"]'], ["wait", /^Chọn giọng$|^Choose a voice$/, "[role=dialog]"]],
   reading_settings: [...OPEN_BOOK, ["click", /^Cài đặt đọc$|^Reading settings$/], ["wait", /^Cài đặt đọc$|^Reading settings$/, "[role=dialog]"],
     ["click", /^Tuỳ chỉnh$|^Customize$/], ["wait", /^Giãn dòng$|^Line spacing$/, "input"]],
@@ -860,7 +860,7 @@ async function main() {
           else {
             await key("Enter");
             let w = await where();
-            expect("manage-voices", !!w.dialog && w.dialog !== "Cài đặt giọng đọc", `Enter on Manage voices left the focus on ${said(w)}`);
+            expect("manage-voices", !!w.dialog && w.dialog !== "Giọng đọc", `Enter on Manage voices left the focus on ${said(w)}`);
             await key("Escape");
             w = await where();
             expect("manage-voices", w.opener, `Escape left the focus on ${said(w)}, not on the voice settings button in the footer`);
@@ -993,7 +993,8 @@ async function main() {
       // engine keeps settings.json). "Trúc Ly" is one of the five switched
       // on from the start, so the select offers it.
       const VOICES_SHEET = [["click", /^Cài đặt giọng đọc$/], ["click", /^Quản lý giọng/], ["wait", /^Danh sách giọng đọc$/]];
-      const heads = () => evalJs(`[...document.querySelectorAll('[role="dialog"] h3')].map((h) => h.textContent.trim())`);
+      // The sheet's title (h2 since 21/10) first, then its group headings.
+      const heads = () => evalJs(`[...document.querySelectorAll('[role="dialog"] h2, [role="dialog"] h3')].map((h) => h.textContent.trim())`);
       // Where the row stands is its place among the rows, not its pixels:
       // clicking scrolls the list to put the button in view.
       const star = () => evalJs(`(() => { const rows = [...document.querySelectorAll('[role="dialog"] button[aria-label^="Yêu thích "]')];
@@ -1098,7 +1099,7 @@ async function main() {
         const row = a && a.closest ? a.closest("[data-voice-row]") : null;
         return {
           open: button?.getAttribute("aria-expanded") === "true",
-          panel: !!document.querySelector('[role="dialog"][aria-label="Cài đặt giọng đọc"]'),
+          panel: !!document.querySelector('[role="dialog"][aria-label="Giọng đọc"]'),
           shows: button?.textContent.trim() ?? null,
           names: rows.map((r) => r.querySelector("button[aria-pressed]").getAttribute("aria-label").replace(/^Yêu thích /, "")),
           stars: rows.map((r) => r.querySelector("button[aria-pressed]").getAttribute("aria-pressed")),

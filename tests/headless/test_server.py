@@ -78,6 +78,14 @@ def _first_audio(replies) -> dict:
             return message
 
 
+
+
+def _close_streams(*streams) -> None:
+    """The four pipe ends a streaming test opens, closed when it ends."""
+    for stream in streams:
+        with contextlib.suppress(OSError, ValueError):
+            stream.close()
+
 class FakeEngine:
     engine_version = "fake-1"
 
@@ -345,6 +353,7 @@ class ProtocolTests(unittest.TestCase):
         from vieneu_reader.storage.repository import LibraryRepository
 
         repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
         book = build_book([
             ("Một", [("Đoạn một của chương đầu.", "paragraph"),
                       ("Đoạn hai của chương đầu.", "paragraph")]),
@@ -445,6 +454,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("Một", [("Đoạn một của chương đầu.", "paragraph"),
                           ("Đoạn hai của chương đầu.", "paragraph")]),
@@ -504,6 +514,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("One", [
                     ("Reading is the art of listening with your eyes.", "paragraph"),
@@ -542,6 +553,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("Một", [
                     ("Đoạn một của chương đầu, viết bằng tiếng Việt.", "paragraph"),
@@ -571,6 +583,7 @@ class ProtocolTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         root = Path(directory.name)
         repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
         book = build_book(chapters)
         source = root / "book.epub"
         source.write_bytes(b"fixture")
@@ -872,6 +885,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([("Một", [("Đoạn một.", "paragraph")])])
             source = root / "book.epub"
             source.write_bytes(b"fixture")
@@ -900,6 +914,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([("Một", [("Đoạn một.", "paragraph")])])
             source = root / "book.epub"
             source.write_bytes(b"fixture")
@@ -928,6 +943,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("Một", [(f"Đoạn số {index}.", "paragraph")
                           for index in range(3)]),
@@ -959,6 +975,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([("Một", [("Một.", "paragraph")])])
             source = root / "book.epub"
             source.write_bytes(b"fixture")
@@ -1016,6 +1033,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             sources = root / "sources"
             sources.mkdir()
@@ -1070,6 +1088,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             sources = root / "sources"
             sources.mkdir()
@@ -1123,6 +1142,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             sources = root / "sources"
             sources.mkdir()
@@ -1162,6 +1182,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("Một", [("Đoạn một của chương đầu.", "paragraph"),
                           ("Đoạn hai của chương đầu.", "paragraph")]),
@@ -1205,6 +1226,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             broken = root / "hong.epub"
             broken.write_bytes(b"not an epub at all")
@@ -1237,6 +1259,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             scan = make_blank_pdf(root / "scan.pdf")
 
@@ -1277,6 +1300,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             sources = root / "sources"
             sources.mkdir()
@@ -1726,6 +1750,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([(
                 "Một",
                 [("Đoạn đầu.", "paragraph"), ("Đoạn hai.", "paragraph")],
@@ -1798,6 +1823,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([(
                 "Một",
                 [("Chuẩn bị nguyên liệu.", "list_item"),
@@ -1857,6 +1883,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([(
                 "Một",
                 [("Đoạn đầu (xem Hình 1.1).", "paragraph"),
@@ -1936,6 +1963,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([(
                 "Một",
                 [("Đoạn đầu.", "paragraph"),
@@ -2026,6 +2054,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([(
                 "Một",
                 [
@@ -2102,6 +2131,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("Một", [("Câu có chú thích 1 ở đây.", "paragraph")]),
                 ("Chú thích", [
@@ -2159,6 +2189,7 @@ class ProtocolTests(unittest.TestCase):
         from vieneu_reader.storage.repository import LibraryRepository
 
         repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
         book = build_book([
             ("Một", [("Thị trường không đoán được (Trần, 2019) đâu 1.", "paragraph"),
                       ("Câu này có lời bàn 2.", "paragraph")]),
@@ -2258,6 +2289,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([("Một", [
                 ("Đoạn đầu.", "paragraph"),
                 ("Đoạn đã đọc rồi.", "paragraph"),
@@ -2299,6 +2331,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([("Một", [("Đoạn có hình.", "paragraph")])])
             source = root / "book.epub"
             source.write_bytes(b"fixture")
@@ -2367,6 +2400,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([("Một", [("Đoạn.", "paragraph")])])
             source = root / "book.epub"
             source.write_bytes(b"fixture")
@@ -2407,6 +2441,7 @@ class ProtocolTests(unittest.TestCase):
             root = Path(directory)
             paths = AppPaths.create(root / "app-data")
             repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
             service = LibraryService(paths, repository)
             sources = root / "sources"
             sources.mkdir()
@@ -2458,6 +2493,7 @@ class ProtocolTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             book = build_book([
                 ("Một", [("A.", "paragraph"), ("B.", "paragraph")]),
                 ("Hai", [("C.", "paragraph"), ("D.", "paragraph")]),
@@ -2491,6 +2527,7 @@ class ProtocolTests(unittest.TestCase):
         from zipfile import ZipFile
 
         repository = LibraryRepository(root / "reader.sqlite3")
+        self.addCleanup(repository.close)
         packed = make_epub(root, name="seed.epub", title="Thiên Nga Đen")
         folder = root / "Thiên Nga Đen.epub"
         with ZipFile(packed) as archive:
@@ -2929,6 +2966,7 @@ class ProtocolTests(unittest.TestCase):
         writer = os.fdopen(reply_write, "w")
         requests = os.fdopen(request_write, "w")
         replies = os.fdopen(reply_read, "r")
+        self.addCleanup(_close_streams, requests, reader, writer, replies)
 
         server = threading.Thread(
             target=serve, args=(reader, writer, engine), daemon=True
@@ -3043,6 +3081,7 @@ class ProtocolTests(unittest.TestCase):
         writer = os.fdopen(reply_write, "w")
         requests = os.fdopen(request_write, "w")
         replies = os.fdopen(reply_read, "r")
+        self.addCleanup(_close_streams, requests, reader, writer, replies)
         server = threading.Thread(
             target=serve, args=(reader, writer, engine), daemon=True
         )
@@ -3091,6 +3130,7 @@ class ProtocolTests(unittest.TestCase):
         writer = os.fdopen(reply_write, "w")
         requests = os.fdopen(request_write, "w")
         replies = os.fdopen(reply_read, "r")
+        self.addCleanup(_close_streams, requests, reader, writer, replies)
         server = threading.Thread(
             target=serve, args=(reader, writer, engine), daemon=True
         )
@@ -3134,6 +3174,7 @@ class ProtocolTests(unittest.TestCase):
         writer = os.fdopen(reply_write, "w")
         requests = os.fdopen(request_write, "w")
         replies = os.fdopen(reply_read, "r")
+        self.addCleanup(_close_streams, requests, reader, writer, replies)
 
         server = threading.Thread(
             target=serve, args=(reader, writer, engine), daemon=True
@@ -3529,6 +3570,7 @@ class RemainingTimeReceipts(unittest.TestCase):
             writer = os.fdopen(reply_write, "w")
             requests = os.fdopen(request_write, "w")
             replies = os.fdopen(reply_read, "r")
+            self.addCleanup(_close_streams, requests, reader, writer, replies)
             server = threading.Thread(
                 target=serve, args=(reader, writer, SlowVoice()),
                 kwargs={"repository": repository, "settings_path": settings},
@@ -3717,6 +3759,7 @@ class DivisionReadingTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             service = LibraryService(AppPaths.create(root / "app"), repository)
             stored = service.import_book(make_book(root)).book
             settings = root / "settings.json"

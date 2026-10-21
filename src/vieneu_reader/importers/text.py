@@ -101,6 +101,23 @@ _TXT_HEADING = re.compile(
     r"^(?:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+" + _NUMBER + r"[.:]?(?:\s*[:.\-–—]\s*.{1,80})?$",
     re.IGNORECASE,
 )
+#: "Chương 1 Hà Nội" - a title after the number with only a space: taken
+#: when the number is a numeral (not a word like "năm"), the title opens with
+#: a capital, and the line does not end like a sentence - so "Hồi 5 giờ sáng
+#: tôi dậy." stays text.
+_SPACED_HEADING = re.compile(
+    r"^(?i:chương|chuong|phần|phan|chapter|part|hồi|quyển)\s+(?:\d+|(?i:[ivxlcdm]+))\s+(\w)[^.!?…]{0,60}$"
+)
+
+
+def _is_chapter_line(line: str) -> bool:
+    if len(line) > 100:
+        return False
+    if _TXT_HEADING.match(line):
+        return True
+    spaced = _SPACED_HEADING.match(line)
+    return bool(spaced and spaced.group(1).isupper())
+
 
 
 def _chapter_lines(sections: list[Section]) -> list[Section]:
@@ -113,7 +130,7 @@ def _chapter_lines(sections: list[Section]) -> list[Section]:
     split: list[Section] = [(sections[0][0], [])]
     for paragraph in sections[0][1]:
         line = normalize_paragraph(paragraph)
-        if len(line) <= 100 and _TXT_HEADING.match(line):
+        if _is_chapter_line(line):
             if split[-1][0] is not None and not split[-1][1]:
                 # Two chapter lines in a row (a contents list): the first had
                 # no body, so it is text, never dropped.
@@ -497,3 +514,5 @@ TEXT_PARSERS = {
     ".doc": import_doc, ".rtf": import_rtf, ".odt": import_odt,
 }
 TEXT_FORMATS = frozenset(suffix[1:] for suffix in TEXT_PARSERS)
+#: Other spellings of the same formats, read as their canonical suffix.
+SUFFIX_ALIASES = {".markdown": ".md", ".htm": ".html", ".xhtml": ".html", ".text": ".txt"}

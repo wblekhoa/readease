@@ -15,6 +15,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   (.docx, .doc), RTF, OpenDocument (.odt), Markdown, HTML and plain text.
   Headings become chapters; a typed-up file with lines like "Chương 3"
   gets its chapters too. Text files must be UTF-8 or UTF-16.
+  `.markdown`, `.htm` and `.text` are accepted too, and a numbered chapter
+  line may carry its title after a space ("Chương 1 Hà Nội").
 
 - ReadEase has its own translator. In Voices & models → Translation,
   download the ReadEase translator (about 1.1 GB, once) and English ↔

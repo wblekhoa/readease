@@ -33,6 +33,7 @@ test("blank captures and invalid dates do not pollute or break recent content", 
   assert.deepEqual(result.map(item => item.id), ["external:3", "book:undated"]);
 });
 
+// RE-HOME-002: one line per recent item, its day said plainly.
 test("recent dates read as today, yesterday, days ago, then the date", () => {
   const labels = { today: "Hôm nay", yesterday: "Hôm qua", daysAgo: (n: number) => `${n} ngày trước` };
   const now = new Date(2026, 9, 20, 15, 0).getTime();

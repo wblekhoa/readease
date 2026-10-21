@@ -1893,10 +1893,10 @@ export default function App() {
                 />
               ))}
             </nav>
-            <div className="mt-5 border-t border-edge-alpha pt-3">
-              <p className="m-0 px-3 pb-2 text-xs font-semibold text-ink-mute">{text("nav.tools")}</p>
+            {/* Two groups, one look (audit 21/10): the same divider and header. */}
+            <RailGroup title={text("nav.tools")}>
               {tools.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => goTab(item.value)} />)}
-            </div>
+            </RailGroup>
             <RailGroup title={text("nav.settings")}>
               {settingsItems.map(item => <RailItem key={item.id} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
             </RailGroup>
@@ -1920,9 +1920,9 @@ export default function App() {
         >
           <Surface edge="strong" material="glass" radius="sheet" className="fade-in flex h-full min-h-0 flex-col overflow-hidden shadow-lifted">
             <div className="flex shrink-0 items-center gap-2 px-6 pt-5 pb-4">
-              <h3 className="m-0 min-w-0 flex-1 text-base font-semibold">
+              <h2 className="m-0 min-w-0 flex-1 text-base font-semibold">
                 {text(previewTab === "contents" ? "reader.toc_title" : previewTab === "notes" ? "sidebar.notes_tab" : "reader.search")}
-              </h3>
+              </h2>
               <IconButton
                 onClick={() => dispatchSide({ type: "show", tab: previewTab })}
                 aria-label={text("sidebar.open")}

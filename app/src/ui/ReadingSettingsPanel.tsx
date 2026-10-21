@@ -68,7 +68,7 @@ export function ReadingSettingsPanel({
       className="absolute right-6 top-[calc(var(--shell-top-inner)+var(--layer-gap))] z-20 flex layer-capped w-[25rem] max-w-[calc(100vw-3rem)] origin-top-right flex-col overflow-hidden shadow-lifted"
     >
       <div className="flex shrink-0 items-center px-6 pb-2 pt-5">
-        <h3 className="m-0 flex-1 text-sm font-bold">{text("reader.settings")}</h3>
+        <h2 className="m-0 flex-1 text-base font-bold">{text("reader.settings")}</h2>
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>

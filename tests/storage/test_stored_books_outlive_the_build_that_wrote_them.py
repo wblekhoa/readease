@@ -169,7 +169,7 @@ class StoredBooksOutliveTheBuildThatWroteThemTests(unittest.TestCase):
         """A library whose one row is those exact bytes, put there as an
         older build left them - not through today's `add_book`."""
 
-        LibraryRepository(self.database)  # creates the schema, then closes over it
+        LibraryRepository(self.database).close()  # creates the schema, then closes over it
         with sqlite3.connect(self.database) as connection:
             connection.execute(
                 """
@@ -190,7 +190,9 @@ class StoredBooksOutliveTheBuildThatWroteThemTests(unittest.TestCase):
                 ),
             )
         connection.close()
-        return LibraryRepository(self.database)
+        repository = LibraryRepository(self.database)
+        self.addCleanup(repository.close)
+        return repository
 
     def test_every_golden_shelf_still_opens(self) -> None:
         for stamped, golden in GOLDENS:

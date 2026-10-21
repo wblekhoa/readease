@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Paste and scan history"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "What pasted and scanned text is kept on this Mac, for how long, how it is deduplicated and deleted, and the switch that stops it."
 tags: [area/storage, area/security, stack/python, stack/react, surface/macos]
 reqPrefix: RE-HIST
@@ -40,5 +40,6 @@ relations:
 - Flexible: where the History panel opens, how many rows it shows, labels.
 
 ## Change log
+- 2026-10-21: audit 21/10: clearing history asks first; a translated scan with line breaks is one entry (RE-HIST-002); copy that said history was session-only corrected.
 - 2026-10-21: a translated scan whose original has line breaks is matched as the same entry (RE-HIST-002); deleting all history and clearing the scan list ask first.
 - 2026-10-20: created (RE-HIST-001…004).

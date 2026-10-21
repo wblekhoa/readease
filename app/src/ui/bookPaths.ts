@@ -10,7 +10,7 @@
  * files were picked.
  */
 
-export const BOOK_EXTENSIONS = ["pdf", "epub", "docx", "doc", "rtf", "odt", "md", "html", "txt"] as const;
+export const BOOK_EXTENSIONS = ["pdf", "epub", "docx", "doc", "rtf", "odt", "md", "markdown", "html", "htm", "txt", "text"] as const;
 
 export function bookPaths(paths: readonly string[]): string[] {
   const seen = new Set<string>();
