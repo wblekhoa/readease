@@ -35,6 +35,8 @@ import { CloseIcon, NoteIcon } from "../ui/icons";
 import { NotesPanel } from "../ui/NotesPanel";
 import { noteCount } from "../ui/annotationsList";
 import { markParagraph } from "../ui/highlight";
+import { HighlightBar } from "../ui/HighlightBar";
+import { selectionPieces, type SelectedPiece } from "../ui/highlightSelection";
 import type { ReadingMode } from "../ui/readingMode";
 import { ReadingPositionControl } from "../ui/ReadingPositionControl";
 import { PageFlow, type PageReason, type PageTarget } from "./PageFlow";
@@ -98,6 +100,8 @@ type BookAnnotation = {
   selected_text: string;
   note: string | null;
   style: number;
+  /** "readease" when made here (RE-NOTE-005); Books' own say "applebooks". */
+  source?: string;
 };
 type OpenedBook = {
   book: {
@@ -108,7 +112,8 @@ type OpenedBook = {
      * book has none, and the column lists the chapters instead. */
     toc?: TocEntry[];
   };
-  /** Highlights brought over from Apple Books, pinned to segments. */
+  /** Highlights pinned to segments: brought over from Apple Books, or made
+   * in this Reader. */
   annotations?: BookAnnotation[];
   progress: { segment_id: string | null };
 };
@@ -423,6 +428,15 @@ export function Reader({
     ({ id: string; draft: string; error?: string } & Bubble) | null
   >(null);
   const [saving, setSaving] = useState(false);
+  /* The bar over a selection (a highlight to make) or over a highlight that
+     was pressed (one to recolour, annotate or remove) - RE-NOTE-005…007.
+     Placed like the bubbles above, from the words' measured box. */
+  const [bar, setBar] = useState<
+    | ({ kind: "new"; pieces: SelectedPiece[]; rect: DOMRect } & Bubble & { error?: string })
+    | ({ kind: "mark"; id: string; rect: DOMRect } & Bubble & { error?: string })
+    | null
+  >(null);
+  const [barBusy, setBarBusy] = useState(false);
   /* The contents row for the chapter being read, so opening the panel can put
      it in front of the person instead of at the top of a long book. */
   const here = useRef<HTMLDivElement>(null);
@@ -546,8 +560,8 @@ export function Reader({
    * lines up with the window's right margin instead. Above the line when the
    * icon is low, so a long note is not cut off by the bottom of the window.
    */
-  const place = useCallback((anchor: HTMLElement): Bubble => {
-    const rect = anchor.getBoundingClientRect();
+  const place = useCallback((anchor: HTMLElement | DOMRect): Bubble => {
+    const rect = anchor instanceof DOMRect ? anchor : anchor.getBoundingClientRect();
     const margin = 24;
     /** Under this, following the icon makes a column, not a bubble. */
     const narrowest = 260;
@@ -574,7 +588,7 @@ export function Reader({
    * The peek goes first: the pointer is still on the marker that opened
    * this, so both bubbles would otherwise be on screen at once, one of them
    * unreachable behind the other. */
-  const editNote = useCallback((anchor: HTMLElement, id: string, note: string) => {
+  const editNote = useCallback((anchor: HTMLElement | DOMRect, id: string, note: string) => {
     setPeek(null);
     setNoteError(null);
     setEditing({ id, draft: note, ...place(anchor) });
@@ -630,6 +644,143 @@ export function Reader({
       console.error(error);
       refuse(text("reader.note_save_failed"));
     }).finally(() => setSaving(false));
+  }, [bookId, opened]);
+
+  /** Where the highlight bar stands: over the words, or under them when
+   *  they sit too near the top for it - it would land under the window's
+   *  own toolbar. Centred on the words, kept inside the window. */
+  const barAt = useCallback((rect: DOMRect): Bubble => {
+    const above = rect.top > 120;
+    const width = 300;
+    return {
+      left: Math.max(24, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - 24 - width)),
+      maxWidth: width + 40,
+      top: above ? undefined : rect.bottom + LAYER_GAP,
+      bottom: above ? window.innerHeight - rect.top + LAYER_GAP : undefined,
+    };
+  }, []);
+
+  /* A selection on the page offers the bar once the hand lets go - the
+     mouse up, or the Shift that extended it by keyboard. It goes when the
+     selection does, when the page moves under it, and on Escape. Pressing
+     the bar itself must not re-offer it, so its own mouseup is ignored. */
+  useEffect(() => {
+    const offer = () => {
+      const selection = window.getSelection();
+      const pieces = selectionPieces(selection, column.current);
+      if (!pieces.length || !selection) return;
+      const rect = selection.getRangeAt(0).getBoundingClientRect();
+      setBar({ kind: "new", pieces, rect, ...barAt(rect) });
+    };
+    const onBar = (target: EventTarget | null) =>
+      target instanceof Element && target.closest("[data-highlight-bar]") !== null;
+    const onUp = (event: MouseEvent) => { if (!onBar(event.target)) window.setTimeout(offer, 0); };
+    const onKeyUp = (event: KeyboardEvent) => { if (event.key === "Shift") offer(); };
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setBar(null); };
+    const onDown = (event: MouseEvent) => {
+      if (!onBar(event.target)) setBar((open) => (open?.kind === "mark" ? null : open));
+    };
+    const onChange = () => {
+      if (window.getSelection()?.isCollapsed) setBar((open) => (open?.kind === "new" ? null : open));
+    };
+    const away = () => setBar(null);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keyup", onKeyUp);
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("selectionchange", onChange);
+    window.addEventListener("scroll", away, true);
+    window.addEventListener("resize", away);
+    return () => {
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("selectionchange", onChange);
+      window.removeEventListener("scroll", away, true);
+      window.removeEventListener("resize", away);
+    };
+  }, [barAt]);
+
+  /** Keep what was selected as a highlight (RE-NOTE-005), and - from the
+   *  bar's Note - open the note on it straight away (RE-NOTE-006). Written
+   *  by the engine first, then drawn: a mark that showed before it was kept
+   *  would be the one a refusal leaves behind. */
+  const makeHighlight = useCallback(async (pieces: SelectedPiece[], style: number, rect: DOMRect, thenNote: boolean) => {
+    setBarBusy(true);
+    try {
+      const reply = await invoke<{ result: { annotations: BookAnnotation[] } }>("engine_request", {
+        method: "annotations.add",
+        params: { book_id: bookId, pieces, style },
+      });
+      const made = reply.result.annotations;
+      setOpened((book) => book && { ...book, annotations: [...(book.annotations ?? []), ...made] });
+      window.getSelection()?.removeAllRanges();
+      setBar(null);
+      if (thenNote && made[0]) editNote(rect, made[0].id, "");
+    } catch (error) {
+      console.error(error);
+      setBar((open) => open && { ...open, error: text("highlight.failed") });
+    } finally {
+      setBarBusy(false);
+    }
+  }, [bookId, editNote]);
+
+  /** Another colour for a highlight made here (RE-NOTE-007): drawn at
+   *  once, put back and said if the engine refuses. */
+  const restyle = useCallback((id: string, style: number) => {
+    const before = (opened?.annotations ?? []).find((item) => item.id === id);
+    if (!before || (before.style || 3) === style) { setBar(null); return; }
+    const put = (value: number) => setOpened((book) => book && {
+      ...book,
+      annotations: (book.annotations ?? []).map((item) => (item.id === id ? { ...item, style: value } : item)),
+    });
+    put(style);
+    setBarBusy(true);
+    void invoke<{ result: { restyled: boolean } }>("engine_request", {
+      method: "annotations.restyle",
+      params: { book_id: bookId, annotation_id: id, style },
+    }).then((reply) => {
+      if (reply?.result?.restyled) { setBar(null); return; }
+      put(before.style);
+      setBar((open) => open && { ...open, error: text("highlight.failed") });
+    }).catch((error) => {
+      console.error(error);
+      put(before.style);
+      setBar((open) => open && { ...open, error: text("highlight.failed") });
+    }).finally(() => setBarBusy(false));
+  }, [bookId, opened]);
+
+  /** Remove one highlight for good - from the notes list or the bar.
+   *
+   * Off the page at once, because the finger deserves an answer now - but
+   * the ENGINE is what makes a delete true, and it keeps a tombstone so the
+   * next Apple Books sync cannot hand the note back. If it refuses, the
+   * note is still on disk, so it goes back on the page and says why. A
+   * note that only LOOKS deleted is the one outcome this must never
+   * produce: the person walks away believing something private is gone. */
+  const removeAnnotation = useCallback((annotationId: string) => {
+    const removed = (opened?.annotations ?? []).find((item) => item.id === annotationId);
+    setNoteError(null);
+    setOpened((book) => book && {
+      ...book,
+      annotations: (book.annotations ?? []).filter((item) => item.id !== annotationId),
+    });
+    void invoke("engine_request", {
+      method: "annotations.delete",
+      params: { book_id: bookId, annotation_id: annotationId },
+    }).catch((error) => {
+      console.error(error);
+      // `groupAnnotations` orders by where a note falls in the book, so
+      // putting it back on the end puts it back in its place.
+      if (removed) {
+        setOpened((book) => book && {
+          ...book,
+          annotations: [...(book.annotations ?? []), removed],
+        });
+      }
+      setNoteError(engineMessage(error));
+    });
   }, [bookId, opened]);
 
   /** Show a place, in whichever mode is on. */
@@ -967,7 +1118,20 @@ export function Reader({
               <NoteIcon />
             </InlineIconButton>
           )}
-          <mark data-style={item.style || undefined}>{body}</mark>
+          {/* Pressed, a highlight offers its bar: another colour, its
+              note, or away (RE-NOTE-007). Not "read from here" - the press
+              is about the mark, so it stops at the mark. */}
+          <mark
+            data-style={item.style || undefined}
+            data-annotation={item.id}
+            className="cursor-pointer"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (window.getSelection()?.isCollapsed === false) return;
+              const rect = event.currentTarget.getBoundingClientRect();
+              setBar({ kind: "mark", id: item.id, rect, ...barAt(rect) });
+            }}
+          >{body}</mark>
         </Fragment>
       );
     });
@@ -1197,6 +1361,7 @@ export function Reader({
    * while the voice reads on. */
   const notes = showNotes && (
     <NotesPanel
+      title={opened.book.title}
       chapters={opened.book.chapters}
       annotations={opened.annotations ?? []}
       focusId={notesFocus}
@@ -1204,36 +1369,7 @@ export function Reader({
         showSegment(segmentId, "look");
       }}
       error={noteError}
-      onDelete={(annotationId) => {
-        // Off the page at once, because the finger deserves an answer now -
-        // but the ENGINE is what makes a delete true, and it keeps a
-        // tombstone so the next Apple Books sync cannot hand the note back.
-        // If it refuses, the note is still on disk, so it goes back on the
-        // page and says why. A note that only LOOKS deleted is the one
-        // outcome this must never produce: the person walks away believing
-        // something private is gone.
-        const removed = (opened.annotations ?? []).find((item) => item.id === annotationId);
-        setNoteError(null);
-        setOpened((book) => book && {
-          ...book,
-          annotations: (book.annotations ?? []).filter((item) => item.id !== annotationId),
-        });
-        void invoke("engine_request", {
-          method: "annotations.delete",
-          params: { book_id: bookId, annotation_id: annotationId },
-        }).catch((error) => {
-          console.error(error);
-          // `groupAnnotations` orders by where a note falls in the book, so
-          // putting it back on the end puts it back in its place.
-          if (removed) {
-            setOpened((book) => book && {
-              ...book,
-              annotations: [...(book.annotations ?? []), removed],
-            });
-          }
-          setNoteError(engineMessage(error));
-        });
-      }}
+      onDelete={removeAnnotation}
     />
   );
 
@@ -1242,6 +1378,34 @@ export function Reader({
   const lists = sidebarSlot
     ? createPortal(<>{contents}{search}{notes}</>, sidebarSlot)
     : null;
+
+  /* The bar over a selection or a pressed highlight (RE-NOTE-005…007). */
+  const pressed = bar?.kind === "mark" ? (opened.annotations ?? []).find((item) => item.id === bar.id) : undefined;
+  const highlightBar = bar && (bar.kind === "new" || pressed) && (
+    <HighlightBar
+      position={{ left: bar.left, right: bar.right, top: bar.top, bottom: bar.bottom, maxWidth: bar.maxWidth }}
+      current={pressed ? (pressed.style || 3) : null}
+      colours={!pressed || pressed.source === "readease"}
+      hasNote={Boolean(pressed?.note)}
+      removable={Boolean(pressed)}
+      error={bar.error ?? null}
+      busy={barBusy}
+      onStyle={(style) => {
+        if (bar.kind === "new") void makeHighlight(bar.pieces, style, bar.rect, false);
+        else restyle(bar.id, style);
+      }}
+      onNote={() => {
+        if (bar.kind === "new") { void makeHighlight(bar.pieces, 3, bar.rect, true); return; }
+        setBar(null);
+        editNote(bar.rect, bar.id, pressed?.note ?? "");
+      }}
+      onRemove={() => {
+        if (bar.kind !== "mark") return;
+        setBar(null);
+        removeAnnotation(bar.id);
+      }}
+    />
+  );
 
   /* Wrapped rather than styled through `Surface`: the kit's card takes a
      className, not a style, and a measured position is not a class. */
@@ -1396,6 +1560,7 @@ export function Reader({
           {lists}
           {notePeek}
           {noteEditor}
+          {highlightBar}
           {followAction}
         </div>
       ) : (
@@ -1421,6 +1586,7 @@ export function Reader({
             {lists}
             {notePeek}
             {noteEditor}
+            {highlightBar}
             {followAction}
           </div>
         </div>

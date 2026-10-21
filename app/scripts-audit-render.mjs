@@ -205,6 +205,11 @@ const SCREENS = {
   // A reading under way (HIG 3.5, 3.24): the transport, the forecast of
   // what is left, a pause - and the moment before the voice's first sound.
   // The core of the app, and no cell had ever drawn it: every cell was idle.
+  // RE-NOTE-005…007: words selected in a book offer the highlight bar; a
+  // colour keeps them; pressing the mark offers it again, with delete.
+  reader_highlight: [...OPEN_BOOK, ["select-words", "[data-segment]"], ["wait", /^Ghi chú$|^Add note$/]],
+  reader_highlight_mark: [...OPEN_BOOK, ["select-words", "[data-segment]"], ["click", /^Tô xanh lá$|^Highlight green$/],
+    ["click-at", 'mark[data-annotation^="readease-"]'], ["wait", /^Ghi chú$|^Add note$/]],
   reading_now: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["wait", /còn ~|left$/, "span"], ["rest"]],
   reading_paused: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["click", /^Tạm dừng$|^Pause$/],
     ["wait", /^Tiếp tục$|^Resume$/], ["rest"]],
@@ -309,6 +314,8 @@ const ONLY_IN = {
   reading_settings: ["default", "sidebar"],
   lightbox: ["default"],
   reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
+  reader_highlight: ["default"],
+  reader_highlight_mark: ["default"],
   reading_now: ["default"],
   reading_paused: ["default"],
   reading_warming: ["warm_hold"],
@@ -545,6 +552,36 @@ async function main() {
     // picker's button is named by its row ("Giọng") plus the voice it shows,
     // which changes as the checks pick voices. Pressed at its centre, with
     // the mouse, the way findAndClick presses.
+    // Words selected by a real drag - the press, the move, the release - so
+    // the page sees what a hand does: the first 24 characters of the first
+    // long paragraph on screen. Until 21/10 no cell had selected anything
+    // in a book, so the highlight bar had never been drawn.
+    const selectWords = async (selector, patience = 4000) => {
+      const until = Date.now() + patience;
+      while (Date.now() < until) {
+        const box = await evalJs(`(() => {
+          for (const el of document.querySelectorAll(${JSON.stringify(selector)})) {
+            if (el.closest("[inert]") || el.querySelector("mark")) continue;
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            let node; while ((node = walker.nextNode()) && node.textContent.trim().length < 40);
+            if (!node) continue;
+            const at = (i) => { const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 1); return r.getBoundingClientRect(); };
+            const first = at(0), last = at(23);
+            if (!first.width || first.top < 0 || last.bottom > innerHeight) continue;
+            return { x1: first.left + 1, y1: first.top + first.height / 2, x2: last.right - 1, y2: last.top + last.height / 2 };
+          }
+          return null; })()`);
+        if (box) {
+          await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x1, y: box.y1 });
+          await send("Input.dispatchMouseEvent", { type: "mousePressed", x: box.x1, y: box.y1, button: "left", clickCount: 1 });
+          await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x2, y: box.y2, button: "left", buttons: 1 });
+          await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: box.x2, y: box.y2, button: "left", clickCount: 1 });
+          await sleep(350); return true;
+        }
+        await sleep(150);
+      }
+      return false;
+    };
     const clickAt = async (selector, patience = 4000) => {
       const until = Date.now() + patience;
       while (Date.now() < until) {
@@ -622,7 +659,8 @@ async function main() {
             // the search tab, its box and the toolbar's search button all
             // carry one name, and only the checked tab proves the panel.
             for (const [kind, re, within] of steps) {
-              const ok = kind === "click" ? await findAndClick(re)
+              const ok = kind === "select-words" ? await selectWords(re)
+                : kind === "click" ? await findAndClick(re)
                 : kind === "click?" ? (await findAndClick(re, 600), true)
                 : kind === "open-figure" ? await openFigure()
                 : kind === "click-at" ? await clickAt(re)
@@ -866,7 +904,8 @@ async function main() {
         await sleep(900);
         await evalJs(`localStorage.removeItem("readease.theme")`);
         for (const [kind, re, within] of steps) {
-          const ok = kind === "click" ? await findAndClick(re)
+          const ok = kind === "select-words" ? await selectWords(re)
+            : kind === "click" ? await findAndClick(re)
             : kind === "click?" ? (await findAndClick(re, 600), true)
             : kind === "click-at" ? await clickAt(re)
             : kind === "emit" ? await evalJs(`typeof window.__mockEmit === "function" && (window.__mockEmit(${JSON.stringify(re)}, {}), true)`)

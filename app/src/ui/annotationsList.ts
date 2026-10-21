@@ -15,6 +15,9 @@ export type Annotation = {
   /** Apple Books' colour number: 1 green, 2 blue, 3 yellow, 4 pink,
    * 5 purple. 0 (or absent) is no colour. */
   style?: number;
+  /** "readease" for one made in this app (RE-NOTE-005), which alone can
+   * change colour; absent or "applebooks" for one brought from Books. */
+  source?: string;
 };
 
 type Chapter = { id: string; title: string; segments: { id: string }[] };
@@ -61,4 +64,26 @@ export function groupAnnotations(
 /** How many of them carry a note, for a count that says something. */
 export function noteCount(annotations: readonly Annotation[]): number {
   return annotations.filter((item) => item.note).length;
+}
+
+/** A book's highlights and notes as Markdown, in the order the book reads
+ * (RE-NOTE-008): the title, a heading per chapter, each highlight quoted
+ * and its note under it. For pasting into a notes app - nothing is written
+ * to disk. Lines of a multi-line highlight each carry the quote mark, or
+ * Markdown would end the quote at the first line break.
+ */
+export function notesMarkdown(
+  title: string,
+  chapters: readonly Chapter[],
+  annotations: readonly Annotation[],
+): string {
+  const out = [`# ${title.trim()}`];
+  for (const group of groupAnnotations(chapters, annotations)) {
+    out.push("", `## ${group.chapterTitle.trim()}`);
+    for (const item of group.items) {
+      out.push("", ...item.selected_text.trim().split(/\n+/).map((line) => `> ${line.trim()}`));
+      if (item.note?.trim()) out.push("", item.note.trim());
+    }
+  }
+  return out.join("\n") + "\n";
 }

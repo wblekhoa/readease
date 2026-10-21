@@ -982,6 +982,14 @@ mark[data-search="current"] {
 .note-nudge[data-style="3"] { color: rgb(from var(--color-highlight-yellow) r g b / 1); }
 .note-nudge[data-style="4"] { color: rgb(from var(--color-highlight-pink) r g b / 1); }
 .note-nudge[data-style="5"] { color: rgb(from var(--color-highlight-purple) r g b / 1); }
+/* The highlight bar's colour dots (RE-NOTE-005): the hue of each wash at
+   full strength, the way the note icon wears it - a wash itself is too
+   faint to tell apart at 20 px. */
+.highlight-swatch[data-style="1"] { background: rgb(from var(--color-highlight-green) r g b / 1); }
+.highlight-swatch[data-style="2"] { background: rgb(from var(--color-highlight-blue) r g b / 1); }
+.highlight-swatch[data-style="3"] { background: rgb(from var(--color-highlight-yellow) r g b / 1); }
+.highlight-swatch[data-style="4"] { background: rgb(from var(--color-highlight-pink) r g b / 1); }
+.highlight-swatch[data-style="5"] { background: rgb(from var(--color-highlight-purple) r g b / 1); }
 
 /* In the notes list a mark is not ink laid over a page being read - it is the
    SAMPLE that says which highlight this row IS, a phrase or two wide on a

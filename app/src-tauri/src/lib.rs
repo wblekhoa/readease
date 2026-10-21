@@ -271,6 +271,27 @@ fn translate_chapter(app: &tauri::AppHandle, client: &Engine, book_id: &str, opt
     Ok(true)
 }
 
+/// Put text on the pasteboard (RE-NOTE-008: a book's notes as Markdown).
+/// `pbcopy` ships with every Mac and needs no plugin or permission; the web
+/// view's own clipboard API is refused without one.
+#[tauri::command(async)]
+fn copy_text(text: String) -> Result<(), String> {
+    use std::io::Write;
+    let mut child = std::process::Command::new("/usr/bin/pbcopy")
+        .env("LANG", "en_US.UTF-8")
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    child
+        .stdin
+        .take()
+        .ok_or("copy:no_stdin")?
+        .write_all(text.as_bytes())
+        .map_err(|error| error.to_string())?;
+    let status = child.wait().map_err(|error| error.to_string())?;
+    if status.success() { Ok(()) } else { Err("copy:failed".into()) }
+}
+
 /// RE-PLAY-035: start ReadEase's own translator before it is needed - the
 /// first start reads 1.1 GB and compiles its shaders (~6 s cold). Asked by
 /// the page when a screen that translates opens with that translator in
@@ -823,6 +844,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             engine_voices,
+            copy_text,
             translation::translation_status,
             translation::translation_models,
             read_text,

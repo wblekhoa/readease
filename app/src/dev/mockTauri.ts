@@ -921,6 +921,8 @@ const APPLE_SHELF: Array<{ asset_id: string; title: string; status: string; book
  * density: three chapters, one paragraph carrying TWO highlights, one note
  * long enough to wrap, and several highlights with no note at all - which is
  * the common case and the one a list has to survive. */
+/** Ids of highlights made in the Reader (RE-NOTE-005): only these change colour. */
+const LOCAL_ANNOTATIONS = new Set<string>();
 const ANNOTATIONS = [
   { id: "applebooks:1", segment_id: "ch-1-seg-1", selected_text: "những phương án đầu tiên của họ đều nhanh chóng chìm vào quên lãng", note: "Đúng với dự án năm ngoái.", style: 3 },
   { id: "applebooks:2", segment_id: "ch-1-seg-1", selected_text: "Chỉ khi học cách nhìn vấn đề từ một góc khác", note: null, style: 1 },
@@ -1201,6 +1203,31 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       if (index >= 0) ANNOTATIONS.splice(index, 1);
       return { removed: index >= 0 };
     }
+    case "annotations.add": {
+      // RE-NOTE-005: one row per paragraph, the note on the first, kept
+      // under this app's own source - which is what lets it change colour.
+      const pieces = Array.isArray(params.pieces) ? params.pieces as { segment_id: string; selected_text: string }[] : [];
+      if (!pieces.length) throw new Error("book_id and pieces are required");
+      const style = Number(params.style ?? 3);
+      const note = String(params.note ?? "").trim() || null;
+      const made = pieces.map((piece, index) => ({
+        id: `readease-${Date.now().toString(36)}-${index}`,
+        segment_id: piece.segment_id,
+        selected_text: piece.selected_text,
+        note: index === 0 ? note : null,
+        style,
+        source: "readease",
+      }));
+      for (const item of made) LOCAL_ANNOTATIONS.add(item.id);
+      ANNOTATIONS.push(...(made as typeof ANNOTATIONS));
+      return { annotations: made };
+    }
+    case "annotations.restyle": {
+      const item = ANNOTATIONS.find((entry) => entry.id === params.annotation_id);
+      const mine = Boolean(item) && LOCAL_ANNOTATIONS.has(String(params.annotation_id));
+      if (item && mine) item.style = Number(params.style);
+      return { restyled: mine };
+    }
     case "annotations.update": {
       // The engine keeps the edit in its own table so a sync cannot undo
       // it; here the list IS the store, so writing the note is the whole
@@ -1362,6 +1389,9 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   // RE-PLAY-030: `?translators=missing` - no Apple packs and no local server,
   // the state a first-time reader meets in the hub's Translation group.
   if (command === "prewarm_translator") return Promise.resolve(MODEL.translator.ready);
+  // RE-NOTE-008: the host's pasteboard write. The browser stands in with
+  // its own clipboard where it allows one; refused, the copy still answers.
+  if (command === "copy_text") return navigator.clipboard?.writeText(String((args as { text?: string })?.text ?? "")).catch(() => undefined).then(() => null) ?? Promise.resolve(null);
   if (command === "translation_status") return Promise.resolve({ available: true, installed: TRANSLATORS !== "missing" });
   if (command === "translation_models") return TRANSLATORS === "missing" ? Promise.reject("translation:local_unavailable") : Promise.resolve({ models: ["qwen3:4b", "gemma3:4b"] });
   if (command === "floating_controller_enabled") return Promise.resolve(true);
