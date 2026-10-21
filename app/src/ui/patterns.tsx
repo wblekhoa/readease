@@ -1266,7 +1266,10 @@ export function RailIcon({
  * (owner, 17/09, of the plain sentence-case label: "thử style khác"). */
 export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="mt-5 border-t border-edge-alpha pt-3">
+    /* Groups are told apart by space alone (owner, 21/10: "bỏ đi divider,
+       phân tích bằng spacing thôi"): the gap above a group is wider than
+       the one under its heading, which is wider than between its items. */
+    <div className="mt-7">
       <p className="m-0 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-ink-mute">{title}</p>
       <div className="flex flex-col gap-1">{children}</div>
     </div>

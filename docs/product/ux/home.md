@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Read home (UX)"
 status: active
-updated: 2026-10-19
+updated: 2026-10-21
 summary: "The default Read tab offers file, typed/pasted text and selection entry points, session recents, current playback and access to the existing voice and translation settings."
 tags: [area/reading, stack/react, surface/macos]
 relations:
@@ -33,4 +33,5 @@ Loading has its own message. Library failures show retry, never a false empty-st
 Use the shared button/surface/notice/cover primitives and palette. Entry actions form three columns when the content area fits and stack otherwise. The body scrolls beneath the existing shell chrome; keep every action keyboard reachable. Labels and empty states support Vietnamese/English and both themes.
 
 - 2026-10-20 (owner): minimal layout - the three entry points show an icon and a name (hint as tooltip); reading settings (voice, scan translation) sit in a fixed footer at the bottom of Read home, outside the scroll.
+- 2026-10-21 (owner: "bỏ đi divider, phân tích bằng spacing thôi"): the side column's groups (Tools, Settings) and the folded rail's settings group are set apart by space alone - no rules.
 - 2026-10-20 (owner): the side column holds navigation and settings, like SpeakEase - Read, Library, Paste, Read a selection; Tools; Settings (Voice, Translate before reading, Pronunciations, Voices & models). The "Reading now" list is gone (Read home lists recent content). Opened from the column, each settings sheet is centred over a scrim.
