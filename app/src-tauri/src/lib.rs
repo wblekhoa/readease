@@ -239,13 +239,16 @@ fn with_translator(app: &tauri::AppHandle, client: &Engine, mut options: transla
 /// RE-PLAY-032: translate a chapter's paragraphs that the engine has not
 /// kept yet, keep them, and say how far it got. Stops quietly when a newer
 /// reading (or Stop) moves the generation on.
-fn translate_chapter(app: &tauri::AppHandle, client: &Engine, book_id: &str, options: &translation::Options,
-                     chapter: &serde_json::Value, id: u64, announce: bool) -> Result<bool, String> {
-    use tauri::Emitter;
-    let missing: Vec<(String, String)> = chapter["paragraphs"].as_array().into_iter().flatten()
+fn missing_of(chapter: &serde_json::Value) -> Vec<(String, String)> {
+    chapter["paragraphs"].as_array().into_iter().flatten()
         .filter(|p| p["translated"] != true)
         .filter_map(|p| Some((p["segment_id"].as_str()?.to_string(), p["text"].as_str()?.to_string())))
-        .collect();
+        .collect()
+}
+
+fn translate_chapter(app: &tauri::AppHandle, client: &Engine, book_id: &str, options: &translation::Options,
+                     missing: Vec<(String, String)>, id: u64, announce: bool) -> Result<bool, String> {
+    use tauri::Emitter;
     let total = missing.len();
     let mut batch = serde_json::Map::new();
     let keep = |batch: &mut serde_json::Map<String, serde_json::Value>| -> Result<(), String> {
@@ -267,6 +270,23 @@ fn translate_chapter(app: &tauri::AppHandle, client: &Engine, book_id: &str, opt
     if announce { let _ = app.emit("reading:book_translating", serde_json::json!({ "done": total, "total": total })); }
     Ok(true)
 }
+
+/// RE-PLAY-035: start ReadEase's own translator before it is needed - the
+/// first start reads 1.1 GB and compiles its shaders (~6 s cold). Asked by
+/// the page when a screen that translates opens with that translator in
+/// use; the idle stop lets it go again after a few quiet minutes.
+#[tauri::command(async)]
+fn prewarm_translator(app: tauri::AppHandle, engine: tauri::State<EngineSlot>) -> Result<bool, String> {
+    let client = client_of(&engine);
+    let status = client.request("model.status", serde_json::json!({}))?;
+    let Some(path) = status["translator"]["path"].as_str() else { return Ok(false) };
+    let path = std::path::PathBuf::from(path);
+    std::thread::spawn(move || { let _ = local_translator::port(&app, &path); });
+    Ok(true)
+}
+
+/// How many paragraphs are translated before the voice starts (RE-PLAY-035).
+const FIRST_PARAGRAPHS: usize = 3;
 
 /// RE-PLAY-032: a library book read in the chosen language, a chapter at a
 /// time. This chapter is translated first (what is already kept is not
@@ -299,20 +319,36 @@ fn read_book_translated(
     }))?;
     let chapters = plan["chapters"].as_array().cloned().unwrap_or_default();
     let Some(first) = chapters.first() else { return Ok(None) };
-    if !translate_chapter(&app, &client, &book_id, &options, first, id, true)? { return Ok(None); }
+    // RE-PLAY-035: the voice starts after the first few paragraphs, not after
+    // the whole chapter - the engine reads up to the first one not yet
+    // translated, and the rest is translated while it speaks.
+    let mut missing = missing_of(first);
+    let rest = missing.split_off(missing.len().min(FIRST_PARAGRAPHS));
+    if !translate_chapter(&app, &client, &book_id, &options, missing, id, true)? { return Ok(None); }
     if *request.0.lock().unwrap() != id { return Ok(None); }
     client.fire("read.book", serde_json::json!({
         "book_id": book_id, "segment_id": segment_id, "voice_id": options.voice_id, "rate": rate,
         "chapters": 1, "translation": { "target": options.target },
     }))?;
     let next = chapters.get(1).cloned();
-    let next_segment = next.as_ref().and_then(|c| c["paragraphs"][0]["segment_id"].as_str().map(str::to_string));
-    if let Some(next) = next {
+    // Where the page carries on: the first paragraph still untranslated in
+    // this chapter, or the next chapter's first.
+    let (next_segment, new_chapter) = match rest.first() {
+        Some((segment, _)) => (Some(segment.clone()), false),
+        None => (next.as_ref().and_then(|c| c["paragraphs"][0]["segment_id"].as_str().map(str::to_string)), true),
+    };
+    {
         let (app, client, book_id, options) = (app.clone(), client.clone(), book_id.clone(), options.clone());
-        std::thread::spawn(move || { let _ = translate_chapter(&app, &client, &book_id, &options, &next, id, false); });
+        let ahead = next.map(|c| missing_of(&c)).unwrap_or_default();
+        std::thread::spawn(move || {
+            if translate_chapter(&app, &client, &book_id, &options, rest, id, false).unwrap_or(false) {
+                let _ = translate_chapter(&app, &client, &book_id, &options, ahead, id, false);
+            }
+        });
     }
     Ok(Some(serde_json::json!({
         "target": options.target, "voice_id": options.voice_id, "next_segment_id": next_segment,
+        "new_chapter": new_chapter,
     })))
 }
 
@@ -792,6 +828,7 @@ pub fn run() {
             read_text,
             read_text_translated,
             read_book_translated,
+            prewarm_translator,
             read_book,
             engine_request,
             reading_panel::floating_controller_enabled,

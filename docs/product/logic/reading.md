@@ -51,6 +51,7 @@ Read each source through one transport, preserve the heard position, and keep sp
 | RE-PLAY-026 | Share the current-reading Pause/Resume control without restarting speech or changing text geometry. | live | [026](#evidence) |
 | RE-PLAY-027 | A book reading stops at the end of the chapter scope the page quoted ("this chapter", N chapters, or the whole book); the page, the native command and the engine carry the same `chapters` value. | live | [027](#evidence) |
 | RE-PLAY-028 | For the Vietnamese voice, everyday forms the SDK misreads are rewritten before it, in spellings it reads right: "100m²"/"2,5m³" keep "vuông"/"khối" (converted before footnote marks are dropped), "8h-17h30" says "đến", a weekday run "T2-T6, T7, CN" says "thứ hai đến thứ sáu, thứ bảy, chủ nhật", and "$20"/"3,5 tỷ USD" say "đô la"/"đô la Mỹ"; a lone "T2", "USD" or "x²" is left alone. | live | `tests/domain/test_prosody.py` (`test_square_and_cubic_units_keep_their_power`, `test_an_hour_range_says_den`, `test_a_weekday_range_or_list_says_the_days`, `test_dollars_are_said_as_do_la`) |
+| RE-PLAY-034 | Read starts at once: when a book opens, the engine makes its words speakable in the background and keeps them (the last three books; keyed by the book and every setting that shapes the words - pronunciations, notes, chimes - but not voice, speed or interface), so the press of Read does not pay for the whole book. A translated reading is never cached. | live | `tests/headless/test_server_prepared_book.py`; frozen sidecar 21/10 on a 2,440-paragraph book: first audio 0.61 s before, 0.12-0.17 s after opening it |
 
 ## States and recovery
 
@@ -112,6 +113,7 @@ None open for chapter scope: the bridge gap noted on 2026-10-19 is closed by RE-
 Protocol checks: `app/tests/playback.test.ts`, `tests/headless/test_shell_contract.py`, native `engine.rs`/`audio.rs` tests. Reducer checks alone do not establish speaker cancellation.
 
 ## Change log
+- 2026-10-21: RE-PLAY-034 - a book's words prepared when it opens (first audio 0.6 s → 0.15 s on a large book). Measured baseline: engine ready 0.14 s, warm first audio 0.08-0.12 s, import of 1.1 MB text 0.25 s, book.open 0.03 s.
 
 - 2026-10-21: audit 21/10: no rule change; translation-coverage allowlist gained the new chapter-line matchers.
 - 2026-10-20: RE-PLAY-028 - probed 44 everyday forms through the SDK normaliser; four misread families rewritten (unit powers, hour ranges, weekday runs, dollars).

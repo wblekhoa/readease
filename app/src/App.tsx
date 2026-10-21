@@ -959,7 +959,7 @@ export default function App() {
         // RE-PLAY-032: a translated book reads a chapter at a time; at a
         // chapter's end, carry on into the next while the press reaches it.
         const going = bookTranslation.current;
-        if (going && event.payload.ok && going.next && going.left !== 1) {
+        if (going && event.payload.ok && going.next) {
           continueBook.current(going.next);
           return;
         }
@@ -1190,14 +1190,19 @@ export default function App() {
     setScanVoice(translatedVoice);
     bookTranslation.current = { bookId, target: settings.target, voiceId: translatedVoice, next: null, left };
     try {
-      const result = await invoke<{ target: string; voice_id: string; next_segment_id: string | null } | null>("read_book_translated", {
+      const result = await invoke<{ target: string; voice_id: string; next_segment_id: string | null; new_chapter?: boolean } | null>("read_book_translated", {
         bookId, segmentId, rate, translation: { ...settings, voice_id: translatedVoice },
       });
       if (translationPending.current !== at) return;
       translationPending.current = null; translationWorking.current = false;
       setTranslating(false); setBookTranslating(null);
       if (!result) { bookTranslation.current = null; onPlayer({ type: "stop" }); return; }
-      bookTranslation.current = { bookId, target: result.target, voiceId: result.voice_id, next: result.next_segment_id, left: left === null ? null : left - 1 };
+      // Carrying on inside this chapter costs nothing of the press's scope;
+      // a new chapter takes one (RE-PLAY-035).
+      const newChapter = result.new_chapter !== false;
+      const leftAfter = left === null || !newChapter ? left : left - 1;
+      const next = newChapter && leftAfter === 0 ? null : result.next_segment_id;
+      bookTranslation.current = { bookId, target: result.target, voiceId: result.voice_id, next, left: leftAfter };
       loadBookTranslations(bookId, result.target);
     } catch (error) {
       if (translationPending.current !== at) return;
@@ -1249,6 +1254,15 @@ export default function App() {
     if (openBook && libraryTranslated && openBook.language !== translation.settings.target) loadBookTranslations(openBook.id, translation.settings.target);
     else setBookTranslations(null);
   }, [openBook, libraryTranslated, translation.settings.target, loadBookTranslations]);
+  // RE-PLAY-035: ReadEase's own translator is started as a screen that
+  // translates opens, so the first translation does not wait ~6 s for it.
+  const translatesHere = (tab === "paste" && pasteTranslated)
+    || (tab === "external" && translates(translation.settings, "scan"))
+    || (tab === "library" && openBook !== null && libraryTranslated);
+  const ownTranslator = translation.settings.provider === "readease" || translation.settings.provider === "auto";
+  useEffect(() => {
+    if (translatesHere && ownTranslator) void invoke("prewarm_translator").catch(() => undefined);
+  }, [translatesHere, ownTranslator]);
   useEffect(() => {
     const progress = listen<{ done: number; total: number }>("reading:book_translating", event => {
       setBookTranslating(event.payload.done < event.payload.total ? event.payload : null);

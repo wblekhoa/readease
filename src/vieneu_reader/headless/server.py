@@ -332,6 +332,11 @@ class _Session:
         self._writer = writer
         # A book's translations, paragraph by paragraph (RE-PLAY-032).
         self._translations = translations
+        # What a book would say, kept for the books just opened (RE-PLAY-034):
+        # making a whole book speakable takes ~0.5 s for 2,400 paragraphs,
+        # and it was paid between the press of Read and the first sound.
+        self._utterance_cache: dict[tuple, tuple[list[_Utterance], list[int]]] = {}
+        self._utterance_lock = threading.Lock()
         # ReadEase's own translation model (RE-PLAY-031): fetched, checked and
         # removed here; the host runs it.
         self._translator = translator
@@ -1310,10 +1315,16 @@ class _Session:
         chapters = params.get("chapters")
         end = scope_end(chapter_of, start, None if chapters is None else int(chapters))
         if translated is not None:
-            missing = [u.segment_id for u in utterances[start:end] if u.segment_id and u.untranslated]
-            if missing:
-                self._fail(request_id, f"translation:missing {missing[0]}")
+            # RE-PLAY-032: read what is translated so far and stop at the
+            # first paragraph that is not - the host translates ahead and
+            # carries on from there. Nothing translated at the start at all
+            # is refused by name.
+            gap = next((i for i in range(start, end) if utterances[i].untranslated), None)
+            if gap == start:
+                self._fail(request_id, f"translation:missing {utterances[start].segment_id}")
                 return
+            if gap is not None:
+                end = gap
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
             book_id=book_id, window=params.get("window"), language=language,
@@ -1649,6 +1660,49 @@ class _Session:
         })
 
     def _book_utterances(
+        self, stored: StoredBook, language: str = DEFAULT_SPEECH_LANGUAGE,
+        translated: dict[str, str] | None = None,
+    ) -> tuple[list[_Utterance], list[int]]:
+        """Everything this book would say - from the cache when nothing that
+        shapes it has changed since (RE-PLAY-034). A translated reading is
+        never cached: its translations grow while it plays."""
+
+        if translated is not None:
+            return self._build_book_utterances(stored, language, translated)
+        # Any setting can shape the words (pronunciations, notes, the chime
+        # plan), so the whole document is the key: a change anywhere is a
+        # rebuild, never a stale reading.
+        shaping = {k: v for k, v in self._settings_document().items() if k not in _NOT_IN_THE_WORDS}
+        key = (stored.book.id, stored.book.source_hash, speech_language(language),
+               json.dumps(shaping, sort_keys=True, default=str), self._service is not None)
+        with self._utterance_lock:
+            hit = self._utterance_cache.get(key)
+        if hit is not None:
+            return hit
+        built = self._build_book_utterances(stored, language, None)
+        with self._utterance_lock:
+            self._utterance_cache = {k: v for k, v in self._utterance_cache.items() if k[0] != key[0]}
+            while len(self._utterance_cache) >= 3:
+                self._utterance_cache.pop(next(iter(self._utterance_cache)))
+            self._utterance_cache[key] = built
+        return built
+
+    def _prepare_book(self, stored: StoredBook) -> None:
+        """Make the book's words ready while the page opens, so Read speaks
+        at once (RE-PLAY-034). Off the protocol loop; a failure only means
+        the reading builds them itself."""
+
+        language = self._book_language(stored)
+
+        def build() -> None:
+            try:
+                self._book_utterances(stored, language)
+            except Exception:  # noqa: BLE001 - a warm-up, never an error
+                pass
+
+        threading.Thread(target=build, name="prepare-book", daemon=True).start()
+
+    def _build_book_utterances(
         self, stored: StoredBook, language: str = DEFAULT_SPEECH_LANGUAGE,
         translated: dict[str, str] | None = None,
     ) -> tuple[list[_Utterance], list[int]]:
@@ -2905,6 +2959,8 @@ class _Session:
                 "voice_id": progress.voice_id if progress else None,
             },
         })
+        # The page is open; its words are made ready for Read meanwhile.
+        self._prepare_book(stored)
 
     def _book_cover(self, request_id: Any, params: dict[str, Any]) -> None:
         """A book's cover for the shelf - `null` fields when it has none,
@@ -3596,6 +3652,15 @@ class _Session:
                 self._fail(request_id, f"export failed: {error}")
                 return
         self._reply(request_id, result)
+
+
+#: Settings that never change what a book SAYS - who says it, how fast, the
+#: interface around it. Changing them keeps a prepared book (RE-PLAY-034).
+_NOT_IN_THE_WORDS = frozenset({
+    "voice", "rate", "voice_shortlist", "voice_favorites", "ui_language", "selection_translation",
+    "history_enabled", "history_days", "tauri_selection_shortcut", "voice_quality",
+    "openai_api_key", "elevenlabs_api_key", "openai_model", "elevenlabs_model",
+})
 
 
 @dataclass(frozen=True)

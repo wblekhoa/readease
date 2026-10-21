@@ -1361,6 +1361,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
   if (command === "set_selection_shortcut") return Promise.resolve(null);
   // RE-PLAY-030: `?translators=missing` - no Apple packs and no local server,
   // the state a first-time reader meets in the hub's Translation group.
+  if (command === "prewarm_translator") return Promise.resolve(MODEL.translator.ready);
   if (command === "translation_status") return Promise.resolve({ available: true, installed: TRANSLATORS !== "missing" });
   if (command === "translation_models") return TRANSLATORS === "missing" ? Promise.reject("translation:local_unavailable") : Promise.resolve({ models: ["qwen3:4b", "gemma3:4b"] });
   if (command === "floating_controller_enabled") return Promise.resolve(true);
@@ -1547,7 +1548,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     mockBookTranslations(args.bookId, options.target);
     const walk = bookSteps((args.segmentId as string | null) ?? null, args.bookId);
     startMockReading(walk.slice(0, 6), null);
-    return { target: options.target, voice_id: options.voice_id, next_segment_id: walk[6] ?? null };
+    return { target: options.target, voice_id: options.voice_id, next_segment_id: walk[6] ?? null, new_chapter: false };
   }
   if (command === "read_book") {
     // The refusal a PAID reading gets, on demand. The engine says
