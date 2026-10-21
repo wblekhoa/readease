@@ -816,6 +816,13 @@ textarea:focus-visible {
   outline-offset: -1px;
 }
 
+/* Except where the page itself is the editor (Paste text): a blue frame
+   drawn round the whole sheet made it a box again the moment you clicked
+   in (21/10). The caret is the focus there - it blinks where typing goes. */
+textarea[data-plain]:focus-visible {
+  outline: none;
+}
+
 /* A selection is a wash over the words, not a slab under them: brand hue
    at a light tint, the ink left alone - the solid red with white text was
    too heavy (owner, 02/09). The alpha keeps it right on both papers. */

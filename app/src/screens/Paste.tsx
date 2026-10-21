@@ -42,7 +42,9 @@ export function Paste({ content, onChange, onClear, count, overLimit, translatio
       <div className="mx-auto flex min-h-0 w-full max-w-[72ch] flex-1 flex-col">
         <div className="flex items-center gap-3">
           <p className="m-0 min-w-0 flex-1 text-xs text-ink-mute">{text("paste.description")}</p>
-          <Button variant="ghost" size="sm" data-popover-trigger onClick={onHistory}>{text("history.button")}</Button>
+          {/* The ghost button pads its label: pulled out by that padding, the
+              word lines up with the column's right edge like the dates below. */}
+          <Button variant="ghost" size="sm" data-popover-trigger onClick={onHistory} className="-mr-2.5">{text("history.button")}</Button>
         </div>
         <Textarea
           plain
@@ -55,7 +57,10 @@ export function Paste({ content, onChange, onClear, count, overLimit, translatio
           onChange={(event) => onChange(event.target.value)}
         />
         {empty && (
-          <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+          /* The rows' hover wash reaches past the column; the scroller
+             reaches out with them, or overflow-y makes them a sideways
+             scroll (owner's screenshot, 21/10). */
+          <div className="-mx-3 min-h-0 flex-1 overflow-y-auto px-3 pb-4">
             <p className="m-0 text-xs text-ink-mute">{text("paste.empty_hint")}</p>
             {recents.length > 0 && (
               <div className="mt-5">
@@ -91,15 +96,21 @@ export function Paste({ content, onChange, onClear, count, overLimit, translatio
           </section>
         )}
         {/* Two things on one line - the count, and past the limit what to
-            do - so a gap between them (27/09). */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-edge-alpha py-2.5 text-xs text-ink-mute">
-          <span className={`tabular-nums ${overLimit ? "font-semibold text-danger" : ""}`}>{count}</span>
-          {overLimit && <span className="font-medium text-danger">{text("paste.over_limit")}</span>}
-          <span className="ml-auto flex items-center gap-2">
-            {!empty && <Button variant="ghost" size="sm" onClick={onClear}>{text("paste.clear")}</Button>}
-            {exportSlot}
-          </span>
-        </div>
+            do - so a gap between them (27/09). An empty sheet has neither a
+            count worth reading nor anything to export: the hint above says
+            the limit (21/10). The bottom margin is the room the "Reading…"
+            capsule floats in above the transport, which covered the count
+            and the export button (owner's screenshot, 21/10). */}
+        {!empty && (
+          <div className="mb-8 mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-edge-alpha py-2.5 text-xs text-ink-mute">
+            <span className={`tabular-nums ${overLimit ? "font-semibold text-danger" : ""}`}>{count}</span>
+            {overLimit && <span className="font-medium text-danger">{text("paste.over_limit")}</span>}
+            <span className="ml-auto flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onClear}>{text("paste.clear")}</Button>
+              {exportSlot}
+            </span>
+          </div>
+        )}
       </div>
     </section>
   );
