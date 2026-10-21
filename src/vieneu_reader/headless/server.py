@@ -140,13 +140,36 @@ from vieneu_reader.speech.kokoro import (
 )
 from vieneu_reader.storage.errors import RepositoryCorruptionError
 from vieneu_reader.storage.repository import (
+    DEFAULT_STYLE,
     DamagedBook,
     LibraryRepository,
     Progress,
+    StoredAnnotation,
     StoredBook,
 )
 
 PROTOCOL_VERSION = 1
+
+# The page marks a highlight by its words with quotes straightened, runs of
+# space folded and case ignored (app/src/ui/highlight.ts); a highlight is
+# accepted on the same terms, or it would be kept and never drawn.
+_QUOTES = str.maketrans({"\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'", "\u00a0": " "})
+
+
+def _folded(text: str) -> str:
+    return " ".join(text.translate(_QUOTES).lower().split())
+
+
+def _annotation_payload(item: StoredAnnotation) -> dict[str, Any]:
+    return {
+        "id": item.id,
+        "segment_id": item.segment_id,
+        "selected_text": item.selected_text,
+        "note": item.note,
+        "style": item.style,
+        # Made here or brought from Books: only the first can change colour.
+        "source": item.source,
+    }
 
 _EOF = object()
 
@@ -583,6 +606,7 @@ class _Session:
         # person reads (and tidies) while listening - deferring it until the
         # chapter ends would look like the button did nothing.
         "annotations.delete", "annotations.update",
+        "annotations.add", "annotations.restyle",
         # A scanned passage is saved to its history the moment it is read -
         # which is while it is being read (RE-HIST-001).
         "history.add", "history.list", "history.delete", "history.clear",
@@ -793,6 +817,10 @@ class _Session:
                 self._annotations_delete(request_id, request.get("params") or {})
             elif method == "annotations.update":
                 self._annotations_update(request_id, request.get("params") or {})
+            elif method == "annotations.add":
+                self._annotations_add(request_id, request.get("params") or {})
+            elif method == "annotations.restyle":
+                self._annotations_restyle(request_id, request.get("params") or {})
             elif method == "notes.books":
                 self._notes_books(request_id)
             elif method == "notes.plan":
@@ -2382,6 +2410,72 @@ class _Session:
         removed = self._repository.forget_annotation(book_id, annotation_id)
         self._reply(request_id, {"removed": removed})
 
+    def _annotations_add(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Keep a highlight made in the Reader (RE-NOTE-005, RE-NOTE-006).
+
+        `pieces` is the selection paragraph by paragraph. Each piece must
+        name a paragraph of THIS book and words that paragraph holds -
+        compared folded (quotes, spaces, case) the way the page marks them -
+        or nothing is kept: a mark that cannot land is a row that never
+        shows and cannot be found to delete.
+        """
+
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        raw = params.get("pieces")
+        if not book_id or not isinstance(raw, list) or not raw:
+            self._fail(request_id, "book_id and pieces are required")
+            return
+        try:
+            stored = self._repository.get_book(book_id)
+        except RepositoryCorruptionError:
+            stored = None
+        if stored is None:
+            self._fail(request_id, "annotations:no_book")
+            return
+        texts = {
+            segment.id: _folded(segment.text)
+            for chapter in stored.book.chapters
+            for segment in chapter.segments
+        }
+        pieces: list[tuple[str, str]] = []
+        for piece in raw:
+            segment_id = str((piece or {}).get("segment_id") or "")
+            words = str((piece or {}).get("selected_text") or "").strip()
+            if segment_id not in texts or not words or _folded(words) not in texts[segment_id]:
+                self._fail(request_id, "annotations:not_in_book")
+                return
+            pieces.append((segment_id, words))
+        try:
+            made = self._repository.add_annotations(
+                book_id, pieces, params.get("note"), params.get("style", DEFAULT_STYLE),
+            )
+        except ValueError as error:
+            self._fail(request_id, str(error))
+            return
+        self._reply(request_id, {"annotations": [_annotation_payload(item) for item in made]})
+
+    def _annotations_restyle(self, request_id: Any, params: dict[str, Any]) -> None:
+        """Another colour for a highlight made here; `restyled` is false for
+        one that is gone or came from Books (RE-NOTE-007)."""
+
+        if self._repository is None:
+            self._fail(request_id, "no library on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        annotation_id = str(params.get("annotation_id") or "")
+        if not book_id or not annotation_id or "style" not in params:
+            self._fail(request_id, "book_id, annotation_id and style are required")
+            return
+        try:
+            restyled = self._repository.restyle_annotation(book_id, annotation_id, params["style"])
+        except (TypeError, ValueError) as error:
+            self._fail(request_id, str(error))
+            return
+        self._reply(request_id, {"restyled": restyled})
+
     def _annotations_update(self, request_id: Any, params: dict[str, Any]) -> None:
         """Rewrite one highlight's note.
 
@@ -2944,13 +3038,7 @@ class _Session:
                 ],
             },
             "annotations": [
-                {
-                    "id": item.id,
-                    "segment_id": item.segment_id,
-                    "selected_text": item.selected_text,
-                    "note": item.note,
-                    "style": item.style,
-                }
+                _annotation_payload(item)
                 for item in self._repository.annotations_for(book_id)
             ],
             "progress": {

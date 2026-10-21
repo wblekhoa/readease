@@ -14,13 +14,28 @@
  * read at you.
  */
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
 import { Button, Notice } from "./controls";
 import { EmptyState, GroupedSection } from "./patterns";
 import { HighlightIcon, NoteIcon, TrashIcon } from "./icons";
-import { groupAnnotations, type Annotation } from "./annotationsList";
+import { groupAnnotations, notesMarkdown, type Annotation } from "./annotationsList";
+
+/** Put text on the pasteboard, through the host (`pbcopy`): the web
+ * view's own clipboard API is refused without a permission the app does not
+ * ask for. Answers whether it worked, so the button can say so. */
+async function copyText(value: string): Promise<boolean> {
+  try {
+    await invoke("copy_text", { text: value });
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
 
 export function NotesPanel({
+  title,
   chapters,
   annotations,
   focusId,
@@ -28,6 +43,8 @@ export function NotesPanel({
   onNavigate,
   onDelete,
 }: {
+  /** The book's, for the Markdown's heading. */
+  title: string;
   chapters: { id: string; title: string; segments: { id: string }[] }[];
   annotations: Annotation[];
   /** The note whose icon was pressed: brought into view and marked. */
@@ -44,6 +61,12 @@ export function NotesPanel({
   /* Deleting is permanent by the owner's own decision (03/09), so it asks -
    * in the row, the way removing a book from the library asks. */
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [copied, setCopied] = useState<"done" | "failed" | null>(null);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
 
   useEffect(() => {
     focused.current?.scrollIntoView({ block: "center" });
@@ -59,6 +82,17 @@ export function NotesPanel({
         <Notice tone="error" className="mx-4 mb-3 shrink-0">
           {text("notes.remove_failed")} ({error})
         </Notice>
+      )}
+      {/* Everything here, as Markdown for a notes app (RE-NOTE-008) - only
+          when there is something to take. Says it worked, briefly, in the
+          button's own place. */}
+      {groups.length > 0 && (
+        <div className="flex shrink-0 justify-end px-4 pb-1">
+          <Button variant="ghost" size="sm"
+            onClick={() => void copyText(notesMarkdown(title, chapters, annotations)).then((done) => setCopied(done ? "done" : "failed"))}>
+            {copied === "done" ? text("notes.copied") : copied === "failed" ? text("notes.copy_failed") : text("notes.copy_markdown")}
+          </Button>
+        </div>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
       {groups.length === 0 ? (

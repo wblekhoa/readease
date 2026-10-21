@@ -9,6 +9,7 @@ from pathlib import Path
 import sqlite3
 from threading import RLock
 from typing import Any, Callable, Sequence
+import uuid
 
 from vieneu_reader.domain.models import BOOK_FORMATS, BookDocument, Chapter, Segment, stable_id
 from vieneu_reader.domain.prosody import ends_sentence
@@ -145,6 +146,15 @@ class StoredAnnotation:
     note: str | None = field(repr=False, default=None)
     style: int = 0
     source: str = "applebooks"
+
+
+# Highlights made in this app (RE-NOTE-005): their own source, so a sync -
+# which replaces only "applebooks" rows - never touches them. Styles are
+# Books' numbers: 0 its underline (drawn here as yellow), 1 green, 2 blue, 3 yellow,
+# 4 pink, 5 purple; a new one is yellow, the colour every highlight wore.
+LOCAL_SOURCE = "readease"
+HIGHLIGHT_STYLES = range(0, 6)
+DEFAULT_STYLE = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -901,6 +911,66 @@ class LibraryRepository:
                     """,
                     (book_id, annotation_id, note),
                 )
+        return cursor.rowcount > 0
+
+    def add_annotations(
+        self,
+        book_id: str,
+        pieces: Sequence[tuple[str, str]],
+        note: str | None = None,
+        style: int = DEFAULT_STYLE,
+    ) -> tuple[StoredAnnotation, ...]:
+        """Keep one highlight made here, as one row per paragraph it covers.
+
+        A selection that runs over several paragraphs is several pieces, the
+        way Books stores it: each paragraph marks its own words. The note
+        belongs to the first piece - where the eye starts reading the mark.
+        All pieces are written together or none is.
+        """
+
+        style = int(style)
+        if style not in HIGHLIGHT_STYLES:
+            raise ValueError(f"unknown highlight style: {style}")
+        rows = [(segment_id, text.strip()) for segment_id, text in pieces if text.strip()]
+        if not rows:
+            raise ValueError("a highlight needs some words")
+        note = (note or "").strip() or None
+        made = tuple(
+            StoredAnnotation(
+                id=f"{LOCAL_SOURCE}-{uuid.uuid4().hex}",
+                segment_id=segment_id,
+                selected_text=text,
+                note=note if index == 0 else None,
+                style=style,
+                source=LOCAL_SOURCE,
+            )
+            for index, (segment_id, text) in enumerate(rows)
+        )
+        with _database_errors(), self._lock, self._connection:
+            self._connection.executemany(
+                """
+                INSERT INTO annotations(
+                    id, book_id, segment_id, selected_text, note, style, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                [(item.id, book_id, item.segment_id, item.selected_text,
+                  item.note, item.style, LOCAL_SOURCE) for item in made],
+            )
+        return made
+
+    def restyle_annotation(self, book_id: str, annotation_id: str, style: int) -> bool:
+        """A highlight made here takes another colour. Books' own keep
+        theirs: the next sync would paint them back, so the change would
+        be a lie told for one session. Answers whether one changed."""
+
+        style = int(style)
+        if style not in HIGHLIGHT_STYLES:
+            raise ValueError(f"unknown highlight style: {style}")
+        with _database_errors(), self._lock, self._connection:
+            cursor = self._connection.execute(
+                "UPDATE annotations SET style = ? WHERE book_id = ? AND id = ? AND source = ?",
+                (style, book_id, annotation_id, LOCAL_SOURCE),
+            )
         return cursor.rowcount > 0
 
     def forget_annotation(self, book_id: str, annotation_id: str) -> bool:
