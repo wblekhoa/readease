@@ -29,7 +29,7 @@ from .epub_presentation import (
 )
 from .errors import CorruptBookError, LibraryStorageError, UnsupportedBookError
 from .pdf import import_pdf, load_pdf_cover
-from .text import TEXT_PARSERS
+from .text import SUFFIX_ALIASES, TEXT_PARSERS
 
 
 BookParser = Callable[[Path], BookDocument]
@@ -367,6 +367,9 @@ class LibraryService:
     def _import_book_locked(self, source: Path) -> ImportResult:
         source_path = Path(source)
         suffix = source_path.suffix.lower()
+        # The other spellings of a text format are that format: the managed
+        # copy is kept under the canonical suffix, which is its source_format.
+        suffix = SUFFIX_ALIASES.get(suffix, suffix)
         parser = self._parsers.get(suffix)
         if parser is None:
             raise UnsupportedBookError(

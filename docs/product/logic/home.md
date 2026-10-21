@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Read home (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "Default Read routing, five derived recents, shared path import and recovery without an additional content store."
 tags: [area/reading, stack/react, stack/tauri, surface/macos]
 reqPrefix: RE-HOME
@@ -65,6 +65,7 @@ Home/Finder share a queue, not the Library shelf's aggregate import-feedback own
 Additional queue coverage: `app/tests/bookImport.test.ts`. `home*` render recipes verify empty import, exact draft reopening, focused capture and preserved playback in both languages/themes. Native Finder/drop acceptance is still pending; mock routing does not prove it.
 
 ## Change log
+- 2026-10-21: audit 21/10: Home chips carry accessible names; the translation chip reads "Dịch · EN/Tắt" like the footer; "Recent" is an h2; Read tab has its own glyph. RE-HOME-002 evidence tagged in code.
 - 2026-10-20: RE-HOME-002 simplified at the owner's request: no continue-reading card and no kind filter; recents only.
 
 - 2026-10-20: condensed routing/recents/error contracts; rule and acceptance unchanged.

@@ -1158,7 +1158,7 @@ export function Scrim() {
   // `scrim`: fades with the sheet it sits under (HIG 3.17), through the
   // same `Presence` - it is a sibling of the sheet, so the one state covers
   // both.
-  return <div aria-hidden="true" className="scrim fixed inset-0 z-20 bg-black/25 backdrop-blur-2xl" />;
+  return <div aria-hidden="true" className="scrim fixed inset-0 z-20 bg-scrim backdrop-blur-2xl" />;
 }
 
 /** One entry of the column's navigation: a glyph and a name, painted `tint`
@@ -1266,7 +1266,7 @@ export function RailIcon({
  * (owner, 17/09, of the plain sentence-case label: "thử style khác"). */
 export function RailGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="pt-6">
+    <div className="mt-5 border-t border-edge-alpha pt-3">
       <p className="m-0 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-ink-mute">{title}</p>
       <div className="flex flex-col gap-1">{children}</div>
     </div>

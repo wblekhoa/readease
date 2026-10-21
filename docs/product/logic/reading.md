@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "Playback, heard progress, speech preparation and native controls; translation and export have separate rule owners with unchanged requirement IDs."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
@@ -113,6 +113,7 @@ Protocol checks: `app/tests/playback.test.ts`, `tests/headless/test_shell_contra
 
 ## Change log
 
+- 2026-10-21: audit 21/10: no rule change; translation-coverage allowlist gained the new chapter-line matchers.
 - 2026-10-20: RE-PLAY-028 - probed 44 everyday forms through the SDK normaliser; four misread families rewritten (unit powers, hour ranges, weekday runs, dollars).
 - 2026-10-20: RE-PLAY-027 - `read_book` now declares and forwards `chapters`; cross-layer contract test added; the chapter-scope known limit is closed.
 - 2026-10-19: separated translation/export ownership without renumbering rules; retained native holds and the chapter-scope gap.

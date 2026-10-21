@@ -1425,7 +1425,7 @@ function Lightbox({ source, alt, onClose }: { source: string; alt: string; onClo
       aria-modal="true"
       aria-label={alt}
       tabIndex={-1}
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-8"
+      className="fixed inset-0 z-30 flex items-center justify-center bg-lightbox p-8"
       onClick={onClose}
     >
       <img

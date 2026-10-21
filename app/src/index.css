@@ -219,6 +219,14 @@
      so the lift reads as the same material coming closer - not a new shadow. */
   --shadow-lifted: var(--shadow-neutral-to-bot-3);
   --color-ink: var(--text-color-neutral-primary);
+  /* Text on a brand fill (the primary button, the reading-position dot) -
+     the DS role, not a literal white (audit 21/10). */
+  --color-on-brand: var(--text-color-on-color-primary);
+  /* Dimming under a sheet and behind the figure viewer: dark in BOTH
+     themes, so the light ramp's black alpha on purpose (the themed black
+     alpha turns white in dark). */
+  --color-scrim: var(--light-black-alpha-ba20);
+  --color-lightbox: var(--light-black-alpha-ba70);
   --color-ink-mute: var(--text-color-neutral-secondary);
   --color-ink-faint: var(--text-color-neutral-disabled);
   --color-edge: var(--border-color-neutral-primary);

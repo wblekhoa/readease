@@ -227,7 +227,7 @@ export function VoicesPanel({
     >
       <div className="flex items-start gap-3 px-6 pb-4 pt-5">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-base font-bold">{text("voices.title")}</h3>
+          <h2 className="m-0 text-base font-bold">{text("voices.title")}</h2>
           <p className="short-hidden m-0 mt-1 text-xs text-ink-mute">{text("voices.caption")}</p>
         </div>
         {/* Search is FOLDED AWAY behind its own button (owner, 06/09:

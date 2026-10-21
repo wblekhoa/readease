@@ -105,6 +105,7 @@ class PaidReadingTests(unittest.TestCase):
         path = directory / "settings.json"
         path.write_text(json.dumps(settings), encoding="utf-8")
         repository = LibraryRepository(directory / "reader.sqlite3")
+        self.addCleanup(repository.close)
         source = directory / "book.epub"
         source.write_bytes(b"fixture")
         repository.add_book(_BOOK, source)
@@ -364,6 +365,7 @@ class EstimateMethodTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             repository = LibraryRepository(root / "reader.sqlite3")
+            self.addCleanup(repository.close)
             source = root / "book.epub"
             source.write_bytes(b"fixture")
             repository.add_book(_BOOK, source)

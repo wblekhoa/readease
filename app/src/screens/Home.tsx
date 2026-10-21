@@ -1,4 +1,5 @@
-/** RE-HOME-001: one place to start reading, resume and reach existing settings. */
+/** RE-HOME-001: one place to start reading, resume and reach existing settings.
+ * RE-HOME-002: three entry points, one list of recents, settings in a fixed footer. */
 import { useEffect, useState, type ReactNode } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -103,7 +104,7 @@ export function Home({ books, loading, error, importing, paste, pastes = [], onO
         </Surface>}
         {everything.length > 0 && <section className="mt-7" aria-label={text("home.recent")}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="m-0 text-sm font-semibold">{text("home.recent")}</h3>
+            <h2 className="m-0 text-sm font-semibold">{text("home.recent")}</h2>
 
           </div>
           <div className="flex flex-col">{recent.map(item => <RecentRow key={item.id} item={item} kept={historyKept} onOpen={() => {

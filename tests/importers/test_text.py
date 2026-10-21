@@ -64,6 +64,12 @@ class TextImportTests(unittest.TestCase):
         book = import_txt(self.file("a.txt", "Hồi đó tôi mới mười tuổi.\n\nChương trình học rất nặng.\n\nPhần còn lại để sau."))
         self.assertEqual(outline(book), [("a", ["Hồi đó tôi mới mười tuổi.", "Chương trình học rất nặng.", "Phần còn lại để sau."])])
 
+    def test_a_numbered_chapter_line_may_carry_its_title_after_a_space(self):
+        book = import_txt(self.file("c.txt", "Chương 1 Hà Nội\n\nPhố nhỏ.\n\nHồi 5 giờ sáng tôi dậy.\n\nPart II The Road\n\nOn."))
+        self.assertEqual(outline(book), [
+            ("Chương 1 Hà Nội", ["Phố nhỏ.", "Hồi 5 giờ sáng tôi dậy."]), ("Part II The Road", ["On."]),
+        ])
+
     def test_a_contents_list_of_chapter_lines_is_kept_as_text(self):
         book = import_txt(self.file("b.txt", "Chương 1\n\nChương 2\n\nChương 1\n\nMở đầu.\n\nChương hai: Kết\n\nHết."))
         self.assertEqual(outline(book), [
@@ -182,6 +188,15 @@ class TextBooksInTheLibraryTests(unittest.TestCase):
             self.assertEqual(stored.book.source_format, "md")
             self.assertEqual(stored.book.chapters[0].segments[0].text, "Một đoạn để đọc.")
             self.assertTrue(service.import_book(source).was_existing)
+            # The same words as `.markdown` are the same book, kept as `.md`.
+            alias = root / "ghi chú.markdown"
+            alias.write_bytes(source.read_bytes())
+            again = service.import_book(alias)
+            self.assertTrue(again.was_existing)
+            other = root / "khác.markdown"
+            other.write_text("# Khác\n\nĐoạn khác.", encoding="utf-8")
+            fresh = service.import_book(other)
+            self.assertEqual((fresh.book.source_format, fresh.managed_path.suffix), ("md", ".md"))
 
     def test_a_document_without_headings_names_its_chapter_after_the_file(self):
         with TemporaryDirectory() as folder:

@@ -68,7 +68,7 @@ const BUTTON_SIZE: Record<Size, string> = {
  * borderless variants stay borderless and only dim their label. */
 const BUTTON_VARIANT: Record<Variant, string> = {
   primary:
-    "border border-brand-600 bg-brand-600 font-semibold text-white hover:bg-brand-700 hover:border-brand-700 active:bg-brand-700 disabled:border-edge-strong disabled:bg-transparent disabled:text-ink-faint",
+    "border border-brand-600 bg-brand-600 font-semibold text-on-brand hover:bg-brand-700 hover:border-brand-700 active:bg-brand-700 disabled:border-edge-strong disabled:bg-transparent disabled:text-ink-faint",
   secondary:
     "border border-edge-strong bg-paper text-ink hover-wash disabled:bg-transparent disabled:text-ink-faint",
   ghost:

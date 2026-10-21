@@ -46,7 +46,7 @@ export function HistoryPanel({ kind, entries, enabled, days, onOpen, onDelete, o
     >
       <div className="flex items-start gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-base font-bold">{text(kind === "paste" ? "history.paste_title" : "history.scan_title")}</h3>
+          <h2 className="m-0 text-base font-bold">{text(kind === "paste" ? "history.paste_title" : "history.scan_title")}</h2>
           <p className="m-0 mt-1 text-xs text-ink-mute">{text("history.caption")}</p>
         </div>
         <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}><CloseIcon /></IconButton>

@@ -53,7 +53,7 @@ export function UpdatePanel({
       >
         <div className="flex items-start gap-3 px-6 pb-2 pt-5">
           <div className="min-w-0 flex-1">
-            <h3 className="m-0 text-base font-bold">{text("update.title")}</h3>
+            <h2 className="m-0 text-base font-bold">{text("update.title")}</h2>
             {/* Wraps anywhere: a failed check says the URL it could not reach,
                 one unbroken word wider than the sheet (27/09). */}
             <p aria-live="polite" className="m-0 mt-1 break-words text-sm text-ink-mute">{headline(phase, onQuit)}</p>

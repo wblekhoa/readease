@@ -52,6 +52,7 @@ class ARemovedBookTakesTheReadersDecisionsWithItTests(unittest.TestCase):
         root = Path(self.temp_dir.name)
         self.paths = AppPaths.create(root / "app-data")
         self.repository = LibraryRepository(self.paths.database)
+        self.addCleanup(self.repository.close)
         self.service = LibraryService(self.paths, self.repository)
         sources = root / "sources"
         sources.mkdir()

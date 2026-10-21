@@ -130,7 +130,8 @@
       },
       {
         "ext": [
-          "md"
+          "md",
+          "markdown"
         ],
         "name": "Markdown document",
         "contentTypes": [

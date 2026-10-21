@@ -49,7 +49,7 @@ export function ExportReviewPanel({
     >
       <div className="flex items-start gap-3 px-6 pb-3 pt-5">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-base font-bold">{text("review.title")}</h3>
+          <h2 className="m-0 text-base font-bold">{text("review.title")}</h2>
           <p className="m-0 mt-1 text-xs text-ink-mute">
             {text(review.retake ? "review.caption" : "review.caption_fixed")}
           </p>

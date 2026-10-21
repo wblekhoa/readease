@@ -203,7 +203,7 @@ export function AppleBooksPanel({
     >
       <div className="flex items-start gap-3 px-6 pb-4 pt-5">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-base font-bold">{text("apple.title")}</h3>
+          <h2 className="m-0 text-base font-bold">{text("apple.title")}</h2>
           <p className="m-0 mt-1 text-xs text-ink-mute">{text("apple.one_way")}</p>
         </div>
         <IconButton onClick={onClose} disabled={!!working} aria-label={text("aria.close")} title={text("aria.close")}>

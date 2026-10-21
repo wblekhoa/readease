@@ -179,7 +179,9 @@ export function SettingsPanel({
     : context === "paste" ? translates(translation.settings, "paste")
     : translates(translation.settings, "scan") || translates(translation.settings, "paste");
   const translationSummary = translationOn ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
-  const panelTitle = text(panelKind === "translation" ? "translation.open_settings" : "player.settings");
+  // Named as the side column names it (audit 21/10): "Giọng đọc" opens
+  // "Giọng đọc", not a third name for the same place.
+  const panelTitle = text(panelKind === "translation" ? "translation.title" : "settings.voice_title");
   const downloading = models.job !== null;
   // Escape and a click on the book both put it away; neither does while a
   // download runs, which is the one moment closing hides work in progress.
@@ -216,7 +218,7 @@ export function SettingsPanel({
         : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
     >
       <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
-        <h3 className="m-0 flex-1 text-sm font-bold">{panelTitle}</h3>
+        <h2 className="m-0 flex-1 text-base font-bold">{panelTitle}</h2>
         <IconButton onClick={onClose} disabled={downloading} aria-label={text("aria.close")} title={text("aria.close")}>
           <CloseIcon />
         </IconButton>

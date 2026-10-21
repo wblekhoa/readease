@@ -11,7 +11,7 @@ export function ReadingPositionControl({ playback, onToggle }: {
   return (
     <IconButton
       data-reading-control
-      className="absolute right-full mr-1 top-2.5 text-white"
+      className="absolute right-full mr-1 top-2.5 text-on-brand"
       frame="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-brand-600 hover:bg-brand-700 active:bg-brand-700"
       aria-label={label}
       title={label}
