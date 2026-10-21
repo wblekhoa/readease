@@ -245,6 +245,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-21: the Paste translation block is a quiet band (no border, `bg-band`), its paragraphs 8 px apart at line height 1.5; the Reader's translation lines use the same 1.5.
 - 2026-10-21: RE-PLAY-033 - exporting a translated paste saves the translation in the translation voice.
 - 2026-10-21: RE-PLAY-032 - with Translate before reading on for the Library, a book reads in the target language: the status says "Đang dịch chương… n/N" while a chapter is translated, then the translation voice reads it, carrying on chapter by chapter; each paragraph shows its translation underneath, smaller and muted. A book already in the target language reads as written.
 - 2026-10-21: "Clear history" on Read a selection and "Delete all history" in the History panel ask first (two-step: the sentence, then Keep / Delete); search matches on light paper use the pale yellow steps (ya20 wash, y40 current) - the DS light ramp's ya50/y100 are dark gold.
