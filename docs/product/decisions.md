@@ -48,7 +48,7 @@ Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs
   Paste ships first, Library (bilingual paragraphs, translations saved per book on this Mac) later. A setting saved
   before sources existed reads back Selection-only, so nobody's paste starts translating unasked. A paste is
   translated whole before reading (pieces ≤5,000 characters) rather than streamed piece by piece - simpler cancel and
-  history, at the cost of a wait on long text. Export is unchanged for now.
+  history, at the cost of a wait on long text. Export follows what was heard (21/10, RE-PLAY-033).
 - **Evidence**: `app/tests/translation.test.ts`, the Rust `pieces` test, harness check of the Paste flow (20/10).
 - **Reversal**: drop `sources` from the setting; `translates(settings, "scan")` falls back to `enabled`.
 ## 2026-10-20 · App icon: flat two-strand wave ring (B4·4), one template for the app family

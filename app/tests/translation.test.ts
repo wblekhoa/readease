@@ -83,3 +83,11 @@ test('the Library reads through translation only on its own switch; old settings
   assert.equal(translates(translationSettings({ enabled: true, provider: 'apple', sources: { scan: true, paste: true } }), 'library'), false);
   assert.equal(translates(translationSettings({ enabled: true, provider: 'apple', sources: { library: true } }), 'library'), true);
 });
+
+// RE-PLAY-033
+test('a paste export saves what was heard', async () => {
+  const { pasteExport } = await import('../src/ui/translation.ts');
+  assert.deepEqual(pasteExport('Xin chào.', 'vi-voice', { text: 'Hello.' }, 'af_heart'), { text: 'Hello.', voiceId: 'af_heart' });
+  assert.deepEqual(pasteExport('Xin chào.', 'vi-voice', null, 'af_heart'), { text: 'Xin chào.', voiceId: 'vi-voice' });
+  assert.deepEqual(pasteExport('Xin chào.', 'vi-voice', { text: 'Hello.' }, null), { text: 'Xin chào.', voiceId: 'vi-voice' });
+});
