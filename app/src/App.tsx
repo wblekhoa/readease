@@ -1,5 +1,5 @@
 import { useTranslation } from "./ui/useTranslation";
-import { translationError, translationVoice, selectionVoice, translates, type TranslationResult } from "./ui/translation";
+import { translationError, translationVoice, selectionVoice, translates, pasteExport, type TranslationResult } from "./ui/translation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
@@ -2434,12 +2434,24 @@ export default function App() {
                     ? text("cost.unavailable")
                     : pricing && estimate !== null ? buttonCost(estimate) || null : null}
                   onReview={exportJob.review ? () => setReviewOpen(true) : null}
-                  onStart={() => void (exportedText.current = content, exportJob.start({
-                    content,
-                    voiceId,
-                    voiceLabel: voiceName(voices.find((voice) => voice.id === voiceId)?.label ?? "") || voiceId,
-                    rate,
-                  }))}
+                  onStart={() => {
+                    // RE-PLAY-033: what was heard is what is saved - the
+                    // translation shown under the box, in its voice, when
+                    // there is one; the pasted text otherwise.
+                    const { text: words, voiceId: speaker } = pasteExport(
+                      content, voiceId, pasteTranslation,
+                      pasteTranslation ? translationVoice(translation.settings, voices) : null,
+                    );
+                    // The export belongs to the pasted text, translated or not:
+                    // editing the box is what ends its review.
+                    exportedText.current = content;
+                    void exportJob.start({
+                      content: words,
+                      voiceId: speaker,
+                      voiceLabel: voiceName(voices.find((voice) => voice.id === speaker)?.label ?? "") || speaker,
+                      rate,
+                    });
+                  }}
                   onCancel={exportJob.cancel}
                 />
               </span>

@@ -78,3 +78,10 @@ export function translatorReady(settings: TranslationSettings, found: Translator
 export function resolvedProvider(settings: TranslationSettings, translatorDownloaded: boolean): Exclude<TranslationSettings['provider'], 'auto'> {
   return settings.provider !== 'auto' ? settings.provider : translatorDownloaded ? 'readease' : 'apple';
 }
+
+/** RE-PLAY-033: what a paste export saves - the translation shown under the
+ * box, in the translation voice, when there is one and a voice for it; the
+ * pasted text in the chosen voice otherwise. */
+export function pasteExport(content: string, voiceId: string, shown: { text: string } | null, translationVoiceId: string | null): { text: string; voiceId: string } {
+  return shown && translationVoiceId ? { text: shown.text, voiceId: translationVoiceId } : { text: content, voiceId };
+}

@@ -40,7 +40,7 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   settings, switch it on for Read a selection, Pasted text, or both. A
   translated paste is translated whole, then read with the translation voice;
   the box keeps what you pasted and the translation shows underneath. Export
-  audio still exports the original.
+  audio saves what you heard: the translation, in the translation voice.
 
 - Read home is simpler: three ways to start, then one list of what you
   read recently, one line each; voice and translation settings stay at the

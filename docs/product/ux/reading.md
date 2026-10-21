@@ -171,8 +171,9 @@ the same **Translate · EN/VI/Off ▾** chip and the voice chip names the transl
 whole paste first ("Translating… Press Stop to cancel."), then reads the translation; the box keeps what was pasted
 and a read-only **Translation · English** block under it shows what is heard. Editing the box clears the block.
 While a translated paste plays the voice-switch menu is hidden, as for a translated selection. A paid book voice
-shows no price, because a local translation voice reads. **Export audio still exports the original text in the
-book voice** - translation does not reach export yet (owner's phase order: Paste first, Library later). History
+shows no price, because a local translation voice reads. **Export audio saves what was heard**: while the translation
+block is shown, the WAV and its subtitles are the translation in the translation voice; otherwise the pasted text in
+the chosen voice. History
 lists the translation with its target badge; reopening it puts the original back in the box with its translation.
 
 Translation settings pairs **Translate and read in** with a matching installed local **Translation voice**;
@@ -244,6 +245,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-21: RE-PLAY-033 - exporting a translated paste saves the translation in the translation voice.
 - 2026-10-21: RE-PLAY-032 - with Translate before reading on for the Library, a book reads in the target language: the status says "Đang dịch chương… n/N" while a chapter is translated, then the translation voice reads it, carrying on chapter by chapter; each paragraph shows its translation underneath, smaller and muted. A book already in the target language reads as written.
 - 2026-10-21: "Clear history" on Read a selection and "Delete all history" in the History panel ask first (two-step: the sentence, then Keep / Delete); search matches on light paper use the pale yellow steps (ya20 wash, y40 current) - the DS light ramp's ya50/y100 are dark gold.
 - 2026-10-20: RE-PLAY-029 - translation chosen per source; Paste reads its translation and shows it under the box.
