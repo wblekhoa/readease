@@ -86,7 +86,7 @@ from vieneu_reader.domain.prosody import (
     NOTE_READINGS,
     spoken_note,
 )
-from vieneu_reader.domain.segmenter import split_transient_parts
+from vieneu_reader.domain.segmenter import split_paragraph, split_transient_parts
 # What a reading is made of, one module along: the utterances, the picture
 # and note cues, the rests. Imported under their own names so the reading and
 # the estimate keep sharing one builder - and re-exported, because the tests
@@ -327,8 +327,11 @@ class _Session:
         english_engine: "EnglishEngine | None" = None,
         history: "HistoryStore | None" = None,
         translator: "TranslatorModel | None" = None,
+        translations: "TranslationStore | None" = None,
     ):
         self._writer = writer
+        # A book's translations, paragraph by paragraph (RE-PLAY-032).
+        self._translations = translations
         # ReadEase's own translation model (RE-PLAY-031): fetched, checked and
         # removed here; the host runs it.
         self._translator = translator
@@ -578,6 +581,9 @@ class _Session:
         # A scanned passage is saved to its history the moment it is read -
         # which is while it is being read (RE-HIST-001).
         "history.add", "history.list", "history.delete", "history.clear",
+        # The next chapter is translated and kept WHILE this one is read
+        # (RE-PLAY-032); held until the reading ended, it would arrive late.
+        "translation.paragraphs", "translation.put", "translation.list", "translation.clear",
     })
 
     def _stop_requested(self) -> bool:
@@ -790,6 +796,8 @@ class _Session:
                 self._notes_transfer(request_id, request.get("params") or {})
             elif method in ("history.add", "history.list", "history.delete", "history.clear"):
                 self._history_request(method, request_id, request.get("params") or {})
+            elif method in ("translation.paragraphs", "translation.put", "translation.list", "translation.clear"):
+                self._translation_request(method, request_id, request.get("params") or {})
             elif method == "config.get":
                 self._config_get(request_id, request.get("params") or {})
             elif method == "config.set":
@@ -1279,17 +1287,38 @@ class _Session:
             progress = self._repository.load_progress(book_id)
             wanted = progress.segment_id if progress else None
         language = self._book_language(stored)
-        utterances, chapter_of = self._book_utterances(stored, language)
+        translation = params.get("translation") if isinstance(params.get("translation"), dict) else None
+        translated: dict[str, str] | None = None
+        progress_voice: str | None = None
+        if translation is not None:
+            # RE-PLAY-032: the book read in another language, from the
+            # translations the host already kept. The progress keeps the
+            # book's own voice; the translation voice only speaks.
+            target = str(translation.get("target") or "")
+            if self._translations is None or target not in ("vi", "en"):
+                self._fail(request_id, "translation:unavailable")
+                return
+            translated = self._translations.get(book_id, target)
+            language = target
+            saved = self._repository.load_progress(book_id)
+            progress_voice = saved.voice_id if saved else None
+        utterances, chapter_of = self._book_utterances(stored, language, translated=translated)
         start = _start_at(utterances, wanted, _reading_order(stored.book))
         # How far this press of the button is allowed to reach. `None` is the
         # whole book, which is what every reading did before paid voices
         # existed and is still the default.
         chapters = params.get("chapters")
         end = scope_end(chapter_of, start, None if chapters is None else int(chapters))
+        if translated is not None:
+            missing = [u.segment_id for u in utterances[start:end] if u.segment_id and u.untranslated]
+            if missing:
+                self._fail(request_id, f"translation:missing {missing[0]}")
+                return
         self._speak(
             request_id, utterances[start:end], voice_id, rate, SynthesisSettings(),
             book_id=book_id, window=params.get("window"), language=language,
             sentence_progress=params.get("sentence_progress") is True,
+            progress_voice=progress_voice,
         )
 
     def _voice_catalogue(self) -> list[dict[str, Any]]:
@@ -1620,7 +1649,8 @@ class _Session:
         })
 
     def _book_utterances(
-        self, stored: StoredBook, language: str = DEFAULT_SPEECH_LANGUAGE
+        self, stored: StoredBook, language: str = DEFAULT_SPEECH_LANGUAGE,
+        translated: dict[str, str] | None = None,
     ) -> tuple[list[_Utterance], list[int]]:
         """Everything this book would say, and the chapter each bit is in.
 
@@ -1721,6 +1751,14 @@ class _Session:
 
         divisions = division_plan(stored.book, contents, breaks)
         opened: set[str] = set()
+        # RE-PLAY-032: in translation, a paragraph is spoken once, on its
+        # first segment, in the kept translation; its split pieces say
+        # nothing more. Notes are offsets into the original, so they drop.
+        block_of: dict[str, str] = {}
+        if translated is not None:
+            for paragraph in _paragraphs(stored):
+                for member in paragraph.members:
+                    block_of[member] = paragraph.segment_id
 
         def add(utterance: _Utterance, chapter: int) -> None:
             # The division opens on the FIRST utterance of its passage - a
@@ -1763,6 +1801,36 @@ class _Session:
             # `or` the segment back in: every segment has to produce at
             # least one utterance, or it is a place the reading cannot be
             # resumed from.
+            untranslated = False
+            if translated is not None:
+                block = block_of.get(segment.id, segment.id)
+                if block != segment.id:
+                    if block in translated:
+                        continue
+                    untranslated = True
+                elif segment.id in translated:
+                    pieces_t = split_paragraph(translated[segment.id], max_chars=240) or (translated[segment.id],)
+                    spoken_t = [speakable_text(piece, segment.kind, language) for piece in pieces_t]
+                    for order, spoken in enumerate(spoken_t):
+                        last = order == len(spoken_t) - 1
+                        add(_Utterance(
+                            text=spoken,
+                            pause_after_ms=after_segment if last else SENTENCE_PAUSE_MS,
+                            segment_id=segment.id,
+                            figure_id=captioned.get(segment.id) if order == 0 else None,
+                            kind=segment.kind,
+                        ), chapter)
+                    for cue in here:
+                        if cue.placement == "after" and cue.caption_segment_id is None:
+                            add(_Utterance(
+                                text=FIGURE_CUE[language].format(number=cue.number),
+                                pause_after_ms=FIGURE_CUE_PAUSE_MS,
+                                segment_id=segment.id,
+                                figure_id=cue.figure_id,
+                            ), chapter)
+                    continue
+                else:
+                    untranslated = True
             pieces = speak_with_notes(
                 segment.text, notes.get(segment.id, [])
             ) or ((segment.text, False),)
@@ -1808,6 +1876,7 @@ class _Session:
                     segment_id=segment.id,
                     figure_id=captioned.get(segment.id) if order == 0 else None,
                     kind="paragraph" if is_note else segment.kind,
+                    untranslated=untranslated,
                 ), chapter)
             for cue in here:
                 if cue.placement == "after" and cue.caption_segment_id is None:
@@ -2465,6 +2534,57 @@ class _Session:
             days = DEFAULT_RETENTION_DAYS
         return enabled, days
 
+    def _translation_request(self, method: str, request_id: Any, params: dict[str, Any]) -> None:
+        """A book's translations (RE-PLAY-032). The host translates; this
+        keeps the result and says which paragraphs a reading still needs."""
+
+        if self._translations is None or self._repository is None:
+            self._fail(request_id, "no translations on this server")
+            return
+        book_id = str(params.get("book_id") or "")
+        target = str(params.get("target") or "")
+        stored = self._repository.get_book(book_id)
+        if stored is None:
+            self._fail(request_id, f"unknown book: {book_id}")
+            return
+        if method == "translation.clear":
+            ids = params.get("segment_ids")
+            deleted = self._translations.delete(book_id, target or None, [str(i) for i in ids] if isinstance(ids, list) else None)
+            self._reply(request_id, {"deleted": deleted})
+            return
+        if target not in ("vi", "en"):
+            self._fail(request_id, f"unknown target: {target}")
+            return
+        if method == "translation.put":
+            items = params.get("items")
+            if not isinstance(items, dict):
+                self._fail(request_id, "items must map paragraph ids to text")
+                return
+            known = {paragraph.segment_id for paragraph in _paragraphs(stored)}
+            kept = {str(k): str(v) for k, v in items.items() if str(k) in known}
+            self._reply(request_id, {"kept": self._translations.put(book_id, target, str(params.get("provider") or ""), kept)})
+            return
+        if method == "translation.list":
+            self._reply(request_id, {"items": self._translations.get(book_id, target)})
+            return
+        # translation.paragraphs: the scope a reading from here would cover,
+        # chapter by chapter, and which paragraphs are already translated.
+        paragraphs = _paragraphs(stored)
+        wanted = params.get("segment_id")
+        if not wanted:
+            progress = self._repository.load_progress(book_id)
+            wanted = progress.segment_id if progress else None
+        start_chapter = next((p.chapter for p in paragraphs if wanted in p.members), 0)
+        start_at = next((i for i, p in enumerate(paragraphs) if wanted in p.members), 0)
+        chapters = params.get("chapters")
+        last_chapter = None if chapters is None else start_chapter + max(1, int(chapters)) - 1
+        scope = [p for i, p in enumerate(paragraphs) if i >= start_at and (last_chapter is None or p.chapter <= last_chapter)]
+        done = self._translations.get(book_id, target, [p.segment_id for p in scope])
+        grouped: dict[int, list[dict[str, Any]]] = {}
+        for p in scope:
+            grouped.setdefault(p.chapter, []).append({"segment_id": p.segment_id, "text": p.text, "translated": p.segment_id in done})
+        self._reply(request_id, {"chapters": [{"chapter": c, "paragraphs": ps} for c, ps in grouped.items()]})
+
     def _history_request(self, method: str, request_id: Any, params: dict[str, Any]) -> None:
         """Paste and scan history (RE-HIST-001…004). Kept only while the
         reader leaves it on; listing applies the chosen retention first."""
@@ -2655,6 +2775,9 @@ class _Session:
         if not removed:
             self._fail(request_id, f"unknown book: {book_id}")
             return
+        # Its translations are the book's too, and go with it (RE-PLAY-032).
+        if self._translations is not None:
+            self._translations.delete(book_id)
         self._reply(request_id, {"removed": True})
 
     def _book_open(self, request_id: Any, params: dict[str, Any]) -> None:
@@ -3129,6 +3252,7 @@ class _Session:
         app_text: bool = False,
         sink: ExportSink | None = None,
         finish: Any = None,
+        progress_voice: str | None = None,
     ) -> None:
         # Which engine speaks this - the local model, or a provider on the
         # reader's own key. Decided once, here, so the sentence loop below is
@@ -3222,7 +3346,7 @@ class _Session:
         # for the reader's words to be kept by setting a flag.
         self._cache_reading = book_id is not None or app_text
         if book_id is not None:
-            self._listening[request_id] = (book_id, rate, voice_id)
+            self._listening[request_id] = (book_id, rate, progress_voice or voice_id)
             while len(self._listening) > 4:
                 del self._listening[next(iter(self._listening))]
 
@@ -3474,6 +3598,32 @@ class _Session:
         self._reply(request_id, result)
 
 
+@dataclass(frozen=True)
+class _Paragraph:
+    """A paragraph as written: its first segment ("block") and the pieces
+    split from it to stay short enough to speak. Translation works on this
+    unit - a segment ends mid-sentence, a paragraph does not."""
+
+    segment_id: str
+    chapter: int
+    text: str
+    members: tuple[str, ...]
+
+
+def _paragraphs(stored: StoredBook) -> list[_Paragraph]:
+    out: list[_Paragraph] = []
+    for index, chapter in enumerate(stored.book.chapters):
+        current: list[Segment] = []
+        for segment in chapter.segments:
+            if current and segment.joint != "split":
+                out.append(_Paragraph(current[0].id, index, " ".join(s.text for s in current), tuple(s.id for s in current)))
+                current = []
+            current.append(segment)
+        if current:
+            out.append(_Paragraph(current[0].id, index, " ".join(s.text for s in current), tuple(s.id for s in current)))
+    return out
+
+
 def serve(
     reader: TextIO,
     writer: TextIO,
@@ -3488,6 +3638,7 @@ def serve(
     english_engine: "EnglishEngine | None" = None,
     history: "HistoryStore | None" = None,
     translator: "TranslatorModel | None" = None,
+    translations: "TranslationStore | None" = None,
 ) -> None:
     """Answer requests until the reader closes.
 
@@ -3499,6 +3650,7 @@ def serve(
         repository=repository, service=service, settings_path=settings_path,
         notes_deps=notes_deps, audio_cache=audio_cache,
         english_engine=english_engine, history=history, translator=translator,
+        translations=translations,
     )
     if background:
         session.start_background_work()
@@ -3574,6 +3726,8 @@ def main() -> int:
     history = HistoryStore(paths.root / "history.sqlite3")
     from vieneu_reader.translation.model import TranslatorModel
     translator = TranslatorModel(paths.models)
+    from vieneu_reader.storage.translations import TranslationStore
+    translations = TranslationStore(paths.root / "translations.sqlite3")
 
     # The SDK prints progress to stdout; the protocol channel must stay clean.
     protocol = sys.stdout
@@ -3587,6 +3741,7 @@ def main() -> int:
         english_engine=english_engine,
         history=history,
         translator=translator,
+        translations=translations,
     )
     return 0
 
