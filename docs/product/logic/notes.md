@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Annotations and note transfer (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "Saved annotation ownership, Apple Books projection modes and explicit backup-before-write note transfer between editions."
 tags: [area/sync, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-NOTE
@@ -60,6 +60,7 @@ Matching uses normalized selected text and chapter/CFI evidence, with stable sou
 Matching coverage: `tests/integrations/test_apple_books_sync.py`. No user database is read/changed by this documentation work.
 
 ## Change log
+- 2026-10-21: no rule change; `tests/headless/test_server.py` now closes every repository and pipe it opens (test hygiene).
 
 - 2026-10-20: condensed annotation/sync/transfer boundaries; moved document search to its reading owner.
 - 2026-10-19: documented existing behavior and narrower-mode replacement semantics.
