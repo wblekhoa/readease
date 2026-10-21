@@ -2412,37 +2412,6 @@ export default function App() {
             recents={history.entries.filter(entry => entry.kind === "paste").map(entry => ({ at: entry.at, text: entry.original ?? entry.text }))}
             onOpenRecent={(saved) => { setContent(saved); setPasteAt(Date.now()); setPasteTranslation(null); }}
             onHistory={() => setHistoryPanel(open => (open === "paste" ? null : "paste"))}
-            exportSlot={
-                <ExportAudio
-                  job={exportJob.job}
-                  disabled={exporting || updater.phase.kind === "installing" || updater.phase.kind === "installed" || !content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
-                  /* The read button's own words for a price it could not
-                     fetch: a disabled export with no reason was a dead end. */
-                  cost={pricing && estimateFailed
-                    ? text("cost.unavailable")
-                    : pricing && estimate !== null ? buttonCost(estimate) || null : null}
-                  onReview={exportJob.review ? () => setReviewOpen(true) : null}
-                  onStart={() => {
-                    // RE-PLAY-033: what was heard is what is saved - the
-                    // translation shown under the box, in its voice, when
-                    // there is one; the pasted text otherwise.
-                    const { text: words, voiceId: speaker } = pasteExport(
-                      content, voiceId, pasteTranslation,
-                      pasteTranslation ? translationVoice(translation.settings, voices) : null,
-                    );
-                    // The export belongs to the pasted text, translated or not:
-                    // editing the box is what ends its review.
-                    exportedText.current = content;
-                    void exportJob.start({
-                      content: words,
-                      voiceId: speaker,
-                      voiceLabel: voiceName(voices.find((voice) => voice.id === speaker)?.label ?? "") || speaker,
-                      rate,
-                    });
-                  }}
-                  onCancel={exportJob.cancel}
-                />
-            }
           />
         ) : (
           <section className="flex flex-1 items-center justify-center text-sm text-ink-mute">
@@ -2525,7 +2494,7 @@ export default function App() {
             header's bottom, the footer's top (owner, 02/09: "tương đồng với
             header"). */}
         {showTransport && (
-        <div ref={footerRow} className="relative z-10 grid min-h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-3 pt-6">
+        <div ref={footerRow} className="@container relative z-10 grid min-h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 pb-3 pt-6">
           {/* Left: the other way in. Middle: what a click does. Right: what
               the voice is up to. A grid keeps the middle in the middle
               whatever the sides say - and gives the bar its height (an
@@ -2722,6 +2691,41 @@ export default function App() {
                   >
                     <CoinIcon />
                   </IconButton>
+                )}
+                {/* Pasted text's second action, beside the first (owner,
+                    21/10: "tối ưu các action phụ như export audio vào chung
+                    một nơi với bottom actions"): what to do with the words
+                    sits in one bar, the sheet above only holds them. */}
+                {screen === "paste" && (
+                <ExportAudio
+                  job={exportJob.job}
+                  disabled={exporting || updater.phase.kind === "installing" || updater.phase.kind === "installed" || !content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
+                  /* The read button's own words for a price it could not
+                     fetch: a disabled export with no reason was a dead end. */
+                  cost={pricing && estimateFailed
+                    ? text("cost.unavailable")
+                    : pricing && estimate !== null ? buttonCost(estimate) || null : null}
+                  onReview={exportJob.review ? () => setReviewOpen(true) : null}
+                  onStart={() => {
+                    // RE-PLAY-033: what was heard is what is saved - the
+                    // translation shown under the box, in its voice, when
+                    // there is one; the pasted text otherwise.
+                    const { text: words, voiceId: speaker } = pasteExport(
+                      content, voiceId, pasteTranslation,
+                      pasteTranslation ? translationVoice(translation.settings, voices) : null,
+                    );
+                    // The export belongs to the pasted text, translated or not:
+                    // editing the box is what ends its review.
+                    exportedText.current = content;
+                    void exportJob.start({
+                      content: words,
+                      voiceId: speaker,
+                      voiceLabel: voiceName(voices.find((voice) => voice.id === speaker)?.label ?? "") || speaker,
+                      rate,
+                    });
+                  }}
+                  onCancel={exportJob.cancel}
+                />
                 )}
               </>
             ) : (
