@@ -245,6 +245,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-21: Paste text redesigned as a sheet - one centred column at the Reader's measure (72ch), the words on the paper with no box (15 px, line height 1.6); above, the one-line note and History; below, a hairline, the count, Clear and Export audio. Empty, the sheet is a few lines tall with the ⌘V hint and up to four recent pastes to reopen right under it.
 - 2026-10-21: the Paste translation block is a quiet band (no border, `bg-band`), its paragraphs 8 px apart at line height 1.5; the Reader's translation lines use the same 1.5.
 - 2026-10-21: RE-PLAY-033 - exporting a translated paste saves the translation in the translation voice.
 - 2026-10-21: RE-PLAY-032 - with Translate before reading on for the Library, a book reads in the target language: the status says "Đang dịch chương… n/N" while a chapter is translated, then the translation voice reads it, carrying on chapter by chapter; each paragraph shows its translation underneath, smaller and muted. A book already in the target language reads as written.

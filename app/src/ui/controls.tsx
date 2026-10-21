@@ -422,12 +422,19 @@ export function SearchField({
 /** The one multi-line input, at the surface radius tier. */
 export function Textarea({
   className = "",
+  plain = false,
   ...rest
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  /** The page itself is the editor (Paste text, 21/10): no box, the words on
+   * the paper at reading size. The caret says where typing goes. */
+  plain?: boolean;
+}) {
   return (
     <textarea
       data-raw
-      className={`resize-none rounded-2xl border border-edge-field bg-paper p-3 font-[inherit] text-sm leading-relaxed ${className}`}
+      className={plain
+        ? `resize-none border-0 bg-transparent p-0 font-[inherit] text-[15px] leading-[1.6] text-ink outline-none placeholder:text-ink-mute ${className}`
+        : `resize-none rounded-2xl border border-edge-field bg-paper p-3 font-[inherit] text-sm leading-relaxed ${className}`}
       {...rest}
     />
   );
