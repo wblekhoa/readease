@@ -1935,7 +1935,7 @@ export default function App() {
                 />
               ))}
             </nav>
-            <div role="group" aria-label={text("nav.settings")} className="mt-2 flex flex-col items-center gap-1 border-t border-edge-alpha pt-2">
+            <div role="group" aria-label={text("nav.settings")} className="mt-6 flex flex-col items-center gap-1">
               {settingsItems.map(item => <RailIcon key={item.id} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
             </div>
           </>
@@ -1994,7 +1994,7 @@ export default function App() {
                 />
               ))}
             </nav>
-            {/* Two groups, one look (audit 21/10): the same divider and header. */}
+            {/* Two groups, one look (audit 21/10): the same spacing and header. */}
             <RailGroup title={text("nav.tools")}>
               {tools.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => goTab(item.value)} />)}
             </RailGroup>
