@@ -76,6 +76,13 @@ class TextImportTests(unittest.TestCase):
             ("b", ["Chương 1", "Chương 2"]), ("Chương 1", ["Mở đầu."]), ("Chương hai: Kết", ["Hết."]),
         ])
 
+    def test_a_first_heading_that_is_a_chapter_line_is_a_chapter_not_the_title(self):
+        html = import_html(self.file("Sách.htm", "<h1>Chương 1</h1><p>Một.</p><h1>Chương 2</h1><p>Hai.</p>"))
+        md = import_md(self.file("Sổ.md", "# Chương 1\n\nMột.\n\n# Chương 2\n\nHai."))
+        for book, name in ((html, "Sách"), (md, "Sổ")):
+            self.assertEqual(book.title, name)
+            self.assertEqual([c.title for c in book.chapters], ["Chương 1", "Chương 2"])
+
     def test_html_marked_hidden_is_not_read(self):
         book = import_html(self.file("h.html", '<p>Đọc <span aria-hidden="true">ICON</span>cái này.</p><div hidden>BÍ MẬT</div><p>Tiếp <img hidden src="x"> theo.</p>'))
         self.assertEqual(outline(book), [("h", ["Đọc cái này.", "Tiếp theo."])])
