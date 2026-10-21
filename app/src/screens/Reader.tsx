@@ -1108,7 +1108,7 @@ export function Reader({
           const translated = translations[paragraphHead(chapter.segments, index)];
           return translated ? (
             <p data-translation lang={translationLanguage}
-              className="m-0 -mx-2 mt-1 px-2 text-[0.92em] leading-relaxed text-ink-mute">
+              className="m-0 -mx-2 mt-1 px-2 text-[0.92em] leading-[1.5] text-ink-mute">
               {translated}
             </p>
           ) : null;

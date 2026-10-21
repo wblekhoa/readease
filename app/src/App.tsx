@@ -2399,12 +2399,20 @@ export default function App() {
             />
             {/* RE-PLAY-029: what is being heard, under what was pasted. */}
             {pasteTranslation && (
-              <Surface className="mt-3 flex max-h-[40%] min-h-0 flex-col p-4">
-                <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">
+              /* A quiet band, not a framed card (owner, 21/10: the border and the
+                 blank lines read heavy): paragraphs as paragraphs, 8 px apart,
+                 at the body's line height rather than a relaxed one. */
+              <section aria-label={text("translation.translated", { language: text(pasteTranslation.target === "vi" ? "language.vi" : "language.en") })}
+                className="mt-3 flex max-h-[40%] min-h-0 flex-col rounded-2xl bg-band px-4 py-3">
+                <p className="m-0 mb-1.5 text-xs font-semibold text-ink-mute">
                   {text("translation.translated", { language: text(pasteTranslation.target === "vi" ? "language.vi" : "language.en") })}
                 </p>
-                <p className="m-0 min-h-0 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{pasteTranslation.text}</p>
-              </Surface>
+                <div lang={pasteTranslation.target} className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+                  {pasteTranslation.text.split(/\n\s*\n/).filter(part => part.trim()).map((part, index) => (
+                    <p key={index} className="m-0 break-words text-sm leading-[1.5] text-ink">{part.trim()}</p>
+                  ))}
+                </div>
+              </section>
             )}
             {/* Two things on one line - the count, and past the limit what to
                 do - so a gap between them: as one run of text they read
