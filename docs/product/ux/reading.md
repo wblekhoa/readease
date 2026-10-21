@@ -69,8 +69,8 @@ relations:
   should be said ("ReadEase → rít ít"). Every reading and export says it that way from the next press of Read; the page
   and subtitles keep the written word. The row says how many words are set. Logic: RE-PLAY-015.
 - **EPUB figures** are shown in reading order, numbered (Figure 1, Figure 2…) and announced in place.
-- **Paste text → Export audio**: a button at the right of the character count ("Xuất âm thanh"; with a paid voice it
-  carries the same price as the read button). It opens the macOS save panel (proposed name "ReadEase <date> <time>.wav"),
+- **Paste text → Export audio**: a button in the bottom bar beside Read text ("Xuất âm thanh", icon + words; icon only
+  where the bar is narrow; with a paid voice it carries the same price as the read button). It opens the macOS save panel (proposed name "ReadEase <date> <time>.wav"),
   then shows "Exporting n/N" with a bar and Cancel in the app-wide export receipt; the read button waits while it runs. Done: "Saved ~N min of
   audio and subtitles" with Show in Finder. The `.srt` lands beside the `.wav`. Logic: RE-PLAY-010…014.
   The job belongs to the app, not the screen: leave Paste text mid-export and come back to the same progress or result.
@@ -245,7 +245,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
-- 2026-10-21 (owner's screenshot): Paste sheet fixes - the recents list no longer grows a sideways scrollbar; an empty sheet hides the count and Export audio row (the hint already gives the limit); that row keeps room above the transport so the "Reading…" capsule (a book's title and Go back) no longer covers the count and the export button; clicking into the sheet no longer draws a blue frame round it (the caret shows focus); History lines up with the column's right edge. Render audit gained two checks for every screen: a vertical scroller that also scrolls sideways, and the capsule sitting on a control or line of text no scroll can move.
+- 2026-10-21 (owner: the input was hard to see; export belongs with the bottom actions): the paste sheet is a filled page of its own (band colour, rounded, no border) so where the words go reads before a word is in it; a translated reading's text sits inside it under a hairline. Under the sheet, on the page's ground (the danger red keeps its contrast there), the count, the over-limit line and Clear; an empty sheet shows neither, its hint gives the limit. Export audio moved out of the page into the bottom bar beside Read text - a step below it, icon + words, icon only where the bar is narrow (its name stays the tooltip). The line under the sheet keeps room for the "Reading…" capsule; clicking into the sheet draws no blue frame (the caret is the focus); the recents list no longer scrolls sideways; History lines up with the column's edge. Render audit gained two checks for every screen - a vertical scroller that also scrolls sideways, and the capsule over a control or visible line no scroll can move - and a cell reading a book over the paste sheet.
 - 2026-10-21: Paste text redesigned as a sheet - one centred column at the Reader's measure (72ch), the words on the paper with no box (15 px, line height 1.6); above, the one-line note and History; below, a hairline, the count, Clear and Export audio. Empty, the sheet is a few lines tall with the ⌘V hint and up to four recent pastes to reopen right under it.
 - 2026-10-21: the Paste translation block is a quiet band (no border, `bg-band`), its paragraphs 8 px apart at line height 1.5; the Reader's translation lines use the same 1.5.
 - 2026-10-21: RE-PLAY-033 - exporting a translated paste saves the translation in the translation voice.
