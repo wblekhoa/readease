@@ -54,6 +54,10 @@ Hugging Face revision checked against its published hash) when you ask for it in
 It runs inside ReadEase's bundled translation server, which listens on 127.0.0.1 only and makes no
 network connections of its own; the text never leaves this Mac. Remove it from the same place.
 
+When you have a library book read in translation, the translations ReadEase makes of its
+paragraphs are kept on this Mac in `translations.sqlite3` (readable only by your macOS user), so a
+chapter is never translated twice; they are deleted when you remove the book.
+
 The original and its translation are kept in the History on this Mac described above, while History is on, and
 nowhere else. Only translation preferences (provider, model name, source/target language, local voice, sources and
 enabled state) are saved with your settings. Speaking the translation

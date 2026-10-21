@@ -167,6 +167,9 @@ class _Utterance:
     # made speakable. Only pasted text sets it (`_text_utterances`); the
     # export falls back to `text` where it is empty.
     shown: str = ""
+    # A book read in translation whose paragraph has none kept yet
+    # (RE-PLAY-032): the reading refuses by name rather than switch language.
+    untranslated: bool = False
 
 
 # What the voice says when the reading reaches a picture, and the rest that
