@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, Paste-text sentence review and background M4B book export."
 tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
@@ -245,6 +245,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-21 (owner's screenshot): Paste sheet fixes - the recents list no longer grows a sideways scrollbar; an empty sheet hides the count and Export audio row (the hint already gives the limit); that row keeps room above the transport so the "Reading…" capsule (a book's title and Go back) no longer covers the count and the export button; clicking into the sheet no longer draws a blue frame round it (the caret shows focus); History lines up with the column's right edge. Render audit gained two checks for every screen: a vertical scroller that also scrolls sideways, and the capsule sitting on a control or line of text no scroll can move.
 - 2026-10-21: Paste text redesigned as a sheet - one centred column at the Reader's measure (72ch), the words on the paper with no box (15 px, line height 1.6); above, the one-line note and History; below, a hairline, the count, Clear and Export audio. Empty, the sheet is a few lines tall with the ⌘V hint and up to four recent pastes to reopen right under it.
 - 2026-10-21: the Paste translation block is a quiet band (no border, `bg-band`), its paragraphs 8 px apart at line height 1.5; the Reader's translation lines use the same 1.5.
 - 2026-10-21: RE-PLAY-033 - exporting a translated paste saves the translation in the translation voice.

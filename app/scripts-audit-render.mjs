@@ -205,6 +205,12 @@ const SCREENS = {
     ["wait", /^Dừng$|^Stop$/], ["rest"]],
   reading_scan: [...UNFOLD, ["click", /^Quét đọc$|^Read a selection$/], ["click", /^Nghe lại phần đã chọn$|^Read the selection again$/],
     ["wait", /^Dừng$|^Stop$/], ["wait", /^Về chỗ đang đọc$|^Back to reading position$/], ["rest"]],
+  // A book read while the paste sheet is open: the capsule carries the
+  // book's title and its "Go back", the widest it gets, over the sheet's
+  // own count and export (owner's screenshot, 21/10).
+  reading_book_on_paste: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/],
+    ["click", /^Quay lại thư viện$|^Back to library$/], ["click", /^Dán nội dung$|^Paste text$/], ["click-at", "textarea"],
+    ["type", "Một đoạn nội dung khác đang chờ."], ["wait", /^Quay lại$|^Go back$/], ["rest"]],
   reading_returned: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/],
     ["click", /^Quay lại thư viện$|^Back to library$/], ["click", /^Quay lại$|^Go back$/],
     ["wait", /^Quay lại thư viện$|^Back to library$/], ["rest"]],
@@ -297,6 +303,7 @@ const ONLY_IN = {
   reading_paste: ["default"],
   reading_scan: ["scanned"],
   reading_returned: ["default"],
+  reading_book_on_paste: ["default"],
   reading_stopped: ["default"],
   reading_follow: ["default"],
   note_editor: ["default"],
@@ -650,7 +657,7 @@ async function main() {
               })()`);
               if (!statusInWindow) findings.push({ cell, kind: "export-status", detail: "export receipt must remain inside the window" });
             }
-            if (["reading_now", "reading_paused", "reading_warming", "reading_paste", "reading_scan", "reading_returned", "reading_follow"].includes(screen)) {
+            if (["reading_now", "reading_paused", "reading_warming", "reading_paste", "reading_scan", "reading_returned", "reading_book_on_paste", "reading_follow"].includes(screen)) {
               // Floats above the transport (owner, 06/10), clear of it, and
               // inside the window.
               const above = await evalJs(`(() => {
@@ -711,7 +718,36 @@ async function main() {
               const escaped = [...document.querySelectorAll('[role="dialog"] *')].filter((e) => { if (e.closest("[inert]") || !(e instanceof HTMLElement)) return false;
                 const s = getComputedStyle(e); return e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1 && s.overflowX === "visible"; })
                 .map((e) => (e.textContent || "").trim().slice(0, 48)).slice(0, 3);
-              return { leaked, comment, over, escaped, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
+              // A list that scrolls DOWN and turned out to scroll sideways
+              // too: overflow-y makes overflow-x auto, so a row reaching past
+              // its scroller (a hover wash on -mx) grows a horizontal bar
+              // the document check never sees (Paste's recents, 21/10).
+              const sideways = [...document.querySelectorAll('[class*="overflow-y-auto"]')].filter((e) => { const c = e.className;
+                return typeof c === "string" && !/(^|\s)overflow-(x-)?(auto|scroll)(\s|$)/.test(c) && e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1; })
+                .map((e) => (e.textContent || "").trim().slice(0, 40)).slice(0, 3);
+              // The "Reading…" capsule floats over the page, above the
+              // transport: a control it lands on, that no scroll can move
+              // out from under it, cannot be pressed or read (Paste's count
+              // and export button, 21/10).
+              const capsule = document.querySelector("[data-reading-status]")?.getBoundingClientRect();
+              const covered = !capsule ? [] : [...document.querySelectorAll("main *")].filter((e) => {
+                if (!/^(BUTTON|TEXTAREA|INPUT)$/.test(e.tagName) && ![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
+                // What shows of it, line by line: a book page's paragraph
+                // box runs on into columns its page clips away.
+                let clip = { top: -Infinity, bottom: Infinity, left: -Infinity, right: Infinity };
+                for (let up = e.parentElement; up; up = up.parentElement) { const s = getComputedStyle(up);
+                  if (/auto|scroll/.test(s.overflowY) && up.scrollHeight > up.clientHeight + 1) return false;
+                  if (s.overflowY !== "visible" || s.overflowX !== "visible") { const c = up.getBoundingClientRect();
+                    clip = { top: Math.max(clip.top, c.top), bottom: Math.min(clip.bottom, c.bottom), left: Math.max(clip.left, c.left), right: Math.min(clip.right, c.right) }; } }
+                let boxes = [e.getBoundingClientRect()];
+                if (!/^(BUTTON|TEXTAREA|INPUT)$/.test(e.tagName)) { boxes = [];
+                  for (const n of e.childNodes) if (n.nodeType === 3 && n.textContent.trim()) { const range = document.createRange(); range.selectNodeContents(n); boxes.push(...range.getClientRects()); } }
+                return boxes.some((r) => { const top = Math.max(r.top, clip.top), bottom = Math.min(r.bottom, clip.bottom), left = Math.max(r.left, clip.left), right = Math.min(r.right, clip.right);
+                  // A line box carries its leading: the capsule grazing the
+                  // gap under a page's last heading hides no letter of it.
+                  const shared = Math.min(bottom, capsule.bottom) - Math.max(top, capsule.top);
+                  return r.width > 0 && right > left && bottom > top && shared > r.height * 0.3 && right > capsule.left && left < capsule.right; }); }).map((e) => (e.getAttribute("aria-label") || e.textContent || e.tagName).trim().slice(0, 40)).slice(0, 3);
+              return { leaked, comment, over, escaped, sideways, covered, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
             for (const k of probe.leaked) if (KEYS.has(k)) findings.push({ cell, kind: "i18n-leak", detail: k });
             if (probe.comment) findings.push({ cell, kind: "code-comment", detail: probe.comment });
             // No cell picks a voice, so the saved one (the mock's "Thu Hà")
@@ -720,6 +756,8 @@ async function main() {
             // in a gap only a bridge that answers a tick later opens.
             if (probe.voice !== undefined && probe.voice !== "Thu Hà") findings.push({ cell, kind: "voice-lost", detail: `saved voice became ${probe.voice}` });
             if (probe.docWide) findings.push({ cell, kind: "overflow-x", detail: `document scrolls horizontally at ${W}px` + (probe.over.length ? ` (${probe.over.join(", ")})` : "") });
+            for (const text of probe.covered) findings.push({ cell, kind: "capsule-covers", detail: `the reading capsule sits on ${JSON.stringify(text)}` });
+            for (const text of probe.sideways) findings.push({ cell, kind: "overflow-sideways", detail: `a vertical scroller also scrolls sideways: ${JSON.stringify(text)}` });
             for (const text of probe.escaped) findings.push({ cell, kind: "overflow-layer", detail: `text runs out of its box in a layer: ${JSON.stringify(text)}` });
             if (probe.themeAttr !== theme) findings.push({ cell, kind: "theme", detail: `data-theme=${probe.themeAttr}, wanted ${theme}` });
             // The page says which language it is in (WCAG 3.1.1): VoiceOver

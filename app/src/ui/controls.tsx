@@ -432,6 +432,7 @@ export function Textarea({
   return (
     <textarea
       data-raw
+      data-plain={plain || undefined}
       className={plain
         ? `resize-none border-0 bg-transparent p-0 font-[inherit] text-[15px] leading-[1.6] text-ink outline-none placeholder:text-ink-mute ${className}`
         : `resize-none rounded-2xl border border-edge-field bg-paper p-3 font-[inherit] text-sm leading-relaxed ${className}`}
