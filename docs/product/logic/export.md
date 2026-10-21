@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Audio export (logic)"
 status: active
-updated: 2026-10-20
+updated: 2026-10-21
 summary: "WAV/SRT and M4B export, temporary sentence review, exclusive job ownership, cancellation/exit recovery and dated performance evidence."
 tags: [area/audio, area/performance, area/storage, stack/python, stack/tauri, surface/macos]
 reqPrefix: RE-PLAY
@@ -105,6 +105,7 @@ Native close/quit/Dock smoke, opening final M4B in Apple Books, real-model CPU/R
 
 
 ## Change log
+- 2026-10-21: no export rule change; the engine's speak loop gained a progress-voice override for translated book readings (RE-PLAY-032), and a translated paste exports its translation (RE-PLAY-033, in translation.md).
 
 - 2026-10-19: moved existing export rules and dated benchmark from `reading.md`; requirement IDs, evidence and acceptance limits retained.
 - 2026-10-15: connected M4B range export, background lifecycle and cancellation to the app; the earlier writer-only spike is recorded in `../decisions.md`.
