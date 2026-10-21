@@ -93,6 +93,9 @@ const SCREENS = {
   home_error: [["wait", /./, "[role=alert]"]],
   home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Giọng đọc$|^Voice$/, "[role=dialog]"]],
   home_translation: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Dịch trước khi đọc$|^Translate before reading$/, "[role=dialog]"]],
+  // Translation options opened: no cell had ever drawn its fields (21/10).
+  translation_options: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Dịch trước khi đọc$|^Translate before reading$/, "[role=dialog]"],
+    ["click", /^Tuỳ chọn dịch|^Translation options/], ["wait", /^Kiểm tra lại$|^Check again$/]],
   home_import: [["click", /^Mở tài liệu|^Open a document/], ["wait", /^Quay lại thư viện$|^Back to library$/]],
   home_paste: [...UNFOLD, ["click", /^Nhập hoặc dán nội dung|^Type or paste text/], ["click-at", "textarea"], ["type", "Nội dung thử của trang Đọc."],
     ["click", /^Đọc$|^Read$/], ["click", /^Mở lại Nội dung thử|^Reopen Nội dung thử/], ["wait", /^Dán nội dung$|^Paste text$/, "h2"]],
@@ -112,6 +115,12 @@ const SCREENS = {
   audiobook_failed: [...BOOK_EXPORT_START, ["wait", /./, "[data-export-status] [role=alert]"]],
   shelf:  [...UNFOLD, ["click", /^Thư viện$|^Library$/]],
   paste:  [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]],
+  // The History dialog, and its "delete all" asking first: no cell had
+  // opened it (21/10).
+  paste_history: [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/], ["click", /^Lịch sử$|^History$/],
+    ["wait", /^Xoá toàn bộ lịch sử$|^Delete all history$/]],
+  paste_history_confirm: [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/], ["click", /^Lịch sử$|^History$/],
+    ["click", /^Xoá toàn bộ lịch sử$|^Delete all history$/], ["wait", /^Xoá hẳn lịch sử|^Delete all paste and scan/, "span"]],
   // Pasted text past the limit (100 000 characters): the count turns to
   // danger and a line says what to do. No cell had typed into the box.
   paste_over: [...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/], ["click-at", "textarea"], ["type", "chữ ".repeat(25_001)],
@@ -277,6 +286,9 @@ const ONLY_IN = {
   home_error: ["home_error"],
   home_voice: ["default"],
   home_translation: ["default"],
+  paste_history: ["default"],
+  paste_history_confirm: ["default"],
+  translation_options: ["library_translated"],
   home_import: ["default", "home_empty"],
   home_paste: ["default"],
   home_capture: ["scanned"],
@@ -405,7 +417,7 @@ const STATE_ON = {
   long: ["shelf", "reader", "contents", "book_notes", "search"],
   paid: ["reader", "cost", "player_settings", "audiobook_form"],
   paid_eleven: ["reader", "cost"],
-  library_translated: ["reader", "player_settings"],
+  library_translated: ["reader", "player_settings", "translation_options"],
   voicefail_network: ["reading_failed"],
   voicefail_blocked: ["reading_failed"],
   voicefail_budget: ["reading_failed"],

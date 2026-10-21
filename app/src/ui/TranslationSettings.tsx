@@ -108,43 +108,50 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
         : !optionsOpen ? <Button size="sm" onClick={() => setOptionsOpen(true)}>{text('translation.options')}</Button> : undefined}>
         {text(status ?? (settings.model ? 'translation.model_missing' : 'translation.choose_model'))}
       </Notice>}
-      <div>
-        {/* RE-PLAY-025: a two-line disclosure sizes to content, not the 30px action button. */}
+      {/* RE-PLAY-025: how it translates is secondary to what it reads and in
+          which voice, so it folds away - set apart by a hairline, as the
+          panel's last group. Opened, its fields stand like the voice above
+          them: a small heading, then the control at full width, on the
+          panel's own edge (owner, 21/10: the old block was indented, padded
+          twice and spoke in a different voice from the rest). */}
+      <div className="flex min-w-0 flex-col gap-4 border-t border-edge-alpha pt-3">
         <button type="button"
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover-wash"
+          /* Flush with the headings above it: a wash pulled out past the
+             edge by a negative margin overran the panel's box (21/10). */
+          className="group flex min-w-0 items-center gap-2 rounded-lg py-1.5 text-left"
           aria-expanded={optionsOpen} aria-controls={optionsId} onClick={() => setOptionsOpen(value => !value)}>
-          <span className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-sm font-medium leading-5 text-ink">{text('translation.options')}</span>
-            <span className="text-xs leading-4 text-ink-mute">{providerName}</span>
-          </span>
-          <ChevronDownIcon className={`h-4 w-4 shrink-0 text-ink-mute ${optionsOpen ? 'rotate-180' : ''}`} />
+          <span className="shrink-0 text-sm font-medium text-ink">{text('translation.options')}</span>
+          <span className="ml-auto min-w-0 truncate text-xs text-ink-mute group-hover:text-ink">{providerName}</span>
+          <ChevronDownIcon className={`h-4 w-4 shrink-0 text-ink-mute group-hover:text-ink ${optionsOpen ? 'rotate-180' : ''}`} />
         </button>
-        <div id={optionsId} hidden={!optionsOpen} className="px-3 pt-4">
-          <div className="flex min-w-0 flex-col gap-4">
-            <label className="flex min-w-0 flex-col gap-2 text-sm">{text('translation.from')}
-              <Select className="w-full" label={text('translation.from')} value={settings.source} disabled={disabled} onChange={e => change({ source: e.target.value as Settings['source'] })}>
-                <option value="auto">{text('translation.auto')}</option><option value="vi">{text('language.vi')}</option><option value="en">{text('language.en')}</option>
-              </Select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-2 text-sm">{text('translation.provider')}
-              <Select className="w-full" label={text('translation.provider')} value={settings.provider} disabled={disabled} onChange={e => change({ provider: e.target.value as Settings['provider'], model: '' })}>
-                <option value="auto">{text('translation.provider_auto')}</option><option value="readease">{text('translation.provider_readease')}</option>
-                <option value="apple">Apple Translation</option><option value="ollama">Ollama</option><option value="lmstudio">LM Studio</option>
-              </Select>
-            </label>
-            {(settings.provider === 'ollama' || settings.provider === 'lmstudio') && <>
-              <label className="flex min-w-0 flex-col gap-2 text-sm">{text('translation.model')}
-                <Select className="w-full" label={text('translation.model')} value={settings.model} disabled={disabled || checking} onChange={e => change({ model: e.target.value })}>
-                  <option value="">{text('translation.choose_model')}</option>
-                  {settings.model && !models.includes(settings.model) && <option value={settings.model}>{settings.model}</option>}
-                  {models.map(model => <option key={model} value={model}>{model}</option>)}
-                </Select>
-              </label>
-              <p className="m-0 text-xs leading-relaxed text-ink-mute">{text(settings.provider === 'ollama' ? 'translation.ollama_hint' : 'translation.lmstudio_hint')}</p>
-            </>}
-            <p className="m-0 text-xs leading-relaxed text-ink-mute">{text('translation.private')}</p>
-            <p className="m-0 text-xs leading-relaxed text-ink-mute">{text('translation.next_selection')}</p>
-            <div className="flex justify-end"><Button size="sm" disabled={checking || saving} onClick={() => setRevision(v => v + 1)}>{text(checking ? 'translation.checking' : 'translation.refresh')}</Button></div>
+        <div id={optionsId} hidden={!optionsOpen} className="flex min-w-0 flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
+            <p id={`${optionsId}-from`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.from')}</p>
+            <Select className="w-full" labelledBy={`${optionsId}-from`} value={settings.source} disabled={disabled} onChange={e => change({ source: e.target.value as Settings['source'] })}>
+              <option value="auto">{text('translation.auto')}</option><option value="vi">{text('language.vi')}</option><option value="en">{text('language.en')}</option>
+            </Select>
+          </div>
+          <div className="flex min-w-0 flex-col gap-2">
+            <p id={`${optionsId}-provider`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.provider')}</p>
+            <Select className="w-full" labelledBy={`${optionsId}-provider`} value={settings.provider} disabled={disabled} onChange={e => change({ provider: e.target.value as Settings['provider'], model: '' })}>
+              <option value="auto">{text('translation.provider_auto')}</option><option value="readease">{text('translation.provider_readease')}</option>
+              <option value="apple">Apple Translation</option><option value="ollama">Ollama</option><option value="lmstudio">LM Studio</option>
+            </Select>
+          </div>
+          {(settings.provider === 'ollama' || settings.provider === 'lmstudio') && <div className="flex min-w-0 flex-col gap-2">
+            <p id={`${optionsId}-model`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.model')}</p>
+            <Select className="w-full" labelledBy={`${optionsId}-model`} value={settings.model} disabled={disabled || checking} onChange={e => change({ model: e.target.value })}>
+              <option value="">{text('translation.choose_model')}</option>
+              {settings.model && !models.includes(settings.model) && <option value={settings.model}>{settings.model}</option>}
+              {models.map(model => <option key={model} value={model}>{model}</option>)}
+            </Select>
+            <p className="m-0 text-xs leading-relaxed text-ink-mute">{text(settings.provider === 'ollama' ? 'translation.ollama_hint' : 'translation.lmstudio_hint')}</p>
+          </div>}
+          {/* What stays true whichever translator: one quiet note, and the
+              check that re-asks the translator beside it. */}
+          <div className="flex min-w-0 items-start gap-3">
+            <p className="m-0 min-w-0 flex-1 text-xs leading-relaxed text-ink-mute">{text('translation.private')} {text('translation.next_selection')}</p>
+            <Button size="sm" className="shrink-0" disabled={checking || saving} onClick={() => setRevision(v => v + 1)}>{text(checking ? 'translation.checking' : 'translation.refresh')}</Button>
           </div>
         </div>
       </div>
