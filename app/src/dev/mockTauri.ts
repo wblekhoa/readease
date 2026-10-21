@@ -743,6 +743,27 @@ function pauseMockReading(paused: boolean) {
 }
 
 /** Every segment of the fixture book being read, in reading order. */
+/* RE-PLAY-032: the translations the harness "keeps", per book and target -
+   made up from the text, so a cell can look at the bilingual page. */
+const BOOK_TRANSLATIONS: Record<string, Record<string, string>> = {};
+function mockBookTranslations(bookId: unknown, target: string): Record<string, string> {
+  const key = `${String(bookId)}:${target}`;
+  if (!BOOK_TRANSLATIONS[key]) {
+    const book = bookId === ENGLISH_BOOK.id ? ENGLISH_BOOK : BOOK;
+    const items: Record<string, string> = {};
+    for (const chapter of book.chapters as { segments: { id: string; text: string; joint?: string }[] }[]) {
+      let head: string | null = null;
+      for (const segment of chapter.segments) {
+        if (segment.joint !== "split" || head === null) { head = segment.id; items[head] = ""; }
+        items[head] = `${items[head]} ${segment.text}`.trim();
+      }
+    }
+    for (const id of Object.keys(items)) items[id] = target === "en" ? `(EN) ${items[id]}` : `(VI) ${items[id]}`;
+    BOOK_TRANSLATIONS[key] = items;
+  }
+  return BOOK_TRANSLATIONS[key];
+}
+
 function bookSteps(from: string | null, bookId: unknown): string[] {
   const book = bookId === ENGLISH_BOOK.id ? ENGLISH_BOOK : BOOK;
   const all = book.chapters.flatMap((chapter: { segments: { id: string }[] }) =>
@@ -786,7 +807,7 @@ const EPHEMERAL = PAID_VOICE === "paid" || PAID_VOICE === "elevenlabs" || TRANSL
 const TRANSLATION_SOURCES = new URLSearchParams(location.search).get("translation_sources");
 const TRANSLATORS = new URLSearchParams(location.search).get("translators");
 if (TRANSLATION_TARGET) Object.assign(SETTINGS, { selection_translation: { enabled: true, provider: "apple", source: TRANSLATION_TARGET === "vi" ? "en" : "vi", target: TRANSLATION_TARGET, model: "", voice: "",
-  ...(TRANSLATION_SOURCES === null ? {} : { sources: { scan: TRANSLATION_SOURCES.split(",").includes("scan"), paste: TRANSLATION_SOURCES.split(",").includes("paste") } }) } });
+  ...(TRANSLATION_SOURCES === null ? {} : { sources: { scan: TRANSLATION_SOURCES.split(",").includes("scan"), paste: TRANSLATION_SOURCES.split(",").includes("paste"), library: TRANSLATION_SOURCES.split(",").includes("library") } }) } });
 
 function rememberSettings() {
   if (EPHEMERAL) return;
@@ -1038,6 +1059,10 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
         language_detected: DETECTED_LANGUAGE[shelved.id] ?? "vi",
       };
     }
+    case "translation.list":
+      return { items: mockBookTranslations(params.book_id, String(params.target ?? "en")) };
+    case "translation.clear":
+      return { deleted: 0 };
     case "book.open":
       // The English book is its own document, never started; every other
       // shelf row opens the Vietnamese sample where it was left.
@@ -1509,6 +1534,20 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
       emit("engine:voices", { providers: ["local"] });
     }, 400 + steps.length * 700));
     return Promise.resolve(null);
+  }
+  // RE-PLAY-032: a book read in translation, one chapter per call - a short
+  // "translating" count, then the chapter from where it was asked.
+  if (command === "read_book_translated") {
+    const options = args.translation as { target: string; voice_id: string };
+    const scenario = new URLSearchParams(location.search).get("translation");
+    for (const done of [0, 3, 6]) setTimeout(() => emit("reading:book_translating", { done, total: 6 }), 120 * done);
+    await new Promise(resolve => setTimeout(resolve, scenario === "slow" ? 12000 : 800));
+    if (scenario === "error") throw new Error("translation:local_unavailable");
+    emit("reading:book_translating", { done: 6, total: 6 });
+    mockBookTranslations(args.bookId, options.target);
+    const walk = bookSteps((args.segmentId as string | null) ?? null, args.bookId);
+    startMockReading(walk.slice(0, 6), null);
+    return { target: options.target, voice_id: options.voice_id, next_segment_id: walk[6] ?? null };
   }
   if (command === "read_book") {
     // The refusal a PAID reading gets, on demand. The engine says

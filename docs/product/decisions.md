@@ -12,6 +12,15 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-10-21 · Library translation: by paragraph, a chapter at a time, kept per book
+- **Context**: the owner's choices (20/10): bilingual paragraphs, translations saved on this Mac per book, Library after Paste.
+- **Decision**: the unit is the paragraph (a block segment and its split pieces) - a 240-character piece ends mid-sentence.
+  The host translates (only it can reach Apple's bridge and the bundled server); the engine keeps rows in its own
+  `translations.sqlite3` and speaks them. A chapter is translated before it is read and the next one while it plays;
+  the page carries on at each chapter's end. Rejected: translating the whole scope first (minutes for a book), and
+  driving the continuation from Rust's audio thread (the done event is subtle there; the page already owns it).
+- **Evidence**: engine tests (`test_server_book_translation.py`), harness run and render audit cell 21/10.
+- **Reversal**: switch the Library source off; delete `translations.sqlite3`.
 ## 2026-10-21 · Text documents as books, with no new dependency
 - **Context**: the owner asked for more readable formats ("như là .md, .doc…").
 - **Decision**: TXT, Markdown, HTML and DOCX read with the standard library; DOC, RTF and ODT through macOS's own

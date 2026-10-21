@@ -6,6 +6,13 @@ each Release names the exact commit it was built from in `CFBundleVersion`
 
 ## Unreleased
 
+- Translate before reading now works for books in the Library too. Switch
+  on "Library" in Translation settings: a book is translated a chapter at a
+  time as you listen, read with the translation voice, and each paragraph
+  shows its translation underneath. Translations are kept on this Mac per
+  book, so a chapter is never translated twice, and go when you remove the
+  book.
+
 - Search results are easier to read on light paper: the highlight on each
   match is a paler yellow, with the text clear on it.
 - Deleting all history, or clearing the Read a selection list, now asks

@@ -37,7 +37,7 @@ test('selection settings use the target voice without replacing the saved origin
 test('a setting saved before sources existed stays Scan-only', async () => {
   const { translationSettings, translates } = await import('../src/ui/translation.ts');
   const legacy = translationSettings({ enabled: true, provider: 'apple', target: 'en' });
-  assert.deepEqual(legacy.sources, { scan: true, paste: false });
+  assert.deepEqual(legacy.sources, { scan: true, paste: false, library: false });
   assert.equal(translates(legacy, 'scan'), true);
   assert.equal(translates(legacy, 'paste'), false);
 });
@@ -49,7 +49,7 @@ test('each source has its own switch under the master one', async () => {
   assert.equal(translates(pasteOnly, 'scan'), false);
   assert.equal(selectionVoice(pasteOnly, [], 'vi-local'), 'vi-local');
   assert.equal(translates({ ...pasteOnly, enabled: false }, 'paste'), false);
-  assert.deepEqual(translationSettings({ enabled: true, provider: 'apple', sources: { scan: 'yes' } }).sources, { scan: false, paste: false });
+  assert.deepEqual(translationSettings({ enabled: true, provider: 'apple', sources: { scan: 'yes' } }).sources, { scan: false, paste: false, library: false });
 });
 
 // RE-PLAY-030
@@ -75,4 +75,11 @@ test('Automatic means ReadEase once downloaded, Apple until then; an old Apple d
   assert.equal(resolvedProvider(auto, false), 'apple');
   assert.equal(resolvedProvider(auto, true), 'readease');
   assert.equal(resolvedProvider({ ...auto, provider: 'ollama' }, true), 'ollama');
+});
+
+// RE-PLAY-032
+test('the Library reads through translation only on its own switch; old settings keep it off', async () => {
+  const { translationSettings, translates } = await import('../src/ui/translation.ts');
+  assert.equal(translates(translationSettings({ enabled: true, provider: 'apple', sources: { scan: true, paste: true } }), 'library'), false);
+  assert.equal(translates(translationSettings({ enabled: true, provider: 'apple', sources: { library: true } }), 'library'), true);
 });

@@ -11,7 +11,7 @@ export type TranslationSettings = {
   voice: string;
   /** RE-PLAY-029: where translation applies. A setting saved before sources
    * existed was Scan-only, and reads back that way. */
-  sources: { scan: boolean; paste: boolean };
+  sources: { scan: boolean; paste: boolean; library: boolean };
 };
 export type TranslationSource = keyof TranslationSettings['sources'];
 export type TranslationResult = { text: string; voice_id: string; target: string | null };
@@ -35,8 +35,10 @@ export function translationSettings(value: unknown): TranslationSettings {
 }
 function translationSources(value: unknown): TranslationSettings['sources'] {
   const v = (value && typeof value === 'object' ? value : null) as Record<string, unknown> | null;
-  if (!v) return { scan: true, paste: false };
-  return { scan: v.scan === true, paste: v.paste === true };
+  if (!v) return { scan: true, paste: false, library: false };
+  // RE-PLAY-032: a setting saved before the Library could translate reads
+  // back with it off.
+  return { scan: v.scan === true, paste: v.paste === true, library: v.library === true };
 }
 /** RE-PLAY-029: does this source read through translation? */
 export function translates(settings: TranslationSettings, source: TranslationSource): boolean {

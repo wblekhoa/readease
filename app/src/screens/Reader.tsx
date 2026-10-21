@@ -337,8 +337,14 @@ export function Reader({
   onSelection,
   onPageInfo,
   readingActionSlot,
+  translations,
+  translationLanguage,
 }: {
   bookId: string;
+  /** RE-PLAY-032: each paragraph's kept translation, by its first segment;
+   * shown under the paragraph it translates. Absent: the page is as written. */
+  translations?: Readonly<Record<string, string>>;
+  translationLanguage?: string;
   readingActionSlot: HTMLElement | null;
   /** The language the document is written in ("vi" / "en"), for its words
    * only - the interface around them speaks the app's (WCAG 3.1.2). */
@@ -1049,6 +1055,13 @@ export function Reader({
     );
   };
 
+  // The paragraph a segment belongs to is named by its first segment; a
+  // translation goes under the paragraph's LAST piece (RE-PLAY-032).
+  const paragraphHead = (segments: readonly BookSegment[], index: number): string => {
+    let at = index;
+    while (at > 0 && continues(segments[at].joint)) at -= 1;
+    return segments[at].id;
+  };
   const chapterBody = (chapter: BookChapter) =>
     chapter.segments.map((segment, index) => (
       <div key={segment.id}>
@@ -1091,6 +1104,15 @@ export function Reader({
           )}
           {blockBody(segment)}
         </p>
+        {translations && !continues(chapter.segments[index + 1]?.joint) && (() => {
+          const translated = translations[paragraphHead(chapter.segments, index)];
+          return translated ? (
+            <p data-translation lang={translationLanguage}
+              className="m-0 -mx-2 mt-1 px-2 text-[0.92em] leading-relaxed text-ink-mute">
+              {translated}
+            </p>
+          ) : null;
+        })()}
         {chapter.figures
           .filter((figure) =>
             figure.anchor_segment_id === segment.id &&

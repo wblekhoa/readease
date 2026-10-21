@@ -195,6 +195,14 @@ export default function App() {
   /** RE-PLAY-029: the translation of the paste being read, shown beside the
    * box - the box itself keeps what the reader pasted. */
   const [pasteTranslation, setPasteTranslation] = useState<{ text: string; target: string } | null>(null);
+  /** RE-PLAY-032: a library book read in translation - which book, in what,
+   * with which voice, where the next chapter starts and how many chapters
+   * the press may still reach (null: to the end). Read in the "done"
+   * listener, so a ref. */
+  const bookTranslation = useRef<{ bookId: string; target: string; voiceId: string; next: string | null; left: number | null } | null>(null);
+  const continueBook = useRef<(segmentId: string) => void>(() => undefined);
+  const [bookTranslations, setBookTranslations] = useState<{ bookId: string; target: string; items: Record<string, string> } | null>(null);
+  const [bookTranslating, setBookTranslating] = useState<{ done: number; total: number } | null>(null);
   /** Why there are no voices to offer. An empty catalogue is a claim - "this
    * Mac has no voices" - and a failed request is not that claim. */
   const [voicesError, setVoicesError] = useState<string | null>(null);
@@ -515,7 +523,9 @@ export default function App() {
      button claiming "Đang tính…" over an empty box counts for ever. */
   // RE-PLAY-029: a translated paste is read by a local voice - nothing to price.
   const pasteTranslated = translates(translation.settings, "paste");
-  const pricing = paidVoice && !(tab === "paste" && pasteTranslated) && (openBook !== null || content.trim().length > 0);
+  const libraryTranslated = translates(translation.settings, "library");
+  const pricing = paidVoice && !(tab === "paste" && pasteTranslated) && !(tab === "library" && openBook !== null && libraryTranslated)
+    && (openBook !== null || content.trim().length > 0);
 
   /* Re-price whenever anything the price depends on moves: the book, where
      the voice would resume, which voice, how far. Every one of those changes
@@ -945,6 +955,14 @@ export default function App() {
       "reading:done",
       (event) => {
         if (translationWorking.current) return;
+        // RE-PLAY-032: a translated book reads a chapter at a time; at a
+        // chapter's end, carry on into the next while the press reaches it.
+        const going = bookTranslation.current;
+        if (going && event.payload.ok && going.next && going.left !== 1) {
+          continueBook.current(going.next);
+          return;
+        }
+        bookTranslation.current = null;
         // A reading that failed must say so; a silent stop reads as a bug.
         onPlayer({
           type: "done",
@@ -1095,6 +1113,7 @@ export default function App() {
 
   const startReading = useCallback(async () => {
     if (!content.trim() || !voiceId || exporting) return;
+    bookTranslation.current = null;
     const { settings, ready, voices } = translationContext.current;
     // RE-PLAY-029: Paste reads through translation when its own switch is on.
     const translated = translates(settings, "paste");
@@ -1149,9 +1168,58 @@ export default function App() {
     }
   }, [content, voiceId, rate, exporting, keepInHistory]);
 
+  /** RE-PLAY-032: the kept translations of the open book, for the page. */
+  const loadBookTranslations = useCallback((bookId: string, target: string) => {
+    invoke<{ result: { items: Record<string, string> } }>("engine_request", { method: "translation.list", params: { book_id: bookId, target } })
+      .then(reply => setBookTranslations({ bookId, target, items: reply.result.items ?? {} }))
+      .catch(() => undefined);
+  }, []);
+
+  const readBookTranslated = useCallback(async (bookId: string, segmentId: string | null, left: number | null) => {
+    const { settings, ready, voices } = translationContext.current;
+    const translatedVoice = translationVoice(settings, voices);
+    if (!ready || !translatedVoice) {
+      onPlayer({ type: "failed", error: text(!ready ? "translation.save_failed" : "translation.voice_missing") });
+      return;
+    }
+    const at = Date.now();
+    translationPending.current = at;
+    translationWorking.current = true;
+    setTranslating(true);
+    setScanVoice(translatedVoice);
+    bookTranslation.current = { bookId, target: settings.target, voiceId: translatedVoice, next: null, left };
+    try {
+      const result = await invoke<{ target: string; voice_id: string; next_segment_id: string | null } | null>("read_book_translated", {
+        bookId, segmentId, rate, translation: { ...settings, voice_id: translatedVoice },
+      });
+      if (translationPending.current !== at) return;
+      translationPending.current = null; translationWorking.current = false;
+      setTranslating(false); setBookTranslating(null);
+      if (!result) { bookTranslation.current = null; onPlayer({ type: "stop" }); return; }
+      bookTranslation.current = { bookId, target: result.target, voiceId: result.voice_id, next: result.next_segment_id, left: left === null ? null : left - 1 };
+      loadBookTranslations(bookId, result.target);
+    } catch (error) {
+      if (translationPending.current !== at) return;
+      translationPending.current = null; translationWorking.current = false;
+      setTranslating(false); setBookTranslating(null);
+      bookTranslation.current = null;
+      onPlayer({ type: "failed", error: text(translationError(error)) });
+    }
+  }, [rate, loadBookTranslations]);
+
   const readBookFrom = useCallback(async (segmentId: string | null) => {
     // A paragraph clicked while an export runs would queue behind it.
     if (!openBook || !voiceId || exporting) return;
+    // A book already in the target language reads as it is.
+    if (translates(translationContext.current.settings, "library") && openBook.language !== translationContext.current.settings.target) {
+      onPlayer({ type: "start" });
+      setRemaining(null);
+      setOrigin({ kind: "book", book: openBook });
+      current.current = null;
+      void readBookTranslated(openBook.id, segmentId, scope);
+      return;
+    }
+    bookTranslation.current = null;
     translationPending.current = null; translationWorking.current = false;
     setTranslating(false);
     onPlayer({ type: "start" });
@@ -1169,7 +1237,23 @@ export default function App() {
       console.error(error);
       onPlayer({ type: "failed", error: String(error) });
     }
-  }, [openBook, voiceId, rate, scope, exporting]);
+  }, [openBook, voiceId, rate, scope, exporting, readBookTranslated]);
+  continueBook.current = (segmentId: string) => {
+    const going = bookTranslation.current;
+    if (going) void readBookTranslated(going.bookId, segmentId, going.left);
+  };
+  // The page shows the kept translations of the open book while the Library
+  // translates, and none otherwise (RE-PLAY-032).
+  useEffect(() => {
+    if (openBook && libraryTranslated && openBook.language !== translation.settings.target) loadBookTranslations(openBook.id, translation.settings.target);
+    else setBookTranslations(null);
+  }, [openBook, libraryTranslated, translation.settings.target, loadBookTranslations]);
+  useEffect(() => {
+    const progress = listen<{ done: number; total: number }>("reading:book_translating", event => {
+      setBookTranslating(event.payload.done < event.payload.total ? event.payload : null);
+    });
+    return () => { progress.then(unlisten => unlisten()); };
+  }, []);
 
   /** Change the voice, and carry on with it.
    *
@@ -1323,6 +1407,8 @@ export default function App() {
   }, []);
 
   const stopReading = useCallback(() => {
+    // A stop ends a translated book reading too: no next chapter follows it.
+    bookTranslation.current = null; setBookTranslating(null);
     translationPending.current = null; translationWorking.current = false;
     setTranslating(false);
     // The transport answers the finger, not the engine: stopping takes a
@@ -1624,7 +1710,7 @@ export default function App() {
     : screen === "paste" ? pasteTranslated
     : translates(translation.settings, "scan") || pasteTranslated;
   const translationSummary = translationOn ? text("translation.active", { language: translation.settings.target.toUpperCase() }) : text("translation.off");
-  const activeSelectionVoice = (origin?.kind === "external" || origin?.kind === "paste") && reading !== "idle" ? scanVoice : null;
+  const activeSelectionVoice = (origin?.kind === "external" || origin?.kind === "paste" || (origin?.kind === "book" && bookTranslation.current !== null)) && reading !== "idle" ? scanVoice : null;
   const settingsVoiceId = activeSelectionVoice ?? (screen === "external"
     ? selectionVoice(translation.settings, voices, voiceId)
     : screen === "paste" && pasteTranslated ? translationVoice(translation.settings, voices) : voiceId);
@@ -2217,6 +2303,8 @@ export default function App() {
               onPageInfo={setPageInfo}
               readingActionSlot={readingActionSlot}
               onSelection={setSelection}
+              translations={bookTranslations?.bookId === openBook.id && libraryTranslated ? bookTranslations.items : undefined}
+              translationLanguage={bookTranslations?.target}
             />
           ) : (
             <Library
@@ -2388,7 +2476,8 @@ export default function App() {
                   {reading === "paused"
                     ? text("player.paused_state")
                     : player.warming
-                      ? text(translating ? "translation.translating" : "player.warming")
+                      ? (bookTranslating ? text("translation.book_translating", { done: bookTranslating.done, total: bookTranslating.total })
+                        : text(translating ? "translation.translating" : "player.warming"))
                       : origin?.kind === "book"
                         ? text("player.reading_book", { title: origin.book.title })
                         : origin?.kind === "external"
@@ -2650,7 +2739,7 @@ export default function App() {
                     {text("reader.selection")}
                   </Button>
                 )}
-                {speechSettings && previewing === null && !translating && !selectionTranslation && !((origin?.kind === "external" || origin?.kind === "paste") && scanVoice) && (
+                {speechSettings && previewing === null && !translating && !selectionTranslation && !((origin?.kind === "external" || origin?.kind === "paste" || (origin?.kind === "book" && bookTranslation.current !== null)) && scanVoice) && (
                   <MenuButton
                     icon={<VoiceSwitchIcon />}
                     label={text("voices.switch")}
