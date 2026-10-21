@@ -188,10 +188,13 @@ otherwise it keeps the original controls. Provider setup stays in Translation se
 only names the effective voice and rate. Missing voices never display the unrelated book voice; playback
 continues to name its actual passage voice.
 
-**Translation options** uses a content-height two-line disclosure row: title, translator summary, and a centered
-chevron share a full-row hover target with 12px horizontal and 8px vertical padding. Expanded fields align
-with its text and start 16px below the row. It is collapsed initially and contains source language (automatic by default), Apple/Ollama/
-LM Studio, and a local model when applicable. Missing packs, models and voices remain visible outside the
+**Translation options** is the panel's last group, set apart by a hairline: one row on the panel's own edge -
+"Translation options" on the left, the translator's name and the chevron on the right (both darken on hover). Opened
+(21/10, owner: the old block was indented, padded twice and read differently from the rest), its fields stand like
+Translation voice above them - a small heading, then the control at full width: Source language (automatic by default),
+Translator (Automatic / ReadEase / Apple / Ollama / LM Studio), and a Model with its hint when a local server is chosen;
+then one quiet note (on this Mac, History only while on; applies to the next reading) with Check again beside it.
+It is collapsed initially. Missing packs, models and voices remain visible outside the
 collapsed section, with a route to setup. A missing target voice links to Voices & models. Settings save as changed.
 No provider requests run because the options fold opens or closes; checks run on configuration changes or Check again.
 
@@ -245,6 +248,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-10-21 (owner: "đẹp hơn, tối giản hơn"): the History dialog is pared back - title, caption and close; the list as its body with no rules between rows, each row's bin showing only on the row under the pointer or keyboard; one line at the foot holds Keep history (switch), how long (shown only while on) and Delete all history, which asks on that same line. Translation options re-laid (see the panel section). Render audit cells: the History dialog, its delete-all question, and Translation options opened.
 - 2026-10-21 (owner: the input was hard to see; export belongs with the bottom actions): the paste sheet is a filled page of its own (band colour, rounded, no border) so where the words go reads before a word is in it; a translated reading's text sits inside it under a hairline. Under the sheet, on the page's ground (the danger red keeps its contrast there), the count, the over-limit line and Clear; an empty sheet shows neither, its hint gives the limit. Export audio moved out of the page into the bottom bar beside Read text - a step below it, icon + words, icon only where the bar is narrow (its name stays the tooltip). The line under the sheet keeps room for the "Reading…" capsule; clicking into the sheet draws no blue frame (the caret is the focus); the recents list no longer scrolls sideways; History lines up with the column's edge. Render audit gained two checks for every screen - a vertical scroller that also scrolls sideways, and the capsule over a control or visible line no scroll can move - and a cell reading a book over the paste sheet.
 - 2026-10-21: Paste text redesigned as a sheet - one centred column at the Reader's measure (72ch), the words on the paper with no box (15 px, line height 1.6); above, the one-line note and History; below, a hairline, the count, Clear and Export audio. Empty, the sheet is a few lines tall with the ⌘V hint and up to four recent pastes to reopen right under it.
 - 2026-10-21: the Paste translation block is a quiet band (no border, `bg-band`), its paragraphs 8 px apart at line height 1.5; the Reader's translation lines use the same 1.5.
