@@ -254,7 +254,8 @@ def markdown_sections(text: str) -> tuple[str | None, list[Section]]:
             words = normalize_paragraph(_markdown_inline(heading.group(2) if heading else line))
             if setext:
                 lines[index + 1] = ""
-            if level == 1 and title is None and not any(paras for _, paras in sections):
+            # A first "# Chương 1" is the first chapter, not the book's name.
+            if level == 1 and title is None and not any(paras for _, paras in sections) and not _is_chapter_line(words):
                 title = words
                 continue
             if level <= 2:
@@ -351,7 +352,7 @@ class _HtmlText(HTMLParser):
             words = normalize_paragraph("".join(self._heading))
             self._heading = None
             if words:
-                if tag == "h1" and self.first_h1 is None and not any(p for _, p in self.sections):
+                if tag == "h1" and self.first_h1 is None and not any(p for _, p in self.sections) and not _is_chapter_line(words):
                     self.first_h1 = words
                 else:
                     self.sections.append((words, []))
