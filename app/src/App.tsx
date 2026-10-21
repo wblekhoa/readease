@@ -15,6 +15,7 @@ import { IN_WINDOW } from "./ui/host";
 import { HELP_URLS, installAppMenu, type MenuCommand } from "./ui/appMenu";
 import { useUpdater } from "./ui/updates";
 import { Home } from "./screens/Home";
+import { Paste } from "./screens/Paste";
 import { summarise } from "./ui/scanHistory";
 import { UpdateNotice } from "./ui/UpdateNotice";
 import { UpdatePanel } from "./ui/UpdatePanel";
@@ -29,7 +30,7 @@ import { ExportReviewPanel } from "./ui/ExportReviewPanel";
 import { useExport } from "./ui/useExport";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { External, type ExternalEntry } from "./screens/External";
-import { LAYER_GAP, Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface, Textarea } from "./ui/controls";
+import { LAYER_GAP, Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./ui/controls";
 import { Presence, useHiddenGuard } from "./ui/motion";
 import {
   CHIMES, DEFAULT_CHIME, DEFAULT_NOTE_READING, NOTE_READINGS, languageName, SettingsPanel,
@@ -2387,52 +2388,17 @@ export default function App() {
         ) : tab === "transfer" ? (
           <Transfer />
         ) : tab === "paste" ? (
-          <section className="shell-inset flex min-h-0 flex-1 flex-col">
-            <p className="m-0 text-sm text-ink-mute">
-              {text("paste.description")}
-            </p>
-            <Textarea
-              className="mt-3 min-h-0 flex-1"
-              placeholder={text("paste.placeholder")}
-              value={content}
-              onChange={(event) => { setContent(event.target.value); setPasteAt(Date.now()); setPasteTranslation(null); }}
-            />
-            {/* RE-PLAY-029: what is being heard, under what was pasted. */}
-            {pasteTranslation && (
-              /* A quiet band, not a framed card (owner, 21/10: the border and the
-                 blank lines read heavy): paragraphs as paragraphs, 8 px apart,
-                 at the body's line height rather than a relaxed one. */
-              <section aria-label={text("translation.translated", { language: text(pasteTranslation.target === "vi" ? "language.vi" : "language.en") })}
-                className="mt-3 flex max-h-[40%] min-h-0 flex-col rounded-2xl bg-band px-4 py-3">
-                <p className="m-0 mb-1.5 text-xs font-semibold text-ink-mute">
-                  {text("translation.translated", { language: text(pasteTranslation.target === "vi" ? "language.vi" : "language.en") })}
-                </p>
-                <div lang={pasteTranslation.target} className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-                  {pasteTranslation.text.split(/\n\s*\n/).filter(part => part.trim()).map((part, index) => (
-                    <p key={index} className="m-0 break-words text-sm leading-[1.5] text-ink">{part.trim()}</p>
-                  ))}
-                </div>
-              </section>
-            )}
-            {/* Two things on one line - the count, and past the limit what to
-                do - so a gap between them: as one run of text they read
-                "100.004 / 100.000 ký tựNội dung dài hơn…" (27/09). */}
-            <div className="flex flex-wrap items-baseline gap-x-2 py-2 text-xs text-ink-mute">
-              <Button variant="ghost" size="sm" data-popover-trigger onClick={() => setHistoryPanel(open => (open === "paste" ? null : "paste"))}>
-                {text("history.button")}
-              </Button>
-              <span className={overLimit ? "font-semibold text-danger" : ""}>
-                {text("paste.count", {
-                  count: content.length.toLocaleString(locale),
-                  limit: PASTE_LIMIT.toLocaleString(locale),
-                })}
-              </span>
-              {overLimit && (
-                <span className="font-medium text-danger">
-                  {text("paste.over_limit")}
-                </span>
-              )}
-              <span className="ml-auto">
+          <Paste
+            content={content}
+            onChange={(value) => { setContent(value); setPasteAt(Date.now()); setPasteTranslation(null); }}
+            onClear={() => { setContent(""); setPasteAt(Date.now()); setPasteTranslation(null); }}
+            count={text("paste.count", { count: content.length.toLocaleString(locale), limit: PASTE_LIMIT.toLocaleString(locale) })}
+            overLimit={overLimit}
+            translation={pasteTranslation}
+            recents={history.entries.filter(entry => entry.kind === "paste").map(entry => ({ at: entry.at, text: entry.original ?? entry.text }))}
+            onOpenRecent={(saved) => { setContent(saved); setPasteAt(Date.now()); setPasteTranslation(null); }}
+            onHistory={() => setHistoryPanel(open => (open === "paste" ? null : "paste"))}
+            exportSlot={
                 <ExportAudio
                   job={exportJob.job}
                   disabled={exporting || updater.phase.kind === "installing" || updater.phase.kind === "installed" || !content.trim() || overLimit || !voiceId || reading !== "idle" || (pricing && (estimate === null || estimateFailed))}
@@ -2462,9 +2428,8 @@ export default function App() {
                   }}
                   onCancel={exportJob.cancel}
                 />
-              </span>
-            </div>
-          </section>
+            }
+          />
         ) : (
           <section className="flex flex-1 items-center justify-center text-sm text-ink-mute">
             {text("milestone.later")}
