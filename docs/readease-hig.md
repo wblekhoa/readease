@@ -161,7 +161,10 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   tên swap dựng đứng, khác glyph ngang của Chuyển ghi chú; menu = bốn màn, màn đang mở ghi "Đang mở"; khi cột thu có
   thêm hàng "Cột bên ⌥⌘S" để mở cột — không còn nút mở cột riêng) + `h2` tên màn (đúng nhãn mục trong cột: "Thư viện",
   "Dán nội dung", "Quét đọc", "Chuyển ghi chú") — cùng chỗ và cùng cỡ với tên sách khi đang đọc. **Mỗi tính năng mang
-  nút riêng ở chỗ này**: sách mang ← ▤ ghi chú ⓘ; trang chủ mang nút đổi chế độ. **Một tiêu đề cho một
+  nút riêng ở chỗ này**: sách mang ← ▤ ghi chú ⓘ; trang chủ mang nút đổi chế độ. **Bỏ ngày 22/10** (chủ: "bỏ đi
+  cái icon đổi công cụ này … vì nó không còn phù hợp nữa"): cột bên đã liệt kê mọi màn và mọi cài đặt (trang riêng),
+  và khi thu gọn vẫn có nút "Mở cột bên (⌥⌘S)" của chính nó - nên toolbar màn tính năng giờ chỉ còn `h2` tên màn.
+  **Một tiêu đề cho một
   màn**: trang không lặp lại tên dưới toolbar (Thư viện bỏ "Thư viện sách", Dán bỏ "Dán nội dung để đọc", Quét bỏ
   "Quét đọc"; sheet Chuyển ghi chú giữ câu tiêu đề riêng của nó vì đó là một câu khác). Hành động của trang (Từ Apple
   Books · Mở PDF hoặc EPUB) đứng ở cụm phải của toolbar qua một slot/portal — như AA · tìm của sách — trang giữ state
@@ -586,7 +589,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 - **Vật liệu = kính của Books** (17/09, chủ đưa hai popover của Apple Books: "tận dụng các thiết kế từ Apple để có
   style glass"): panel nổi và menu dùng `Surface material="glass"` — nền `paper` **74 %** + `backdrop-filter: blur(28px)
   saturate(1.5)`, viền `edge-strong`, bóng `lifted`; trang mờ đi phía sau như popover "Contents"/"Themes & Settings" của
-  Books. Chỉ LỚP NỔI TRÊN TRANG mới là kính (popover cài đặt giọng, cài đặt chữ, chi phí, menu đổi chế độ, tooltip
+  Books. Chỉ LỚP NỔI TRÊN TRANG mới là kính (popover cài đặt giọng, cài đặt chữ, chi phí, menu đổi giọng, tooltip
   chương); sheet giữa màn (Giọng đọc & mô hình, Danh sách giọng) và cột bên vẫn đặc — Books cũng thế, và chủ 16/09 đã
   chọn cột trắng. Kính thật của hệ (NSVisualEffectView qua `windows[].effects` của Tauri) cần cửa sổ trong suốt +
   `macOSPrivateApi` — để dành, chưa cần. Đo chữ trên kính: 74 % paper trên trang chữ mờ vẫn ≥ 4,5:1 cho `ink`.
@@ -824,7 +827,7 @@ Không còn gì vẽ ra ngoài mặt bảng ở bất kỳ chiều cao nào.
 | ⌥⌘R (đổi được) | toàn hệ thống | đọc vùng chọn; đang đọc → dừng |
 | Space | trong app, ngoài ô nhập | tạm dừng/tiếp tục |
 | ⌥⌘S | mọi màn (trừ Setup) | thu/mở cột bên — là lựa chọn tay, được nhớ. Là chord "Hide/Show Sidebar" của Finder · Notes · Photos · Reminders; đổi từ ⌃⌘S 17/09 (chủ: "thông minh hơn và tránh các phím tắt thông dụng khác" — ⌃⌘ là tầng chord hệ thống: ⌃⌘Space emoji, ⌃⌘F toàn màn hình, ⌃⌘Q khoá máy, ⌃⌘D tra từ). Bắt bằng `event.code` (KeyS), vì với ⌥ macOS đổi `event.key` thành "ß" |
-| ⌘1 · ⌘2 · ⌘3 · ⌘4 | ngoài tài liệu | về màn Thư viện · Dán nội dung · Quét đọc · Chuyển ghi chú (thứ tự menu Đổi chế độ) — khuôn ⌘1–4 của Finder/Mail |
+| ⌘1 · ⌘2 · ⌘3 · ⌘4 | ngoài tài liệu | về màn Thư viện · Dán nội dung · Quét đọc · Chuyển ghi chú (thứ tự các màn trong cột bên) — khuôn ⌘1–4 của Finder/Mail |
 | ⌘1 · ⌘2 · ⌘3 | trong tài liệu | Mục lục · Ghi chú · Tìm của cột bên, qua `show(tab)`: cột gập thì mở đúng tab, bấm đúng tab đang hiện thì gập (công tắc) |
 | ⇧⌘O | mọi màn | Thêm vào thư viện… — về kệ rồi mở hộp chọn tệp (Books cũng ⇧⌘O cho "Add to Library"; ⌘O để dành cho "mở một tài liệu" mà app chưa có) — **menu Tệp** (20/09) |
 | ⌘W | trong tài liệu | đóng tài liệu, về kệ — app một cửa sổ, "Close Window" của hệ sẽ để lại một app không cửa sổ — **menu Tệp** |
@@ -1001,8 +1004,9 @@ biết tiêu điểm đi đâu khi một lớp mở rồi đóng. Năm nút mở
 phím mở panel xong đứng ở `<body>`; `useDismiss` đóng bằng Esc mà không trả tiêu điểm cho ai; 0 `aria-modal`; đoạn đang
 đọc chỉ có dấu chấm cho mắt. **Cổng thứ hai — lượt bàn phím** (`scripts-audit-render.mjs`, cuối mỗi lần chạy đầy đủ;
 `--keys` chạy riêng, `--only` bỏ qua): Enter/Esc trên Cài đặt đọc và Cài đặt giọng đọc, chuỗi Cài đặt giọng đọc → Quản
-lý giọng → Esc (về nút ở footer), menu Đổi chế độ (mục đầu, ↓, Esc), sheet Giọng đọc & mô hình (24 lần Tab không lọt
-ra), và một cú **chuột** (tiêu điểm không bị kéo vào panel, không tooltip treo trên nó). Trên `main` @ b9a9b4f:
+lý giọng → Esc (về nút ở footer), menu Đổi chế độ (mục đầu, ↓, Esc — từ 22/10 là menu Đổi giọng khi đang đọc, vì nút
+đổi chế độ đã bỏ), sheet Giọng đọc & mô hình (24 lần Tab không lọt ra — từ 22/10 là sheet Lịch sử, vì Giọng đọc & mô
+hình đã thành trang), và một cú **chuột** (tiêu điểm không bị kéo vào panel, không tooltip treo trên nó). Trên `main` @ b9a9b4f:
 **10 lỗi**; sau khi sửa: **14/14 bước đạt**.
 
 **Cùng ngày, cổng thứ ba — ngôn ngữ của ô.** Mỗi ô giờ khẳng định `<html lang>` bằng ngôn ngữ nó mang tên. Trên mã cũ

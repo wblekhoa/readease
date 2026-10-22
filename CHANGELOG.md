@@ -11,6 +11,8 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   column, like SpeakEase, instead of a sheet over a dimmed window. The
   buttons in the bottom bar still open them as popovers while reading.
 - The dimming behind a sheet is a neutral dark instead of a blue one.
+- The switch-mode button left of a screen's title is gone: the side column
+  lists every screen and setting, and keeps its own button when folded.
 
 ## 0.1.24
 
