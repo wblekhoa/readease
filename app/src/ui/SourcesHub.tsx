@@ -16,7 +16,7 @@ import { Fragment, type ReactNode } from "react";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, Surface } from "./controls";
 import { CloseIcon } from "./icons";
-import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
+import { GroupedRow, GroupedSection, Scrim, SettingsPage, useDismiss } from "./patterns";
 import { ModelProgress, ModelRows } from "./ModelPanel";
 import { ProviderKeys } from "./ProviderKeys";
 import { isPaidVoice, providerOf } from "./readingCost";
@@ -119,8 +119,10 @@ export function ReadingSources({ models, voices, keysSet, onSaveKey, reading, tr
 }
 
 /** The sheet the gear on the home screen opens. */
-export function SourcesHub({ onClose, translationSummary, translationSettings, onOpenTranslation, ...sources }: SourcesProps & {
+export function SourcesHub({ onClose, translationSummary, translationSettings, onOpenTranslation, page = false, ...sources }: SourcesProps & {
   onClose: () => void;
+  /** A page of its own from the side column (owner, 22/10), not a sheet. */
+  page?: boolean;
   translationSummary: string;
   translationSettings: TranslationSettings;
   onOpenTranslation: () => void;
@@ -128,7 +130,19 @@ export function SourcesHub({ onClose, translationSummary, translationSettings, o
   const downloading = sources.models.job !== null;
   // Esc and a click outside close it - not over a running download, which
   // would go on behind a closed sheet with nothing on screen to say so.
-  const sheet = useDismiss(onClose, !downloading);
+  const sheet = useDismiss(onClose, !downloading && !page);
+  const rows = (
+    <ReadingSources {...sources} translation={
+      <TranslationSources settings={translationSettings} summary={translationSummary}
+        onOpenSettings={onOpenTranslation} disabled={downloading}
+        models={sources.models} reading={sources.reading} />
+    } />
+  );
+  if (page) return (
+    <SettingsPage caption={text("hub.caption")} footer={<ModelProgress models={sources.models} className="min-w-0 flex-1" />}>
+      {rows}
+    </SettingsPage>
+  );
   return (
     <>
     <Scrim />
@@ -158,11 +172,7 @@ export function SourcesHub({ onClose, translationSummary, translationSettings, o
         </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-        <ReadingSources {...sources} translation={
-          <TranslationSources settings={translationSettings} summary={translationSummary}
-            onOpenSettings={onOpenTranslation} disabled={downloading}
-            models={sources.models} reading={sources.reading} />
-        } />
+        {rows}
       </div>
       {/* Nothing to confirm: every row acts on its own. The one button is
           the way out, for a person who came from the settings panel. A

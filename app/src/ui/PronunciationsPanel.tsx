@@ -11,7 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { text } from "../i18n";
 import { Button, IconButton, Input, Surface } from "./controls";
 import { CloseIcon, TrashIcon } from "./icons";
-import { Scrim, useDismiss } from "./patterns";
+import { Scrim, SettingsPage, useDismiss } from "./patterns";
 import {
   MAX_SPOKEN,
   MAX_WRITTEN,
@@ -26,15 +26,17 @@ const KEY = "pronunciations";
 export function PronunciationsPanel({
   onChanged,
   onClose,
-  centered = false,
+  presentation = "popover",
 }: {
-  /** Opened from the side column: centred over a scrim (owner, 20/10). */
-  centered?: boolean;
+  /** Over its footer button, centred over a scrim, or a page of its own
+   * from the side column (owner, 22/10). */
+  presentation?: "popover" | "sheet" | "page";
   /** The list changed: a price that counted the old words is stale. */
   onChanged: () => void;
   onClose: () => void;
 }) {
   // Centred, it is a dialog: Esc or a click outside closes it.
+  const centered = presentation === "sheet";
   const layer = useDismiss(onClose, centered);
   const [list, setList] = useState<Pronunciation[] | null>(null);
   const [written, setWritten] = useState("");
@@ -65,30 +67,9 @@ export function PronunciationsPanel({
     setSpoken("");
   };
 
-  return (<>
-    {centered && <Scrim />}
-    <Surface
-      ref={layer}
-      edge="strong"
-      radius="sheet"
-      dialog={text("pronounce.title")}
-      layer="popover"
-      modal={centered}
-      className={centered
-        ? "fixed left-1/2 top-1/2 z-40 flex max-h-[84%] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted w-[32rem] max-w-[calc(100vw-3rem)]"
-        : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
-    >
-      <div className="flex items-start gap-3 px-6 pb-3 pt-5">
-        <div className="min-w-0 flex-1">
-          <h2 className="m-0 text-base font-bold">{text("pronounce.title")}</h2>
-          <p className="m-0 mt-1 text-xs text-ink-mute">{text("pronounce.caption")}</p>
-        </div>
-        <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
-          <CloseIcon />
-        </IconButton>
-      </div>
+  const form = (<>
       <form
-        className="flex items-center gap-2 px-6 pb-3"
+        className="flex items-center gap-2 pb-3"
         onSubmit={(event) => {
           event.preventDefault();
           add();
@@ -116,9 +97,10 @@ export function PronunciationsPanel({
         </Button>
       </form>
       {failed && (
-        <p role="alert" className="m-0 px-6 pb-2 text-xs text-danger">{text("pronounce.failed")}</p>
+        <p role="alert" className="m-0 pb-2 text-xs text-danger">{text("pronounce.failed")}</p>
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-edge px-6 py-2">
+  </>);
+  const entries = (<>
         {list !== null && list.length === 0 && (
           <p className="m-0 py-3 text-sm text-ink-mute">{text("pronounce.empty")}</p>
         )}
@@ -138,6 +120,40 @@ export function PronunciationsPanel({
             </li>
           ))}
         </ul>
+  </>);
+
+  if (presentation === "page") return (
+    <SettingsPage caption={text("pronounce.caption")}>
+      {form}
+      <div className="border-t border-edge-alpha pt-1">{entries}</div>
+    </SettingsPage>
+  );
+
+  return (<>
+    {centered && <Scrim />}
+    <Surface
+      ref={layer}
+      edge="strong"
+      radius="sheet"
+      dialog={text("pronounce.title")}
+      layer="popover"
+      modal={centered}
+      className={centered
+        ? "fixed left-1/2 top-1/2 z-40 flex max-h-[84%] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted w-[32rem] max-w-[calc(100vw-3rem)]"
+        : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-30 flex layer-capped w-[32rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
+    >
+      <div className="flex items-start gap-3 px-6 pb-3 pt-5">
+        <div className="min-w-0 flex-1">
+          <h2 className="m-0 text-base font-bold">{text("pronounce.title")}</h2>
+          <p className="m-0 mt-1 text-xs text-ink-mute">{text("pronounce.caption")}</p>
+        </div>
+        <IconButton onClick={onClose} aria-label={text("aria.close")} title={text("aria.close")}>
+          <CloseIcon />
+        </IconButton>
+      </div>
+      <div className="px-6">{form}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto border-t border-edge px-6 py-2">
+        {entries}
       </div>
     </Surface>
   </>);

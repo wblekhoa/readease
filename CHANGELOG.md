@@ -4,6 +4,14 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- Settings have pages of their own: Voice, Translate before reading,
+  Pronunciations and Voices & models open in the main window from the side
+  column, like SpeakEase, instead of a sheet over a dimmed window. The
+  buttons in the bottom bar still open them as popovers while reading.
+- The dimming behind a sheet is a neutral dark instead of a blue one.
+
 ## 0.1.24
 
 - Highlights and notes in the Reader. Select words in a book and a small bar
