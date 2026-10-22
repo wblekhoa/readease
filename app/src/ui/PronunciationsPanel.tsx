@@ -125,7 +125,8 @@ export function PronunciationsPanel({
   if (presentation === "page") return (
     <SettingsPage caption={text("pronounce.caption")}>
       {form}
-      <div className="border-t border-edge-alpha pt-1">{entries}</div>
+      {/* The list as a card, like the other settings pages' groups. */}
+      <div className="mt-2 rounded-2xl border border-edge-alpha bg-band px-4 py-1">{entries}</div>
     </SettingsPage>
   );
 

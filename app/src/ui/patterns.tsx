@@ -1163,9 +1163,9 @@ export function SettingsPage({ caption, footer, children }: {
   children: ReactNode;
 }) {
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section className="settings-page flex min-h-0 flex-1 flex-col">
       <div className="shell-inset-content min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-[40rem] flex-col px-6">
+        <div className="mx-auto flex w-full max-w-[44rem] flex-col px-6">
           {caption && <p className="m-0 mb-5 text-sm text-ink-mute">{caption}</p>}
           {children}
           {footer && <div className="mt-6 flex flex-wrap items-center gap-4">{footer}</div>}
