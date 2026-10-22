@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Read home (logic)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-22
 summary: "Default Read routing, five derived recents, shared path import and recovery without an additional content store."
 tags: [area/reading, stack/react, stack/tauri, surface/macos]
 reqPrefix: RE-HOME
@@ -25,7 +25,7 @@ Unify entry to document, Paste and selection reading. [App map](../systems/app/s
 | ordinary launch after setup | Read; no speech |
 | Finder or Home picker/drop | import paths; open last successful readable book, no autoplay |
 | Type/paste / Read a selection | existing draft / shortcut-permission guidance; no pretend webview capture |
-| recent item | original book, current draft or focused capture by `at`; no autoplay |
+| recent item | original book, current draft or saved paste, or focused capture by `at`; no autoplay |
 | current reading → Open / Pause/Resume | return to origin / existing transport; never read-from-here |
 
 Entering Read clears the document view/selection, retaining running audio/origin. Finder's specific-file request takes precedence over the ordinary launch destination.
@@ -39,9 +39,9 @@ Entering Read clears the document view/selection, retaining running audio/origin
 
 ## Recent-content contract
 
-- Merge readable books, one nonblank current draft, and nonblank captures with finite timestamps; sort newest first; take five. Skip damaged books, retain original capture/translation/voice references.
+- Merge readable books, one nonblank current draft, nonblank saved pastes and nonblank captures with finite timestamps; sort newest first; take five. Skip saved pastes whose text exactly matches the current draft. Skip damaged books, retain original capture/translation/voice references.
 - Book time is `listened_at`, fallback `imported_at` when absent. An invalid chosen date sorts as zero. Opening without hearing does not update heard time.
-- Draft time changes when edited, not when Home opens. Capture retention follows the [selection owner](translation.md#states-and-recovery). This is distinct from the sidebar's five books with saved positions.
+- Draft time changes when edited, not when Home opens. Saved pastes reopen their original text when available. Persistence and retention of pastes and captures follow the [history owner](history.md); Home derives its list without another store. This is distinct from the sidebar's five books with saved positions.
 - Voice/rate and selection-translation open the existing panels; no Home preference copy. Openers are disabled during playback/export. [Translation](translation.md) owns target-voice scope.
 
 ## States and recovery
@@ -65,6 +65,7 @@ Home/Finder share a queue, not the Library shelf's aggregate import-feedback own
 Additional queue coverage: `app/tests/bookImport.test.ts`. `home*` render recipes verify empty import, exact draft reopening, focused capture and preserved playback in both languages/themes. Native Finder/drop acceptance is still pending; mock routing does not prove it.
 
 ## Change log
+- 2026-10-22: reviewed the render-audit changes adding Reader highlight recipes and real text-selection steps; Home recipes and routing are unchanged. Aligned the recent-content contract with existing saved-paste inputs and the shared history owner.
 - 2026-10-21: audit 21/10: Home chips carry accessible names; the translation chip reads "Dịch · EN/Tắt" like the footer; "Recent" is an h2; Read tab has its own glyph. RE-HOME-002 evidence tagged in code.
 - 2026-10-20: RE-HOME-002 simplified at the owner's request: no continue-reading card and no kind filter; recents only.
 
