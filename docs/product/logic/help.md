@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Help and feedback (logic)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-22
 summary: "Feedback metadata URL and fallback, issue-submission boundary and local diagnostic-log ownership."
 tags: [area/security, stack/tauri, stack/rust, surface/macos]
 reqPrefix: RE-HELP
@@ -43,6 +43,7 @@ Open a useful bug form without including document, library, preference or provid
 
 ## Change log
 
+- 2026-10-22: reviewed d2dedf4 mockTauri edits (annotations add/restyle, copy_text belong to RE-NOTE); no feedback or log change.
 - 2026-10-21: audit 21/10: no rule change; App.tsx/mock edits are copy, headings and confirms reviewed against this doc.
 - 2026-10-20: condensed feedback/transmission boundary; no payload change.
 - 2026-10-19: corrected URL-open versus issue-submit timing and documented local logs.
