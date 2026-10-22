@@ -4,12 +4,15 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.25
 
 - Settings have pages of their own: Voice, Translate before reading,
   Pronunciations and Voices & models open in the main window from the side
   column, like SpeakEase, instead of a sheet over a dimmed window. The
   buttons in the bottom bar still open them as popovers while reading.
+- Each group of settings is a light grey card without an edge, with dotted
+  lines between its rows; a model download shows at the top of Voices &
+  models, where it stays in view.
 - The dimming behind a sheet is a neutral dark instead of a blue one.
 - The switch-mode button left of a screen's title is gone: the side column
   lists every screen and setting, and keeps its own button when folded.

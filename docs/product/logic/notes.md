@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Annotations and note transfer (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "Saved annotation ownership, highlights and notes made in the Reader, Apple Books projection modes and explicit backup-before-write note transfer between editions."
 tags: [area/sync, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-NOTE

@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Translate before reading (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "Translate before reading for Read a selection and Paste text, each with its own switch: provider and target-voice eligibility, long-paste splitting, generation cancellation, bounded input/output and pending native acceptance."
 tags: [area/translation, area/capture, area/voice, stack/react, stack/tauri, stack/swift, surface/macos]
 reqPrefix: RE-PLAY
