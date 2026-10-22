@@ -4,8 +4,8 @@ type: release
 product: readease
 title: "ReadEase — Releases"
 status: active
-updated: 2026-10-20
-summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.23, newest first."
+updated: 2026-10-22
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.24, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
@@ -17,12 +17,19 @@ here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped beha
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
 
-## Unreleased · 2026-10-20
+## v0.1.24 · 2026-10-22
+- **What changed for users**: Highlights and notes made in the Reader: select words for a five-colour bar with Note; press a highlight to edit its note, remove it or recolour it (ReadEase's own); Copy as Markdown in the Notes tab. Paste text as a visible sheet with Export audio beside Read text. A quieter History dialog, re-laid Translation options and a side column without rules. It also ships everything listed under the 2026-10-20 entry below: Read home, background updates, the side column, translation for pasted text and Library books, ReadEase's own translator, more file formats, history and the performance work.
+- **REQ-IDs shipped**: RE-NOTE-005, RE-NOTE-006, RE-NOTE-007 (live); RE-NOTE-008 (blocked until Copy as Markdown is run in the built app); RE-HOME-001, RE-UPDATE-001 and RE-PLAY-029…035, each at the status its logic doc records.
+- **Verification**: 1038 Python tests (7 skipped), 273 UI tests, 48 Rust tests. Render audit: 24 groups plus 89 keyboard checks, each group run on its own. The Developer ID build `0.1.23+d2dedf4` of the same code was notarized, accepted by Gatekeeper and installed on the owner's Mac.
+- **Channel**: GitHub release with Developer ID signature, notarization and in-app updater.
+- **Shown in**: CHANGELOG.md; GitHub release notes.
+
+## Work shipped in v0.1.24 · recorded 2026-10-20
 - **Documentation organization**: separate playback, translation and export owners; compact rule tables and linked shared policy. All 57 existing rule IDs/statuses and native holds remain; runtime behavior is unchanged.
 - **Logic documentation audit**: app state/data/concurrency map, note-sync/transfer rules (RE-NOTE-001…004), repaired RE-VOICE-009/014 identity, explicit native chapter-scope gap and corrected feedback/update privacy wording. Documentation/evidence annotations only; no runtime change from this audit.
 - **Read home**: First/default Đọc tab with an actionable empty state, shared file import, derived session recents and existing reading settings (RE-HOME-001).
 - **Prepared for review**: Non-blocking update notice in the expanded/folded sidebar, dismissible detail popover, background download and explicit safe apply boundary (RE-UPDATE-001).
-- **Status**: Local implementation; no new version, published artifact or signed upgrade acceptance yet.
+- **Status**: Shipped in v0.1.24 (2026-10-22).
 
 ## v0.1.23 · 2026-10-18
 - **What changed for users**: Optional Apple/local translation before reading a selection, target-language local voices and compact translation settings. Capture history uses separate blocks with original/translation sections. Selection and document detail share a solid reading underline and a small blue Pause/Resume button without changing text geometry. Page margins and Next/Previous hit areas are balanced. Refined native floating controls, localized menu-bar reading controls and a larger default window.
