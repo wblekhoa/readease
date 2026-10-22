@@ -1660,16 +1660,21 @@ export default function App() {
     { value: "transfer", label: text("nav.transfer"), icon: <TransferIcon /> },
   ]), [language]);
   /* The side column holds the settings too, as SpeakEase's does (owner,
-     20/10); opened from here, each sheet is centred, not pinned to the
-     footer button it also has. */
-  const [centredPanels, setCentredPanels] = useState(false);
-  useEffect(() => { if (readerPanel === null && !pronounceOpen) setCentredPanels(false); }, [readerPanel, pronounceOpen]);
-  const settingsItems = [
-    { id: "voice", label: text("settings.voice_title"), icon: <VoiceIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("voice"); } },
-    { id: "translation", label: text("translation.title"), icon: <ArrowSwapIcon />, open: () => { setHubOpen(false); setPronounceOpen(false); setCentredPanels(true); setReaderPanel("translation"); } },
-    { id: "pronounce", label: text("pronounce.title"), icon: <TextLargerIcon />, open: () => { setHubOpen(false); setReaderPanel(null); setCentredPanels(true); setPronounceOpen(true); } },
-    { id: "hub", label: text("hub.title"), icon: <ReadingSettingsIcon />, open: () => { setReaderPanel(null); setPronounceOpen(false); setVoicesOpen(false); setHubOpen(true); } },
-  ];
+     20/10), and each opens a page of its own (owner, 22/10: "tạo trang
+     riêng cho các menu này"). The footer's buttons still open the same
+     panels as popovers, for a change made while reading. */
+  const settingsItems = useMemo(() => ([
+    { value: "set-voice", label: text("settings.voice_title"), icon: <VoiceIcon /> },
+    { value: "set-translation", label: text("translation.title"), icon: <ArrowSwapIcon /> },
+    { value: "set-pronounce", label: text("pronounce.title"), icon: <TextLargerIcon /> },
+    { value: "set-hub", label: text("hub.title"), icon: <ReadingSettingsIcon /> },
+  ]), [language]);
+  const settingsPage = tab.startsWith("set-") ? tab.slice(4) as "voice" | "translation" | "pronounce" | "hub" : null;
+  /* Opening a page puts away the floating copy of the same thing. */
+  const openSettingsPage = (value: string) => {
+    setReaderPanel(null); setPronounceOpen(false); setHubOpen(false); setVoicesOpen(false);
+    goTab(value);
+  };
 
   const overLimit = content.length > PASTE_LIMIT;
   const atOrigin =
@@ -1864,6 +1869,84 @@ export default function App() {
     onPress={() => { setReaderPanel(null); setHubOpen(false); setVoicesOpen(false); setPronounceOpen(false); dismissPreview(); updater.show(); }} />;
   const updateAnchor = { left: Math.min((sideOpen ? sideWidth : 80) + LAYER_GAP, Math.max(16, window.innerWidth - 432)), bottom: 16 };
 
+  /** The voice / translation settings, as a popover over the footer or as
+   *  a page of its own (owner, 22/10). One element, two places. */
+  const settingsPanel = (kind: "voice" | "translation", presentation: "popover" | "page") => (
+<SettingsPanel
+          presentation={presentation}
+          key={`${kind}-${presentation}`}
+          panelKind={kind}
+          translation={translation}
+          onOpenTranslation={() => {
+            if (previewing !== null) stopPreview();
+            if (presentation === "page") openSettingsPage("set-translation");
+            else setReaderPanel("translation");
+          }}
+          context={screen === "external" ? "external" : screen === "reader" ? "reader" : "paste"}
+          /* The whole catalogue and the shortlist: the panel narrows to the
+             language's voices itself - the marked ones plus the one in use,
+             the same list the mid-reading switcher shows (owner, 03/09: one
+             list means one list everywhere; the way to add to it is Quản
+             lý giọng). */
+          voices={voices}
+          shortlist={shortlist}
+          favorites={favorites}
+          voiceId={voiceId}
+          rate={rate}
+          rates={RATES}
+          reading={reading !== "idle" || exporting}
+          shortlisted={shortlist.length}
+          voicesError={voicesError}
+          readingLanguage={readingLanguage}
+          contentLanguage={contentLanguage}
+          hint={hint}
+          models={models}
+          keysSet={keysSet}
+          scope={scope}
+          budget={budget}
+          spent={spent}
+          onReadingLanguage={switchReadingLanguage}
+          onScope={changeScope}
+          onBudget={changeBudget}
+          onVoice={switchVoice}
+          /* Hear and star from the Voice picker (HIG 3.13): the voice list's
+             own handlers, so a star or a sample means the same thing in both. */
+          previewing={previewing}
+          onPreview={previewVoice}
+          onStopPreview={stopPreview}
+          onFavorite={(id) => rememberFavorites(toggleShortlist(favorites, id))}
+          onRate={rememberRate}
+          chime={chime}
+          noteReading={noteReading}
+          onChime={rememberChime}
+          onNoteReading={rememberNoteReading}
+          onManageVoices={() => { setReaderPanel(null); setVoicesOpen(true); }}
+          pronunciations={pronunciations}
+          onPronunciations={() => {
+            if (presentation === "page") openSettingsPage("set-pronounce");
+            else { setReaderPanel(null); setPronounceOpen(true); }
+          }}
+          onOpenHub={() => {
+            if (presentation === "page") openSettingsPage("set-hub");
+            else { setReaderPanel(null); setHubOpen(true); }
+          }}
+          output={audioOutput}
+          /* Just close. This used to re-list the catalogue on the way out,
+             in case a key had been added while the panel was open - but
+             `saveKey` already re-lists the moment a key is accepted, and
+             ElevenLabs' catalogue is a live network call with no cache
+             behind it. Now that a click on the book closes this panel, that
+             would be a request to their servers every time somebody
+             dismissed it. */
+          onClose={() => {
+            // A sample started from the Voice picker ends with the panel,
+            // as one started from the voice list ends with that sheet.
+            if (previewing !== null) stopPreview();
+            if (presentation !== "page") closeReaderPanel(kind);
+          }}
+        />
+  );
+
   return (
     <div key={language} className="flex h-screen overflow-hidden">
       {/* Heard, never seen: the one live region for the reading's state
@@ -1936,7 +2019,7 @@ export default function App() {
               ))}
             </nav>
             <div role="group" aria-label={text("nav.settings")} className="mt-6 flex flex-col items-center gap-1">
-              {settingsItems.map(item => <RailIcon key={item.id} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
+              {settingsItems.map(item => <RailIcon key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => openSettingsPage(item.value)} />)}
             </div>
           </>
         )}
@@ -1999,7 +2082,7 @@ export default function App() {
               {tools.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => goTab(item.value)} />)}
             </RailGroup>
             <RailGroup title={text("nav.settings")}>
-              {settingsItems.map(item => <RailItem key={item.id} icon={item.icon} label={item.label} active={false} onPress={item.open} />)}
+              {settingsItems.map(item => <RailItem key={item.value} icon={item.icon} label={item.label} active={tab === item.value} onPress={() => openSettingsPage(item.value)} />)}
             </RailGroup>
           </div>
         )}
@@ -2087,7 +2170,7 @@ export default function App() {
                 ]}
               />
               <h2 className="m-0 min-w-0 truncate px-1 text-base font-bold">
-                {[...tabs, ...tools].find((item) => item.value === tab)?.label}
+                {[...tabs, ...tools, ...settingsItems].find((item) => item.value === tab)?.label}
               </h2>
             </>
           )}
@@ -2412,6 +2495,32 @@ export default function App() {
             recents={history.entries.filter(entry => entry.kind === "paste").map(entry => ({ at: entry.at, text: entry.original ?? entry.text }))}
             onOpenRecent={(saved) => { setContent(saved); setPasteAt(Date.now()); setPasteTranslation(null); }}
             onHistory={() => setHistoryPanel(open => (open === "paste" ? null : "paste"))}
+          />
+        ) : settingsPage === "voice" ? (
+          settingsPanel("voice", "page")
+        ) : settingsPage === "translation" ? (
+          settingsPanel("translation", "page")
+        ) : settingsPage === "pronounce" ? (
+          <PronunciationsPanel
+            presentation="page"
+            onChanged={() => setPronounceVersion((version) => version + 1)}
+            onClose={() => {}}
+          />
+        ) : settingsPage === "hub" ? (
+          <SourcesHub
+            page
+            translationSummary={translationSummary}
+            translationSettings={translation.settings}
+            onOpenTranslation={() => {
+              if (previewing !== null) stopPreview();
+              openSettingsPage("set-translation");
+            }}
+            models={models}
+            voices={voices}
+            keysSet={keysSet}
+            onSaveKey={saveKey}
+            reading={reading !== "idle" || exporting}
+            onClose={() => {}}
           />
         ) : (
           <section className="flex flex-1 items-center justify-center text-sm text-ink-mute">
@@ -2919,72 +3028,7 @@ export default function App() {
         />}
       </Presence>
       <Presence open={(settingsOpen && speechSettings) || translationOpen}>
-        {(speechSettings || translationOpen) && <SettingsPanel
-          centered={centredPanels}
-          key={translationOpen ? "translation" : "voice"}
-          panelKind={translationOpen ? "translation" : "voice"}
-          translation={translation}
-          onOpenTranslation={() => {
-            if (previewing !== null) stopPreview();
-            setReaderPanel("translation");
-          }}
-          context={screen === "external" ? "external" : screen === "reader" ? "reader" : "paste"}
-          /* The whole catalogue and the shortlist: the panel narrows to the
-             language's voices itself - the marked ones plus the one in use,
-             the same list the mid-reading switcher shows (owner, 03/09: one
-             list means one list everywhere; the way to add to it is Quản
-             lý giọng). */
-          voices={voices}
-          shortlist={shortlist}
-          favorites={favorites}
-          voiceId={voiceId}
-          rate={rate}
-          rates={RATES}
-          reading={reading !== "idle" || exporting}
-          shortlisted={shortlist.length}
-          voicesError={voicesError}
-          readingLanguage={readingLanguage}
-          contentLanguage={contentLanguage}
-          hint={hint}
-          models={models}
-          keysSet={keysSet}
-          scope={scope}
-          budget={budget}
-          spent={spent}
-          onReadingLanguage={switchReadingLanguage}
-          onScope={changeScope}
-          onBudget={changeBudget}
-          onVoice={switchVoice}
-          /* Hear and star from the Voice picker (HIG 3.13): the voice list's
-             own handlers, so a star or a sample means the same thing in both. */
-          previewing={previewing}
-          onPreview={previewVoice}
-          onStopPreview={stopPreview}
-          onFavorite={(id) => rememberFavorites(toggleShortlist(favorites, id))}
-          onRate={rememberRate}
-          chime={chime}
-          noteReading={noteReading}
-          onChime={rememberChime}
-          onNoteReading={rememberNoteReading}
-          onManageVoices={() => { setReaderPanel(null); setVoicesOpen(true); }}
-          pronunciations={pronunciations}
-          onPronunciations={() => { setReaderPanel(null); setPronounceOpen(true); }}
-          onOpenHub={() => { setReaderPanel(null); setHubOpen(true); }}
-          output={audioOutput}
-          /* Just close. This used to re-list the catalogue on the way out,
-             in case a key had been added while the panel was open - but
-             `saveKey` already re-lists the moment a key is accepted, and
-             ElevenLabs' catalogue is a live network call with no cache
-             behind it. Now that a click on the book closes this panel, that
-             would be a request to their servers every time somebody
-             dismissed it. */
-          onClose={() => {
-            // A sample started from the Voice picker ends with the panel,
-            // as one started from the voice list ends with that sheet.
-            if (previewing !== null) stopPreview();
-            closeReaderPanel(translationOpen ? "translation" : "voice");
-          }}
-        />}
+        {(speechSettings || translationOpen) && settingsPanel(translationOpen ? "translation" : "voice", "popover")}
       </Presence>
       <Presence open={hubOpen}>
         <SourcesHub
@@ -3093,7 +3137,6 @@ export default function App() {
       </Presence>
       <Presence open={pronounceOpen}>
         <PronunciationsPanel
-          centered={centredPanels}
           onChanged={() => setPronounceVersion((version) => version + 1)}
           onClose={() => setPronounceOpen(false)}
         />

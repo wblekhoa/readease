@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Read home (UX)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-22
 summary: "The default Read tab offers file, typed/pasted text and selection entry points, session recents, current playback and access to the existing voice and translation settings."
 tags: [area/reading, stack/react, surface/macos]
 relations:
@@ -33,5 +33,6 @@ Loading has its own message. Library failures show retry, never a false empty-st
 Use the shared button/surface/notice/cover primitives and palette. Entry actions form three columns when the content area fits and stack otherwise. The body scrolls beneath the existing shell chrome; keep every action keyboard reachable. Labels and empty states support Vietnamese/English and both themes.
 
 - 2026-10-20 (owner): minimal layout - the three entry points show an icon and a name (hint as tooltip); reading settings (voice, scan translation) sit in a fixed footer at the bottom of Read home, outside the scroll.
+- 2026-10-22 (owner: "tạo trang riêng cho các menu này, giống với SpeakEase"): the side column's settings - Voice, Translate before reading, Pronunciations, Voices & models - open as pages of their own in the main area, under their name in the toolbar, one centred column that scrolls, with the item marked as the current page. The footer's Voice and Translate buttons still open the same panels as popovers for a change made while reading. A link from one settings page to another (Voice → Translate before reading, Pronunciations, Voices & models) goes to that page. The dimming under the sheets that remain is a neutral dark, no longer navy.
 - 2026-10-21 (owner: "bỏ đi divider, phân tích bằng spacing thôi"): the side column's groups (Tools, Settings) and the folded rail's settings group are set apart by space alone - no rules.
-- 2026-10-20 (owner): the side column holds navigation and settings, like SpeakEase - Read, Library, Paste, Read a selection; Tools; Settings (Voice, Translate before reading, Pronunciations, Voices & models). The "Reading now" list is gone (Read home lists recent content). Opened from the column, each settings sheet is centred over a scrim.
+- 2026-10-20 (owner): the side column holds navigation and settings, like SpeakEase - Read, Library, Paste, Read a selection; Tools; Settings (Voice, Translate before reading, Pronunciations, Voices & models). The "Reading now" list is gone (Read home lists recent content). Opened from the column, each setting was a centred sheet over a scrim (pages since 22/10).

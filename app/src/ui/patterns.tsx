@@ -1152,6 +1152,29 @@ export function SideColumn({
  * the window so the side column dims with the page. It is not a button:
  * `useDismiss` already treats a click on it as a click outside the sheet,
  * and keeps the sheet up while a download runs. */
+/** A setting with a page of its own, opened from the side column (owner,
+ * 22/10: "tạo trang riêng cho các menu này, giống với SpeakEase"): the
+ * toolbar carries its name, the body is one centred column that scrolls
+ * under the chrome like the library does, and nothing floats or dims. The
+ * same panels still open as popovers from the footer while reading. */
+export function SettingsPage({ caption, footer, children }: {
+  caption?: ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="shell-inset-content min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-[40rem] flex-col px-6">
+          {caption && <p className="m-0 mb-5 text-sm text-ink-mute">{caption}</p>}
+          {children}
+          {footer && <div className="mt-6 flex flex-wrap items-center gap-4">{footer}</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function Scrim() {
   // A strong blur: the window behind is a backdrop, not a page seen through
   // gauze (owner, 17/09: "blur mạnh hơn, để nó như là một nền background").

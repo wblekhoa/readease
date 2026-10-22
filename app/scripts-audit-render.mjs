@@ -93,6 +93,12 @@ const SCREENS = {
   home_error: [["wait", /./, "[role=alert]"]],
   home_voice: [["click-at", '[aria-label="Cài đặt đọc"] button:first-of-type, [aria-label="Reading settings"] button:first-of-type'], ["wait", /^Giọng đọc$|^Voice$/, "[role=dialog]"]],
   home_translation: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Dịch trước khi đọc$|^Translate before reading$/, "[role=dialog]"]],
+  // The side column's settings as pages of their own (22/10): each opens in
+  // the main area under its name, not as a sheet over a scrim.
+  page_voice: [...UNFOLD, ["click", /^Giọng đọc$|^Voice$/], ["wait", /^Ngôn ngữ đọc$|^Reading language$/, "main p"]],
+  page_translation: [...UNFOLD, ["click", /^Dịch trước khi đọc$|^Translate before reading$/], ["wait", /^Nghe nội dung bằng|^Hear text in your chosen/, "main div"]],
+  page_pronounce: [...UNFOLD, ["click", /^Cách đọc riêng$|^Pronunciations$/], ["wait", /^Thêm$|^Add$/, "main button"]],
+  page_hub: [...UNFOLD, ["click", /^Giọng đọc & mô hình$|^Voices & models$/], ["wait", /^Máy này đọc được gì|^What this Mac reads/, "main p"]],
   // Translation options opened: no cell had ever drawn its fields (21/10).
   translation_options: [["click", /^Cài đặt dịch: |^Translation settings: /], ["wait", /^Dịch trước khi đọc$|^Translate before reading$/, "[role=dialog]"],
     ["click", /^Tuỳ chọn dịch|^Translation options/], ["wait", /^Kiểm tra lại$|^Check again$/]],
@@ -291,6 +297,10 @@ const ONLY_IN = {
   home_error: ["home_error"],
   home_voice: ["default"],
   home_translation: ["default"],
+  page_voice: ["default", "english_missing"],
+  page_translation: ["default", "library_translated"],
+  page_pronounce: ["default"],
+  page_hub: ["default", "english_missing"],
   paste_history: ["default"],
   paste_history_confirm: ["default"],
   translation_options: ["library_translated"],
@@ -424,7 +434,7 @@ const STATE_ON = {
   long: ["shelf", "reader", "contents", "book_notes", "search"],
   paid: ["reader", "cost", "player_settings", "audiobook_form"],
   paid_eleven: ["reader", "cost"],
-  library_translated: ["reader", "player_settings", "translation_options"],
+  library_translated: ["reader", "player_settings", "translation_options", "page_translation"],
   voicefail_network: ["reading_failed"],
   voicefail_blocked: ["reading_failed"],
   voicefail_budget: ["reading_failed"],

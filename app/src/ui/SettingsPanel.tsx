@@ -32,7 +32,7 @@ import type { TranslationPreference } from "./useTranslation";
 import { translates } from "./translation";
 import { text } from "../i18n";
 import { Button, IconButton, Notice, SegmentedControl, Select, SuggestionDot, Surface } from "./controls";
-import { GroupedRow, GroupedSection, Scrim, useDismiss } from "./patterns";
+import { GroupedRow, GroupedSection, Scrim, SettingsPage, useDismiss } from "./patterns";
 import { ChevronDownIcon, CloseIcon, VoiceSwitchIcon } from "./icons";
 import { ReadingLimits } from "./CostPanel";
 import { isPaidVoice, providerOf, PROVIDERS } from "./readingCost";
@@ -68,7 +68,7 @@ export function languageName(language: ReadingLanguage): string {
 }
 
 export function SettingsPanel({
-  centered = false,
+  presentation = "popover",
   translation,
   onOpenTranslation,
   context,
@@ -110,9 +110,9 @@ export function SettingsPanel({
   output = null,
   onClose,
 }: {
-  /** Opened from the side column's settings list: a centred dialog over a
-   * scrim, not a popover pinned over the footer button (owner, 20/10). */
-  centered?: boolean;
+  /** Over its footer button (popover), centred over a scrim (sheet), or a
+   * page of its own from the side column (owner, 22/10). */
+  presentation?: "popover" | "sheet" | "page";
   /** The whole catalogue; what each tab offers is decided here. */
   translation: TranslationPreference;
   onOpenTranslation: () => void;
@@ -185,47 +185,16 @@ export function SettingsPanel({
   const downloading = models.job !== null;
   // Escape and a click on the book both put it away; neither does while a
   // download runs, which is the one moment closing hides work in progress.
-  const panel = useDismiss(onClose, !downloading);
+  const centered = presentation === "sheet";
+  // A page is left by going elsewhere, not dismissed by a click beside it.
+  const panel = useDismiss(onClose, !downloading && presentation !== "page");
 
   const offered = offeredFor(voices, shortlist, voiceId, readingLanguage);
   const current = voices.find((voice) => voice.id === voiceId);
   const chosen = offered.some((voice) => voice.id === voiceId) ? voiceId : "";
   const paidVoice = isPaidVoice(voiceId);
 
-  return (<>
-    {centered && <Scrim />}
-    {/* Capped at the room between the bars, and only the BODY scrolls: with
-       the quality section open this panel outgrew a short window and ran up
-       under the header (owner, 03/09). Same shape as the notes panel - title
-       pinned, list moving, scrollbar owned by the list. */}
-    <Surface
-      edge="strong"
-      material="glass"
-      /* Sheet tier, not card: this floats over the book and stands on its
-         own, which is what the guideline's 24 is for (owner, 03/09). */
-      radius="sheet"
-      ref={panel}
-      dialog={panelTitle}
-      /* Over its OWN button, not over the middle of the window. The button
-         is the last thing in the footer's right-hand cluster, so the panel's
-         right edge sits at the same 24px inset the row is padded by and the
-         two line up without measuring anything (owner, 05/09: it used to
-         open across the screen from the button that opened it). */
-      layer="popover"
-      modal={centered}
-      className={centered
-        ? "fixed left-1/2 top-1/2 z-40 flex max-h-[84%] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted w-[26rem] max-w-[calc(100vw-3rem)]"
-        : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
-    >
-      <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
-        <h2 className="m-0 flex-1 text-base font-bold">{panelTitle}</h2>
-        <IconButton onClick={onClose} disabled={downloading} aria-label={text("aria.close")} title={text("aria.close")}>
-          <CloseIcon />
-        </IconButton>
-      </div>
-      {/* Sideways never: a floating panel scrolls down when the window is
-          shorter than it, and nothing else (HIG 3.5, 16/09). */}
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 pb-5">
+  const body = (<>
         {/* RE-PLAY-025: expose capture translation without implying books are translated. */}
         {panelKind === "voice" && <GroupedSection>
           <GroupedRow title={text("translation.title")}
@@ -463,6 +432,45 @@ export function SettingsPanel({
         {/* A download started anywhere - the hub, the first-run screen - is
             visible here while this panel is the one open. */}
         <ModelProgress models={models} className="mt-4" />
+  </>);
+
+  if (presentation === "page") return <SettingsPage>{body}</SettingsPage>;
+
+  return (<>
+    {centered && <Scrim />}
+    {/* Capped at the room between the bars, and only the BODY scrolls: with
+       the quality section open this panel outgrew a short window and ran up
+       under the header (owner, 03/09). Same shape as the notes panel - title
+       pinned, list moving, scrollbar owned by the list. */}
+    <Surface
+      edge="strong"
+      material="glass"
+      /* Sheet tier, not card: this floats over the book and stands on its
+         own, which is what the guideline's 24 is for (owner, 03/09). */
+      radius="sheet"
+      ref={panel}
+      dialog={panelTitle}
+      /* Over its OWN button, not over the middle of the window. The button
+         is the last thing in the footer's right-hand cluster, so the panel's
+         right edge sits at the same 24px inset the row is padded by and the
+         two line up without measuring anything (owner, 05/09: it used to
+         open across the screen from the button that opened it). */
+      layer="popover"
+      modal={centered}
+      className={centered
+        ? "fixed left-1/2 top-1/2 z-40 flex max-h-[84%] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden shadow-lifted w-[26rem] max-w-[calc(100vw-3rem)]"
+        : "absolute bottom-[calc(var(--shell-bottom-inner)+var(--layer-gap))] right-6 z-20 flex layer-capped w-[26rem] max-w-[calc(100vw-3rem)] origin-bottom-right flex-col overflow-hidden shadow-lifted"}
+    >
+      <div className="flex shrink-0 items-center px-6 pb-1 pt-5">
+        <h2 className="m-0 flex-1 text-base font-bold">{panelTitle}</h2>
+        <IconButton onClick={onClose} disabled={downloading} aria-label={text("aria.close")} title={text("aria.close")}>
+          <CloseIcon />
+        </IconButton>
+      </div>
+      {/* Sideways never: a floating panel scrolls down when the window is
+          shorter than it, and nothing else (HIG 3.5, 16/09). */}
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 pb-5">
+        {body}
       </div>
     </Surface>
   </>);
