@@ -49,6 +49,9 @@
 :root {
   --app-ground: var(--neutral-n00);
   --app-band: var(--neutral-n10);
+  /* A settings page's group card: a step lighter than a band (owner, 22/10:
+     "màu xám nhạt hơn nữa"). */
+  --app-card: var(--neutral-n05);
   /* The tab rail is a RECESSED track: it sits a step below the pill riding on
      it, or the segmented control stops reading as one. It was n20 while the
      pill had no border of its own and the track had to carry the whole
@@ -136,6 +139,7 @@
   --app-dot: var(--border-color-neutral-soft);
   --app-edge-alpha: var(--border-color-neutral-wash);
   --app-band: var(--neutral-n20);
+  --app-card: var(--neutral-n10);
   /* In dark the same controls were drawn upside down: the track was `band`
      n20, only 1.12:1 off the glass, and the chosen pill was `paper` n10 -
      DARKER than the track it rides on and all but the glass's own colour
@@ -547,7 +551,7 @@ html[data-hidden] *::after {
 .settings-page .dot-divided:not(.dot-divided .dot-divided) {
   border-radius: 1rem;
   border: 1px solid var(--color-edge-alpha);
-  background: var(--color-band);
+  background: var(--app-card);
   padding-inline: 1rem;
 }
 /* A field's own label (Reading language, Translation voice...) speaks
@@ -559,10 +563,13 @@ html[data-hidden] *::after {
   letter-spacing: 0.025em;
   font-weight: 600;
 }
+/* The rule between rows has round ends (owner, 22/10: "các divider sẽ tròn
+   viền"): thick enough at 1.5 px for the caps to show on a Retina screen. */
 .settings-page .dot-divided > * + *::before {
   background-image: none;
   background-color: var(--color-edge-alpha);
-  height: 1px;
+  height: 1.5px;
+  border-radius: 999px;
 }
 
 @utility dot-divided {
