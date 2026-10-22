@@ -104,9 +104,10 @@ export function PronunciationsPanel({
         {list !== null && list.length === 0 && (
           <p className="m-0 py-3 text-sm text-ink-mute">{text("pronounce.empty")}</p>
         )}
-        <ul className="m-0 list-none p-0">
+        {/* Dotted between words, like every list of settings (22/10). */}
+        <ul className="dot-divided m-0 flex list-none flex-col p-0">
           {(list ?? []).map((entry) => (
-            <li key={entry.written} className="flex items-center gap-3 border-b border-edge py-2 last:border-b-0">
+            <li key={entry.written} className="flex items-center gap-3 py-2">
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{entry.written}</span>
               <span aria-hidden="true" className="text-ink-mute">→</span>
               <span className="min-w-0 flex-1 truncate text-sm">{entry.spoken}</span>
@@ -126,7 +127,7 @@ export function PronunciationsPanel({
     <SettingsPage caption={text("pronounce.caption")}>
       {form}
       {/* The list as a card, like the other settings pages' groups. */}
-      <div className="mt-2 rounded-2xl border border-edge-alpha bg-[var(--app-card)] px-4 py-1">{entries}</div>
+      <div className="mt-2 rounded-2xl bg-[var(--app-card)] px-4 py-1">{entries}</div>
     </SettingsPage>
   );
 

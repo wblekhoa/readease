@@ -544,13 +544,13 @@ html[data-hidden] *::after {
 }
 
 /* A settings PAGE (22/10, after SpeakEase's): each group of rows is a card
-   of its own - a soft fill, a hairline edge, 16 px in - and the rows inside
-   are parted by a solid hairline, not dots. Only the outermost list of a
+   of its own - a soft fill, 16 px in - with the rows inside parted by dots. Only the outermost list of a
    group becomes the card; a list nested in a row stays part of it. The
    same panels as popovers keep their dotted look. */
 .settings-page .dot-divided:not(.dot-divided .dot-divided) {
+  /* No edge (owner, 22/10: "không có màu border"): the fill alone sets the
+     card off from the page. */
   border-radius: 1rem;
-  border: 1px solid var(--color-edge-alpha);
   background: var(--app-card);
   padding-inline: 1rem;
 }
@@ -563,17 +563,8 @@ html[data-hidden] *::after {
   letter-spacing: 0.025em;
   font-weight: 600;
 }
-/* The rule between rows is the row's own top BORDER, not a drawn 1.5 px
-   strip: rows land on half pixels (a 19.5 px notice line is enough), and a
-   strip there was smeared thick on one row and thin on the next (owner,
-   22/10: "cái dày cái mỏng"). A border is snapped to the device pixel, so
-   every rule is the same hairline. Round ends do not survive at 1 px. */
-.settings-page .dot-divided > * + *::before {
-  content: none;
-}
-.settings-page .dot-divided > * + * {
-  border-top: 1px solid var(--color-edge-alpha);
-}
+/* Rows inside a card keep the app's dotted rule (owner, 22/10: "các
+   divider thành dạng dots") - the same `dot-divided` the popovers use. */
 
 @utility dot-divided {
   & > * + * {
