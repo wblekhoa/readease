@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Paste and scan history"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "What pasted and scanned text is kept on this Mac, for how long, how it is deduplicated and deleted, and the switch that stops it."
 tags: [area/storage, area/security, stack/python, stack/react, surface/macos]
 reqPrefix: RE-HIST

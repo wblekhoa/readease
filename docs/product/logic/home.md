@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Read home (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "Default Read routing, five derived recents, shared path import and recovery without an additional content store."
 tags: [area/reading, stack/react, stack/tauri, surface/macos]
 reqPrefix: RE-HOME

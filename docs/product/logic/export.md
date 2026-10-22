@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Audio export (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "WAV/SRT and M4B export, temporary sentence review, exclusive job ownership, cancellation/exit recovery and dated performance evidence."
 tags: [area/audio, area/performance, area/storage, stack/python, stack/tauri, surface/macos]
 reqPrefix: RE-PLAY

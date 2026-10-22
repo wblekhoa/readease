@@ -4,8 +4,8 @@ type: release
 product: readease
 title: "ReadEase — Releases"
 status: active
-updated: 2026-10-22
-summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.24, newest first."
+updated: 2026-10-23
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.25, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
@@ -16,6 +16,18 @@ Source of truth for details: `CHANGELOG.md` (repo root) and `gh release list -R 
 here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped behaviour maps to a current rule are traced.
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
+
+## v0.1.25 · 2026-10-23
+- **What changed for users**:
+  - Settings have pages of their own. Voice, Translate before reading, Pronunciations and Voices & models open from the side column in the main window, like SpeakEase.
+  - Each settings group is a light grey card without an edge, with dotted rules between rows and small-caps titles. The footer's buttons still open the same panels as popovers while reading.
+  - A download in Voices & models shows at the top of the page.
+  - The dimming behind sheets is a neutral dark instead of a blue one.
+  - The switch-mode button beside a screen's title is gone.
+- **REQ-IDs shipped**: no rule changed; UX recorded in `ux/home.md` (settings pages, 22/10) and `readease-hig.md`.
+- **Verification**: 1038 Python tests (7 skipped), 273 UI tests, 48 Rust tests. Render audit: 25 groups plus 89 keyboard checks, each group run on its own.
+- **Channel**: GitHub release with Developer ID signature, notarization and in-app updater.
+- **Shown in**: CHANGELOG.md; GitHub release notes.
 
 ## v0.1.24 · 2026-10-22
 - **What changed for users**: Highlights and notes made in the Reader: select words for a five-colour bar with Note; press a highlight to edit its note, remove it or recolour it (ReadEase's own); Copy as Markdown in the Notes tab. Paste text as a visible sheet with Export audio beside Read text. A quieter History dialog, re-laid Translation options and a side column without rules. It also ships everything listed under the 2026-10-20 entry below: Read home, background updates, the side column, translation for pasted text and Library books, ReadEase's own translator, more file formats, history and the performance work.

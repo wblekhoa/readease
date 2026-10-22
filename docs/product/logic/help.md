@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Help and feedback (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "Feedback metadata URL and fallback, issue-submission boundary and local diagnostic-log ownership."
 tags: [area/security, stack/tauri, stack/rust, surface/macos]
 reqPrefix: RE-HELP

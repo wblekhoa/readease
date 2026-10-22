@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Software updates (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-23
 summary: "Prepare signed updates in the background and apply only on explicit restart or an armed quit, with export guards, retry and duplicate-operation protection."
 tags: [area/release, stack/tauri, surface/macos]
 reqPrefix: RE-UPDATE
