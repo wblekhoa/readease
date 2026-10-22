@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Software updates (logic)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-22
 summary: "Prepare signed updates in the background and apply only on explicit restart or an armed quit, with export guards, retry and duplicate-operation protection."
 tags: [area/release, stack/tauri, surface/macos]
 reqPrefix: RE-UPDATE
@@ -65,6 +65,7 @@ Mock download/install checks do not establish signed old-to-new replacement. Tha
 
 ## Change log
 
+- 2026-10-22: audit 22/10: no rule change; the render audit gained Reader highlight steps (`select-words`, `reader_highlight*`), none touch the update flow.
 - 2026-10-21: audit 21/10: no rule change; the restart warning no longer says scans and pastes are lost; render audit reads the folded update notice by its accessible name.
 - 2026-10-20: condensed phases/recovery and linked the export exit owner; behavior unchanged.
 - 2026-10-19: implemented/documented unreleased background preparation and explicit apply.
