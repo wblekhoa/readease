@@ -138,8 +138,12 @@ export function SourcesHub({ onClose, translationSummary, translationSettings, o
         models={sources.models} reading={sources.reading} />
     } />
   );
+  /* A download in flight stands at the TOP of the page, under its caption:
+     at the foot of a long page it was out of view while every button was
+     locked - the trap the sheet's footer was moved out of on 27/09. */
   if (page) return (
-    <SettingsPage caption={text("hub.caption")} footer={<ModelProgress models={sources.models} className="min-w-0 flex-1" />}>
+    <SettingsPage caption={text("hub.caption")}>
+      <ModelProgress models={sources.models} className="mb-2" />
       {rows}
     </SettingsPage>
   );

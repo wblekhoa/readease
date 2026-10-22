@@ -1651,7 +1651,7 @@ async function main() {
       // the window's floor.
       if (!(await goto([...HUB, ["click", /^Tải và dùng$|^Download and use$/], ["wait", /^Huỷ tải$|^Cancel download$/]], "vi", STATES.download_hold))) expect("model-progress", false, "could not start a download in the hub");
       else {
-        const seen = await evalJs(`(() => { const b = [...document.querySelectorAll("[role=dialog] button")].find((e) => e.textContent.trim() === "Huỷ tải");
+        const seen = await evalJs(`(() => { const b = [...document.querySelectorAll("[role=dialog] button, main button")].find((e) => e.textContent.trim() === "Huỷ tải");
           if (!b) return null; const r = b.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
           return { visible: !!top && b.contains(top), y: Math.round(r.y) }; })()`);
         expect("model-progress", seen !== null && seen.visible, seen === null ? "no Cancel download button" : `the download's Cancel is out of view (y=${seen.y}) while every other button is locked`);
@@ -1664,7 +1664,7 @@ async function main() {
       if (!(await goto([...HUB, ["click", /^Download$/], ["wait", /^Cancel download$/]], "en", STATES.english_hold))) expect("model-words", false, "could not start the English download");
       else {
         await sleep(900);
-        const said = await evalJs(`(() => { const b = [...document.querySelectorAll("[role=dialog] button")].find((e) => e.textContent.trim() === "Cancel download");
+        const said = await evalJs(`(() => { const b = [...document.querySelectorAll("[role=dialog] button, main button")].find((e) => e.textContent.trim() === "Cancel download");
           const p = b && b.closest("div.flex")?.parentElement?.querySelector("p"); return p ? p.textContent : null; })()`);
         const marked = /[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i.test(said ?? "");
         expect("model-words", said !== null && !marked, said === null ? "no download line" : `the English download says ${JSON.stringify(said)}`);
@@ -1727,23 +1727,26 @@ async function main() {
         crashed("menu");
       }
 
-      if (!(await goto([...UNFOLD, ["click", /^Thư viện$|^Library$/]]))) expect("sheet", false, "could not reach the library");
+      // A sheet takes the keyboard in and gives it back (HIG 4.2). Voices &
+      // models used to be the sheet tried here; since 22/10 it is a page, so
+      // the History sheet stands in - same contract, same opener test.
+      if (!(await goto([...UNFOLD, ["click", /^Dán nội dung$|^Paste text$/]]))) expect("sheet", false, "could not reach Paste text");
       else {
-        if (!(await focusOn(/^Giọng đọc & mô hình$/))) expect("sheet", false, "no hub button");
+        if (!(await focusOn(/^Lịch sử$/))) expect("sheet", false, "no History button");
         else {
           await key("Enter");
           let w = await where();
-          expect("sheet", w.dialog === "Giọng đọc & mô hình", `Enter left the focus on ${said(w)}, not in the sheet`);
+          expect("sheet", w.dialog === "Lịch sử", `Enter left the focus on ${said(w)}, not in the sheet`);
           let escaped = null;
           for (let i = 0; i < 24 && !escaped; i++) {
             await key("Tab", { shift: i % 3 === 2, pause: 60 });
             const at = await where();
-            if (at.dialog !== "Giọng đọc & mô hình") escaped = at;
+            if (at.dialog !== "Lịch sử") escaped = at;
           }
           expect("sheet", !escaped, `Tab left the sheet for ${escaped ? said(escaped) : ""}`);
           await key("Escape");
           w = await where();
-          expect("sheet", w.opener, `Escape left the focus on ${said(w)}, not on the hub button`);
+          expect("sheet", w.opener, `Escape left the focus on ${said(w)}, not on the History button`);
         }
         crashed("sheet");
       }
