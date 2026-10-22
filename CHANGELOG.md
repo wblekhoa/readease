@@ -4,7 +4,24 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.24
+
+- Highlights and notes in the Reader. Select words in a book and a small bar
+  appears over them: pick one of five colours to keep the highlight, or
+  Note to keep it and write a note on it. Press a highlight to edit its
+  note, remove it or change its colour. Highlights made in ReadEase stay on
+  this Mac and an Apple Books sync never removes them; Books' own keep
+  Books' colour. The Notes tab can copy a book's highlights and notes as
+  Markdown.
+
+- Paste text is easier to see and use: the words go on a sheet of their own
+  colour, the count and Clear sit under it, and Export audio moved to the
+  bottom bar beside Read text. The "Reading…" capsule no longer covers the
+  page's buttons, and the recents list no longer scrolls sideways.
+
+- Quieter History dialog, Translation options laid out like the rest of
+  the panel, and the side column's groups set apart by space instead of
+  lines.
 
 - Faster: a book starts speaking at once when you press Read (its words are
   prepared while the page opens), a translated book starts after its first
