@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-22
 summary: "Playback, heard progress, speech preparation and native controls; translation and export have separate rule owners with unchanged requirement IDs."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
@@ -113,6 +113,7 @@ None open for chapter scope: the bridge gap noted on 2026-10-19 is closed by RE-
 Protocol checks: `app/tests/playback.test.ts`, `tests/headless/test_shell_contract.py`, native `engine.rs`/`audio.rs` tests. Reducer checks alone do not establish speaker cancellation.
 
 ## Change log
+- 2026-10-22: reviewed against d2dedf4 (Reader highlights): new `annotations.add`/`annotations.restyle` engine methods and host `copy_text` belong to RE-NOTE ([notes](notes.md)); no playback rule changed.
 - 2026-10-21: RE-PLAY-034 - a book's words prepared when it opens (first audio 0.6 s → 0.15 s on a large book). Measured baseline: engine ready 0.14 s, warm first audio 0.08-0.12 s, import of 1.1 MB text 0.25 s, book.open 0.03 s.
 
 - 2026-10-21: audit 21/10: no rule change; translation-coverage allowlist gained the new chapter-line matchers.
