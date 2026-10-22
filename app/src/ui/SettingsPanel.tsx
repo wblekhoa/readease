@@ -213,7 +213,7 @@ export function SettingsPanel({
         />}
         {!translatingSelection && panelKind === "voice" && <>
         <div className="mt-3">
-          <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">{text("settings.language")}</p>
+          <p className="field-label m-0 mb-2 text-xs font-semibold text-ink-mute">{text("settings.language")}</p>
           <SegmentedControl
             value={readingLanguage}
             label={text("settings.language")}

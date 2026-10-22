@@ -539,6 +539,32 @@ html[data-hidden] *::after {
   }
 }
 
+/* A settings PAGE (22/10, after SpeakEase's): each group of rows is a card
+   of its own - a soft fill, a hairline edge, 16 px in - and the rows inside
+   are parted by a solid hairline, not dots. Only the outermost list of a
+   group becomes the card; a list nested in a row stays part of it. The
+   same panels as popovers keep their dotted look. */
+.settings-page .dot-divided:not(.dot-divided .dot-divided) {
+  border-radius: 1rem;
+  border: 1px solid var(--color-edge-alpha);
+  background: var(--color-band);
+  padding-inline: 1rem;
+}
+/* A field's own label (Reading language, Translation voice...) speaks
+   like the group titles above it on a page: small caps, tracked, with the
+   same air above it. */
+.settings-page .field-label {
+  margin-top: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  font-weight: 600;
+}
+.settings-page .dot-divided > * + *::before {
+  background-image: none;
+  background-color: var(--color-edge-alpha);
+  height: 1px;
+}
+
 @utility dot-divided {
   & > * + * {
     position: relative;

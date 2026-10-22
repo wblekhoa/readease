@@ -82,13 +82,13 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
             onChange={on => change({ sources: { ...settings.sources, [source.id]: on } })} />} />)}
       </GroupedSection>}
       {mode === "translation" && <div>
-        <p className="m-0 mb-2 text-xs font-semibold text-ink-mute">{text('translation.to')}</p>
+        <p className="field-label m-0 mb-2 text-xs font-semibold text-ink-mute">{text('translation.to')}</p>
         <SegmentedControl label={text('translation.to')} value={settings.target}
           options={[{ value: 'en', label: text('language.en'), disabled }, { value: 'vi', label: text('language.vi'), disabled }]}
           onChange={target => change({ target, voice: translationVoice({ ...settings, target, voice: '' }, voices) ?? '' })} />
       </div>}
       <div className="flex min-w-0 flex-col gap-2">
-        <p id={`${optionsId}-voice`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.voice')}</p>
+        <p id={`${optionsId}-voice`} className="field-label m-0 text-xs font-semibold text-ink-mute">{text('translation.voice')}</p>
         <VoicePicker labelledBy={`${optionsId}-voice`} className="w-full" voices={local}
           favorites={favorites} value={translationVoice(settings, voices) ?? ''}
           disabled={disabled || !local.length} locked={locked && previewing === null} previewing={previewing}
@@ -126,20 +126,20 @@ export function TranslationSettings({ preference, voices, locked, rate, rates, o
         </button>
         <div id={optionsId} hidden={!optionsOpen} className="flex min-w-0 flex-col gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <p id={`${optionsId}-from`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.from')}</p>
+            <p id={`${optionsId}-from`} className="field-label m-0 text-xs font-semibold text-ink-mute">{text('translation.from')}</p>
             <Select className="w-full" labelledBy={`${optionsId}-from`} value={settings.source} disabled={disabled} onChange={e => change({ source: e.target.value as Settings['source'] })}>
               <option value="auto">{text('translation.auto')}</option><option value="vi">{text('language.vi')}</option><option value="en">{text('language.en')}</option>
             </Select>
           </div>
           <div className="flex min-w-0 flex-col gap-2">
-            <p id={`${optionsId}-provider`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.provider')}</p>
+            <p id={`${optionsId}-provider`} className="field-label m-0 text-xs font-semibold text-ink-mute">{text('translation.provider')}</p>
             <Select className="w-full" labelledBy={`${optionsId}-provider`} value={settings.provider} disabled={disabled} onChange={e => change({ provider: e.target.value as Settings['provider'], model: '' })}>
               <option value="auto">{text('translation.provider_auto')}</option><option value="readease">{text('translation.provider_readease')}</option>
               <option value="apple">Apple Translation</option><option value="ollama">Ollama</option><option value="lmstudio">LM Studio</option>
             </Select>
           </div>
           {(settings.provider === 'ollama' || settings.provider === 'lmstudio') && <div className="flex min-w-0 flex-col gap-2">
-            <p id={`${optionsId}-model`} className="m-0 text-xs font-semibold text-ink-mute">{text('translation.model')}</p>
+            <p id={`${optionsId}-model`} className="field-label m-0 text-xs font-semibold text-ink-mute">{text('translation.model')}</p>
             <Select className="w-full" labelledBy={`${optionsId}-model`} value={settings.model} disabled={disabled || checking} onChange={e => change({ model: e.target.value })}>
               <option value="">{text('translation.choose_model')}</option>
               {settings.model && !models.includes(settings.model) && <option value={settings.model}>{settings.model}</option>}
