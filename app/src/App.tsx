@@ -2141,34 +2141,14 @@ export default function App() {
           <div className="flex min-w-0 items-center gap-1">
           {/* Window buttons stay over the rail on every screen, including
               the reader, so the toolbar needs no folded-state spacer. */}
-          {/* A home screen's title, where a book's stands, with the mode
-              switch before it (owner, 16/09: "trên title thì nút ở đây là
-              nút đổi chế độ. icon sẽ ở dạng arrow swap"): a short menu of
-              the four screens - and, while the column is folded, the way to
-              unfold it, so the column stays one click away without a
-              button of its own. Each feature brings its own buttons here;
-              a book brings ▤, the notes and the search instead. */}
+          {/* A home screen's title, where a book's stands. The mode switch
+              before it (16/09) is gone (owner, 22/10: "không còn phù hợp"):
+              the side column lists every screen and setting, and folded it
+              keeps its own "Show the side column" button (⌥⌘S). Each
+              feature brings its own buttons here; a book brings ▤, the
+              notes and the search instead. */}
           {!(screen === "reader" && openBook) && (
             <>
-              <MenuButton
-                icon={<ArrowSwapIcon />}
-                label={text("sidebar.switch")}
-                align="left"
-                items={[
-                  ...[...tabs, ...tools].map((item) => ({
-                    icon: item.icon,
-                    label: item.label,
-                    hint: item.value === tab ? text("sidebar.current") : undefined,
-                    onSelect: () => goTab(item.value),
-                  })),
-                  ...(sideOpen ? [] : [{
-                    icon: <SidebarIcon />,
-                    label: text("sidebar.label"),
-                    hint: "⌥⌘S",
-                    onSelect: () => dispatchSide({ type: "toggle" }),
-                  }]),
-                ]}
-              />
               <h2 className="m-0 min-w-0 truncate px-1 text-base font-bold">
                 {[...tabs, ...tools, ...settingsItems].find((item) => item.value === tab)?.label}
               </h2>

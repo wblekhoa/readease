@@ -68,11 +68,11 @@ const KEYS = new Set([...I18N.matchAll(/^  "([a-z_]+\.[a-z_0-9]+)"/gm)].map((m) 
 //
 // Navigation lives in the side column (HIG 3.16), which folds itself at
 // this window's 960px - so every path starts by unfolding it, the way a
-// person would: through the mode switch by the title, whose menu carries
-// "Cột bên" while the column is folded. "click?" is a click that is allowed
-// to find nothing (in the `sidebar` state the column is already open and
-// the menu has no such row; the menu itself then closes on the next click).
-const UNFOLD = [["click?", /^Đổi chế độ$|^Switch mode$/], ["click?", /^Cột bên|^Side column/]];
+// person would: with the folded rail's own "Show the side column" button
+// (the mode switch by the title that used to carry it went on 22/10).
+// "click?" is a click that is allowed to find nothing (in the `sidebar`
+// state the column is already open and the button is not there).
+const UNFOLD = [["click?", /^Mở cột bên|^Show the side column/]];
 const OPEN_BOOK = [...UNFOLD, ["click", /^Thư viện$|^Library$/], ["click", /^(Mở|Open) (?!PDF)(?!a PDF)(?!sách hoặc tài liệu$)(?!a book or document$)/], ["wait", /^Quay lại thư viện$|^Back to library$/]];
 const TRANSFER_PLAN = [...UNFOLD, ["click", /^Chuyển ghi chú$|^Move notes$/],
   ["choose", /^Lấy ghi chú từ$|^Take notes from$/, "nb-1"], ["choose", /^Chuyển sang$|^Move them to$/, "nb-4"],
@@ -1709,9 +1709,11 @@ async function main() {
         crashed("update");
       }
 
-      if (!(await goto([]))) expect("menu", false, "home did not load");
+      // The menu contract on the one menu left in the chrome since the mode
+      // switch went (22/10): Change voice, beside the transport while reading.
+      if (!(await goto([...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/]]))) expect("menu", false, "could not start a reading");
       else {
-        if (!(await focusOn(/^Đổi chế độ$/))) expect("menu", false, "no mode switch");
+        if (!(await focusOn(/^Đổi giọng$/))) expect("menu", false, "no Change voice menu");
         else {
           await key("Enter");
           let w = await where();
@@ -1722,7 +1724,7 @@ async function main() {
           expect("menu", !!w.item && w.item !== first, `ArrowDown left the focus on ${said(w)}`);
           await key("Escape");
           w = await where();
-          expect("menu", w.opener, `Escape left the focus on ${said(w)}, not on the mode switch`);
+          expect("menu", w.opener, `Escape left the focus on ${said(w)}, not on Change voice`);
         }
         crashed("menu");
       }
