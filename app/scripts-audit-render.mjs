@@ -379,6 +379,7 @@ const EXPECTED_CONSOLE = { reading_failed: /^voice_(failed|unavailable): /, note
 const STATES = {
   home_empty: "empty=library",
   home_error: "fail=library.list",
+  documents: "docs=1",
   export_hold: "export=hold",
   export_fail: "export=fail",
   default: "",
@@ -436,6 +437,7 @@ const STATE_ON = {
   export_hold: ["audiobook_running", "audiobook_navigate", "audiobook_cancelled", "audiobook_quit", "audiobook_quit_cancel"],
   export_fail: ["audiobook_failed"],
   long: ["shelf", "reader", "contents", "book_notes", "search"],
+  documents: ["shelf"],
   paid: ["reader", "cost", "player_settings", "audiobook_form"],
   paid_eleven: ["reader", "cost"],
   library_translated: ["reader", "player_settings", "translation_options", "page_translation"],

@@ -2052,6 +2052,13 @@ class _Session:
                 # What tells two same-titled copies apart: shape, size, and
                 # when each one arrived.
                 "chapters": len(stored.book.chapters),
+                # The first few chapter names, for the paper cover a
+                # document without one of its own is drawn with (shell,
+                # 23/10). A chapter that only repeats the title says nothing.
+                "chapter_titles": [
+                    chapter.title for chapter in stored.book.chapters
+                    if chapter.title.strip() and chapter.title.strip() != stored.book.title.strip()
+                ][:4],
                 "size_bytes": size_bytes,
                 "imported_at": self._repository.imported_at(stored.book.id),
                 # When a passage of it was last heard - the shelf's order

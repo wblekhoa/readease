@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Library (UX)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-23
 summary: "How the ReadEase Library shelf works: importing PDF and EPUB by button, drag-and-drop or Apple Books, refusal feedback, removing a book while keeping the original, and per-book reading progress."
 tags: [area/data-import, area/book, stack/react, stack/tauri, surface/macos]
 relations:
@@ -36,6 +36,12 @@ relations:
   each file into its own library folder; the original is left untouched. Importing the same file again focuses the
   existing book instead of adding a second one. Feedback says how many documents were added, or why a file was refused
   (not a PDF/EPUB, too large, no text layer, encrypted, damaged).
+- **Paper covers** (23/10, owner: "hướng A · Trang giấy, font không chân, random màu thông minh"): a document with no
+  cover of its own (Markdown, Word, RTF, ODT, HTML, text - not EPUB/PDF) is drawn as a sheet of tinted paper: its format
+  in small caps at the head, its title in the app's sans, its first four chapter names numbered (or a few ruled lines
+  when it has none), the chapter count at the foot and a folded top-right corner. The tint is one of eight DS paper hues
+  (`--fill-{hue}-matte` with `--text-color-{hue}-stress` ink): the same document always gets the same one (a hash of its
+  id), and two documents side by side on the shelf never share one.
 - **From Apple Books** opens a sheet listing the Apple Books shelf; books that cannot come in (too large, DRM) are dimmed
   with the reason first on the line.
 - Removing a book deletes its library entry and the app's own copy, never the file the reader imported from.

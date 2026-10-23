@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -12,6 +12,8 @@ import { Presence } from "../ui/motion";
 import { dropHeadline, importNotice, type ImportTally } from "../ui/importFeedback";
 import { orderShelf } from "../ui/libraryOrder";
 import { forgetCover, useCover } from "../ui/useCover";
+import { PaperCover } from "../ui/PaperCover";
+import { paperHues, wantsPaper, type PaperHue } from "../ui/paperTint";
 import { AppleBooksIcon, ImportIcon, ShelfIcon, TrashIcon } from "../ui/icons";
 import { AppleBooksPanel } from "./AppleBooksPanel";
 
@@ -24,6 +26,8 @@ export type LibraryBook = {
   progress_ratio: number | null;
   progress_chapter: string | null;
   chapters: number;
+  /** The first few chapter names, for a document's paper cover (23/10). */
+  chapter_titles?: string[];
   size_bytes: number | null;
   imported_at: string | null;
   /** When a passage of it was last heard (the engine's progress row) - the
@@ -53,6 +57,7 @@ export type LibraryBook = {
  * a missing picture, it shows the title). */
 function ShelfBook({
   book,
+  paper,
   confirming,
   onOpen,
   onAskRemove,
@@ -60,6 +65,8 @@ function ShelfBook({
   onKeep,
 }: {
   book: LibraryBook;
+  /** The paper tint this document wears when it has no cover of its own. */
+  paper: PaperHue | undefined;
   confirming: boolean;
   onOpen: () => void;
   onAskRemove: () => void;
@@ -88,7 +95,10 @@ function ShelfBook({
 
   return (
     <BookCard
-      cover={<BookCover source={cover} title={book.title} />}
+      cover={cover === null && paper
+        ? <PaperCover hue={paper} title={book.title} format={book.source_format}
+            chapters={book.chapters} chapterTitles={book.chapter_titles ?? []} />
+        : <BookCover source={cover} title={book.title} />}
       title={book.title}
       meta={
         // The chapter the voice is in rides as a tooltip on the fact line:
@@ -195,6 +205,12 @@ export function Library({
   onRequestDone?: () => void;
 }) {
   const [books, setBooks] = useState<LibraryBook[] | null>(null);
+  /* The shelf in its order, and the paper tint of each document in it -
+     worked out over that order, so neighbours never share a colour. */
+  const shelf = useMemo(() => orderShelf(books ?? []), [books]);
+  const papers = useMemo(() => paperHues(
+    shelf.filter((book) => wantsPaper(book.source_format) && !book.damaged).map((book) => book.id),
+  ), [shelf]);
   /** Why the shelf could not be listed - kept apart from `books`, because
    * they are different claims and only one of them is true here. */
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -424,10 +440,11 @@ export function Library({
         ) : (
           <div className="mt-4">
             <BookGrid>
-              {orderShelf(books ?? []).map((book) => (
+              {shelf.map((book) => (
                 <ShelfBook
                   key={book.id}
                   book={book}
+                  paper={papers.get(book.id)}
                   confirming={confirming === book.id}
                   onOpen={() => onOpen(book)}
                   onAskRemove={() => setConfirming(book.id)}

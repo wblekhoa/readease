@@ -311,6 +311,7 @@ type ShelfRow = {
   id: string;
   title: string;
   source_format: string;
+  chapter_titles?: string[];
   segment_id: string | null;
   progress_ratio: number | null;
   progress_chapter: string | null;
@@ -392,6 +393,20 @@ const LIBRARY: ShelfRow[] = [
     language_detected: "en",
   },
 ];
+
+/* `?docs=1`: two documents with no artwork, for the paper covers (23/10) -
+   a Markdown file with chapters and a Word file without. Off by default so
+   every other cell's shelf stays the one it was written against. */
+if (new URLSearchParams(location.search).get("docs") === "1") {
+  LIBRARY.push(
+    { id: "doc-notes", title: "JAK — HQ", source_format: "md", segment_id: null, progress_ratio: null, progress_chapter: null,
+      chapters: 5, chapter_titles: ["Tổng quan", "Quy trình", "Sản phẩm", "Vận hành"], size_bytes: 24_000, imported_at: "2026-08-01T09:00:00Z",
+      from_apple_books: false, language: "vi", language_set: false, language_detected: "vi" },
+    { id: "doc-brief", title: "Media Studio", source_format: "docx", segment_id: null, progress_ratio: null, progress_chapter: null,
+      chapters: 0, chapter_titles: [], size_bytes: 88_000, imported_at: "2026-08-01T08:00:00Z",
+      from_apple_books: false, language: "vi", language_set: false, language_detected: "vi" },
+  );
+}
 
 /* What each book's own text says, kept apart from the shelf rows:
  * withdrawing a reader's decision has to fall back to THIS, not to whatever
