@@ -11,6 +11,10 @@ each Release names the exact commit it was built from in `CFBundleVersion`
   in Read a selection) and press the ▶ in its left margin to read from
   there.
 - A panel opened while the highlight bar is up now sits on top of it.
+- Documents without a cover of their own (Markdown, Word and other text
+  files) get a paper cover: their format, title and first chapter names on
+  a sheet of tinted paper with a folded corner. Each document keeps its own
+  colour, and two side by side never share one.
 
 ## 0.1.25
 

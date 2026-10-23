@@ -124,3 +124,33 @@ class ReaderHighlightTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PaperCoverFactsTests(unittest.TestCase):
+    """The shelf draws a paper cover for a document with none of its own
+    from its first chapter names (23/10); a chapter that only repeats the
+    title is left out, and there are never more than four."""
+
+    def test_library_list_carries_the_first_chapter_names(self) -> None:
+        from vieneu_reader.domain.models import BookDocument, Chapter, Segment, stable_id
+
+        with TemporaryDirectory() as directory:
+            paths = AppPaths.create(Path(directory) / "data")
+            repository = LibraryRepository(paths.database)
+            self.addCleanup(repository.close)
+            service = LibraryService(paths, repository)
+            source = stable_id("source", "giấy")
+            book_id = stable_id(source, "md")
+            titles = ["Ghi chép", "Tổng quan", "  ", "Quy trình", "Sản phẩm", "Vận hành", "Phụ lục"]
+            def chapter(i: int, title: str) -> Chapter:
+                chapter_id = stable_id(book_id, "chapter", str(i))
+                return Chapter(chapter_id, title, i,
+                               (Segment(stable_id(chapter_id, "segment", "0"), chapter_id, 0, "Một câu."),))
+            chapters = tuple(chapter(i, title) for i, title in enumerate(titles))
+            book = BookDocument(id=book_id, title="Ghi chép", source_format="md", source_hash=source, chapters=chapters)
+            managed = paths.books / f"{book_id}.md"
+            managed.write_bytes(b"# Ghi ch\xc3\xa9p")
+            repository.add_book(book, managed)
+            listed = run_server([{"id": 1, "method": "library.list"}], FakeEngine(),
+                                repository=repository, service=service)[0]["result"]["books"]
+            self.assertEqual(listed[0]["chapter_titles"], ["Tổng quan", "Quy trình", "Sản phẩm", "Vận hành"])
