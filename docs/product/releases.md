@@ -5,7 +5,7 @@ product: readease
 title: "ReadEase — Releases"
 status: active
 updated: 2026-10-23
-summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.25, newest first."
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.26, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
@@ -16,6 +16,16 @@ Source of truth for details: `CHANGELOG.md` (repo root) and `gh release list -R 
 here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped behaviour maps to a current rule are traced.
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
+
+## v0.1.26 · 2026-10-23
+- **What changed for users**:
+  - A click on a paragraph no longer starts reading. Hover a paragraph, or a part in Read a selection, and press the ▶ in its left margin.
+  - Panels opened while the highlight bar is up sit on top of it.
+  - Documents without a cover of their own (Markdown, Word and other text files) get a paper cover: format, title and first chapter names on tinted paper with a folded corner. The colour is stable per document and never shared with a neighbour on the shelf.
+- **REQ-IDs shipped**: no rule changed; UX recorded in `ux/reading.md` (▶ on hover) and `ux/library.md` (paper covers).
+- **Verification**: 1039 Python tests (7 skipped), 277 UI tests, 48 Rust tests. Render audit: 25 groups plus 91 keyboard/pointer checks, each group run on its own.
+- **Channel**: GitHub release with Developer ID signature, notarization and in-app updater.
+- **Shown in**: CHANGELOG.md; GitHub release notes.
 
 ## v0.1.25 · 2026-10-23
 - **What changed for users**:

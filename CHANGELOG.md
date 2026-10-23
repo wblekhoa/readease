@@ -4,7 +4,7 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.26
 
 - Clicking a paragraph no longer starts reading, so a click to select or
   place the caret never sets the voice off. Hover a paragraph (or a part
