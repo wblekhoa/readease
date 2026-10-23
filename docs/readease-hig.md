@@ -198,8 +198,8 @@ Mọi bề mặt tương tác có ĐỦ 7 trạng thái, cùng một công thứ
   trạng thái/lỗi lùi sang phải.
   **CTA và chip cùng loại nên đi chung** (chủ, 02/09): khi rảnh cả hai đứng GIỮA cạnh nhau; CTA nói rõ
   điểm bắt đầu — "Đọc tiếp · Chương 3" (có vị trí đã lưu/đã dừng, chương lấy từ `PageInfo.resumeChapterTitle`)
-  hoặc "Đọc từ đầu"; màn dán giữ "Đọc nội dung". Bên trái footer một hint nhỏ "Nhấn vào đoạn văn để đọc từ
-  đó" (chỉ màn đọc). **Đường về chỗ đang đọc** (chủ, 02/09): đang phát mà người đọc rời khỏi nguồn (sang thư viện, tab
+  hoặc "Đọc từ đầu"; màn dán giữ "Đọc nội dung". Bên trái footer một hint nhỏ "Rê chuột vào đoạn văn, bấm ▶ để đọc từ
+  đó" (chỉ màn đọc; từ 23/10 bấm vào chữ không đọc nữa - chỉ nút ▶ hiện khi rê chuột ở lề trái mới đọc). **Đường về chỗ đang đọc** (chủ, 02/09): đang phát mà người đọc rời khỏi nguồn (sang thư viện, tab
   khác) → nút ghost "Quay lại" mở đúng màn/sách. Nguồn ghi lúc BẮT ĐẦU đọc (`origin`: book · paste · external).
   **Trạng thái đọc là viên nổi TRÊN control bar** (chủ, 06/10; thay hàng dưới transport của 04/10): Reader,
   Dán nội dung và Quét đọc dùng chung một viên kính (`Surface` glass, viền strong, `shadow-raised`) căn giữa,

@@ -218,7 +218,7 @@ export const TEXT = {
   "player.resume_goto": ["Bấm để tới chỗ này", "Go to this passage"],
   "player.play_resume": ["Đọc tiếp", "Continue"],
   "player.play_start": ["Đọc từ đầu", "Read from the start"],
-  "player.hint_click": ["Nhấn vào đoạn văn để đọc từ đó", "Click a paragraph to read from there"],
+  "player.hint_click": ["Rê chuột vào đoạn văn, bấm ▶ để đọc từ đó", "Hover a paragraph, press ▶ to read from there"],
   "player.reading_book": ["Đang đọc: {title}", "Reading: {title}"],
   "player.reading_paste": ["Đang đọc nội dung đã dán", "Reading the pasted text"],
   "player.paused_state": ["Đã tạm dừng", "Reading paused"],

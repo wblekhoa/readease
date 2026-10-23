@@ -214,6 +214,9 @@ const SCREENS = {
   // RE-NOTE-005…007: words selected in a book offer the highlight bar; a
   // colour keeps them; pressing the mark offers it again, with delete.
   reader_highlight: [...OPEN_BOOK, ["select-words", "[data-segment]"], ["wait", /^Ghi chú$|^Add note$/]],
+  // Reading settings opened while a selection's bar is up: the panel wins.
+  reader_highlight_settings: [...OPEN_BOOK, ["select-words", "[data-segment]"], ["wait", /^Ghi chú$|^Add note$/],
+    ["click", /^Cài đặt đọc$|^Reading settings$/], ["wait", /^Cài đặt đọc$|^Reading settings$/, "[role=dialog]"]],
   reader_highlight_mark: [...OPEN_BOOK, ["select-words", "[data-segment]"], ["click", /^Tô xanh lá$|^Highlight green$/],
     ["click-at", 'mark[data-annotation^="readease-"]'], ["wait", /^Ghi chú$|^Add note$/]],
   reading_now: [...OPEN_BOOK, ["click", /^Đọc tiếp|^Continue/], ["wait", /^Dừng$|^Stop$/], ["wait", /còn ~|left$/, "span"], ["rest"]],
@@ -326,6 +329,7 @@ const ONLY_IN = {
   reading_failed: ["voicefail", "voicefail_network", "voicefail_blocked", "voicefail_budget"],
   reader_highlight: ["default"],
   reader_highlight_mark: ["default"],
+  reader_highlight_settings: ["default"],
   reading_now: ["default"],
   reading_paused: ["default"],
   reading_warming: ["warm_hold"],
@@ -807,7 +811,19 @@ async function main() {
                   // gap under a page's last heading hides no letter of it.
                   const shared = Math.min(bottom, capsule.bottom) - Math.max(top, capsule.top);
                   return r.width > 0 && right > left && bottom > top && shared > r.height * 0.3 && right > capsule.left && left < capsule.right; }); }).map((e) => (e.getAttribute("aria-label") || e.textContent || e.tagName).trim().slice(0, 40)).slice(0, 3);
-              return { leaked, comment, over, escaped, sideways, covered, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
+              // A panel opened over a selection's highlight bar is on top of
+              // it: where the two overlap, the panel is what the point hits
+              // (owner, 23/10).
+              const barBox = document.querySelector("[data-highlight-bar]")?.getBoundingClientRect();
+              const underBar = !barBox ? [] : [...document.querySelectorAll('[role="dialog"]')].filter((d) => {
+                const r = d.getBoundingClientRect();
+                const left = Math.max(r.left, barBox.left), right = Math.min(r.right, barBox.right);
+                const top = Math.max(r.top, barBox.top), bottom = Math.min(r.bottom, barBox.bottom);
+                if (right - left < 4 || bottom - top < 4) return false;
+                const hit = document.elementFromPoint((left + right) / 2, (top + bottom) / 2);
+                return !hit || !d.contains(hit);
+              }).map((d) => d.getAttribute("aria-label") || "dialog");
+              return { leaked, comment, over, escaped, sideways, covered, underBar, docWide: document.documentElement.scrollWidth > document.documentElement.clientWidth, themeAttr: document.documentElement.dataset.theme, textLen: text.length, voice, htmlLang: document.documentElement.lang, plates, lightboxPlate }; })()`);
             for (const k of probe.leaked) if (KEYS.has(k)) findings.push({ cell, kind: "i18n-leak", detail: k });
             if (probe.comment) findings.push({ cell, kind: "code-comment", detail: probe.comment });
             // No cell picks a voice, so the saved one (the mock's "Thu Hà")
@@ -816,6 +832,7 @@ async function main() {
             // in a gap only a bridge that answers a tick later opens.
             if (probe.voice !== undefined && probe.voice !== "Thu Hà") findings.push({ cell, kind: "voice-lost", detail: `saved voice became ${probe.voice}` });
             if (probe.docWide) findings.push({ cell, kind: "overflow-x", detail: `document scrolls horizontally at ${W}px` + (probe.over.length ? ` (${probe.over.join(", ")})` : "") });
+            for (const name of probe.underBar) findings.push({ cell, kind: "bar-over-panel", detail: `the highlight bar sits on top of the panel "${name}"` });
             for (const text of probe.covered) findings.push({ cell, kind: "capsule-covers", detail: `the reading capsule sits on ${JSON.stringify(text)}` });
             for (const text of probe.sideways) findings.push({ cell, kind: "overflow-sideways", detail: `a vertical scroller also scrolls sideways: ${JSON.stringify(text)}` });
             for (const text of probe.escaped) findings.push({ cell, kind: "overflow-layer", detail: `text runs out of its box in a layer: ${JSON.stringify(text)}` });
@@ -1707,6 +1724,25 @@ async function main() {
         await key("Escape");
         expect("update", (await until(sheet, v => v === null)) === null, "Escape must close details");
         crashed("update");
+      }
+
+      // A click on a paragraph's words does not start the voice (owner,
+      // 23/10): only the ▶ that shows on hover does. A real press on the
+      // words, then a beat, then no Stop in the transport.
+      if (!(await goto(OPEN_BOOK))) expect("click-words", false, "could not open a book");
+      else {
+        const at = await evalJs(`(() => { const p = [...document.querySelectorAll("[data-segment]")].find((e) => e.textContent.length > 60 && e.getBoundingClientRect().top > 0);
+          if (!p) return null; const r = p.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + 12 }; })()`);
+        if (!at) expect("click-words", false, "no paragraph on the page");
+        else {
+          for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: at.x, y: at.y, button: "left", clickCount: 1 });
+          await sleep(700);
+          const reading = await evalJs(`[...document.querySelectorAll("button")].some((b) => /^(Dừng|Stop)$/.test(b.textContent.trim()))`);
+          expect("click-words", !reading, "a click on a paragraph's words started reading");
+          const shown = await evalJs(`(() => { const b = document.elementFromPoint(${at.x}, ${at.y})?.closest("[data-segment]")?.querySelector("[data-read-from-here]"); return b ? getComputedStyle(b).opacity : null; })()`);
+          expect("click-words", shown === "1", `the paragraph under the pointer shows no ▶ (opacity ${shown})`);
+        }
+        crashed("click-words");
       }
 
       // The menu contract on the one menu left in the chrome since the mode

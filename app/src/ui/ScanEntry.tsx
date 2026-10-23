@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { currentLanguage, text } from "../i18n";
 import { IconButton, Surface } from "./controls";
 import { ChevronDownIcon, PlayIcon, ScrollIcon } from "./icons";
-import { ReadingPositionControl } from "./ReadingPositionControl";
+import { ReadFromHereButton, ReadingPositionControl } from "./ReadingPositionControl";
 import { scrollBehavior } from "./motion";
 import { summarise } from "./scanHistory";
 
@@ -56,7 +56,7 @@ export function ScanEntry({
    * builder the reading speaks from - a second splitting rule in the shell
    * would drift and put the marker on the wrong paragraph. */
   const [parts, setParts] = useState<ScanPart[] | null>(null);
-  const here = useRef<HTMLButtonElement>(null);
+  const here = useRef<HTMLDivElement>(null);
   const contentId = useId();
   const language = currentLanguage();
   const capturedAt = useMemo(() => {
@@ -160,24 +160,25 @@ export function ScanEntry({
             </p>
           ) : (
             parts.map((part, index) => (
-              <div key={part.segment_id || index} className="relative flex">
-              <button
+              /* Words to read and select, not a button (23/10): reading
+                 starts from the ▶ that shows on hover. The fallback block
+                 (the engine could not be asked) has no id, so it offers no
+                 ▶ - a control promising something it cannot do is the lie
+                 the old replay tooltip told. */
+              <div key={part.segment_id || index} className="group relative flex">
+              <div
                 ref={part.segment_id === current ? here : undefined}
-                onClick={() => part.segment_id && onReadPart(part.segment_id)}
-                /* The fallback block (the engine could not be asked) has no
-                   id, so it cannot be read from. It must not offer to be:
-                   a tooltip promising something the click will not do is
-                   the same lie the old replay tooltip told. */
-                title={part.segment_id ? text("external.read_from_here") : undefined}
                 className={`scan-sentence w-full px-2 py-1.5 text-left text-sm leading-relaxed whitespace-pre-line break-words ${
                   part.segment_id === current ? "voice-here" : ""
-                } ${part.segment_id ? "read-from-here" : "cursor-default"}`}
+                }`}
               >
                 {part.text}
-              </button>
-              {part.segment_id && part.segment_id === current && playback && (
+              </div>
+              {part.segment_id && (part.segment_id === current && playback ? (
                 <ReadingPositionControl playback={playback} onToggle={onTogglePlayback} />
-              )}
+              ) : (
+                <ReadFromHereButton onRead={() => onReadPart(part.segment_id!)} />
+              ))}
               </div>
             ))
           )}

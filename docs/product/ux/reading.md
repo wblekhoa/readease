@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-21
+updated: 2026-10-23
 summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, Paste-text sentence review and background M4B book export."
 tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
@@ -29,7 +29,7 @@ relations:
   and its global shortcut are noted only where they share the transport.
 
 ## Current truth
-- **Reader**: the book shows as pages with the paragraph being read highlighted. Click a paragraph to read from there;
+- **Reader**: the book shows as pages with the paragraph being read highlighted. Hover a paragraph and press the ▶ that appears in its left margin to read from there (a click on the words only places the caret or selects - 23/10, owner: "click cụm sẽ không tự động đọc liền"); the same ▶ starts a part in Read a selection;
   **Continue** resumes from the saved place, **Read from the start** starts over. A side column holds Contents, Notes
   and Search; a search result or note picked mid-listen keeps the page where the reader went, and "back to where the
   voice is" returns to it.

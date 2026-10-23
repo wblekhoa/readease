@@ -38,7 +38,7 @@ import { markParagraph } from "../ui/highlight";
 import { HighlightBar } from "../ui/HighlightBar";
 import { selectionPieces, type SelectedPiece } from "../ui/highlightSelection";
 import type { ReadingMode } from "../ui/readingMode";
-import { ReadingPositionControl } from "../ui/ReadingPositionControl";
+import { ReadFromHereButton, ReadingPositionControl } from "../ui/ReadingPositionControl";
 import { PageFlow, type PageReason, type PageTarget } from "./PageFlow";
 
 /** What the toolbar's ⓘ says about where you are. Pages carry a page count;
@@ -449,23 +449,6 @@ export function Reader({
   const [target, setTarget] = useState<PageTarget | null>(null);
   const [shown, setShown] = useState<string[]>([]);
 
-  /* A double-click selects a word, and its first click arrives while the
-   * caret is still collapsed - so a plain click waits a beat, and a second
-   * click cancels it. 220 ms is invisible for a seek; a voice jumping away
-   * from the word you were about to copy is not. */
-  const pendingRead = useRef<number | null>(null);
-  const readFromSoon = useCallback((segmentId: string) => {
-    if (pendingRead.current !== null) window.clearTimeout(pendingRead.current);
-    pendingRead.current = window.setTimeout(() => {
-      pendingRead.current = null;
-      onReadFrom(segmentId);
-    }, 220);
-  }, [onReadFrom]);
-  const cancelPendingRead = useCallback(() => {
-    if (pendingRead.current !== null) window.clearTimeout(pendingRead.current);
-    pendingRead.current = null;
-  }, []);
-  useEffect(() => cancelPendingRead, [cancelPendingRead]);
 
   /* A failed delete explains itself only while the notes are on show.
    * Clearing it on a close callback was not enough: the toolbar folds the
@@ -1246,25 +1229,18 @@ export function Reader({
           /* The document's own language, so VoiceOver reads an English book
              in an English voice under a Vietnamese interface (HIG 4.2). */
           lang={language}
-          onClick={() => {
-            // A drag that selected text ends in a click on the same
-            // paragraph; that click means "I am copying", not "read
-            // from here". Only a plain click moves the voice - and
-            // only once it is clear no second click is coming.
-            if (window.getSelection()?.isCollapsed === false) return;
-            readFromSoon(segment.id);
-          }}
-          onDoubleClick={cancelPendingRead}
           className={
             // Keep the paragraph's measured geometry; the transport lives
             // outside its text flow and shares the selection screen's style.
-            "relative -mx-2 cursor-text px-2 py-1 read-from-here " +
+            "group relative -mx-2 cursor-text px-2 py-1 " +
             blockClasses(segment, paged, index === 0) +
             (segment.id === marker ? "voice-here" : "")
           }
         >
-          {segment.id === marker && playback && (
+          {segment.id === marker && playback ? (
             <ReadingPositionControl playback={playback} onToggle={onTogglePlayback} />
+          ) : (
+            <ReadFromHereButton onRead={() => onReadFrom(segment.id)} />
           )}
           {blockBody(segment)}
         </p>
