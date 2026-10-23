@@ -4,6 +4,14 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- Clicking a paragraph no longer starts reading, so a click to select or
+  place the caret never sets the voice off. Hover a paragraph (or a part
+  in Read a selection) and press the ▶ in its left margin to read from
+  there.
+- A panel opened while the highlight bar is up now sits on top of it.
+
 ## 0.1.25
 
 - Settings have pages of their own: Voice, Translate before reading,

@@ -32,7 +32,10 @@ export function HighlightBar({ position, current, colours, hasNote, removable, e
   onRemove: () => void;
 }) {
   return (
-    <div data-highlight-bar className="fixed z-50 w-max" style={position} onMouseDown={(event) => event.preventDefault()}>
+    /* z-10: over the page's words, UNDER every panel (z-20 and up) - a bar
+       left from a selection sat on top of Reading settings opened after it
+       (owner, 23/10: "panel setting nằm trên tooltip select"). */
+    <div data-highlight-bar className="fixed z-10 w-max" style={position} onMouseDown={(event) => event.preventDefault()}>
       <Surface edge="strong" material="glass" className="peek-in flex flex-col gap-1.5 p-1.5 shadow-lifted">
         <div role="toolbar" aria-label={text("highlight.toolbar")} className="flex items-center gap-1">
           {colours && HIGHLIGHT_STYLES.map((style) => (

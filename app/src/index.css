@@ -865,21 +865,15 @@ textarea[data-plain]:focus-visible {
    15/09). Brand hue at a tint, like ::selection above, so it says this app
    and stays legible on both papers; the ink is left alone. Continuous under
    descenders on purpose - a marker under the line, not a hyperlink. */
-.voice-here,
-.read-from-here:hover {
+.voice-here {
   text-decoration-line: underline;
   text-decoration-style: solid;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.22em;
   text-decoration-skip-ink: none;
 }
-/* Under the pointer, "read from here" is the same solid line in neutral
-   ink - the boxed wash it replaced put a padded slab around the block
-   (owner, 15/09). The voice's own colour wins where the two meet: the
-   block being read stays brand-tinted while the pointer crosses it. */
-.read-from-here:hover {
-  text-decoration-color: color-mix(in srgb, var(--color-ink) 30%, transparent);
-}
+/* No line under the pointer any more (23/10): a block under the pointer
+   shows its ▶ instead, and a click on the words only selects them. */
 .voice-here,
 .voice-here:hover {
   /* 55%, up from the 40% of 15/09 (owner, 17/09: "đậm hơn xíu"): at 40%
