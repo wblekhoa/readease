@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Read home (UX)"
 status: active
-updated: 2026-10-22
+updated: 2026-10-24
 summary: "The default Read tab offers file, typed/pasted text and selection entry points, session recents, current playback and access to the existing voice and translation settings."
 tags: [area/reading, stack/react, surface/macos]
 relations:
@@ -25,7 +25,7 @@ Loading has its own message. Library failures show retry, never a false empty-st
 
 ## Content and settings
 - A live reading or paused session offers pause/resume and an explicit Open content action. Navigation alone never starts or stops audio.
-- Recent shows up to five items in time order: library books by heard time (fallback import time), the current pasted draft, and captured passages from this app session. Rows open their content; opening does not autoplay. Translated captures open the paired original/translation in the existing focused-passage view.
+- Recent shows up to eight items in time order: library books by heard time (fallback import time), the current pasted draft, and captured passages from this app session. Rows open their content; opening does not autoplay. Translated captures open the paired original/translation in the existing focused-passage view.
 - Reading settings shows the current voice/rate and a separately scoped selection-translation summary. Both open the existing panels. Settings are disabled during playback/export to avoid changing a running job.
 - Text and capture previews stay in memory. No new persistent history or content storage is introduced.
 
