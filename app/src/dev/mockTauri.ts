@@ -14,6 +14,11 @@
 import { ENGLISH_BOOK, ENGLISH_TOC } from "./mockEnglishBook";
 import { mockFigureSvgs } from "./mockFigures";
 import { showcaseChapterCopy, showcaseFigureSvg } from "./showcaseFigure";
+import { fixtureCopy, scenarios as playgroundScenarios } from "./playgroundScenarios";
+
+const pilotParams = new URLSearchParams(window.location.search);
+const PILOT = playgroundScenarios.find(s => s.id === pilotParams.get('pilot'));
+let pilotReadFailed = false;
 
 type Handler = (event: { event: string; id: number; payload: unknown }) => void;
 
@@ -742,6 +747,15 @@ function startMockReading(steps: string[], billing: { chars: number; usd: number
   // `?warm=hold`: the voice never makes its first sound, so a cell can look
   // at "preparing the voice" - in the harness it lasts 120 ms.
   if (WARM_HOLD) return;
+  // RE-PG-002: hold a deterministic checkpoint, while real pause/stop controls still work.
+  if (PILOT) {
+    readingTimers.push(setTimeout(() => {
+      emit('reading:started', {});
+      emit('reading:position', { segment_id: steps[0], remaining_s: 240 });
+      if (live) live.index = 1;
+    }, 120) as unknown as number);
+    return;
+  }
   readingTimers.push(setTimeout(() => emit("reading:started", {}), 120) as unknown as number);
   stepReading(150);
 }
@@ -1093,7 +1107,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       return {
         book: { ...sized(BOOK), toc: isEmpty("toc") ? [] : TOC },
         annotations: isEmpty("notes") ? [] : ANNOTATIONS,
-        progress: { segment_id: "ch-2-seg-1" },
+        progress: { segment_id: PILOT ? 'ch-0-seg-1' : "ch-2-seg-1" },
       };
     case "book.cover": {
       const data = COVERS[String(params.book_id)];
@@ -1596,6 +1610,10 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     return { target: options.target, voice_id: options.voice_id, next_segment_id: walk[6] ?? null, new_chapter: false };
   }
   if (command === "read_book") {
+    if (PILOT?.id === 'reader/error' && !pilotReadFailed) {
+      pilotReadFailed = true;
+      return Promise.reject('voice_unavailable: preview simulated local voice failure');
+    }
     // The refusal a PAID reading gets, on demand. The engine says
     // `voice_failed: <code>: <detail>` for a provider that said no, and
     // `voice_unavailable: <reason>` for one that was never asked because
@@ -1652,7 +1670,9 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     await new Promise(resolve => setTimeout(resolve, scenario === "slow" ? 12000 : 700));
     if (generation !== translationEpoch) return null;
     if (scenario === "error") throw new Error("translation:local_unavailable");
-    const translated = options.target === "en"
+    // A paste of one of the paired samples gets its real counterpart (showcase 22/10); anything else the stock line.
+    const pair = TRANSLATION_SAMPLES.find(sample => sample.en === String(args.text ?? "").trim() || sample.vi === String(args.text ?? "").trim());
+    const translated = pair ? pair[options.target === "vi" ? "vi" : "en"] : options.target === "en"
       ? "Reading every day helps us understand the world better.\n\nA short book read slowly stays with us longer."
       : "Đọc sách mỗi ngày giúp chúng ta hiểu thế giới tốt hơn.\n\nMột cuốn sách ngắn đọc chậm sẽ ở lại với ta lâu hơn.";
     startMockReading(mockParts(translated).map(part => part.segment_id), null);
@@ -1763,6 +1783,7 @@ window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
   },
 };
 window.__mockEmit = emit;
+window.__mockReady = () => (handlers.get('reading:position')?.length ?? 0) > 0;
 window.__mockUnanswered = () => [...unanswered];
 
 // Opt-in public screenshot fixture. Changes sample data only, never app UI or
@@ -1794,6 +1815,63 @@ if (showcaseLocale === "vi" || showcaseLocale === "en") {
     });
   });
 }
+// English showcase (owner 22/10: one English capture set for both editions of the article): the main sample book,
+// its contents, highlights and the paste/scan history read in English too, so no screen mixes the two languages.
+if (showcaseLocale === "en") {
+  const paragraphs = [
+    "Every year they paid close attention to usability, content and function, but left out the extra value that can make an interaction distinct and memorable.",
+    "So their first attempts were soon forgotten. Only when they learned to look at the problem from another angle did they make something special.",
+    "Don't get me wrong. First, the product has to work. Otherwise you are only decorating something that is broken underneath. But working is only the minimum you need to compete.",
+    "That may have been enough in the late 1990s and early 2000s, when people had only a few choices. Today, the number of mobile apps is close to ten million.",
+    "A product that works but leaves no impression will struggle to find its place.",
+    "So where does a positive, memorable experience come from? Two things.",
+    "First, we need features people do not expect, like when Steve Jobs showed pinch to zoom at an Apple event in 2007. The whole room gasped.",
+    "Second, we need to help people into a state of flow, which the psychologist Mihály Csíkszentmihályi described as complete absorption.",
+  ];
+  const names: Record<string, string> = {
+    "Bìa sách": "Cover",
+    "Lời giới thiệu": "Introduction",
+    "Các nguyên tắc phổ quát của trải nghiệm người dùng": "Universal principles of user experience",
+    "Phần Một: NỀN MÓNG": "Part One: FOUNDATIONS",
+    "Chương 3 Bộ mẫu trình bày": "Chapter 3 Different perspectives",
+    [PATHS_LINE]: "THREE PATHS INTO UX",
+    "Từ một nghề gần đó": "From a neighbouring craft",
+    "Cắt cho giọng đọc": "Cut for the voice",
+    "BA BƯỚC ĐỂ BẮT ĐẦU": "THREE WAYS TO BEGIN",
+    "Hãy bắt đầu từ nguồn": "Start from the source",
+    "Chương 4": "Chapter 4",
+    "Phần Hai: THỰC HÀNH": "Part Two: PRACTICE",
+    "MỤC TIÊU": "GOAL",
+    "CÁCH LÀM": "METHOD",
+    "Lời cảm ơn": "Acknowledgements",
+  };
+  const name = (title: string) => names[title] ?? title.replace(/^Chương (\d+) Bài tập (\d+)$/, "Chapter $1 Exercise $2");
+  for (const entry of TOC) entry.title = name(entry.title);
+  BOOK.chapters.forEach((chapter, index) => {
+    if (index === 2) return;
+    chapter.title = name(chapter.title);
+    for (const segment of chapter.segments) {
+      if (segment.kind === "heading") segment.text = name(segment.text);
+      else { const at = PARAGRAPHS.indexOf(segment.text); if (at >= 0) segment.text = paragraphs[at]; }
+    }
+  });
+  const marks: Record<string, [string, string | null]> = {
+    "applebooks:1": ["their first attempts were soon forgotten", "True of last year's project."],
+    "applebooks:2": ["Only when they learned to look at the problem from another angle", null],
+    "applebooks:3": ["the number of mobile apps is close to ten million", null],
+    "applebooks:4": ["pinch to zoom", "Worth quoting in the opening: one small gesture that changed how people thought about pocket computers. Double-check the 2007 date. It could open on the room going quiet for a few seconds and then erupting - everyone remembers that, few remember the decade of multi-touch research before it that went nowhere."],
+    "applebooks:5": ["the product has to work", "Opening line."],
+    "applebooks:6": ["left out the extra value", null],
+  };
+  for (const item of ANNOTATIONS) { const en = marks[item.id]; if (en) { item.selected_text = en[0]; item.note = en[1] as typeof item.note; } }
+  const history = [
+    "Morning news: the city breaks ground on metro line 2, due to open in 2030.",
+    "Team meeting notes: agree the release date, review the install guide and send a test build to five readers.",
+    "Good design is design that lets people stop thinking.",
+    "Each morning I spend ten minutes rereading what I learned the day before.",
+  ];
+  MOCK_HISTORY.forEach((entry, index) => { if (history[index]) { entry.text = history[index]; entry.original = null; entry.target = null; } });
+}
 // Showcase covers (07/10): the pictures on the public landing page. Four
 // layouts, no "MOCK" label and no rule lines - each book looks like itself.
 function showcaseCovers(lang: "vi" | "en"): Record<string, string> {
@@ -1823,15 +1901,67 @@ function showcaseCovers(lang: "vi" | "en"): Record<string, string> {
 <text x="60" y="330" ${serif} font-size="74" fill="#F4F1EA">${t.four[0]}</text><text x="60" y="415" ${serif} font-size="74" fill="#F4F1EA">${t.four[1]}</text>`),
   };
 }
+// A full shelf for the showcase (15/10): eight more books with their own
+// drawn covers and different progress, so the library and "Đang đọc" look
+// like a real reading life instead of four books and empty space. Titles are
+// invented; no real book is shown.
+function showcaseShelf(lang: "vi" | "en"): { rows: ShelfRow[]; covers: Record<string, string> } {
+  const T = lang === "vi"
+    ? [["Đọc", "chậm"], ["Nghệ thuật", "lắng nghe"], ["Những ngày", "mưa"], ["Bản đồ của", "sự chú ý"], ["Giọng", "kể"], ["Thói quen", "nhỏ"], ["Ánh sáng", "buổi sáng"], ["Viết để", "nghĩ"]]
+    : [["Reading", "slowly"], ["The art of", "listening"], ["Rainy", "days"], ["A map of", "attention"], ["The telling", "voice"], ["Small", "habits"], ["Morning", "light"], ["Writing", "to think"]];
+  const serif = 'font-family="Georgia,serif" font-weight="700"';
+  const sans = 'font-family="Helvetica Neue,Helvetica,Arial" font-weight="700"';
+  const svg = (body: string) => btoa(unescape(encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900">${body}</svg>`)));
+  const title = (i: number, x: number, y: number, font: string, size: number, fill: string) =>
+    `<text x="${x}" y="${y}" ${font} font-size="${size}" fill="${fill}">${T[i][0]}</text><text x="${x}" y="${y + size * 1.15}" ${font} font-size="${size}" fill="${fill}">${T[i][1]}</text>`;
+  const rain = Array.from({ length: 26 }, (_, i) => `<line x1="${(i * 53) % 640 - 20}" y1="${(i * 97) % 700 + 120}" x2="${(i * 53) % 640 - 60}" y2="${(i * 97) % 700 + 230}" stroke="#9FB4E8" stroke-width="5" stroke-linecap="round" opacity="0.55"/>`).join("");
+  const arcs = [120, 200, 280, 360].map((r, i) => `<circle cx="300" cy="640" r="${r}" fill="none" stroke="#3B2A12" stroke-width="${14 - i * 3}" opacity="${0.75 - i * 0.15}"/>`).join("");
+  const path = Array.from({ length: 9 }, (_, i) => `<circle cx="${90 + i * 55}" cy="${520 + Math.sin(i * 0.9) * 120}" r="${10 + (i % 3) * 8}" fill="${["#E76F51", "#2A9D8F", "#E9C46A", "#264653"][i % 4]}"/>`).join("");
+  const stack = [0, 1, 2, 3].map(i => `<rect x="${90 + i * 22}" y="${420 + i * 90}" width="${420 - i * 44}" height="70" rx="35" fill="#2F4A3A" opacity="${0.35 + i * 0.18}"/>`).join("");
+  const covers = [
+    svg(`<rect width="600" height="900" fill="#14424A"/><circle cx="420" cy="560" r="200" fill="#F3E9D2"/><circle cx="470" cy="520" r="200" fill="#14424A"/>${title(0, 60, 150, serif, 76, "#F3E9D2")}`),
+    svg(`<rect width="600" height="900" fill="#E7B73B"/>${arcs}<circle cx="300" cy="640" r="46" fill="#3B2A12"/>${title(1, 60, 140, sans, 62, "#3B2A12")}`),
+    svg(`<rect width="600" height="900" fill="#1E2A5A"/>${rain}<rect x="380" y="640" width="120" height="150" rx="10" fill="#F2C94C"/><rect x="438" y="640" width="4" height="150" fill="#1E2A5A"/><rect x="380" y="712" width="120" height="4" fill="#1E2A5A"/>${title(2, 60, 150, serif, 80, "#EEF1FB")}`),
+    svg(`<rect width="600" height="900" fill="#F4F1EA"/><path d="M90 520 C 200 380, 330 680, 530 470" fill="none" stroke="#C9C2B4" stroke-width="4" stroke-dasharray="10 12"/>${path}${title(3, 60, 150, sans, 60, "#22252B")}`),
+    svg(`<rect width="600" height="900" fill="#E86F5A"/><text x="40" y="720" ${serif} font-size="560" fill="#F9D9CF" opacity="0.9">“</text>${title(4, 60, 150, serif, 84, "#FFF5F0")}`),
+    svg(`<rect width="600" height="900" fill="#BFD3C1"/>${stack}${title(5, 60, 150, sans, 70, "#1F3326")}`),
+    svg(`<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCE3C4"/><stop offset="1" stop-color="#F28FA0"/></linearGradient></defs><rect width="600" height="900" fill="url(#g)"/><circle cx="300" cy="700" r="160" fill="#FFF3DE"/><rect x="0" y="700" width="600" height="200" fill="#F06F86" opacity="0.55"/>${title(6, 60, 150, serif, 70, "#5A2236")}`),
+    svg(`<rect width="600" height="900" fill="#141416"/><rect x="60" y="330" width="250" height="12" fill="#E5484D"/>${title(7, 60, 200, serif, 86, "#F7F7F5")}<text x="60" y="820" ${sans} font-size="26" fill="#8A8A90">${lang === "vi" ? "Tiểu luận" : "Essays"}</text>`),
+  ];
+  const meta: Array<[number | null, number, string, number, string | null]> = [
+    [0.64, 14, "epub", 3_400_000, "2026-09-21T21:05:00Z"],
+    [0.27, 11, "epub", 5_100_000, "2026-09-20T07:30:00Z"],
+    [0.86, 18, "epub", 7_800_000, "2026-09-18T22:10:00Z"],
+    [0.12, 9, "pdf", 12_600_000, null],
+    [null, 16, "epub", 4_200_000, null],
+    [0.51, 8, "epub", 2_900_000, null],
+    [null, 13, "pdf", 18_400_000, null],
+    [0.33, 21, "epub", 6_700_000, null],
+  ];
+  const rows = meta.map(([ratio, chapters, format, size, heard], i): ShelfRow => ({
+    id: `book-showcase-${i + 1}`, title: `${T[i][0]} ${T[i][1]}`, source_format: format,
+    segment_id: ratio == null ? null : "ch-0-seg-1", progress_ratio: ratio,
+    progress_chapter: ratio == null ? null : `${lang === "vi" ? "Chương" : "Chapter"} ${Math.max(1, Math.round(ratio * chapters))}`,
+    chapters, size_bytes: size, imported_at: `2026-09-0${(i % 9) + 1}T09:00:00Z`, listened_at: heard,
+    from_apple_books: i % 3 === 0, language: lang, language_set: false, language_detected: lang,
+  }));
+  return { rows, covers: Object.fromEntries(rows.map((row, i) => [row.id, covers[i]])) };
+}
 if (showcaseLocale === "vi") {
   const titles: Record<string, string> = { "book-three": "Cẩm nang usability cho đội sản phẩm", "book-four": "Sổ tay của nhóm thiết kế" };
   LIBRARY.forEach(book => { if (titles[book.id]) book.title = titles[book.id]; });
   Object.assign(COVERS, showcaseCovers("vi"));
+  const shelf = showcaseShelf("vi");
+  LIBRARY.push(...shelf.rows);
+  Object.assign(COVERS, shelf.covers);
 }
 if (showcaseLocale === "en") {
   SETTINGS.ui_language = "en";
   SETTINGS.voice = "af_heart";
   SETTINGS.rate = 1.25;
+  // Three English voices in the switcher, so the voice picker has a choice to show (22/10).
+  SETTINGS.voice_shortlist = JSON.stringify(["Đức Trí", "Adam", "Trúc Ly", "Phạm Tuyên", "Ngọc Linh", "af_heart", "af_bella", "am_michael"]);
   for (const key of Object.keys(SETTINGS)) if (key.endsWith("_api_key")) delete SETTINGS[key];
   const titles = ["Principles of user experience — a practical guide", "A quieter way to read", "Usability notes for product teams", "The design team's field guide"];
   BOOK.title = titles[0];
@@ -1841,20 +1971,62 @@ if (showcaseLocale === "en") {
     if (book.progress_chapter) book.progress_chapter = `Chapter ${index + 1}`;
   });
   Object.assign(COVERS, showcaseCovers("en"));
-  BOOK.chapters.forEach((chapter, index) => {
+  const shelf = showcaseShelf("en");
+  LIBRARY.push(...shelf.rows);
+  Object.assign(COVERS, shelf.covers);
+  BOOK.chapters.forEach((chapter) => {
     // The ordinary showcase uses one illustration, not the default harness's
     // deliberately repeated figure used to stress duplicate-handling tests.
     chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of);
-    chapter.title = index === 2 ? chapter.title : `Chapter ${index + 1}`;
-    chapter.segments.forEach((segment, i) => {
-      if (index !== 2) segment.text = i === 0 ? chapter.title : "A thoughtful reading experience gives every idea room to breathe.";
-    });
+    // Chapter titles and text are the English translations set with the showcase book above (22/10).
   });
+}
+
+// RE-PG-002: optional synthetic fixture; never reads or modifies native library data.
+if (PILOT) {
+  const locale = pilotParams.get('locale') === 'en' ? 'en' : 'vi';
+  const copy = fixtureCopy(locale);
+  SETTINGS.ui_language = locale; SETTINGS.voice = locale === 'en' ? 'af_heart' : 'Thu Hà';
+  SETTINGS.rate = 1;
+  localStorage.setItem('readease.theme', pilotParams.get('theme') === 'dark' ? 'dark' : 'light');
+  localStorage.setItem('readease.sidebar', 'closed');
+  BOOK.title = copy.title; BOOK.chapters.splice(2);
+  BOOK.chapters.forEach((chapter, i) => {
+    chapter.title = copy.chapters[i]; chapter.figures.splice(0); chapter.segments.splice(0);
+    [chapter.title, ...copy.paragraphs].forEach((text, n) => chapter.segments.push({
+      id: `${chapter.id}-seg-${n}`, kind: n === 0 ? 'heading' : 'paragraph', joint: 'block', text,
+    }));
+  });
+  TOC.splice(0, TOC.length, ...BOOK.chapters.map(ch => ({ level: 1, title: ch.title, segment_id: ch.segments[0].id })));
+  ANNOTATIONS.splice(0); MOCK_HISTORY.splice(0);
+  const template = LIBRARY[0] ?? { id: 'book-ux', source_format: 'epub', segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 2, size_bytes: 2048, imported_at: null, from_apple_books: false };
+  LIBRARY.splice(0);
+  if (PILOT.id !== 'library/empty') LIBRARY.push(
+    { ...template, id: BOOK.id, title: copy.title, source_format: 'epub', chapters: 2, chapter_titles: copy.chapters, size_bytes: 2048, segment_id: 'ch-0-seg-1', progress_ratio: 0.25, progress_chapter: copy.chapters[0], language: locale, language_detected: locale, language_set: false, from_apple_books: false },
+    { ...template, id: 'book-three', title: copy.second, source_format: 'md', chapters: 2, chapter_titles: copy.chapters, size_bytes: 1024, segment_id: null, progress_ratio: null, progress_chapter: null, language: locale, language_detected: locale, language_set: false, from_apple_books: false },
+  );
+  for (const book of LIBRARY) { delete COVERS[book.id]; DETECTED_LANGUAGE[book.id] = locale; }
 }
 
 // After the app has mounted and its listeners are up. Staggered, because two
 // passages captured in the same millisecond would share an `at` and collide
 // as list keys - which is true of the real shortcut too, just harder to do.
+// Showcase (15/10): a fuller history, so the Read a selection screen looks used. Invented passages.
+if (showcaseLocale === "en") SCANNED.splice(0, SCANNED.length,
+  "Late last century, before the stone road was paved, people still walked from the village gate to the district market, nearly two hours on foot. In the rainy season the water rose over the bamboo bridge and everyone rolled up their trousers to wade across.\n\nMy grandmother says the whole hamlet had one transistor radio, kept at the village head's house. In the evening, adults and children filled the brick yard to hear the late-night stories.",
+  "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet, which is why it has been used to test typefaces since the days of metal type.",
+  "Good typography is invisible: when the letters are right, the reader only notices the words.",
+  "A slow morning of reading starts with a cup of tea and ten pages, nothing more hurried than that.",
+  "Good design does not make readers think about the interface; they only think about what they are reading.",
+  "A short note after each chapter helps you remember longer than underlining the whole page.",
+  "The voice slows down at a comma and stops at a full stop, like a real storyteller.",
+);
+else if (showcaseLocale) SCANNED.push(
+  "Một buổi sáng đọc chậm bắt đầu bằng một tách trà và mười trang sách, không cần vội vàng hơn thế.",
+  "Thiết kế tốt không bắt người đọc phải nghĩ về giao diện; họ chỉ nghĩ về điều họ đang đọc.",
+  "Ghi chú ngắn sau mỗi chương giúp ta nhớ lâu hơn là gạch chân cả trang.",
+  "Giọng đọc chậm lại ở dấu phẩy và dừng hẳn ở dấu chấm, như một người kể chuyện thật.",
+);
 const scannedCount = Number(new URLSearchParams(window.location.search).get("scanned") ?? 0);
 if (scannedCount > 0) {
   const samples = TRANSLATION_TARGET ? TRANSLATION_SAMPLES.map(pair => pair[TRANSLATION_TARGET === "vi" ? "en" : "vi"]) : SCANNED;
@@ -1877,6 +2049,7 @@ declare global {
   interface Window {
     __TAURI_INTERNALS__: Record<string, unknown>;
     __mockEmit: (event: string, payload: unknown) => number;
+    __mockReady: () => boolean;
     __mockUnanswered: () => string[];
     /** The harness's pick of the update check's answer (HIG 3.20). */
     __mockUpdate?: string;
