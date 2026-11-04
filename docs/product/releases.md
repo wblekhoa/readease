@@ -4,8 +4,8 @@ type: release
 product: readease
 title: "ReadEase — Releases"
 status: active
-updated: 2026-10-23
-summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.26, newest first."
+updated: 2026-11-04
+summary: "User-facing changes, shipped REQ-IDs and channel of each ReadEase GitHub release from v0.1.0 to v0.1.27, newest first."
 tags: [area/release, area/updater, surface/macos]
 relations:
   presentedBy: [website:/projects/readease]
@@ -16,6 +16,14 @@ Source of truth for details: `CHANGELOG.md` (repo root) and `gh release list -R 
 here; REQ-IDs were introduced on 2026-10-10, so only releases whose shipped behaviour maps to a current rule are traced.
 The landing page `wblekhoa.github.io/readease` links the newest release at view time, and the author's portfolio presents the
 product at `website:/projects/readease`.
+
+## v0.1.27 · 2026-11-04
+- **What changed for users**:
+  - The window no longer opens bigger than the screen. A saved size restored across a Retina panel and a regular monitor could come back doubled and keep growing; the window now reopens inside a screen, and a size as large as the screen resets to 1280×820 (at most 90% of the screen), centred.
+- **REQ-IDs shipped**: no rule changed; decision recorded in `decisions.md` (2026-11-04).
+- **Verification**: 1039 Python tests (8 skipped), 57 Rust tests (9 for the window frame); a debug build with the owner's 6912 × 1996 px saved frame opened at 1280×820 three times out of three.
+- **Channel**: GitHub release with Developer ID signature, notarization and in-app updater.
+- **Shown in**: CHANGELOG.md; GitHub release notes.
 
 ## v0.1.26 · 2026-10-23
 - **What changed for users**:

@@ -4,7 +4,7 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
-## Unreleased
+## 0.1.27
 
 - The window no longer opens bigger than the screen. On a desk with a
   Retina panel next to a regular monitor, its saved size could come back
