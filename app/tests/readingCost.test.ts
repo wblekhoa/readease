@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buttonCost, costPhrase, formatCount, formatUsd, isPaidVoice, providerOf, PROVIDERS, SCOPES, type Estimate } from "../src/ui/readingCost.ts";
+import { buttonCost, costPhrase, formatCount, formatUsd, isPaidVoice, providerOf, readingScope, PROVIDERS, SCOPES, type Estimate } from "../src/ui/readingCost.ts";
 import { setLanguage } from "../src/i18n.ts";
 
 // These cases are written in Vietnamese, and the interface now starts in
@@ -99,4 +99,14 @@ test("money and counts follow the interface language", () => {
   }
   assert.equal(formatUsd(0.04), "$0,04");
   assert.equal(formatCount(11800), "11.800");
+});
+
+test("a free voice reads on into the next chapter; only a paid one stops at the scope", () => {
+  // The scope exists to cap a bill and is only offered under a paid voice.
+  // A local voice must not inherit the cautious default ("this chapter") it
+  // never showed - that stopped every free reading at its chapter's end.
+  assert.equal(readingScope("Minh Đức", 1), null);
+  assert.equal(readingScope("Minh Đức", 5), null);
+  assert.equal(readingScope("openai:tts-1:alloy", 1), 1);
+  assert.equal(readingScope("openai:tts-1:alloy", null), null);
 });

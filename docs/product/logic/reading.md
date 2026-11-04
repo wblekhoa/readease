@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-10-22
+updated: 2026-11-04
 summary: "Playback, heard progress, speech preparation and native controls; translation and export have separate rule owners with unchanged requirement IDs."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
@@ -49,7 +49,7 @@ Read each source through one transport, preserve the heard position, and keep sp
 | RE-PLAY-023 | Provide localized, text-free native reading status/actions; Stop also cancels capture. | blocked | [023](#evidence) |
 | RE-PLAY-024 | Provide a non-activating external-reading controller with shared transport and safe selection replacement. | blocked | [024](#evidence) |
 | RE-PLAY-026 | Share the current-reading Pause/Resume control without restarting speech or changing text geometry. | live | [026](#evidence) |
-| RE-PLAY-027 | A book reading stops at the end of the chapter scope the page quoted ("this chapter", N chapters, or the whole book); the page, the native command and the engine carry the same `chapters` value. | live | [027](#evidence) |
+| RE-PLAY-027 | A book reading with a paid voice stops at the end of the chapter scope the page quoted ("this chapter", N chapters, or the whole book); with a local voice selected the reading carries on into the next chapter to the end of the book (the scope is offered only under a paid voice). The page, the native command and the engine carry the same `chapters` value. | live | [027](#evidence) |
 | RE-PLAY-028 | For the Vietnamese voice, everyday forms the SDK misreads are rewritten before it, in spellings it reads right: "100m²"/"2,5m³" keep "vuông"/"khối" (converted before footnote marks are dropped), "8h-17h30" says "đến", a weekday run "T2-T6, T7, CN" says "thứ hai đến thứ sáu, thứ bảy, chủ nhật", and "$20"/"3,5 tỷ USD" say "đô la"/"đô la Mỹ"; a lone "T2", "USD" or "x²" is left alone. | live | `tests/domain/test_prosody.py` (`test_square_and_cubic_units_keep_their_power`, `test_an_hour_range_says_den`, `test_a_weekday_range_or_list_says_the_days`, `test_dollars_are_said_as_do_la`) |
 | RE-PLAY-034 | Read starts at once: when a book opens, the engine makes its words speakable in the background and keeps them (the last three books; keyed by the book and every setting that shapes the words - pronunciations, notes, chimes - but not voice, speed or interface), so the press of Read does not pay for the whole book. A translated reading is never cached. | live | `tests/headless/test_server_prepared_book.py`; frozen sidecar 21/10 on a 2,440-paragraph book: first audio 0.61 s before, 0.12-0.17 s after opening it |
 
@@ -107,12 +107,13 @@ None open for chapter scope: the bridge gap noted on 2026-10-19 is closed by RE-
 - **019**: `tests/domain/test_prosody.py` (`test_ok_is_said_as_the_word_not_as_letters`)
 - **023**: `app/src-tauri/src/reading_tray.rs` (`preparing_progress_pause_and_languages`); `app/src-tauri/src/engine.rs` (`sentence_progress_waits_for_audio_and_drops_stale_readings`); `tests/headless/test_server.py` (`test_sentence_progress_counts_sentences_inside_a_paragraph`)
 - **024**: `native/macos/ReadingPanel.m`, `app/src-tauri/src/reading_panel.rs`, shared `reading_tray.rs`; `bash scripts/test-native-reading-panel.sh` checks native state/action/alpha/geometry; Rust `the_same_live_external_selection_toggles_but_a_new_selection_replaces_it`. Owner confirmed visibility and working buttons in regular ReadEase on 2026-10-16 and requested UI refinement; real focus/selection, fullscreen, accessibility, ≤150 ms appearance and <40 MB added total RSS remain unverified.
-- **027**: `tests/headless/test_shell_contract.py` (`PageShellEngineBookContractTests`: every argument the page passes to `read_book` is declared by the Rust command, `chapters` is forwarded to `read.book`, and `_read_book` reads it); engine bound in `tests/speech/test_external_reading.py` (`"chapters": 1` cases).
+- **027**: `tests/headless/test_shell_contract.py` (`PageShellEngineBookContractTests`: every argument the page passes to `read_book` is declared by the Rust command, `chapters` is forwarded to `read.book`, and `_read_book` reads it); engine bound in `tests/speech/test_external_reading.py` (`"chapters": 1` cases). Local voices unbounded: `app/tests/readingCost.test.ts` (`a free voice reads on into the next chapter; only a paid one stops at the scope`).
 - **026**: `app/src/ui/ReadingPositionControl.tsx`, `app/src/ui/ScanEntry.tsx`, `app/src/screens/Reader.tsx`, `app/src/screens/PageFlow.tsx`; shared player state tests in `app/tests/playback.test.ts`; browser pause/resume, page-turn and geometry checks on 2026-10-18.
 
 Protocol checks: `app/tests/playback.test.ts`, `tests/headless/test_shell_contract.py`, native `engine.rs`/`audio.rs` tests. Reducer checks alone do not establish speaker cancellation.
 
 ## Change log
+- 2026-11-04: RE-PLAY-027 - the scope binds paid voices only. Since 2026-10-20 the page forwarded the stored scope (default "this chapter", offered only under a paid voice) for every reading, so a local voice stopped at its chapter's end; local voices now read on.
 - 2026-10-22: reviewed against d2dedf4 (Reader highlights): new `annotations.add`/`annotations.restyle` engine methods and host `copy_text` belong to RE-NOTE ([notes](notes.md)); no playback rule changed.
 - 2026-10-21: RE-PLAY-034 - a book's words prepared when it opens (first audio 0.6 s → 0.15 s on a large book). Measured baseline: engine ready 0.14 s, warm first audio 0.08-0.12 s, import of 1.1 MB text 0.25 s, book.open 0.03 s.
 
