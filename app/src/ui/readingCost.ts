@@ -70,6 +70,13 @@ export function rememberScope(chapters: number | null): void {
   }
 }
 
+/** How far a press of Read reaches with this voice. The scope caps a bill,
+ * and is only offered under a voice that bills; a local voice reads on to
+ * the end of the book, whatever the stored scope says. */
+export function readingScope(voiceId: string, chapters: number | null): number | null {
+  return isPaidVoice(voiceId) ? chapters : null;
+}
+
 /** True when this voice bills somebody. Paid voices are `provider:model:voice`
  * and the local catalogue never has two colons. */
 export function isPaidVoice(voiceId: string): boolean {

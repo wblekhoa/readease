@@ -4,13 +4,23 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-20
+updated: 2026-11-04
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-11-04 · The chapter scope caps paid voices only; a local voice reads on
+- **Context**: the owner (04/11): the reading stops partway instead of carrying on into the next chapter. The page
+  sent its stored scope with every `read_book` since RE-PLAY-027 (2026-10-20). That scope defaults to "this chapter"
+  so a paid voice never runs up a book by accident, and its picker shows only under a paid voice - so a local voice
+  stopped at every chapter's end with no control in sight.
+- **Decision**: `readingScope(voice, scope)` sends the scope for a paid voice and `null` (the whole book) for a local
+  one, in plain and translated book readings alike. The remaining-time label and the estimate follow it.
+- **Evidence**: `app/tests/readingCost.test.ts` (failed before the change, passes after); `./scripts/verify.sh`.
+- **Reversal**: send `scope` again in `app/src/App.tsx` (`read_book`, `switchVoice`, `readBookTranslated`, estimate).
 
 ## 2026-11-04 · The main window opens inside a screen, never larger than one
 - **Context**: the owner's ReadEase opened edge to edge and past the screens. The saved frame had grown to
