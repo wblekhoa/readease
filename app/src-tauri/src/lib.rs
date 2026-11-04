@@ -1,6 +1,7 @@
 mod audio;
 mod engine;
 mod identity;
+mod window_frame;
 mod reading_tray;
 mod reading_panel;
 mod translation;
@@ -753,6 +754,10 @@ fn read_current_selection(app: &tauri::AppHandle, engine: &Engine) {
     });
 }
 
+/// What the window-state plugin keeps for the main window: size and position.
+const WINDOW_STATE_FLAGS: tauri_plugin_window_state::StateFlags =
+    tauri_plugin_window_state::StateFlags::SIZE.union(tauri_plugin_window_state::StateFlags::POSITION);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // First, before anything prints: the log file takes stderr when no
@@ -776,10 +781,23 @@ pub fn run() {
         // the classic vibrancy glitch, and the window is always shown.
         .plugin(
             tauri_plugin_window_state::Builder::new()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::SIZE
-                        | tauri_plugin_window_state::StateFlags::POSITION,
-                )
+                .with_state_flags(WINDOW_STATE_FLAGS)
+                // The main window's frame is put back by `window-fit` below;
+                // the plugin still saves it.
+                .skip_initial_state("main")
+                .build(),
+        )
+        // The saved frame back in logical points, kept on a screen and
+        // smaller than one: the plugin's own restore sets the saved physical
+        // size at the new window's scale, so across 1x and 2x screens it came
+        // back doubled, launch after launch (see `window_frame`).
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry, ()>::new("window-fit")
+                .on_window_ready(|window| {
+                    if window.label() == "main" {
+                        window_frame::restore_window(&window, (1280.0, 820.0), (960.0, 600.0));
+                    }
+                })
                 .build(),
         )
         .setup(|app| {

@@ -12,6 +12,19 @@ tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/py
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
 
+## 2026-11-04 · The main window opens inside a screen, never larger than one
+- **Context**: the owner's ReadEase opened edge to edge and past the screens. The saved frame had grown to
+  6912×1996 px: the window-state plugin saves and restores physical pixels, so a frame saved on the 2x MacBook panel
+  came back at twice its size on a desk with 1x monitors, and the next save kept the doubled size.
+- **Decision**: the plugin still saves the frame, but the main window skips its restore. `window_frame.rs` reads the
+  saved frame, converts it to logical points with the scale of the screen it was saved on, and keeps it inside the
+  screen holding most of it: a frame that fits stays, one hanging off an edge moves in at its size, one as large as
+  the screen's work area (16 pt margin) or larger reopens at 1280×820, capped to 90% of that screen, centred.
+- **Evidence**: `cargo test --lib window_frame` (9 tests, including the owner's saved frame); a debug build launched
+  three times with the owner's saved file opened at 1280×820 centred on the MacBook (before: 6912×1002 points), and
+  quit + relaunch kept that frame.
+- **Reversal**: drop `skip_initial_state("main")` and the `window-fit` hook in `app/src-tauri/src/lib.rs`.
+
 ## 2026-10-21 · Library translation: by paragraph, a chapter at a time, kept per book
 - **Context**: the owner's choices (20/10): bilingual paragraphs, translations saved on this Mac per book, Library after Paste.
 - **Decision**: the unit is the paragraph (a block segment and its split pieces) - a 240-character piece ends mid-sentence.

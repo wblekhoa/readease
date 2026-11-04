@@ -4,6 +4,13 @@ Notable changes to ReadEase — Thư Âm. Versions follow the app's own version;
 each Release names the exact commit it was built from in `CFBundleVersion`
 (`<version>+<git sha>`).
 
+## Unreleased
+
+- The window no longer opens bigger than the screen. On a desk with a
+  Retina panel next to a regular monitor, its saved size could come back
+  doubled and keep growing; it now reopens inside a screen, and a size as
+  big as the screen resets to a comfortable default, centred.
+
 ## 0.1.26
 
 - Clicking a paragraph no longer starts reading, so a click to select or
