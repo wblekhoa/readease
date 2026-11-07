@@ -6,7 +6,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { engineMessage, text } from "../i18n";
 import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { formatSize, hoverText } from "../ui/format";
-import { Button, IconButton, Notice } from "../ui/controls";
+import { Button, IconButton, Notice, SectionTitle } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, DropZone, EmptyState } from "../ui/patterns";
 import { Presence } from "../ui/motion";
 import { dropHeadline, importNotice, type ImportTally } from "../ui/importFeedback";
@@ -438,21 +438,29 @@ export function Library({
             }
           />
         ) : (
-          <div className="mt-4">
-            <BookGrid>
-              {shelf.map((book) => (
-                <ShelfBook
-                  key={book.id}
-                  book={book}
-                  paper={papers.get(book.id)}
-                  confirming={confirming === book.id}
-                  onOpen={() => onOpen(book)}
-                  onAskRemove={() => setConfirming(book.id)}
-                  onRemove={() => void removeBook(book.id)}
-                  onKeep={() => setConfirming(null)}
-                />
-              ))}
-            </BookGrid>
+          <div className="mt-4 space-y-10">
+            {[
+              shelf.filter((book) => book.progress_ratio !== null),
+              shelf.filter((book) => book.progress_ratio === null),
+            ].map((group, index) => group.length > 0 && (
+              <div key={index} className="space-y-4">
+                {index === 0 && <SectionTitle>{text("library.in_progress")}</SectionTitle>}
+                <BookGrid>
+                  {group.map((book) => (
+                    <ShelfBook
+                      key={book.id}
+                      book={book}
+                      paper={papers.get(book.id)}
+                      confirming={confirming === book.id}
+                      onOpen={() => onOpen(book)}
+                      onAskRemove={() => setConfirming(book.id)}
+                      onRemove={() => void removeBook(book.id)}
+                      onKeep={() => setConfirming(null)}
+                    />
+                  ))}
+                </BookGrid>
+              </div>
+            ))}
           </div>
         )}
       </div>
