@@ -6,7 +6,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { engineMessage, text } from "../i18n";
 import { BOOK_EXTENSIONS, bookPaths } from "../ui/bookPaths";
 import { formatSize, hoverText } from "../ui/format";
-import { Button, IconButton, Notice } from "../ui/controls";
+import { Button, IconButton, Notice, Surface } from "../ui/controls";
 import { BookCard, BookCover, BookGrid, DropZone, EmptyState } from "../ui/patterns";
 import { Presence } from "../ui/motion";
 import { dropHeadline, importNotice, type ImportTally } from "../ui/importFeedback";
@@ -438,7 +438,7 @@ export function Library({
             }
           />
         ) : (
-          <div className="mt-4">
+          <Surface className="p-4">
             <BookGrid>
               {shelf.map((book) => (
                 <ShelfBook
@@ -453,7 +453,7 @@ export function Library({
                 />
               ))}
             </BookGrid>
-          </div>
+          </Surface>
         )}
       </div>
     </section>

@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Library (UX)"
 status: active
-updated: 2026-10-23
+updated: 2026-11-07
 summary: "How the ReadEase Library shelf works: importing PDF and EPUB by button, drag-and-drop or Apple Books, refusal feedback, removing a book while keeping the original, and per-book reading progress."
 tags: [area/data-import, area/book, stack/react, stack/tauri, surface/macos]
 relations:
@@ -31,7 +31,8 @@ relations:
 - The main window starts at 1280×820 logical pixels when no saved frame exists, capped to the display work area.
   Subsequent launches restore the reader's chosen size and position; the 960×600 minimum remains unchanged.
 - Read is the default tab; Library remains the dedicated shelf in the side column, alongside Paste text and Read a selection, with Move notes under Tools. It shows
-  covers, titles and reading progress; the books being read also appear in the side column.
+  covers, titles and reading progress; the books being read also appear in the side column. The shelf grid sits on a
+  WAVE `Surface` paper card (one grid, order unchanged).
 - **Open PDF or EPUB** (or dragging files onto the window) imports text-based PDFs and reflowable EPUBs. The app copies
   each file into its own library folder; the original is left untouched. Importing the same file again focuses the
   existing book instead of adding a second one. Feedback says how many documents were added, or why a file was refused
@@ -81,5 +82,6 @@ flowchart LR
 | `README.en.md` § Main features, § Limits | public description |
 
 ## Change log
+- 2026-11-07: the shelf grid moved onto a WAVE `Surface` card — the JAK Hub Playground G2 AI creation, applied with no findings (layout only: the wrapper's top margin `mt-4` became inner padding `p-4`; `BookGrid` and the shelf order untouched).
 - 2026-10-21: RE-LIB-011 - Open / drop / Finder accept EPUB, PDF, Word (.docx, .doc), RTF, ODT, Markdown, HTML and TXT; the picker is named "Books and documents"; the badge shows the format (DOCX, MD…). ReadEase registers as an alternate viewer for .docx/.doc/.rtf/.odt/.md only - not for .txt or .html, which every Mac has many apps for.
 - 2026-10-10: created from code and CHANGELOG as of v0.1.21.
