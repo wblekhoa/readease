@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scenarios, matrix, previewUrl, fixtureCopy } from '../src/dev/playgroundScenarios.ts';
+import { scenarios, matrix, previewUrl, fixtureCopy, validateScenario } from '../src/dev/playgroundScenarios.ts';
 import registry from '../src/dev/playgroundStates.json' with { type: 'json' };
 
 test('RE-PG-001 eight product states generate 64 unique locale/theme/viewport cells', () => {
@@ -19,4 +19,12 @@ test('RE-PG-004 the JSON registry owns flow order, arrows and state IDs', () => 
   for (const s of registry.states) assert.ok(screens.includes(s.id.split('/')[0]), `state ${s.id} is on no flow screen`);
   assert.deepEqual(scenarios.map(s => s.id), registry.states.map(s => s.id));
   assert.equal(matrix().length, 64);
+});
+
+test('RE-PG-003 a registry state the driver cannot run is refused, never announced ready', () => {
+  for (const s of scenarios) assert.doesNotThrow(() => validateScenario(s));
+  const good = scenarios[0];
+  assert.throws(() => validateScenario({ ...good, checkpoint: 'nonsense' }), /checkpoint/);
+  assert.throws(() => validateScenario({ ...good, steps: ['fly'] }), /step/);
+  assert.throws(() => validateScenario({ ...good, label: { vi: 'x' } as never }), /label/);
 });

@@ -51,7 +51,7 @@ relations:
 ## Screens and states
 | Screen | State ID | States | Entry | Exit / next |
 |---|---|---|---|---|
-| Library (shelf) | state:library/empty · state:library/ready · state:library/error | empty · books listed · importing · import feedback (added N / refused with reason) | side column "Library" | open a book → Reader |
+| Library (shelf) | state:library/empty · state:library/ready · state:library/error | empty · books listed · importing · import feedback (added N / refused with reason) · the list could not be opened ("Không mở được thư viện"; files on the Mac are untouched) | side column "Library" | open a book → Reader |
 | Open PDF or EPUB (system file dialog) | — | open · cancelled | button on the shelf | shelf with feedback |
 | Drag and drop | — | hover with count of readable files · drop | files dragged over the window | shelf with feedback |
 | Apple Books sheet | — | loading · list · searching · item not importable (dimmed + reason) · importing · summary | "From Apple Books" | sheet closes → shelf |

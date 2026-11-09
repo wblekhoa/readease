@@ -19,6 +19,14 @@ export function previewUrl(cell: Cell): string {
   for (const [key, value] of Object.entries(scenario.query)) if (value) query.set(key, value);
   return '/?' + query;
 }
+// RE-PG-003: what the driver knows how to do; anything else fails instead of announcing ready.
+const steps = ['library', 'open', 'read', 'pause'];
+const checkpoints = ['empty', 'shelf', 'library-error', 'reader', 'preparing', 'playing', 'paused', 'reading-error'];
+export function validateScenario(scenario: Scenario) {
+  if (!scenario.label?.vi || !scenario.label?.en) throw new Error(`${scenario.id}: label needs vi and en`);
+  if (!checkpoints.includes(scenario.checkpoint)) throw new Error(`${scenario.id}: unknown checkpoint ${scenario.checkpoint}`);
+  for (const step of scenario.steps) if (!steps.includes(step)) throw new Error(`${scenario.id}: unknown step ${step}`);
+}
 export function fixtureCopy(locale: string) {
   return locale === 'en' ? {
     title: 'A quiet morning — synthetic sample', second: 'Notes for tomorrow — synthetic sample',

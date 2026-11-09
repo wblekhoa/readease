@@ -1670,9 +1670,7 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     await new Promise(resolve => setTimeout(resolve, scenario === "slow" ? 12000 : 700));
     if (generation !== translationEpoch) return null;
     if (scenario === "error") throw new Error("translation:local_unavailable");
-    // A paste of one of the paired samples gets its real counterpart (showcase 22/10); anything else the stock line.
-    const pair = TRANSLATION_SAMPLES.find(sample => sample.en === String(args.text ?? "").trim() || sample.vi === String(args.text ?? "").trim());
-    const translated = pair ? pair[options.target === "vi" ? "vi" : "en"] : options.target === "en"
+    const translated = options.target === "en"
       ? "Reading every day helps us understand the world better.\n\nA short book read slowly stays with us longer."
       : "Đọc sách mỗi ngày giúp chúng ta hiểu thế giới tốt hơn.\n\nMột cuốn sách ngắn đọc chậm sẽ ở lại với ta lâu hơn.";
     startMockReading(mockParts(translated).map(part => part.segment_id), null);
@@ -1815,63 +1813,6 @@ if (showcaseLocale === "vi" || showcaseLocale === "en") {
     });
   });
 }
-// English showcase (owner 22/10: one English capture set for both editions of the article): the main sample book,
-// its contents, highlights and the paste/scan history read in English too, so no screen mixes the two languages.
-if (showcaseLocale === "en") {
-  const paragraphs = [
-    "Every year they paid close attention to usability, content and function, but left out the extra value that can make an interaction distinct and memorable.",
-    "So their first attempts were soon forgotten. Only when they learned to look at the problem from another angle did they make something special.",
-    "Don't get me wrong. First, the product has to work. Otherwise you are only decorating something that is broken underneath. But working is only the minimum you need to compete.",
-    "That may have been enough in the late 1990s and early 2000s, when people had only a few choices. Today, the number of mobile apps is close to ten million.",
-    "A product that works but leaves no impression will struggle to find its place.",
-    "So where does a positive, memorable experience come from? Two things.",
-    "First, we need features people do not expect, like when Steve Jobs showed pinch to zoom at an Apple event in 2007. The whole room gasped.",
-    "Second, we need to help people into a state of flow, which the psychologist Mihály Csíkszentmihályi described as complete absorption.",
-  ];
-  const names: Record<string, string> = {
-    "Bìa sách": "Cover",
-    "Lời giới thiệu": "Introduction",
-    "Các nguyên tắc phổ quát của trải nghiệm người dùng": "Universal principles of user experience",
-    "Phần Một: NỀN MÓNG": "Part One: FOUNDATIONS",
-    "Chương 3 Bộ mẫu trình bày": "Chapter 3 Different perspectives",
-    [PATHS_LINE]: "THREE PATHS INTO UX",
-    "Từ một nghề gần đó": "From a neighbouring craft",
-    "Cắt cho giọng đọc": "Cut for the voice",
-    "BA BƯỚC ĐỂ BẮT ĐẦU": "THREE WAYS TO BEGIN",
-    "Hãy bắt đầu từ nguồn": "Start from the source",
-    "Chương 4": "Chapter 4",
-    "Phần Hai: THỰC HÀNH": "Part Two: PRACTICE",
-    "MỤC TIÊU": "GOAL",
-    "CÁCH LÀM": "METHOD",
-    "Lời cảm ơn": "Acknowledgements",
-  };
-  const name = (title: string) => names[title] ?? title.replace(/^Chương (\d+) Bài tập (\d+)$/, "Chapter $1 Exercise $2");
-  for (const entry of TOC) entry.title = name(entry.title);
-  BOOK.chapters.forEach((chapter, index) => {
-    if (index === 2) return;
-    chapter.title = name(chapter.title);
-    for (const segment of chapter.segments) {
-      if (segment.kind === "heading") segment.text = name(segment.text);
-      else { const at = PARAGRAPHS.indexOf(segment.text); if (at >= 0) segment.text = paragraphs[at]; }
-    }
-  });
-  const marks: Record<string, [string, string | null]> = {
-    "applebooks:1": ["their first attempts were soon forgotten", "True of last year's project."],
-    "applebooks:2": ["Only when they learned to look at the problem from another angle", null],
-    "applebooks:3": ["the number of mobile apps is close to ten million", null],
-    "applebooks:4": ["pinch to zoom", "Worth quoting in the opening: one small gesture that changed how people thought about pocket computers. Double-check the 2007 date. It could open on the room going quiet for a few seconds and then erupting - everyone remembers that, few remember the decade of multi-touch research before it that went nowhere."],
-    "applebooks:5": ["the product has to work", "Opening line."],
-    "applebooks:6": ["left out the extra value", null],
-  };
-  for (const item of ANNOTATIONS) { const en = marks[item.id]; if (en) { item.selected_text = en[0]; item.note = en[1] as typeof item.note; } }
-  const history = [
-    "Morning news: the city breaks ground on metro line 2, due to open in 2030.",
-    "Team meeting notes: agree the release date, review the install guide and send a test build to five readers.",
-    "Good design is design that lets people stop thinking.",
-    "Each morning I spend ten minutes rereading what I learned the day before.",
-  ];
-  MOCK_HISTORY.forEach((entry, index) => { if (history[index]) { entry.text = history[index]; entry.original = null; entry.target = null; } });
-}
 // Showcase covers (07/10): the pictures on the public landing page. Four
 // layouts, no "MOCK" label and no rule lines - each book looks like itself.
 function showcaseCovers(lang: "vi" | "en"): Record<string, string> {
@@ -1901,67 +1842,15 @@ function showcaseCovers(lang: "vi" | "en"): Record<string, string> {
 <text x="60" y="330" ${serif} font-size="74" fill="#F4F1EA">${t.four[0]}</text><text x="60" y="415" ${serif} font-size="74" fill="#F4F1EA">${t.four[1]}</text>`),
   };
 }
-// A full shelf for the showcase (15/10): eight more books with their own
-// drawn covers and different progress, so the library and "Đang đọc" look
-// like a real reading life instead of four books and empty space. Titles are
-// invented; no real book is shown.
-function showcaseShelf(lang: "vi" | "en"): { rows: ShelfRow[]; covers: Record<string, string> } {
-  const T = lang === "vi"
-    ? [["Đọc", "chậm"], ["Nghệ thuật", "lắng nghe"], ["Những ngày", "mưa"], ["Bản đồ của", "sự chú ý"], ["Giọng", "kể"], ["Thói quen", "nhỏ"], ["Ánh sáng", "buổi sáng"], ["Viết để", "nghĩ"]]
-    : [["Reading", "slowly"], ["The art of", "listening"], ["Rainy", "days"], ["A map of", "attention"], ["The telling", "voice"], ["Small", "habits"], ["Morning", "light"], ["Writing", "to think"]];
-  const serif = 'font-family="Georgia,serif" font-weight="700"';
-  const sans = 'font-family="Helvetica Neue,Helvetica,Arial" font-weight="700"';
-  const svg = (body: string) => btoa(unescape(encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900">${body}</svg>`)));
-  const title = (i: number, x: number, y: number, font: string, size: number, fill: string) =>
-    `<text x="${x}" y="${y}" ${font} font-size="${size}" fill="${fill}">${T[i][0]}</text><text x="${x}" y="${y + size * 1.15}" ${font} font-size="${size}" fill="${fill}">${T[i][1]}</text>`;
-  const rain = Array.from({ length: 26 }, (_, i) => `<line x1="${(i * 53) % 640 - 20}" y1="${(i * 97) % 700 + 120}" x2="${(i * 53) % 640 - 60}" y2="${(i * 97) % 700 + 230}" stroke="#9FB4E8" stroke-width="5" stroke-linecap="round" opacity="0.55"/>`).join("");
-  const arcs = [120, 200, 280, 360].map((r, i) => `<circle cx="300" cy="640" r="${r}" fill="none" stroke="#3B2A12" stroke-width="${14 - i * 3}" opacity="${0.75 - i * 0.15}"/>`).join("");
-  const path = Array.from({ length: 9 }, (_, i) => `<circle cx="${90 + i * 55}" cy="${520 + Math.sin(i * 0.9) * 120}" r="${10 + (i % 3) * 8}" fill="${["#E76F51", "#2A9D8F", "#E9C46A", "#264653"][i % 4]}"/>`).join("");
-  const stack = [0, 1, 2, 3].map(i => `<rect x="${90 + i * 22}" y="${420 + i * 90}" width="${420 - i * 44}" height="70" rx="35" fill="#2F4A3A" opacity="${0.35 + i * 0.18}"/>`).join("");
-  const covers = [
-    svg(`<rect width="600" height="900" fill="#14424A"/><circle cx="420" cy="560" r="200" fill="#F3E9D2"/><circle cx="470" cy="520" r="200" fill="#14424A"/>${title(0, 60, 150, serif, 76, "#F3E9D2")}`),
-    svg(`<rect width="600" height="900" fill="#E7B73B"/>${arcs}<circle cx="300" cy="640" r="46" fill="#3B2A12"/>${title(1, 60, 140, sans, 62, "#3B2A12")}`),
-    svg(`<rect width="600" height="900" fill="#1E2A5A"/>${rain}<rect x="380" y="640" width="120" height="150" rx="10" fill="#F2C94C"/><rect x="438" y="640" width="4" height="150" fill="#1E2A5A"/><rect x="380" y="712" width="120" height="4" fill="#1E2A5A"/>${title(2, 60, 150, serif, 80, "#EEF1FB")}`),
-    svg(`<rect width="600" height="900" fill="#F4F1EA"/><path d="M90 520 C 200 380, 330 680, 530 470" fill="none" stroke="#C9C2B4" stroke-width="4" stroke-dasharray="10 12"/>${path}${title(3, 60, 150, sans, 60, "#22252B")}`),
-    svg(`<rect width="600" height="900" fill="#E86F5A"/><text x="40" y="720" ${serif} font-size="560" fill="#F9D9CF" opacity="0.9">“</text>${title(4, 60, 150, serif, 84, "#FFF5F0")}`),
-    svg(`<rect width="600" height="900" fill="#BFD3C1"/>${stack}${title(5, 60, 150, sans, 70, "#1F3326")}`),
-    svg(`<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCE3C4"/><stop offset="1" stop-color="#F28FA0"/></linearGradient></defs><rect width="600" height="900" fill="url(#g)"/><circle cx="300" cy="700" r="160" fill="#FFF3DE"/><rect x="0" y="700" width="600" height="200" fill="#F06F86" opacity="0.55"/>${title(6, 60, 150, serif, 70, "#5A2236")}`),
-    svg(`<rect width="600" height="900" fill="#141416"/><rect x="60" y="330" width="250" height="12" fill="#E5484D"/>${title(7, 60, 200, serif, 86, "#F7F7F5")}<text x="60" y="820" ${sans} font-size="26" fill="#8A8A90">${lang === "vi" ? "Tiểu luận" : "Essays"}</text>`),
-  ];
-  const meta: Array<[number | null, number, string, number, string | null]> = [
-    [0.64, 14, "epub", 3_400_000, "2026-09-21T21:05:00Z"],
-    [0.27, 11, "epub", 5_100_000, "2026-09-20T07:30:00Z"],
-    [0.86, 18, "epub", 7_800_000, "2026-09-18T22:10:00Z"],
-    [0.12, 9, "pdf", 12_600_000, null],
-    [null, 16, "epub", 4_200_000, null],
-    [0.51, 8, "epub", 2_900_000, null],
-    [null, 13, "pdf", 18_400_000, null],
-    [0.33, 21, "epub", 6_700_000, null],
-  ];
-  const rows = meta.map(([ratio, chapters, format, size, heard], i): ShelfRow => ({
-    id: `book-showcase-${i + 1}`, title: `${T[i][0]} ${T[i][1]}`, source_format: format,
-    segment_id: ratio == null ? null : "ch-0-seg-1", progress_ratio: ratio,
-    progress_chapter: ratio == null ? null : `${lang === "vi" ? "Chương" : "Chapter"} ${Math.max(1, Math.round(ratio * chapters))}`,
-    chapters, size_bytes: size, imported_at: `2026-09-0${(i % 9) + 1}T09:00:00Z`, listened_at: heard,
-    from_apple_books: i % 3 === 0, language: lang, language_set: false, language_detected: lang,
-  }));
-  return { rows, covers: Object.fromEntries(rows.map((row, i) => [row.id, covers[i]])) };
-}
 if (showcaseLocale === "vi") {
   const titles: Record<string, string> = { "book-three": "Cẩm nang usability cho đội sản phẩm", "book-four": "Sổ tay của nhóm thiết kế" };
   LIBRARY.forEach(book => { if (titles[book.id]) book.title = titles[book.id]; });
   Object.assign(COVERS, showcaseCovers("vi"));
-  const shelf = showcaseShelf("vi");
-  LIBRARY.push(...shelf.rows);
-  Object.assign(COVERS, shelf.covers);
 }
 if (showcaseLocale === "en") {
   SETTINGS.ui_language = "en";
   SETTINGS.voice = "af_heart";
   SETTINGS.rate = 1.25;
-  // Three English voices in the switcher, so the voice picker has a choice to show (22/10).
-  SETTINGS.voice_shortlist = JSON.stringify(["Đức Trí", "Adam", "Trúc Ly", "Phạm Tuyên", "Ngọc Linh", "af_heart", "af_bella", "am_michael"]);
   for (const key of Object.keys(SETTINGS)) if (key.endsWith("_api_key")) delete SETTINGS[key];
   const titles = ["Principles of user experience — a practical guide", "A quieter way to read", "Usability notes for product teams", "The design team's field guide"];
   BOOK.title = titles[0];
@@ -1971,14 +1860,14 @@ if (showcaseLocale === "en") {
     if (book.progress_chapter) book.progress_chapter = `Chapter ${index + 1}`;
   });
   Object.assign(COVERS, showcaseCovers("en"));
-  const shelf = showcaseShelf("en");
-  LIBRARY.push(...shelf.rows);
-  Object.assign(COVERS, shelf.covers);
-  BOOK.chapters.forEach((chapter) => {
+  BOOK.chapters.forEach((chapter, index) => {
     // The ordinary showcase uses one illustration, not the default harness's
     // deliberately repeated figure used to stress duplicate-handling tests.
     chapter.figures = chapter.figures.filter(figure => !figure.duplicate_of);
-    // Chapter titles and text are the English translations set with the showcase book above (22/10).
+    chapter.title = index === 2 ? chapter.title : `Chapter ${index + 1}`;
+    chapter.segments.forEach((segment, i) => {
+      if (index !== 2) segment.text = i === 0 ? chapter.title : "A thoughtful reading experience gives every idea room to breathe.";
+    });
   });
 }
 

@@ -1,4 +1,4 @@
-import { scenarios } from './playgroundScenarios';
+import { scenarios, validateScenario } from './playgroundScenarios';
 
 declare global { interface Window { __playgroundState?: { scenario: string; cell?: string; status: string; error?: string } } }
 const label = (element: Element) => (element.getAttribute('aria-label') || element.textContent || '').trim();
@@ -29,6 +29,7 @@ export async function runPlaygroundScenario() {
   announce({ scenario: scenario.id, status: 'loading' });
   let step = 'startup';
   try {
+    validateScenario(scenario);
     await until(() => window.__mockReady?.());
     for (const action of scenario.steps) {
       step = action;

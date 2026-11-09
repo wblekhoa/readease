@@ -33,13 +33,13 @@ Import/remove documents safely, preserving originals and durable book state. [Ho
 
 | REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
-| RE-LIB-001 | Accept only the supported formats (PDF, EPUB, and since RE-LIB-011 the text documents); reject other extensions before copying. | live | [001](#evidence) · state:library/empty |
+| RE-LIB-001 | Accept only the supported formats (PDF, EPUB, and since RE-LIB-011 the text documents); reject other extensions before copying. | live | [001](#evidence) |
 | RE-LIB-002 | Copy imports into managed storage without changing the original. | live | [002](#evidence) |
 | RE-LIB-003 | Reject files over 200 MiB before making a managed copy. | live | [003](#evidence) |
 | RE-LIB-004 | Deduplicate identical content, returning the existing book id. | live | [004](#evidence) |
 | RE-LIB-005 | Refuse PDFs without a text layer; no OCR fallback. | live | [005](#evidence) |
 | RE-LIB-006 | Refuse encrypted EPUB archive members with a named reason. | live | [006](#evidence) |
-| RE-LIB-007 | Remove only the library entry and managed copy; never an external source file. | live | [007](#evidence) · state:library/ready |
+| RE-LIB-007 | Remove only the library entry and managed copy; never an external source file. | live | [007](#evidence) |
 | RE-LIB-008 | Persist position, rate and voice independently per book. | live | [008](#evidence) |
 | RE-LIB-009 | Refuse Apple Books DRM content; font obfuscation alone is permitted. | live | [009](#evidence) |
 | RE-LIB-010 | Support OCR-based import of scanned PDFs. | not built | [010](#evidence) |

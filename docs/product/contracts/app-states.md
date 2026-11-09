@@ -15,7 +15,7 @@ relations:
 ---
 # ReadEase — App states registry (contract)
 
-`app/src/dev/playgroundStates.json` is the one list of ReadEase's screens and preview states.
+`app/src/dev/playgroundStates.json` is the one list of ReadEase's screens and preview states. The dev mock keys its fixtures off these IDs and adds none.
 
 | Field | Meaning |
 |---|---|
