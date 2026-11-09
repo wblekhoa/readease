@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Reading and playback (UX)"
 status: active
-updated: 2026-10-23
+updated: 2026-11-09
 summary: "How ReadEase reads aloud: Reader and Paste text screens, the shared transport and status capsule, pauses and chimes that follow the text, pronunciations, resume, Paste-text sentence review and background M4B book export."
 tags: [area/reading, area/audio, stack/react, stack/tauri, surface/macos]
 relations:
@@ -216,17 +216,22 @@ can be installed in System Settings → General → Language & Region → Transl
 translation is capped at 6,000 characters; a timeout or incomplete model response is an error, not spoken text.
 
 ## Screens and states
-| Screen | States | Entry | Exit / next |
-|---|---|---|---|
-| Reader | idle · preparing voice · reading · paused · error (reason shown, e.g. missing model, no key, budget) | open a book from the Library | back to Library; side column Contents / Notes / Search |
-| Paste text | empty · text entered · over the limit (count + "trim it") · reading part N/M · paused · exporting n/N · exported (Show in Finder) · export failed (reason) | side column "Paste text" | stop, or switch tab (an export goes on) |
-| Control bar (transport) | idle · reading · paused (pause button shows Resume) | always present on reading screens | Stop → idle |
-| Reading status capsule | preparing · reading · paused · hidden while a panel covers the bar | a reading starts | Stop removes it |
-| Voice settings panel | open · closed | gear on the control bar | closes back to the screen |
+| Screen | State ID | States | Entry | Exit / next |
+|---|---|---|---|---|
+| Reader | state:reader/ready · state:reader/preparing · state:reader/playing · state:reader/paused · state:reader/error | idle · preparing voice · reading · paused · error (reason shown, e.g. missing model, no key, budget) | open a book from the Library | back to Library; side column Contents / Notes / Search |
+| Paste text | — | empty · text entered · over the limit (count + "trim it") · reading part N/M · paused · exporting n/N · exported (Show in Finder) · export failed (reason) | side column "Paste text" | stop, or switch tab (an export goes on) |
+| Control bar (transport) | — | idle · reading · paused (pause button shows Resume) | always present on reading screens | Stop → idle |
+| Reading status capsule | — | preparing · reading · paused · hidden while a panel covers the bar | a reading starts | Stop removes it |
+| Voice settings panel | — | open · closed | gear on the control bar | closes back to the screen |
 
 ## Flow
 ```mermaid
 flowchart TD
+  %% node A state:reader/ready
+  %% node B state:reader/preparing
+  %% node C state:reader/playing
+  %% node D state:reader/paused
+  %% node E state:reader/error
   A[Reader or Paste text] -->|Read / Continue / click paragraph| B[Preparing the voice]
   B -->|voice blocked: no model, no key, budget| E[Error with reason and next step]
   B --> C[Reading]
@@ -248,6 +253,7 @@ flowchart TD
 | `docs/readease-hig.md` | the app's interface guidelines |
 
 ## Change log
+- 2026-11-09: rows cite the state IDs from the registry ([app-states contract](../contracts/app-states.md)).
 - 2026-10-21: highlights and notes made in the Reader (RE-NOTE-005…008).
   - Select words in a book and a small bar floats over them: five colour dots (yellow, green, blue, pink, purple) and Note.
   - A colour keeps the highlight. Note keeps it in yellow and opens the note box on it.

@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Library (logic)"
 status: active
-updated: 2026-10-21
+updated: 2026-11-09
 summary: "Managed PDF/EPUB import, duplicate and failure handling, language/progress ownership, schema boundaries and the Apple Books import boundary."
 tags: [area/data-import, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-LIB
@@ -33,13 +33,13 @@ Import/remove documents safely, preserving originals and durable book state. [Ho
 
 | REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
-| RE-LIB-001 | Accept only the supported formats (PDF, EPUB, and since RE-LIB-011 the text documents); reject other extensions before copying. | live | [001](#evidence) |
+| RE-LIB-001 | Accept only the supported formats (PDF, EPUB, and since RE-LIB-011 the text documents); reject other extensions before copying. | live | [001](#evidence) · state:library/empty |
 | RE-LIB-002 | Copy imports into managed storage without changing the original. | live | [002](#evidence) |
 | RE-LIB-003 | Reject files over 200 MiB before making a managed copy. | live | [003](#evidence) |
 | RE-LIB-004 | Deduplicate identical content, returning the existing book id. | live | [004](#evidence) |
 | RE-LIB-005 | Refuse PDFs without a text layer; no OCR fallback. | live | [005](#evidence) |
 | RE-LIB-006 | Refuse encrypted EPUB archive members with a named reason. | live | [006](#evidence) |
-| RE-LIB-007 | Remove only the library entry and managed copy; never an external source file. | live | [007](#evidence) |
+| RE-LIB-007 | Remove only the library entry and managed copy; never an external source file. | live | [007](#evidence) · state:library/ready |
 | RE-LIB-008 | Persist position, rate and voice independently per book. | live | [008](#evidence) |
 | RE-LIB-009 | Refuse Apple Books DRM content; font obfuscation alone is permitted. | live | [009](#evidence) |
 | RE-LIB-010 | Support OCR-based import of scanned PDFs. | not built | [010](#evidence) |
@@ -76,6 +76,7 @@ No OCR, DRM bypass or fixed-layout EPUB support. Home queue recovery is document
 Schema/progress/language: `tests/storage/test_repository.py` (`UpgradingOverAnOlderInstallTests`, `TheFirstRealMigrationTests`). Import rollback: `tests/importers/test_service.py`, `tests/importers/test_pdf.py`, `tests/importers/test_epub.py`. Headless tests use temporary managed files/Apple Books fixtures; live permissions and new Home Finder/drop remain manual acceptance.
 
 ## Change log
+- 2026-11-09: rows cite the state IDs from the registry ([app-states contract](../contracts/app-states.md)).
 
 - 2026-10-21: a chapter-line first heading is a chapter, not the title; frozen-sidecar evidence added.
 - 2026-10-21: RE-LIB-011 audit fixes - chapter lines need a number; bodiless chapter lines kept as text; hidden HTML skipped; a document with no title of its own names its chapter after the file, not the temp copy.

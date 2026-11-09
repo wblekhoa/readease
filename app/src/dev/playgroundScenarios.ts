@@ -1,14 +1,8 @@
-// RE-PG-001: the preview and its audit consume this one registry.
-export const scenarios = [
-  { id: 'library/empty', label: { vi: 'Thư viện trống', en: 'Empty library' }, query: { empty: 'library' }, steps: ['library'], checkpoint: 'empty' },
-  { id: 'library/ready', label: { vi: 'Thư viện có sách', en: 'Library with books' }, query: {}, steps: ['library'], checkpoint: 'shelf' },
-  { id: 'library/error', label: { vi: 'Lỗi tải thư viện', en: 'Library error' }, query: { fail: 'library.list' }, steps: ['library'], checkpoint: 'library-error' },
-  { id: 'reader/ready', label: { vi: 'Sẵn sàng đọc', en: 'Reader ready' }, query: {}, steps: ['library', 'open'], checkpoint: 'reader' },
-  { id: 'reader/preparing', label: { vi: 'Chuẩn bị giọng', en: 'Preparing voice' }, query: { warm: 'hold' }, steps: ['library', 'open', 'read'], checkpoint: 'preparing' },
-  { id: 'reader/playing', label: { vi: 'Đang đọc', en: 'Playing' }, query: {}, steps: ['library', 'open', 'read'], checkpoint: 'playing' },
-  { id: 'reader/paused', label: { vi: 'Tạm dừng', en: 'Paused' }, query: {}, steps: ['library', 'open', 'read', 'pause'], checkpoint: 'paused' },
-  { id: 'reader/error', label: { vi: 'Lỗi đọc có thể thử lại', en: 'Recoverable reading error' }, query: {}, steps: ['library', 'open', 'read'], checkpoint: 'reading-error' },
-];
+// RE-PG-001, RE-PG-004: the preview, its audit and the docs consume this one registry.
+import registry from './playgroundStates.json' with { type: 'json' };
+
+export type Scenario = { id: string; label: { vi: string; en: string }; query: Record<string, string | undefined>; steps: string[]; checkpoint: string };
+export const scenarios: Scenario[] = registry.states;
 export const locales = ['vi', 'en'] as const;
 export const themes = ['light', 'dark'] as const;
 export const viewports = [{ width: 960, height: 600 }, { width: 1280, height: 820 }];

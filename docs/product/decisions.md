@@ -4,13 +4,24 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-24
+updated: 2026-11-09
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-11-09 · Preview states become the product's screen IDs
+- **Context**: the owner wants information "từ tài liệu từ spec của sản phẩm cho tới thiết kế thật của nó được đồng nhất với nhau". The
+  eight preview states already existed; docs described the same screens in prose with no key a machine could check.
+- **Decision (owner, "Duyệt, bắt đầu")**: a registry beside the code owns the IDs, docs cite them, the doc index checks both ways. ReadEase is the
+  pilot.
+- **AI defaults, not owner-confirmed**: the registry moved from TypeScript to JSON so the index can read it without running product code; the
+  doc-to-state mapping (Library shelf row and Reader row carry the IDs; other rows show "—" until they have a preview state); an uncited state stays
+  a warning (no `stateCoverage: required` yet).
+- **Evidence**: `RE-PG-004`; `doc-graph impact readease:reader/paused`.
+- **Reversal**: inline the JSON back into `app/src/dev/playgroundScenarios.ts`; drop `docs/product/contracts/app-states.md`.
 
 ## 2026-11-04 · The main window opens inside a screen, never larger than one
 - **Context**: the owner's ReadEase opened edge to edge and past the screens. The saved frame had grown to
