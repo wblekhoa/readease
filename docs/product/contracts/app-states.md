@@ -9,6 +9,7 @@ summary: "The JSON registry that owns ReadEase's screens, flow arrows and eight 
 tags: [area/testing, area/layout, stack/react, surface/web]
 artifact: app/src/dev/playgroundStates.json
 stateRegistry: true
+stateCoverage: required
 relations:
   dependsOn: [readease-logic-playground]
   implements: [app/src/dev/playgroundStates.json]
