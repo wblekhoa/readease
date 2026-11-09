@@ -29,6 +29,7 @@ The registry is source data, not a second renderer. Scenario steps use existing 
 Production uses the unchanged app entry/build pipeline; both mock and driver imports are dev gated. No user books, database, voice model or generated audio is fixture data.
 
 ## Change log
+- 2026-11-09: RE-PG-004: a test holds the dev mock to IDs the registry owns.
 - 2026-11-09: RE-PG-003: the driver refuses a registry state it cannot run.
 - 2026-11-09: RE-PG-004: registry moved to JSON with flow order and arrows; REQ rows cite state IDs.
 - 2026-10-24: Added the eight-state public browser preview registry and synthetic fixture checkpoints.

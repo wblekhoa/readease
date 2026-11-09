@@ -1900,22 +1900,6 @@ if (PILOT) {
 // After the app has mounted and its listeners are up. Staggered, because two
 // passages captured in the same millisecond would share an `at` and collide
 // as list keys - which is true of the real shortcut too, just harder to do.
-// Showcase (15/10): a fuller history, so the Read a selection screen looks used. Invented passages.
-if (showcaseLocale === "en") SCANNED.splice(0, SCANNED.length,
-  "Late last century, before the stone road was paved, people still walked from the village gate to the district market, nearly two hours on foot. In the rainy season the water rose over the bamboo bridge and everyone rolled up their trousers to wade across.\n\nMy grandmother says the whole hamlet had one transistor radio, kept at the village head's house. In the evening, adults and children filled the brick yard to hear the late-night stories.",
-  "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet, which is why it has been used to test typefaces since the days of metal type.",
-  "Good typography is invisible: when the letters are right, the reader only notices the words.",
-  "A slow morning of reading starts with a cup of tea and ten pages, nothing more hurried than that.",
-  "Good design does not make readers think about the interface; they only think about what they are reading.",
-  "A short note after each chapter helps you remember longer than underlining the whole page.",
-  "The voice slows down at a comma and stops at a full stop, like a real storyteller.",
-);
-else if (showcaseLocale) SCANNED.push(
-  "Một buổi sáng đọc chậm bắt đầu bằng một tách trà và mười trang sách, không cần vội vàng hơn thế.",
-  "Thiết kế tốt không bắt người đọc phải nghĩ về giao diện; họ chỉ nghĩ về điều họ đang đọc.",
-  "Ghi chú ngắn sau mỗi chương giúp ta nhớ lâu hơn là gạch chân cả trang.",
-  "Giọng đọc chậm lại ở dấu phẩy và dừng hẳn ở dấu chấm, như một người kể chuyện thật.",
-);
 const scannedCount = Number(new URLSearchParams(window.location.search).get("scanned") ?? 0);
 if (scannedCount > 0) {
   const samples = TRANSLATION_TARGET ? TRANSLATION_SAMPLES.map(pair => pair[TRANSLATION_TARGET === "vi" ? "en" : "vi"]) : SCANNED;

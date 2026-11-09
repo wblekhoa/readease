@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { scenarios, matrix, previewUrl, fixtureCopy, validateScenario } from '../src/dev/playgroundScenarios.ts';
 import registry from '../src/dev/playgroundStates.json' with { type: 'json' };
@@ -27,4 +28,11 @@ test('RE-PG-003 a registry state the driver cannot run is refused, never announc
   assert.throws(() => validateScenario({ ...good, checkpoint: 'nonsense' }), /checkpoint/);
   assert.throws(() => validateScenario({ ...good, steps: ['fly'] }), /step/);
   assert.throws(() => validateScenario({ ...good, label: { vi: 'x' } as never }), /label/);
+});
+
+test('RE-PG-004 the dev mock names only states the registry owns', () => {
+  const source = readFileSync(new URL('../src/dev/mockTauri.ts', import.meta.url), 'utf8');
+  const named = [...source.matchAll(/PILOT\??\.id\s*[!=]==\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
+  assert.ok(named.length >= 2, 'expected the mock to key fixtures off state IDs');
+  for (const id of named) assert.ok(registry.states.some(s => s.id === id), `mock names unknown state ${id}`);
 });
