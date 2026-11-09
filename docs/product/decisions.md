@@ -20,7 +20,7 @@ Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs
 - **AI defaults, not owner-confirmed**: the registry moved from TypeScript to JSON so the index can read it without running product code; the
   doc-to-state mapping (Library shelf row and Reader row carry the IDs; other rows show "—" until they have a preview state); an uncited state stays
   a warning (no `stateCoverage: required` yet).
-- **Evidence**: `RE-PG-004`; `doc-graph impact readease:reader/paused`.
+- **Evidence**: `RE-PG-001`, `RE-PG-004`; `doc-graph impact readease:reader/paused`.
 - **Reversal**: inline the JSON back into `app/src/dev/playgroundScenarios.ts`; drop `docs/product/contracts/app-states.md`.
 
 ## 2026-11-04 · The main window opens inside a screen, never larger than one
