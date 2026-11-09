@@ -4,7 +4,7 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-10-20
+updated: 2026-10-24
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
@@ -24,6 +24,12 @@ Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs
   three times with the owner's saved file opened at 1280×820 centred on the MacBook (before: 6912×1002 points), and
   quit + relaunch kept that frame.
 - **Reversal**: drop `skip_initial_state("main")` and the `window-fit` hook in `app/src-tauri/src/lib.rs`.
+
+## 2026-10-24 · Keep eight Recent items on Read home
+- **Context**: Home already renders up to eight Recent items, while its UX and logic documents still said five. The owner chose to keep eight ("Giữ 8 mục Recent nhé").
+- **Decision**: Read home shows up to eight items from its merged recent-content list, newest first. Align the Home UX and logic with this existing behavior; the sidebar's five saved-position books and the recents helper's default limit are separate contracts.
+- **Evidence**: `app/src/screens/Home.tsx` (`RECENT_LIMIT = 8` and the final slice); local browser observation of eight Recent rows with the existing default mock in Vietnamese/English and light/dark. No runtime change.
+- **Reversal**: a different Home limit needs a new product decision, matching UX/logic and UI acceptance; no data migration is required.
 
 ## 2026-10-21 · Library translation: by paragraph, a chapter at a time, kept per book
 - **Context**: the owner's choices (20/10): bilingual paragraphs, translations saved on this Mac per book, Library after Paste.
