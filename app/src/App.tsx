@@ -108,6 +108,7 @@ import {
   buttonCost,
   costPhrase,
   isPaidVoice,
+  readingScope,
   PROVIDERS,
   rememberScope,
   storedScope,
@@ -541,7 +542,7 @@ export default function App() {
         book_id: openBook.id,
         segment_id: position ?? openBook.segment_id ?? null,
         voice_id: voiceId,
-        chapters: scope,
+        chapters: readingScope(voiceId, scope),
         rate,
       }
       : content.trim()
@@ -1222,7 +1223,7 @@ export default function App() {
       setRemaining(null);
       setOrigin({ kind: "book", book: openBook });
       current.current = null;
-      void readBookTranslated(openBook.id, segmentId, scope);
+      void readBookTranslated(openBook.id, segmentId, readingScope(voiceId, scope));
       return;
     }
     bookTranslation.current = null;
@@ -1237,7 +1238,7 @@ export default function App() {
         // How far this press may reach. Outside it, nothing is ever sent -
         // which for a paid voice is the difference between a chapter and a
         // book.
-        bookId: openBook.id, segmentId, voiceId, rate, chapters: scope,
+        bookId: openBook.id, segmentId, voiceId, rate, chapters: readingScope(voiceId, scope),
       });
     } catch (error) {
       console.error(error);
@@ -1290,7 +1291,7 @@ export default function App() {
     const at = where.current;
     onPlayer({ type: "start" });
     const request = live.kind === "book"
-      ? invoke("read_book", { bookId: live.bookId, segmentId: at, voiceId: id, rate, chapters: scope })
+      ? invoke("read_book", { bookId: live.bookId, segmentId: at, voiceId: id, rate, chapters: readingScope(id, scope) })
       : invoke("read_text", {
         text: live.text,
         // A book segment id left over from an earlier reading is not a part
@@ -1689,9 +1690,10 @@ export default function App() {
   const remainingLabel = (seconds: number) => {
     const parts = remainingParts(seconds);
     const time = text(parts.key, parts.params);
-    const key = scopeKey(scope);
+    const reach = readingScope(voiceId, scope);
+    const key = scopeKey(reach);
     return key
-      ? text("remaining.scoped", { scope: text(key, { count: scope ?? 0 }), time })
+      ? text("remaining.scoped", { scope: text(key, { count: reach ?? 0 }), time })
       : text("remaining.left", { time });
   };
 
