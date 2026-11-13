@@ -4,13 +4,25 @@ type: decision
 product: readease
 title: "ReadEase — Decisions"
 status: active
-updated: 2026-11-04
+updated: 2026-11-09
 summary: "Append-only record of why ReadEase is built as it is: noncommercial licence, Tauri shell over a Python engine, own-key paid voices, signing, on-device voices and memory, bundle id, audio export, pronunciations and the default voice."
 tags: [area/voice, area/audio, area/release, area/signing, stack/tauri, stack/python, surface/macos]
 ---
 # ReadEase — Decisions (append-only, newest first)
 
 Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs in this repo; each cites its source.
+
+## 2026-11-09 · Preview states become the product's screen IDs
+- **Context**: the owner wants information "từ tài liệu từ spec của sản phẩm cho tới thiết kế thật của nó được đồng nhất với nhau". The
+  eight preview states already existed; docs described the same screens in prose with no key a machine could check.
+- **Decision (owner, "Duyệt, bắt đầu")**: a registry beside the code owns the IDs, docs cite them, the doc index checks both ways. ReadEase is the
+  pilot.
+- **AI defaults, not owner-confirmed**: the registry moved from TypeScript to JSON so the index can read it without running product code; the
+  doc-to-state mapping (Library shelf row and Reader row carry the IDs; other rows show "—" until they have a preview state); an uncited state stays
+  a warning (no `stateCoverage: required` yet).
+- **Scope of the merge**: registry, driver and seam, plus the eight-recents wording in `docs/product/logic/home.md` and `ux/home.md`, which came in the same cherry-pick. The showcase work on the same branch (English sample book, full shelf, translation pairing, voice shortlist) stays on `codex/jak-playground-handoff-20261025`.
+- **Evidence**: `RE-PG-001`, `RE-PG-004`; `doc-graph impact readease:reader/paused`.
+- **Reversal**: inline the JSON back into `app/src/dev/playgroundScenarios.ts`; drop `docs/product/contracts/app-states.md`.
 
 ## 2026-11-04 · The chapter scope caps paid voices only; a local voice reads on
 - **Context**: the owner (04/11): the reading stops partway instead of carrying on into the next chapter. The page
@@ -34,6 +46,12 @@ Entries before 2026-10-10 are reconstructed from commits, the CHANGELOG and docs
   three times with the owner's saved file opened at 1280×820 centred on the MacBook (before: 6912×1002 points), and
   quit + relaunch kept that frame.
 - **Reversal**: drop `skip_initial_state("main")` and the `window-fit` hook in `app/src-tauri/src/lib.rs`.
+
+## 2026-10-24 · Keep eight Recent items on Read home
+- **Context**: Home already renders up to eight Recent items, while its UX and logic documents still said five. The owner chose to keep eight ("Giữ 8 mục Recent nhé").
+- **Decision**: Read home shows up to eight items from its merged recent-content list, newest first. Align the Home UX and logic with this existing behavior; the sidebar's five saved-position books and the recents helper's default limit are separate contracts.
+- **Evidence**: `app/src/screens/Home.tsx` (`RECENT_LIMIT = 8` and the final slice); local browser observation of eight Recent rows with the existing default mock in Vietnamese/English and light/dark. No runtime change.
+- **Reversal**: a different Home limit needs a new product decision, matching UX/logic and UI acceptance; no data migration is required.
 
 ## 2026-10-21 · Library translation: by paragraph, a chapter at a time, kept per book
 - **Context**: the owner's choices (20/10): bilingual paragraphs, translations saved on this Mac per book, Library after Paste.

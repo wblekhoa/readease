@@ -4,7 +4,7 @@ type: ux
 product: readease
 title: "ReadEase — Library (UX)"
 status: active
-updated: 2026-10-23
+updated: 2026-11-09
 summary: "How the ReadEase Library shelf works: importing PDF and EPUB by button, drag-and-drop or Apple Books, refusal feedback, removing a book while keeping the original, and per-book reading progress."
 tags: [area/data-import, area/book, stack/react, stack/tauri, surface/macos]
 relations:
@@ -49,17 +49,20 @@ relations:
   kept so upgrades keep the library).
 
 ## Screens and states
-| Screen | States | Entry | Exit / next |
-|---|---|---|---|
-| Library (shelf) | empty · books listed · importing · import feedback (added N / refused with reason) | side column "Library" | open a book → Reader |
-| Open PDF or EPUB (system file dialog) | open · cancelled | button on the shelf | shelf with feedback |
-| Drag and drop | hover with count of readable files · drop | files dragged over the window | shelf with feedback |
-| Apple Books sheet | loading · list · searching · item not importable (dimmed + reason) · importing · summary | "From Apple Books" | sheet closes → shelf |
-| Remove book | confirm · removed | book's menu on the shelf | shelf without the book |
+| Screen | State ID | States | Entry | Exit / next |
+|---|---|---|---|---|
+| Library (shelf) | state:library/empty · state:library/ready · state:library/error | empty · books listed · importing · import feedback (added N / refused with reason) · the list could not be opened ("Không mở được thư viện"; files on the Mac are untouched) | side column "Library" | open a book → Reader |
+| Open PDF or EPUB (system file dialog) | — | open · cancelled | button on the shelf | shelf with feedback |
+| Drag and drop | — | hover with count of readable files · drop | files dragged over the window | shelf with feedback |
+| Apple Books sheet | — | loading · list · searching · item not importable (dimmed + reason) · importing · summary | "From Apple Books" | sheet closes → shelf |
+| Remove book | — | confirm · removed | book's menu on the shelf | shelf without the book |
 
 ## Flow
 ```mermaid
 flowchart LR
+  %% node A state:library/ready
+  %% node F state:library/ready
+  %% node I state:reader/ready
   A[Library shelf] -->|Open PDF or EPUB / drop file| B{Supported and readable?}
   B -->|no: wrong type, too large, no text layer, encrypted| C[Feedback with reason]
   B -->|yes, already in library| D[Focus existing book]
@@ -81,5 +84,6 @@ flowchart LR
 | `README.en.md` § Main features, § Limits | public description |
 
 ## Change log
+- 2026-11-09: rows cite the state IDs from the registry ([app-states contract](../contracts/app-states.md)).
 - 2026-10-21: RE-LIB-011 - Open / drop / Finder accept EPUB, PDF, Word (.docx, .doc), RTF, ODT, Markdown, HTML and TXT; the picker is named "Books and documents"; the badge shows the format (DOCX, MD…). ReadEase registers as an alternate viewer for .docx/.doc/.rtf/.odt/.md only - not for .txt or .html, which every Mac has many apps for.
 - 2026-10-10: created from code and CHANGELOG as of v0.1.21.

@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Library (logic)"
 status: active
-updated: 2026-10-21
+updated: 2026-11-09
 summary: "Managed PDF/EPUB import, duplicate and failure handling, language/progress ownership, schema boundaries and the Apple Books import boundary."
 tags: [area/data-import, area/storage, area/book, stack/python, surface/macos]
 reqPrefix: RE-LIB
@@ -76,6 +76,7 @@ No OCR, DRM bypass or fixed-layout EPUB support. Home queue recovery is document
 Schema/progress/language: `tests/storage/test_repository.py` (`UpgradingOverAnOlderInstallTests`, `TheFirstRealMigrationTests`). Import rollback: `tests/importers/test_service.py`, `tests/importers/test_pdf.py`, `tests/importers/test_epub.py`. Headless tests use temporary managed files/Apple Books fixtures; live permissions and new Home Finder/drop remain manual acceptance.
 
 ## Change log
+- 2026-11-09: rows cite the state IDs from the registry ([app-states contract](../contracts/app-states.md)).
 
 - 2026-10-21: a chapter-line first heading is a chapter, not the title; frozen-sidecar evidence added.
 - 2026-10-21: RE-LIB-011 audit fixes - chapter lines need a number; bodiless chapter lines kept as text; hidden HTML skipped; a document with no title of its own names its chapter after the file, not the temp copy.

@@ -14,6 +14,11 @@
 import { ENGLISH_BOOK, ENGLISH_TOC } from "./mockEnglishBook";
 import { mockFigureSvgs } from "./mockFigures";
 import { showcaseChapterCopy, showcaseFigureSvg } from "./showcaseFigure";
+import { fixtureCopy, scenarios as playgroundScenarios } from "./playgroundScenarios";
+
+const pilotParams = new URLSearchParams(window.location.search);
+const PILOT = playgroundScenarios.find(s => s.id === pilotParams.get('pilot'));
+let pilotReadFailed = false;
 
 type Handler = (event: { event: string; id: number; payload: unknown }) => void;
 
@@ -742,6 +747,15 @@ function startMockReading(steps: string[], billing: { chars: number; usd: number
   // `?warm=hold`: the voice never makes its first sound, so a cell can look
   // at "preparing the voice" - in the harness it lasts 120 ms.
   if (WARM_HOLD) return;
+  // RE-PG-002: hold a deterministic checkpoint, while real pause/stop controls still work.
+  if (PILOT) {
+    readingTimers.push(setTimeout(() => {
+      emit('reading:started', {});
+      emit('reading:position', { segment_id: steps[0], remaining_s: 240 });
+      if (live) live.index = 1;
+    }, 120) as unknown as number);
+    return;
+  }
   readingTimers.push(setTimeout(() => emit("reading:started", {}), 120) as unknown as number);
   stepReading(150);
 }
@@ -1093,7 +1107,7 @@ function engineRequest(method: string, params: Record<string, unknown> = {}): un
       return {
         book: { ...sized(BOOK), toc: isEmpty("toc") ? [] : TOC },
         annotations: isEmpty("notes") ? [] : ANNOTATIONS,
-        progress: { segment_id: "ch-2-seg-1" },
+        progress: { segment_id: PILOT ? 'ch-0-seg-1' : "ch-2-seg-1" },
       };
     case "book.cover": {
       const data = COVERS[String(params.book_id)];
@@ -1596,6 +1610,10 @@ async function invoke(command: string, args: Record<string, unknown> = {}): Prom
     return { target: options.target, voice_id: options.voice_id, next_segment_id: walk[6] ?? null, new_chapter: false };
   }
   if (command === "read_book") {
+    if (PILOT?.id === 'reader/error' && !pilotReadFailed) {
+      pilotReadFailed = true;
+      return Promise.reject('voice_unavailable: preview simulated local voice failure');
+    }
     // The refusal a PAID reading gets, on demand. The engine says
     // `voice_failed: <code>: <detail>` for a provider that said no, and
     // `voice_unavailable: <reason>` for one that was never asked because
@@ -1763,6 +1781,7 @@ window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
   },
 };
 window.__mockEmit = emit;
+window.__mockReady = () => (handlers.get('reading:position')?.length ?? 0) > 0;
 window.__mockUnanswered = () => [...unanswered];
 
 // Opt-in public screenshot fixture. Changes sample data only, never app UI or
@@ -1852,6 +1871,32 @@ if (showcaseLocale === "en") {
   });
 }
 
+// RE-PG-002: optional synthetic fixture; never reads or modifies native library data.
+if (PILOT) {
+  const locale = pilotParams.get('locale') === 'en' ? 'en' : 'vi';
+  const copy = fixtureCopy(locale);
+  SETTINGS.ui_language = locale; SETTINGS.voice = locale === 'en' ? 'af_heart' : 'Thu Hà';
+  SETTINGS.rate = 1;
+  localStorage.setItem('readease.theme', pilotParams.get('theme') === 'dark' ? 'dark' : 'light');
+  localStorage.setItem('readease.sidebar', 'closed');
+  BOOK.title = copy.title; BOOK.chapters.splice(2);
+  BOOK.chapters.forEach((chapter, i) => {
+    chapter.title = copy.chapters[i]; chapter.figures.splice(0); chapter.segments.splice(0);
+    [chapter.title, ...copy.paragraphs].forEach((text, n) => chapter.segments.push({
+      id: `${chapter.id}-seg-${n}`, kind: n === 0 ? 'heading' : 'paragraph', joint: 'block', text,
+    }));
+  });
+  TOC.splice(0, TOC.length, ...BOOK.chapters.map(ch => ({ level: 1, title: ch.title, segment_id: ch.segments[0].id })));
+  ANNOTATIONS.splice(0); MOCK_HISTORY.splice(0);
+  const template = LIBRARY[0] ?? { id: 'book-ux', source_format: 'epub', segment_id: null, progress_ratio: null, progress_chapter: null, chapters: 2, size_bytes: 2048, imported_at: null, from_apple_books: false };
+  LIBRARY.splice(0);
+  if (PILOT.id !== 'library/empty') LIBRARY.push(
+    { ...template, id: BOOK.id, title: copy.title, source_format: 'epub', chapters: 2, chapter_titles: copy.chapters, size_bytes: 2048, segment_id: 'ch-0-seg-1', progress_ratio: 0.25, progress_chapter: copy.chapters[0], language: locale, language_detected: locale, language_set: false, from_apple_books: false },
+    { ...template, id: 'book-three', title: copy.second, source_format: 'md', chapters: 2, chapter_titles: copy.chapters, size_bytes: 1024, segment_id: null, progress_ratio: null, progress_chapter: null, language: locale, language_detected: locale, language_set: false, from_apple_books: false },
+  );
+  for (const book of LIBRARY) { delete COVERS[book.id]; DETECTED_LANGUAGE[book.id] = locale; }
+}
+
 // After the app has mounted and its listeners are up. Staggered, because two
 // passages captured in the same millisecond would share an `at` and collide
 // as list keys - which is true of the real shortcut too, just harder to do.
@@ -1877,6 +1922,7 @@ declare global {
   interface Window {
     __TAURI_INTERNALS__: Record<string, unknown>;
     __mockEmit: (event: string, payload: unknown) => number;
+    __mockReady: () => boolean;
     __mockUnanswered: () => string[];
     /** The harness's pick of the update check's answer (HIG 3.20). */
     __mockUpdate?: string;

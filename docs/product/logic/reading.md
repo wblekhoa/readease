@@ -4,7 +4,7 @@ type: logic
 product: readease
 title: "ReadEase — Reading and playback (logic)"
 status: active
-updated: 2026-11-04
+updated: 2026-11-09
 summary: "Playback, heard progress, speech preparation and native controls; translation and export have separate rule owners with unchanged requirement IDs."
 tags: [area/reading, area/audio, area/voice, stack/python, surface/macos]
 reqPrefix: RE-PLAY
@@ -33,8 +33,8 @@ Read each source through one transport, preserve the heard position, and keep sp
 
 | REQ-ID | Rule | Status | Evidence |
 |---|---|---|---|
-| RE-PLAY-001 | Read a book from its saved position unless an explicit segment is requested. | live | [001](#evidence) |
-| RE-PLAY-002 | Save progress from heard acknowledgements, never synthesized-ahead audio. | live | [002](#evidence) |
+| RE-PLAY-001 | Read a book from its saved position unless an explicit segment is requested. | live | [001](#evidence) · state:reader/ready |
+| RE-PLAY-002 | Save progress from heard acknowledgements, never synthesized-ahead audio. | live | [002](#evidence) · state:reader/playing |
 | RE-PLAY-003 | Transient text playback never changes book progress. | live | [003](#evidence) |
 | RE-PLAY-004 | Never persist pasted-text audio in the document cache. | live | [004](#evidence) |
 | RE-PLAY-005 | Accept pasted text through 100,000 characters; refuse larger input. | live | [005](#evidence) |
@@ -48,7 +48,7 @@ Read each source through one transport, preserve the heard position, and keep sp
 | RE-PLAY-019 | Say standalone OK/Ok as “ô kê”; leave lowercase and longer words unchanged. | live | [019](#evidence) |
 | RE-PLAY-023 | Provide localized, text-free native reading status/actions; Stop also cancels capture. | blocked | [023](#evidence) |
 | RE-PLAY-024 | Provide a non-activating external-reading controller with shared transport and safe selection replacement. | blocked | [024](#evidence) |
-| RE-PLAY-026 | Share the current-reading Pause/Resume control without restarting speech or changing text geometry. | live | [026](#evidence) |
+| RE-PLAY-026 | Share the current-reading Pause/Resume control without restarting speech or changing text geometry. | live | [026](#evidence) · state:reader/paused |
 | RE-PLAY-027 | A book reading with a paid voice stops at the end of the chapter scope the page quoted ("this chapter", N chapters, or the whole book); with a local voice selected the reading carries on into the next chapter to the end of the book (the scope is offered only under a paid voice). The page, the native command and the engine carry the same `chapters` value. | live | [027](#evidence) |
 | RE-PLAY-028 | For the Vietnamese voice, everyday forms the SDK misreads are rewritten before it, in spellings it reads right: "100m²"/"2,5m³" keep "vuông"/"khối" (converted before footnote marks are dropped), "8h-17h30" says "đến", a weekday run "T2-T6, T7, CN" says "thứ hai đến thứ sáu, thứ bảy, chủ nhật", and "$20"/"3,5 tỷ USD" say "đô la"/"đô la Mỹ"; a lone "T2", "USD" or "x²" is left alone. | live | `tests/domain/test_prosody.py` (`test_square_and_cubic_units_keep_their_power`, `test_an_hour_range_says_den`, `test_a_weekday_range_or_list_says_the_days`, `test_dollars_are_said_as_do_la`) |
 | RE-PLAY-034 | Read starts at once: when a book opens, the engine makes its words speakable in the background and keeps them (the last three books; keyed by the book and every setting that shapes the words - pronunciations, notes, chimes - but not voice, speed or interface), so the press of Read does not pay for the whole book. A translated reading is never cached. | live | `tests/headless/test_server_prepared_book.py`; frozen sidecar 21/10 on a 2,440-paragraph book: first audio 0.61 s before, 0.12-0.17 s after opening it |
@@ -113,6 +113,7 @@ None open for chapter scope: the bridge gap noted on 2026-10-19 is closed by RE-
 Protocol checks: `app/tests/playback.test.ts`, `tests/headless/test_shell_contract.py`, native `engine.rs`/`audio.rs` tests. Reducer checks alone do not establish speaker cancellation.
 
 ## Change log
+- 2026-11-09: rows cite the state IDs from the registry ([app-states contract](../contracts/app-states.md)).
 - 2026-11-04: RE-PLAY-027 - the scope binds paid voices only. Since 2026-10-20 the page forwarded the stored scope (default "this chapter", offered only under a paid voice) for every reading, so a local voice stopped at its chapter's end; local voices now read on.
 - 2026-10-22: reviewed against d2dedf4 (Reader highlights): new `annotations.add`/`annotations.restyle` engine methods and host `copy_text` belong to RE-NOTE ([notes](notes.md)); no playback rule changed.
 - 2026-10-21: RE-PLAY-034 - a book's words prepared when it opens (first audio 0.6 s → 0.15 s on a large book). Measured baseline: engine ready 0.14 s, warm first audio 0.08-0.12 s, import of 1.1 MB text 0.25 s, book.open 0.03 s.
